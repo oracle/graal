@@ -30,9 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -55,31 +54,35 @@ final class UtilFunctionCall {
         private boolean isThread;
         private Object startRoutine;
         private Object arg;
-        private LLVMContext ctx;
+        private LLVMContext context;
 
-        FunctionCallRunnable(Object startRoutine, Object arg, LLVMContext ctx, boolean isThread) {
+        FunctionCallRunnable(Object startRoutine, Object arg, LLVMContext context, boolean isThread) {
             this.startRoutine = startRoutine;
             this.arg = arg;
-            this.ctx = ctx;
+            this.context = context;
             this.isThread = isThread;
         }
 
         @Override
         public void run() {
-            synchronized (ctx.callTargetLock) {
-                if (ctx.pthreadCallTarget == null) {
-                    ctx.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new FunctionCallNode(LLVMLanguage.getLanguage()));
+            synchronized (context.callTargetLock) {
+                if (context.pthreadCallTarget == null) {
+                    FrameDescriptor frameDescriptor = new FrameDescriptor();
+                    frameDescriptor.addFrameSlot("function");
+                    frameDescriptor.addFrameSlot("arg");
+                    frameDescriptor.addFrameSlot("sp");
+                    context.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new FunctionCallNode(LLVMLanguage.getLanguage(), frameDescriptor));
                 }
             }
             // pthread_exit throws a control flow exception to stop the thread
             try {
                 // save return value in storage
-                Object returnValue = ctx.pthreadCallTarget.call(startRoutine, arg);
+                Object returnValue = context.pthreadCallTarget.call(startRoutine, arg);
                 // no null values in concurrent hash map allowed
                 if (returnValue == null) {
                     returnValue = LLVMNativePointer.createNull();
                 }
-                ctx.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
+                context.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
             } catch (PThreadExitException e) {
                 // return value is written to retval storage in exit function before it throws this
                 // exception
@@ -88,10 +91,10 @@ final class UtilFunctionCall {
             } finally {
                 // call destructors from key create
                 if (this.isThread) {
-                    for (int key = 1; key <= ctx.curKeyVal; key++) {
-                        LLVMPointer destructor = UtilAccessCollectionWithBoundary.get(ctx.destructorStorage, key);
+                    for (int key = 1; key <= context.curKeyVal; key++) {
+                        LLVMPointer destructor = UtilAccessCollectionWithBoundary.get(context.destructorStorage, key);
                         if (destructor != null && !destructor.isNull()) {
-                            ConcurrentMap<Long, LLVMPointer> specValueMap = UtilAccessCollectionWithBoundary.get(ctx.keyStorage, key);
+                            ConcurrentMap<Long, LLVMPointer> specValueMap = UtilAccessCollectionWithBoundary.get(context.keyStorage, key);
                             // if key was deleted continue with next destructor
                             if (specValueMap == null) {
                                 continue;
@@ -108,7 +111,7 @@ final class UtilFunctionCall {
                                     // ignored
                                 }
                                 UtilAccessCollectionWithBoundary.remove(specValueMap, Thread.currentThread().getId());
-                                new FunctionCallRunnable(destructor, keyVal, this.ctx, false).run();
+                                new FunctionCallRunnable(destructor, keyVal, this.context, false).run();
                             }
                         }
                     }
@@ -117,50 +120,27 @@ final class UtilFunctionCall {
         }
     }
 
-    static final class MyArgNode extends LLVMExpressionNode {
-
-        private final FrameSlot slot;
-
-        private MyArgNode(FrameSlot slot) {
-            this.slot = slot;
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return frame.getValue(slot);
-        }
-    }
-
     private static final class FunctionCallNode extends RootNode {
 
         @Child LLVMExpressionNode callNode = null;
 
-        @CompilationFinal FrameSlot functionSlot = null;
+        private final LLVMContext context;
 
-        @CompilationFinal FrameSlot argSlot = null;
-
-        @CompilationFinal FrameSlot spSlot = null;
-
-        private final LLVMContext ctx;
-
-        FunctionCallNode(LLVMLanguage language) {
-            super(language);
-            this.ctx = language.getContextReference().get();
+        FunctionCallNode(LLVMLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+            this.context = language.getContextReference().get();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            LLVMStack.StackPointer sp = ctx.getThreadingStack().getStack().newFrame();
+            LLVMStack.StackPointer sp = context.getThreadingStack().getStack().newFrame();
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                functionSlot = frame.getFrameDescriptor().findOrAddFrameSlot("function");
-                argSlot = frame.getFrameDescriptor().findOrAddFrameSlot("arg");
-                spSlot = frame.getFrameDescriptor().findOrAddFrameSlot("sp");
-
-                callNode = ctx.getLanguage().getNodeFactory().createFunctionCall(
-                                new MyArgNode(functionSlot),
+                callNode = context.getLanguage().getNodeFactory().createFunctionCall(
+                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("function")),
                                 new LLVMExpressionNode[]{
-                                                new MyArgNode(spSlot), new MyArgNode(argSlot)
+                                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("sp")),
+                                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("arg"))
                                 },
                                 new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
             }
@@ -168,9 +148,9 @@ final class UtilFunctionCall {
             final Object[] arguments = frame.getArguments();
             Object function = arguments[0];
             Object arg = arguments[1];
-            frame.setObject(functionSlot, function);
-            frame.setObject(argSlot, arg);
-            frame.setObject(spSlot, sp);
+            frame.setObject(this.getFrameDescriptor().findFrameSlot("function"), function);
+            frame.setObject(this.getFrameDescriptor().findFrameSlot("arg"), arg);
+            frame.setObject(this.getFrameDescriptor().findFrameSlot("sp"), sp);
             // execute it
             return callNode.executeGeneric(frame);
         }

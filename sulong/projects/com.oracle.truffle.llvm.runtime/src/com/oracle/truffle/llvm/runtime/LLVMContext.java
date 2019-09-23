@@ -48,7 +48,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.UtilCConstants;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.PThreadConstants;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
@@ -105,7 +105,6 @@ public final class LLVMContext {
 
     public final Object callTargetLock;
     public CallTarget pthreadCallTarget;
-    public final UtilCConstants pthreadConstants;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -241,8 +240,6 @@ public final class LLVMContext {
         this.destructorStorage = new ConcurrentHashMap<>();
         this.callTargetLock = new Object();
         this.pthreadCallTarget = null;
-        this.pthreadConstants = new UtilCConstants(this);
-
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {
