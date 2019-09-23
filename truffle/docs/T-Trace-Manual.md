@@ -103,7 +103,7 @@ printing the length and name of processed script.
 Collecting the insights information isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
 following `function-histogram-tracing.js` that counts all method invocations
-and dumps the most frequent ones when the execution of your problem is over:
+and dumps the most frequent ones when the execution of your program is over:
 
 ```js
 print(ttrace);
