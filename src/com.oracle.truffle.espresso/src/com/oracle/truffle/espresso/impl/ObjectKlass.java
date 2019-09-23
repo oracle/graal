@@ -265,6 +265,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void prepare() {
+        checkLoadingConstraints();
         for (Field f : declaredFields) {
             if (f.isStatic()) {
                 ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
@@ -325,11 +326,12 @@ public final class ObjectKlass extends Klass {
     }
 
     // Need to carefully synchronize, as the work of other threads can erase our own work.
+
     @Override
     public void initialize() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            verifyKlass();
+            verify();
             actualInit();
         }
     }
@@ -338,7 +340,7 @@ public final class ObjectKlass extends Klass {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             if (needsRecursiveInit) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                verifyKlass();
+                verify();
                 actualInit();
             } else {
                 for (ObjectKlass interf : getSuperInterfaces()) {
@@ -654,7 +656,8 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    private void verifyKlass() {
+    @Override
+    public void verify() {
         if (!isVerified()) {
             synchronized (this) {
                 if (!isVerifyingOrVerified()) {
@@ -689,10 +692,10 @@ public final class ObjectKlass extends Klass {
                     throw getMeta().throwEx(VerifyError.class);
                 }
                 if (getSuperKlass() != null) {
-                    getSuperKlass().verifyKlass();
+                    getSuperKlass().verify();
                 }
                 for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.verifyKlass();
+                    interf.verify();
                 }
                 if (getMeta().MagicAccessorImpl.isAssignableFrom(this)) {
                     // Hotspot comment:
@@ -732,7 +735,6 @@ public final class ObjectKlass extends Klass {
     }
 
     // Verification data
-
     @CompilationFinal //
     private volatile int verificationStatus = UNVERIFIED;
 
@@ -740,6 +742,7 @@ public final class ObjectKlass extends Klass {
     private EspressoException verificationError = null;
 
     private static final int UNVERIFIED = 0;
+
     private static final int VERIFYING = 1;
     private static final int VERIFIED = 2;
 
@@ -761,5 +764,40 @@ public final class ObjectKlass extends Klass {
 
     public int[][] getLeftoverHoles() {
         return leftoverHoles;
+    }
+
+    private void checkLoadingConstraints() {
+        if (getSuperKlass() != null) {
+            if (!isInterface()) {
+                Method[] thisVTable = getVTable();
+                if (thisVTable != null) {
+                    Method[] superVTable = getSuperKlass().getVTable();
+                    Klass k1;
+                    Klass k2;
+                    for (int i = 0; i < superVTable.length; i++) {
+                        k1 = thisVTable[i].getDeclaringKlass();
+                        k2 = superVTable[i].getDeclaringKlass();
+                        if (k1 == this) {
+                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+            if (getItable() != null) {
+                Method[][] itables = getItable();
+                Klass[] klassTable = getiKlassTable();
+                for (int i = 0; i < getItable().length; i++) {
+                    Klass interfKlass = klassTable[i];
+                    Method[] table = itables[i];
+                    for (Method m : table) {
+                        if (m.getDeclaringKlass() == this) {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
+                        } else {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+        }
     }
 }

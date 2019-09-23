@@ -259,6 +259,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      */
     public abstract void initialize();
 
+    public void verify() {
+        /* nop */
+    }
+
     /**
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to

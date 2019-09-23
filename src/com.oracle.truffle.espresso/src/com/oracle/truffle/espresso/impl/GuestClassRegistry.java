@@ -63,7 +63,7 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("unused")
     @Override
-    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
+    public Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {
@@ -81,6 +81,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         assert StaticObject.notNull(classLoader);
         StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
         klass = guestClass.getMirrorKlass();
+        getRegistries().recordConstraint(type, klass, getClassLoader());
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
         return klass;

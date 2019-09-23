@@ -126,6 +126,8 @@ public interface FieldRefConstant extends MemberRefConstant {
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
             }
 
+            field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
+
             return new Resolved(field);
         }
     }

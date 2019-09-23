@@ -126,7 +126,14 @@ public final class Target_java_lang_Class {
         // java.lang.Throwable.backtrace.
 
         ArrayList<Field> collectedMethods = new ArrayList<>();
-        for (Field f : self.getMirrorKlass().getDeclaredFields()) {
+        Klass klass = self.getMirrorKlass();
+        /*
+         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
+         * doing verification, which, at this point, is the only thing left from linking we need to
+         * do.
+         */
+        klass.verify();
+        for (Field f : klass.getDeclaredFields()) {
             if (!publicOnly || f.isPublic()) {
                 collectedMethods.add(f);
             }
@@ -186,7 +193,14 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
-        for (Method m : self.getMirrorKlass().getDeclaredConstructors()) {
+        Klass klass = self.getMirrorKlass();
+        /*
+         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
+         * doing verification, which, at this point, is the only thing left from linking we need to
+         * do.
+         */
+        klass.verify();
+        for (Method m : klass.getDeclaredConstructors()) {
             if (Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
             }
@@ -281,7 +295,14 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
-        for (Method m : self.getMirrorKlass().getDeclaredMethods()) {
+        Klass klass = self.getMirrorKlass();
+        /*
+         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
+         * doing verification, which, at this point, is the only thing left from linking we need to
+         * do.
+         */
+        klass.verify();
+        for (Method m : klass.getDeclaredMethods()) {
             if ((!publicOnly || m.isPublic()) &&
                             // Filter out <init> and <clinit> from reflection.
                             !Name.INIT.equals(m.getName()) && !Name.CLINIT.equals(m.getName())) {
