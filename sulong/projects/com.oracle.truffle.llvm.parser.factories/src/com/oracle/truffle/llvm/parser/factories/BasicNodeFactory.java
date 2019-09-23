@@ -457,10 +457,6 @@ public class BasicNodeFactory implements NodeFactory {
         this.dataLayout = dataLayout;
     }
 
-    public void addDataLayout(DataLayout layout) {
-        this.dataLayout = this.dataLayout.merge(layout);
-    }
-
     @Override
     public LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index) {
         VectorType vectorType = (VectorType) resultType;

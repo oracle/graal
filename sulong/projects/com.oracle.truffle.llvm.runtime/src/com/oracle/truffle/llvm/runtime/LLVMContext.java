@@ -130,7 +130,6 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
-    private DataLayout libsulongDatalayout;
     private final Env env;
     private final LLVMScope globalScope;
     private final DynamicLinkChain dynamicLinkChain;
@@ -148,6 +147,8 @@ public final class LLVMContext {
 
     private boolean initialized;
     private boolean cleanupNecessary;
+    private DataLayout libsulongDatalayout;
+    private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
 
     private final LLVMTracerInstrument tracer;
@@ -172,7 +173,8 @@ public final class LLVMContext {
 
     LLVMContext(LLVMLanguage language, Env env, String languageHome) {
         this.language = language;
-        this.libsulongDatalayout = null;
+        this.libsulongDatalayout = new DataLayout();
+        this.datalayoutInitialised = false;
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
@@ -346,11 +348,12 @@ public final class LLVMContext {
     }
 
     public void addLibsulongDataLayout(DataLayout layout) {
-        // This should be called by Runner#parseDefaultLibraries.
-        if (libsulongDatalayout == null) {
+        // Libsulong datalayout can only be set once. This should be called by Runner#parseDefaultLibraries.
+        if (!datalayoutInitialised) {
             this.libsulongDatalayout = this.libsulongDatalayout.merge(layout);
+            datalayoutInitialised = true;
         } else {
-            throw new IllegalStateException("The default datalayout cannot be overrwitten.");
+            throw new NullPointerException("The default datalayout cannot be overrwitten.");
         }
     }
 

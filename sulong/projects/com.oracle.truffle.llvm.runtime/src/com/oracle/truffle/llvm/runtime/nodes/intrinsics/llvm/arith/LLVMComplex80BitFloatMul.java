@@ -36,7 +36,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -63,8 +62,7 @@ public abstract class LLVMComplex80BitFloatMul extends LLVMExpressionNode {
     }
 
     int getSizeInBytes() {
-        LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
-        return startNode.getDatalayout().getSize(PrimitiveType.X86_FP80);
+        return getDataLayout().getSize(PrimitiveType.X86_FP80);
     }
 
     @Specialization
