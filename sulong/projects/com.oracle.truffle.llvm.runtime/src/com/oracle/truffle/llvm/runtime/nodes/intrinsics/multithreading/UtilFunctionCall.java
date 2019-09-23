@@ -138,11 +138,11 @@ final class UtilFunctionCall {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = context.getLanguage().getNodeFactory().createFunctionCall(
                         context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("function")),
-                                new LLVMExpressionNode[]{
-                                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("sp")),
-                                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("arg"))
-                                },
-                                new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
+                        new LLVMExpressionNode[]{
+                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("sp")),
+                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("arg"))
+                        },
+                        new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
             }
             // copy arguments to frame
             final Object[] arguments = frame.getArguments();
