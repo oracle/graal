@@ -38,6 +38,7 @@ public class Globals {
     // are compiled with assumptions on what this field points to.
     // Such an assumption can be invalidated if the late-linking causes this array
     // to be replaced with a larger array.
+    // TODO: Fix this - dimensions should be 0.
     @CompilationFinal(dimensions = 1) private long[] globals;
     private int numGlobals;
 

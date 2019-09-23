@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
@@ -132,5 +133,10 @@ public class Linker {
             //  the predefined modules will be already initialized, so we don't yet run into this case.
             throw new WasmLinkerException("Postponed table initialization not implemented.");
         }
+    }
+
+    int tryResolveTable(WasmContext context, WasmModule module, String importedModuleName, String tableName, int initSize, int maxSize) {
+        // TODO
+        throw new WasmException("Not implemented.");
     }
 }

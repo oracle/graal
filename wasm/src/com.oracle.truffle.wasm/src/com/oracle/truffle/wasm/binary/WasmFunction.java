@@ -40,7 +40,7 @@ public class WasmFunction implements TruffleObject {
 
     private final SymbolTable symbolTable;
     private int index;
-    private ImportSpecifier importSpecifier;
+    private ImportDescriptor importDescriptor;
     private WasmCodeEntry codeEntry;
     private final String name;
     private final int typeIndex;
@@ -51,10 +51,10 @@ public class WasmFunction implements TruffleObject {
      *
      * If a Wasm function has a
      */
-    public WasmFunction(SymbolTable symbolTable, int index, int typeIndex, ImportSpecifier importSpecifier) {
+    public WasmFunction(SymbolTable symbolTable, int index, int typeIndex, ImportDescriptor importDescriptor) {
         this.symbolTable = symbolTable;
         this.index = index;
-        this.importSpecifier = importSpecifier;
+        this.importDescriptor = importDescriptor;
         this.codeEntry = null;
         // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove this.
         this.name = String.valueOf(index);
@@ -118,15 +118,15 @@ public class WasmFunction implements TruffleObject {
     }
 
     public boolean isImported() {
-        return importSpecifier != null;
+        return importDescriptor != null;
     }
 
     public String importedModuleName() {
-        return isImported() ? importSpecifier.moduleName : null;
+        return isImported() ? importDescriptor.moduleName : null;
     }
 
     public String importedFunctionName() {
-        return isImported() ? importSpecifier.memberName : null;
+        return isImported() ? importDescriptor.memberName : null;
     }
 
     public int typeIndex() {

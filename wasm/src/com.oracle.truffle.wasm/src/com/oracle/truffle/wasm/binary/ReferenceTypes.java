@@ -29,46 +29,17 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 
-public class Tables {
-    private static final int INITIAL_TABLES_SIZE = 8;
+public class ReferenceTypes {
+    public static final byte FUNCREF = 0x70;
 
-    @CompilationFinal(dimensions = 2) private Object[][] tables;
-    @CompilationFinal(dimensions = 1) private int[] maxsizes;
-    private int numTables;
-
-    public Tables() {
-        this.tables = new Object[INITIAL_TABLES_SIZE][];
-        this.maxsizes = new int[INITIAL_TABLES_SIZE];
-        this.numTables = 0;
-    }
-
-    private void ensureCapacity() {
-        if (numTables == tables.length) {
-            final Object[][] nglobals = new Object[tables.length * 2][];
-            System.arraycopy(tables, 0, nglobals, 0, tables.length);
-            tables = nglobals;
-            final int[] nmaxsizes = new int[maxsizes.length * 2];
-            System.arraycopy(maxsizes, 0, nmaxsizes, 0, maxsizes.length);
-            maxsizes = nmaxsizes;
+    public static String asString(int valueType) {
+        switch(valueType) {
+            case FUNCREF:
+                return "funcref";
+            default:
+                throw new WasmException("Unknown value type: 0x" + Integer.toHexString(valueType));
         }
-    }
-
-    public int tableCount() {
-        return numTables;
-    }
-
-    public int allocateTable(int initSize, int maxSize) {
-        ensureCapacity();
-        tables[numTables] = new Object[initSize];
-        maxsizes[numTables] = maxSize;
-        int idx = numTables;
-        numTables++;
-        return idx;
-    }
-
-    public Object[] table(int i) {
-        return tables[i];
     }
 }

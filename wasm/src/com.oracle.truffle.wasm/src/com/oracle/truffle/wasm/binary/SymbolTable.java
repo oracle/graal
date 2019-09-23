@@ -38,6 +38,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.collection.LongArrayList;
@@ -48,6 +49,7 @@ public class SymbolTable {
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
     private static final int GLOBAL_EXPORT_BIT = 1 << 24;
+    private static final int UNINITIALIZED_TABLE_BIT = 0x8000_0000;
 
     @CompilationFinal private WasmModule module;
 
@@ -136,7 +138,7 @@ public class SymbolTable {
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
      */
-    @CompilationFinal private final HashMap<Integer, ImportSpecifier> importedGlobals;
+    @CompilationFinal private final HashMap<Integer, ImportDescriptor> importedGlobals;
 
     /**
      * A mapping between the names and the indices of the exported globals.
@@ -152,9 +154,14 @@ public class SymbolTable {
      * The index of the table from the global table space, which this module is using.
      *
      * In the current WebAssembly specification, a module can use at most one table.
-     * A negative index value denotes that the module is not using a table.
+     * The value {@link SymbolTable#UNINITIALIZED_TABLE_BIT} denotes that this module uses no table.
      */
     @CompilationFinal private int tableIndex;
+
+    /**
+     * The table.
+     */
+    @CompilationFinal private ImportDescriptor importedTableDescriptor;
 
     public SymbolTable(WasmModule module) {
         this.module = module;
@@ -173,7 +180,8 @@ public class SymbolTable {
         this.importedGlobals = new HashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
         this.maxGlobalIndex = -1;
-        this.tableIndex = -1;
+        this.tableIndex = UNINITIALIZED_TABLE_BIT;
+        this.importedTableDescriptor = null;
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
@@ -258,9 +266,9 @@ public class SymbolTable {
         }
     }
 
-    private WasmFunction allocateFunction(int typeIndex, ImportSpecifier importSpecifier) {
+    private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
         ensureFunctionsCapacity(numFunctions);
-        final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importSpecifier);
+        final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
         numFunctions++;
         return function;
@@ -353,7 +361,7 @@ public class SymbolTable {
     }
 
     public WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
-        WasmFunction function = allocateFunction(typeIndex, new ImportSpecifier(moduleName, functionName));
+        WasmFunction function = allocateFunction(typeIndex, new ImportDescriptor(moduleName, functionName));
         importedFunctions.add(function);
         return function;
     }
@@ -394,7 +402,7 @@ public class SymbolTable {
     public int importGlobal(WasmContext context, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert resolution.isImported();
         final int address = allocateGlobal(context, index, valueType, mutability, resolution);
-        importedGlobals.put(index, new ImportSpecifier(moduleName, globalName));
+        importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
         return address;
     }
 
@@ -478,5 +486,25 @@ public class SymbolTable {
         int address = declareGlobal(context, index, valueType, mutability, resolution);
         exportGlobal(name, index);
         return address;
+    }
+
+    public void allocateTable(WasmContext context, int initSize, int maxSize) {
+        validateSingleTable();
+        tableIndex = context.tables().allocateTable(initSize, maxSize);
+    }
+
+    public void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
+        validateSingleTable();
+        importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
+        tableIndex = context.linker().tryResolveTable(context, module, moduleName, tableName, initSize, maxSize);
+    }
+
+    private void validateSingleTable() {
+        if (importedTableDescriptor != null) {
+            throw new WasmException("A table has been already imported in the module.");
+        }
+        if ((tableIndex & UNINITIALIZED_TABLE_BIT) == 0) {
+            throw new WasmException("A table has been already declared in the module.");
+        }
     }
 }

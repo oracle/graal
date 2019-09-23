@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-public class ImportSpecifier {
+public class ImportDescriptor {
         public final String moduleName;
         public final String memberName;
 
-        public ImportSpecifier(String moduleName, String memberName) {
+        public ImportDescriptor(String moduleName, String memberName) {
             this.moduleName = moduleName;
             this.memberName = memberName;
         }
