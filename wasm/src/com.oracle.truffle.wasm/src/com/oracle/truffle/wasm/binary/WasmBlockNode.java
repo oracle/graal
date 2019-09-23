@@ -585,14 +585,14 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             float value = getFloat(frame, index);
                             pushFloat(frame, stackPointer, value);
                             stackPointer++;
-                            logger.finest(() -> String.format("local.get %d, value = %d [f32]", index, value));
+                            logger.finest(() -> String.format("local.get %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             double value = getDouble(frame, index);
                             pushDouble(frame, stackPointer, value);
                             stackPointer++;
-                            logger.finest(() -> String.format("local.get %d, value = %d [f64]", index, value));
+                            logger.finest(() -> String.format("local.get %d, value = %f [f64]", index, value));
                             break;
                         }
                     }
@@ -722,7 +722,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
-                            logger.finest(() -> String.format("global.get %d, value = %f [f32]", index, value));
+                            logger.finest(() -> String.format("global.get %d, value = %f [f32]", index, Float.intBitsToFloat(value)));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
@@ -730,7 +730,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
                             stackPointer++;
-                            logger.finest(() -> String.format("global.get %d, value = %f [f64]", index, value));
+                            logger.finest(() -> String.format("global.get %d, value = %f [f64]", index, Double.longBitsToDouble(value)));
                             break;
                         }
                     }
@@ -778,7 +778,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             int value = popInt(frame, stackPointer);
                             int address = module().symbolTable().globalAddress(index);
                             context.globals().storeFloatWithInt(address, value);
-                            logger.finest(() -> String.format("global.set %d, value = %f [f32]", index, value));
+                            logger.finest(() -> String.format("global.set %d, value = %f [f32]", index, Float.intBitsToFloat(value)));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
@@ -786,7 +786,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             long value = pop(frame, stackPointer);
                             int address = module().symbolTable().globalAddress(index);
                             context.globals().storeDoubleWithLong(address, value);
-                            logger.finest(() -> String.format("global.set %d, value = %f [f64]", index, value));
+                            logger.finest(() -> String.format("global.set %d, value = %f [f64]", index, Double.longBitsToDouble(value)));
                             break;
                         }
                     }
@@ -860,13 +860,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             case I32_LOAD16_S: {
-                                context.memory().validateAddress(address, 016);
+                                context.memory().validateAddress(address, 16);
                                 int value = context.memory().load_i32_16s(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_U: {
-                                context.memory().validateAddress(address, 016);
+                                context.memory().validateAddress(address, 16);
                                 int value = context.memory().load_i32_16u(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
@@ -884,13 +884,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             case I64_LOAD16_S: {
-                                context.memory().validateAddress(address, 016);
+                                context.memory().validateAddress(address, 16);
                                 long value = context.memory().load_i64_16s(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_U: {
-                                context.memory().validateAddress(address, 016);
+                                context.memory().validateAddress(address, 16);
                                 long value = context.memory().load_i64_16u(address);
                                 push(frame, stackPointer, value);
                                 break;
@@ -2137,7 +2137,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long result = (long) x;
                     push(frame, stackPointer, result);
                     stackPointer++;
-                    logger.finest(() -> String.format("push trunc_f32(%d) = 0x%016X (%d) [i64]", x, result, result));
+                    logger.finest(() -> String.format("push trunc_f32(%f) = 0x%016X (%d) [i64]", x, result, result));
                     break;
                 }
                 case I64_TRUNC_F64_S:
