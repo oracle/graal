@@ -37,11 +37,9 @@ import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -85,8 +83,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private final JavaKind kind;
     private final EspressoContext context;
     private final ObjectKlass superKlass;
-
-    private final Assumption isLeaf;
 
     private final int ID;
 
@@ -134,15 +130,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         this.superInterfaces = superInterfaces;
         this.isArray = Types.isArray(type);
         this.ID = context.getNewId();
-        this.isLeaf = Truffle.getRuntime().createAssumption();
-    }
-
-    public boolean leafAssumption() {
-        return isLeaf.isValid();
-    }
-
-    public void invalidateLeaf() {
-        isLeaf.invalidate();
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -271,6 +258,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Initializes this type.
      */
     public abstract void initialize();
+
+    public void verify() {
+        /* nop */
+    }
 
     /**
      * Determines if this type is either the same as, or is a superclass or superinterface of, the

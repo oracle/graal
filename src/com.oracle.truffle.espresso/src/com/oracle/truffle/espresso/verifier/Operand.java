@@ -224,7 +224,7 @@ class ReferenceOperand extends Operand {
     @Override
     boolean compliesWith(Operand other) {
         if (other.isReference()) {
-            if (type == null || other.getType() == this.type || other.getType() == Type.Object) {
+            if (type == null || other.getType() == Type.Object) {
                 return true;
             }
             if (other.getType() == null) {

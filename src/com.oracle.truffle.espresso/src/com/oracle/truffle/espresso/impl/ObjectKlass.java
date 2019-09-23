@@ -94,11 +94,12 @@ public final class ObjectKlass extends Klass {
 
     private final Klass hostKlass;
 
+    // Stores the VTable for classes, holds public non-static methods for interfaces.
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
 
     // TODO(garcia) Sort itables (according to an arbitrary key) for dichotomic search?
     @CompilationFinal(dimensions = 2) private final Method[][] itable;
-    @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
+    @CompilationFinal(dimensions = 1) private final ObjectKlass[] iKlassTable;
     @CompilationFinal private final int itableLength;
 
     @CompilationFinal private volatile int initState = LOADED;
@@ -158,8 +159,9 @@ public final class ObjectKlass extends Klass {
         this.declaredMethods = methods;
         if (this.isInterface()) {
             this.itable = null;
-            this.vtable = null;
-            this.iKlassTable = InterfaceTables.getiKlassTable(this, declaredMethods);
+            InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, declaredMethods);
+            this.vtable = icr.methodtable;
+            this.iKlassTable = icr.klassTable;
         } else {
             InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces);
             this.iKlassTable = methodCR.klassTable;
@@ -263,6 +265,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void prepare() {
+        checkLoadingConstraints();
         for (Field f : declaredFields) {
             if (f.isStatic()) {
                 ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
@@ -323,11 +326,12 @@ public final class ObjectKlass extends Klass {
     }
 
     // Need to carefully synchronize, as the work of other threads can erase our own work.
+
     @Override
     public void initialize() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            verifyKlass();
+            verify();
             actualInit();
         }
     }
@@ -336,7 +340,7 @@ public final class ObjectKlass extends Klass {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             if (needsRecursiveInit) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                verifyKlass();
+                verify();
                 actualInit();
             } else {
                 for (ObjectKlass interf : getSuperInterfaces()) {
@@ -475,6 +479,12 @@ public final class ObjectKlass extends Klass {
     }
 
     Method[] getVTable() {
+        assert !isInterface();
+        return vtable;
+    }
+
+    Method[] getInterfaceMethodsTable() {
+        assert isInterface();
         return vtable;
     }
 
@@ -510,7 +520,7 @@ public final class ObjectKlass extends Klass {
         return itable;
     }
 
-    final Klass[] getiKlassTable() {
+    final ObjectKlass[] getiKlassTable() {
         return iKlassTable;
     }
 
@@ -532,7 +542,7 @@ public final class ObjectKlass extends Klass {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (this.sameRuntimePackage(subKlass)) {
+                } else if (m.getDeclaringKlass().sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
@@ -542,17 +552,20 @@ public final class ObjectKlass extends Klass {
 
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
-        // 2. Otherwise, if C declares a method with the name and descriptor specified by the
-        // interface method reference, method lookup succeeds.
+        /*
+         * 2. Otherwise, if C declares a method with the name and descriptor specified by the
+         * interface method reference, method lookup succeeds.
+         */
         for (Method m : getDeclaredMethods()) {
             if (name == m.getName() && signature == m.getRawSignature()) {
                 return m;
             }
         }
-
-        // 3. Otherwise, if the class Object declares a method with the name and descriptor
-        // specified by the interface method reference, which has its ACC_PUBLIC flag set and does
-        // not have its ACC_STATIC flag set, method lookup succeeds.
+        /*
+         * 3. Otherwise, if the class Object declares a method with the name and descriptor
+         * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
+         * not have its ACC_STATIC flag set, method lookup succeeds.
+         */
         assert getSuperKlass().getType() == Type.Object;
         Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
@@ -560,24 +573,44 @@ public final class ObjectKlass extends Klass {
         }
 
         Method resolved = null;
-        // Interfaces are sorted, superinterfaces first; traverse in reverse order to get
-        // most-specific first.
+        /*
+         * Interfaces are sorted, superinterfaces first; traverse in reverse order to get
+         * maximally-specific first.
+         */
         for (int i = iKlassTable.length - 1; i >= 0; i--) {
-            Klass k = iKlassTable[i];
-            for (Method superM : k.getDeclaredMethods()) {
+            ObjectKlass superInterf = iKlassTable[i];
+            for (Method superM : superInterf.getInterfaceMethodsTable()) {
+                /*
+                 * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
+                 * methods declared in superInterf.
+                 */
                 if (name == superM.getName() && signature == superM.getRawSignature()) {
-                    if (!superM.isAbstract()) {
-                        // 4. Otherwise, if the maximally-specific superinterface methods (§5.4.3.3)
-                        // of C for the name and descriptor specified by the method reference
-                        // include exactly one method that does not have its ACC_ABSTRACT flag set,
-                        // then this method is chosen and method lookup succeeds.
+                    if (!superM.isAbstract() && (resolved == null || !superInterf.isAssignableFrom(resolved.getDeclaringKlass()))) {
+                        /*
+                         * 4. Otherwise, if the maximally-specific superinterface methods (§5.4.3.3)
+                         * of C for the name and descriptor specified by the method reference
+                         * include exactly one method that does not have its ACC_ABSTRACT flag set,
+                         * then this method is chosen and method lookup succeeds.
+                         * 
+                         * Note: If there is more than one such method, we still select it, for it
+                         * still complies with point 5.
+                         */
                         return superM;
                     }
-                    // 5. Otherwise, if any superinterface of C declares a method with the name and
-                    // descriptor specified by the method reference that has neither its ACC_PRIVATE
-                    // flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
-                    // method lookup succeeds.
-                    if (!superM.isPrivate() && !superM.isStatic()) {
+                    /*
+                     * 5. Otherwise, if any superinterface of C declares a method with the name and
+                     * descriptor specified by the method reference that has neither its ACC_PRIVATE
+                     * flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
+                     * method lookup succeeds.
+                     */
+                    if (resolved == null) {
+                        /*
+                         * Since interfaces are sorted superinterfaces first, and we traverse in
+                         * reverse order, we have the guarantee that the first such method we
+                         * encounter will be a maximally-specific method. Thus, the only way
+                         * returning this method is incorrect is if there is another
+                         * maximally-specific non-abstract method
+                         */
                         resolved = superM;
                     }
                 }
@@ -623,7 +656,8 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    private void verifyKlass() {
+    @Override
+    public void verify() {
         if (!isVerified()) {
             synchronized (this) {
                 if (!isVerifyingOrVerified()) {
@@ -658,10 +692,10 @@ public final class ObjectKlass extends Klass {
                     throw getMeta().throwEx(VerifyError.class);
                 }
                 if (getSuperKlass() != null) {
-                    getSuperKlass().verifyKlass();
+                    getSuperKlass().verify();
                 }
                 for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.verifyKlass();
+                    interf.verify();
                 }
                 if (getMeta().MagicAccessorImpl.isAssignableFrom(this)) {
                     // Hotspot comment:
@@ -701,7 +735,6 @@ public final class ObjectKlass extends Klass {
     }
 
     // Verification data
-
     @CompilationFinal //
     private volatile int verificationStatus = UNVERIFIED;
 
@@ -709,6 +742,7 @@ public final class ObjectKlass extends Klass {
     private EspressoException verificationError = null;
 
     private static final int UNVERIFIED = 0;
+
     private static final int VERIFYING = 1;
     private static final int VERIFIED = 2;
 
@@ -730,5 +764,40 @@ public final class ObjectKlass extends Klass {
 
     public int[][] getLeftoverHoles() {
         return leftoverHoles;
+    }
+
+    private void checkLoadingConstraints() {
+        if (getSuperKlass() != null) {
+            if (!isInterface()) {
+                Method[] thisVTable = getVTable();
+                if (thisVTable != null) {
+                    Method[] superVTable = getSuperKlass().getVTable();
+                    Klass k1;
+                    Klass k2;
+                    for (int i = 0; i < superVTable.length; i++) {
+                        k1 = thisVTable[i].getDeclaringKlass();
+                        k2 = superVTable[i].getDeclaringKlass();
+                        if (k1 == this) {
+                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+            if (getItable() != null) {
+                Method[][] itables = getItable();
+                Klass[] klassTable = getiKlassTable();
+                for (int i = 0; i < getItable().length; i++) {
+                    Klass interfKlass = klassTable[i];
+                    Method[] table = itables[i];
+                    for (Method m : table) {
+                        if (m.getDeclaringKlass() == this) {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
+                        } else {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+        }
     }
 }
