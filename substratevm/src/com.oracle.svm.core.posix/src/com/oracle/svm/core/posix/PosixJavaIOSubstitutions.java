@@ -79,15 +79,11 @@ import static com.oracle.svm.core.posix.headers.Unistd.close;
 import static com.oracle.svm.core.posix.headers.Unistd.ftruncate;
 import static com.oracle.svm.core.posix.headers.Unistd.lseek;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -861,11 +857,6 @@ final class Target_java_io_FileDescriptor_jni {
 
     @Alias
     static native void initIDs();
-
-    @Alias static FileDescriptor in;
-    @Alias static FileDescriptor out;
-    @Alias static FileDescriptor err;
-
 }
 
 @TargetClass(java.io.FileOutputStream.class)
@@ -908,10 +899,6 @@ public final class PosixJavaIOSubstitutions {
             Target_java_io_FileInputStream_jni.initIDs();
             Target_java_io_FileOutputStream_jni.initIDs();
             Target_java_io_UnixFileSystem_jni.initIDs();
-
-            System.setIn(new BufferedInputStream(new FileInputStream(FileDescriptor.in)));
-            System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true));
-            System.setErr(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true));
 
             System.loadLibrary("zip");
             return true;
