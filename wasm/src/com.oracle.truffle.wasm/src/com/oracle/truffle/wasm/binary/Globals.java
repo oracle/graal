@@ -46,6 +46,10 @@ public class Globals {
         this.numGlobals = 0;
     }
 
+    public int globalCount() {
+        return numGlobals;
+    }
+
     private void ensureCapacity() {
         if (numGlobals == globals.length) {
             final long[] nglobals = new long[globals.length * 2];

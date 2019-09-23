@@ -363,13 +363,15 @@ public class BinaryReader extends BinaryStreamReader {
                     switch (limitsPrefix) {
                         case LimitsPrefix.NO_MAX: {
                             int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                            module.table().initialize(initSize);
+                            // TODO: Import the table.
+                            // module.table().initialize(initSize);
                             break;
                         }
                         case LimitsPrefix.WITH_MAX: {
                             int initSize = readUnsignedInt32();  // initial size (in number of entries)
                             int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                            module.table().initialize(initSize, maxSize);
+                            // TODO: Import the table.
+                            // module.table().initialize(initSize, maxSize);
                             break;
                         }
                         default:
@@ -430,13 +432,15 @@ public class BinaryReader extends BinaryStreamReader {
             switch (limitsPrefix) {
                 case 0x00: {
                     int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                    module.table().initialize(initSize);
+                    // TODO: Initialize the table.
+                    // module.table().initialize(initSize);
                     break;
                 }
                 case 0x01: {
                     int initSize = readUnsignedInt32();  // initial size (in number of entries)
                     int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                    module.table().initialize(initSize, maxSize);
+                    // TODO: Initialize the table.
+                    // module.table().initialize(initSize, maxSize);
                     break;
                 }
                 default:
@@ -1126,7 +1130,8 @@ public class BinaryReader extends BinaryStreamReader {
                     readEnd();
                     // Read the contents.
                     int[] contents = readElemContents();
-                    module.table().initializeContents(offset, contents);
+                    // TODO: Initialize the table contents.
+                    // module.table().initializeContents(offset, contents);
                     break;
                 }
                 case GLOBAL_GET: {

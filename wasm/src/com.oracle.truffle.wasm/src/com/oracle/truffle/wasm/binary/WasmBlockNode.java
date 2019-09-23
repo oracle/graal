@@ -479,11 +479,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Extract the function object.
                     stackPointer--;
                     int tableIndex = popInt(frame, stackPointer);
-                    // TODO: Check if this validation should be performed at link time.
-                    if (!module().table().validateIndex(tableIndex)) {
-                        throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
-                    }
-                    int functionIndex = module().table().functionIndex(tableIndex);
+                    // TODO: Re-enable and check if this validation should be performed at link time.
+                    // if (!module().table().validateIndex(tableIndex)) {
+                    //     throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
+                    // }
+                    // TODO: int functionIndex = module().table().functionIndex(tableIndex);
+                    int functionIndex = -1;
                     WasmFunction function = module().symbolTable().function(functionIndex);
 
                     // Extract the function type index.

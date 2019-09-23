@@ -49,6 +49,7 @@ public class WasmContext {
     private WasmLanguage language;
     private WasmMemory memory;
     private Globals globals;
+    private Tables tables;
     private Linker linker;
     private Map<String, WasmModule> modules;
 
@@ -61,12 +62,14 @@ public class WasmContext {
         this.language = language;
         this.memory = new UnsafeWasmMemory(DEFAULT_MEMORY_SIZE);
         this.globals = new Globals();
+        this.tables = new Tables();
         this.modules = new HashMap<>();
         this.linker = new Linker(language);
         initializePredefinedModules(env);
     }
 
     public CallTarget parse(Source source) {
+        // TODO: Not used -- can we remove this?
         return env.parsePublic(source);
     }
 
@@ -76,6 +79,14 @@ public class WasmContext {
 
     public WasmMemory memory() {
         return memory;
+    }
+
+    public Globals globals() {
+        return globals;
+    }
+
+    public Tables tables() {
+        return tables;
     }
 
     public Linker linker() {
@@ -117,9 +128,5 @@ public class WasmContext {
             final WasmModule module = PredefinedModule.createPredefined(language, this, name, key);
             modules.put(name, module);
         }
-    }
-
-    public Globals globals() {
-        return globals;
     }
 }

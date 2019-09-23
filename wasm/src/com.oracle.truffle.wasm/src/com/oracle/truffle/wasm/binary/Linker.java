@@ -125,7 +125,8 @@ public class Linker {
             int address = module.symbolTable().globalAddress(globalIndex);
             int offset = context.globals().loadAsInt(address);
             // Read the contents.
-            module.table().initializeContents(offset, contents);
+            // TODO: Initialize the array.
+            // module.table().initializeContents(offset, contents);
         } else {
             // TODO: Record the contents array for later initialization - with a single module,
             //  the predefined modules will be already initialized, so we don't yet run into this case.

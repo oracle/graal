@@ -148,6 +148,14 @@ public class SymbolTable {
      */
     @CompilationFinal private int maxGlobalIndex;
 
+    /**
+     * The index of the table from the global table space, which this module is using.
+     *
+     * In the current WebAssembly specification, a module can use at most one table.
+     * A negative index value denotes that the module is not using a table.
+     */
+    @CompilationFinal private int tableIndex;
+
     public SymbolTable(WasmModule module) {
         this.module = module;
         this.typeData = new int[INITIAL_DATA_SIZE];
@@ -165,6 +173,7 @@ public class SymbolTable {
         this.importedGlobals = new HashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
         this.maxGlobalIndex = -1;
+        this.tableIndex = -1;
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
