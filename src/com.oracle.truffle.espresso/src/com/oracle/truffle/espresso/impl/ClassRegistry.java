@@ -177,10 +177,10 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
-        ObjectKlass superKlass = superKlassType == null ? null : loadKlassRecursively(meta, superKlassType, true);
 
         TypeStack chain = stack.get();
 
+        ObjectKlass superKlass = null;
         ObjectKlass[] superInterfaces = null;
         LinkedKlass[] linkedInterfaces = null;
 
