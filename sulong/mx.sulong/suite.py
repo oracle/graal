@@ -481,7 +481,7 @@ suite = {
       "variants" : ["O1", "O0", "O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CFLAGS" : "<clangImplicitArgs> -g",
+        "SUITE_CFLAGS" : "-g",
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
@@ -499,7 +499,6 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CFLAGS" : "<clangImplicitArgs>",
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
@@ -675,7 +674,6 @@ suite = {
         "bitcodeformat/hello-darwin-link-fembed-bitcode.dylib",
       ],
       "buildEnv": {
-        "SUITE_CFLAGS": "<clangImplicitArgs>",
         "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
       },
       "dependencies": [
