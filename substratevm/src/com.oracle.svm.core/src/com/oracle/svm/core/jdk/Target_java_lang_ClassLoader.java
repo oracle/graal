@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -44,10 +43,14 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.util.VMError;
 
+import sun.misc.CompoundEnumeration;
+
 @TargetClass(ClassLoader.class)
 @Substitute
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
+
+    private static JarResourcePreserver jarPreserver = new JarResourcePreserver();
 
     @Substitute //
     private Target_java_lang_ClassLoader parent;
@@ -82,8 +85,13 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private static InputStream getSystemResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+        URL urlRet = getSystemResource(name);
+        try {
+            return urlRet == null ? null : urlRet.openStream();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Substitute
@@ -94,7 +102,19 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     private static URL getSystemResource(String name) {
         List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, arr.get(0));
+        if (arr == null) {
+            List<URL> urls = new ArrayList<>();
+            // Search jar resource directory if JAR_RESOURCES_LOC is set.
+            // urls can only be empty or of size 1 after searching
+            jarPreserver.searchResourceDir(name, urls, true);
+            if (urls.size() > 0) {
+                return urls.get(0);
+            } else {
+                return null;
+            }
+        } else {
+            return Resources.createURL(name, arr.get(0));
+        }
     }
 
     @Substitute
@@ -105,14 +125,21 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     private static Enumeration<URL> getSystemResources(String name) {
         List<byte[]> arr = Resources.get(name);
-        if (arr == null) {
+        if (arr == null && !JarResourcePreserver.PRESERVE_JARS) {
             return Collections.emptyEnumeration();
         }
-        List<URL> res = new ArrayList<>(arr.size());
-        for (byte[] data : arr) {
-            res.add(Resources.createURL(name, data));
+        List<URL> res;
+        if (arr != null) {
+            res = new ArrayList<>(arr.size());
+            for (byte[] data : arr) {
+                res.add(Resources.createURL(name, data));
+            }
+        } else {
+            res = new ArrayList<>();
         }
-        return Collections.enumeration(res);
+        // Search jar resource directory and return matched jar urls if JAR_RESOURCES_LOC is set
+        jarPreserver.searchResourceDir(name, res, false);
+        return new CompoundEnumeration<>(new Enumeration[]{Collections.enumeration(res)});
     }
 
     @Substitute

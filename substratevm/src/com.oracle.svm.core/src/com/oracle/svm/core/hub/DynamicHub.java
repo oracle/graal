@@ -638,15 +638,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     private InputStream getResourceAsStream(String resourceName) {
         final String path = resolveName(getName(), resourceName);
-        List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+        return getClassLoader0().getResourceAsStream(path);
     }
 
     @Substitute
     private URL getResource(String resourceName) {
         final String path = resolveName(getName(), resourceName);
-        List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : Resources.createURL(path, arr.get(0));
+        return getClassLoader0().getResource(path);
     }
 
     private String resolveName(String baseName, String resourceName) {

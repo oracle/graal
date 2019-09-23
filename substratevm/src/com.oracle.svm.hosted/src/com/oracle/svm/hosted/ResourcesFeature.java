@@ -32,10 +32,14 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
@@ -52,6 +56,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.jdk.JarResourcePreserver;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -71,6 +76,8 @@ public final class ResourcesFeature implements Feature {
     private boolean sealed = false;
     private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
+
+    private JarResourcePreserver jarPreserver = new JarResourcePreserver();
 
     private class ResourcesRegistryImpl implements ResourcesRegistry {
         @Override
@@ -107,6 +114,7 @@ public final class ResourcesFeature implements Feature {
             return;
         }
         access.requireAnalysisIteration();
+        Map<File, List<JarEntry>> matchedJars = new HashMap<>();
         for (String regExp : newResources) {
             if (regExp.length() == 0) {
                 continue;
@@ -144,10 +152,27 @@ public final class ResourcesFeature implements Feature {
                     if (element.isDirectory()) {
                         scanDirectory(debugContext, element, "", pattern);
                     } else {
-                        scanJar(debugContext, element, pattern);
+                        List<JarEntry> matchedEntries = scanJar(debugContext, element, pattern);
+                        if (matchedEntries.size() > 0) {
+                            if (matchedJars.get(element) == null) {
+                                matchedJars.put(element, matchedEntries);
+                            } else {
+                                matchedJars.get(element).addAll(matchedEntries);
+                            }
+                        }
                     }
                 } catch (IOException ex) {
                     throw UserError.abort("Unable to handle classpath element '" + element + "'. Make sure that all classpath entries are either directories or valid jar files.");
+                }
+            }
+        }
+        if (JarResourcePreserver.PRESERVE_JARS) {
+            for (Map.Entry<File, List<JarEntry>> matchedEntry : matchedJars.entrySet()) {
+                try {
+                    jarPreserver.preserveJar(matchedEntry.getKey(), matchedEntry.getValue());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    throw UserError.abort("IOException on " + matchedEntry.getKey().getAbsolutePath());
                 }
             }
         }
@@ -194,28 +219,38 @@ public final class ResourcesFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
+    private List<JarEntry> scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
+        List<JarEntry> matched = new ArrayList<>();
         while (en.hasMoreElements()) {
             JarEntry e = en.nextElement();
             if (e.getName().endsWith("/")) {
                 continue;
             }
             if (matches(patterns, e.getName())) {
-                try (InputStream is = jf.getInputStream(e)) {
-                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + e.getName());
+                if (!JarResourcePreserver.PRESERVE_JARS) {
+                    try (InputStream is = jf.getInputStream(e)) {
+                        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+                            debugContext.log("ResourcesFeature: registerResource: " + e.getName());
+                        }
+                        Resources.registerResource(e.getName(), is);
                     }
-                    Resources.registerResource(e.getName(), is);
+                } else {
+                    matched.add(e);
                 }
             }
         }
+        return matched;
     }
 
     private static boolean matches(Pattern[] patterns, String relativePath) {
         for (Pattern p : patterns) {
             if (p.matcher(relativePath).matches()) {
+                return true;
+            }
+            // Inner classes have $ in their names which should not be taken as end of expression
+            else if (relativePath.contains("$") && p.pattern().equals(relativePath)) {
                 return true;
             }
         }
