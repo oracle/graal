@@ -168,6 +168,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
             neverInlineSet.add(fieldGetMethod);
 
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                /*
+                 * Various factory methods in VarHandle query the array base/index or field offsets.
+                 * There is no need to analyze these calls because VarHandle accesses are
+                 * intrinsified to simple array and field access nodes in
+                 * IntrinsifyMethodHandlesInvocationPlugin.
+                 */
+                for (Method method : loader.findClassByName("java.lang.invoke.VarHandles", true).getDeclaredMethods()) {
+                    neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
+                }
+            }
+
             Class<?> unsafeClass;
 
             try {
