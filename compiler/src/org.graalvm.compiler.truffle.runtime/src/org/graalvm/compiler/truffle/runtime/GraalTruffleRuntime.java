@@ -44,6 +44,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -339,6 +340,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    /*
+     * Dummy field for initializing atomic long field updater.
+     */
+    @SuppressWarnings("unused")
+    private static class Dummy {
+        private volatile long dummy;
+    }
+
     private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
@@ -362,6 +371,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         AbstractAssumption.class,
                         MaterializedFrame.class,
                         FrameWithoutBoxing.class,
+                        AtomicLongFieldUpdater.newUpdater(Dummy.class, "dummy").getClass(),
         }) {
             m.put(c.getName(), c);
         }
