@@ -552,7 +552,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
-                    _library_dest = _component_jvmlib_base + mx.get_arch() + '/' if mx.get_os() == 'linux' else _component_jvmlib_base
+                    if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
+                        _library_dest = _component_jvmlib_base + mx.get_arch() + '/'
+                    else:
+                        _library_dest = _component_jvmlib_base
                 else:
                     _library_dest = _component_base
                 _library_dest += _library_config.destination
@@ -718,14 +721,14 @@ def _get_graalvm_configuration(base_name, stage1=False):
                 vm_config_additional_components = config_additional_components
 
         if vm_dist_name:
-            name = base_name + '_' + vm_dist_name
-            base_dir = base_name + '_' + vm_dist_name
+            base_dir = base_name + '_' + vm_dist_name + '_java{}'.format(_src_jdk_version)
+            name = base_dir
             if vm_config_additional_components:
                 name += '_' + '_'.join(vm_config_additional_components)
         else:
             if mx.get_opts().verbose:
                 mx.logv("No dist name for {}".format(vm_config_additional_components))
-            base_dir = base_name + '_unknown'
+            base_dir = base_name + '_unknown' + '_java{}'.format(_src_jdk_version)
             name = base_dir + ('_stage1' if stage1 else '')
         name = name.upper()
         base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
@@ -1270,12 +1273,16 @@ class GraalVmJImage(mx.Project):
                 for name in files:
                     yield join(root, name), join(relpath(root, logical_root), name)
 
+
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
 
     def build(self):
-        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps)
+        with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
+        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source)
+        with open(self._config_file(), 'w') as f:
+            f.write('\n'.join(self._config()))
 
     def needsBuild(self, newestInput):
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
@@ -1286,6 +1293,10 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return True, '{} does not exist'.format(out_file.path)
         if newestInput and out_file.isOlderThan(newestInput):
             return True, '{} is older than {}'.format(out_file, newestInput)
+        with open(self._config_file(), 'r') as f:
+            old_config = [l.strip() for l in f.readlines()]
+            if set(old_config) != set(self._config()):
+                return True, 'the configuration changed'
         return False, None
 
     def newestOutput(self):
@@ -1298,6 +1309,13 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
+
+    def _config(self):
+        return ['include sources: {}'.format(_include_sources()), 'strip jars: {}'.format(mx.get_opts().strip_jars)]
+
+    def _config_file(self):
+        return self.subject.output_directory() + '.config'
+
 
 class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def __init__(self, component, name, deps, native_image_config, **kw_args): # pylint: disable=super-init-not-called
@@ -2020,7 +2038,7 @@ def register_vm_config(config_name, components, dist_name=None, env_file=None, s
     if env_file is not False:
         # register a gate test to check that the env file produces a GraalVM with the expected distribution name
         _env_file = env_file or _dist_name
-        graalvm_dist_name = (_graalvm_base_name + '_' + _dist_name).upper().replace('-', '_')
+        graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=_graalvm_base_name, dist_name=_dist_name, jdk_version=_src_jdk_version).upper().replace('-', '_')
         mx_vm_gate.env_tests.append((suite, _env_file, graalvm_dist_name))
 
 
@@ -2462,7 +2480,7 @@ if mx.get_os() == 'windows':
 else:
     register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'loc', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
     register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'llp', 'loc', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], dist_name='ce-complete')
-register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'loc', 'nfi', 'njs', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'llp', 'loc', 'nfi', 'ni', 'nil', 'njs', 'nju', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bnative-image', 'bnative-image-configure', 'bpolyglot',
                                     'cmp', 'gu', 'gvm', 'ins', 'js', 'loc', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
 register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'loc', 'nfi', 'poly', 'polynative', 'rgx', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'])
