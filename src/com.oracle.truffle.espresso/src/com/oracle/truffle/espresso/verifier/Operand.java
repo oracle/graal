@@ -230,6 +230,13 @@ class ReferenceOperand extends Operand {
             if (other.getType() == null) {
                 return false;
             }
+            if (other.getType() == type) {
+                // Bypass class loading if both types are the same, and we would use the same class
+                // loader.
+                if (((ReferenceOperand) other).klass == null && klass == null) {
+                    return true;
+                }
+            }
             Klass otherKlass = other.getKlass();
             if (otherKlass.isInterface()) {
                 /**
