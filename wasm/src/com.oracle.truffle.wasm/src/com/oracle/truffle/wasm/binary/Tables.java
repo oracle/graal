@@ -30,6 +30,7 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 
 public class Tables {
     private static final int INITIAL_TABLES_SIZE = 8;
@@ -68,7 +69,27 @@ public class Tables {
         return idx;
     }
 
-    public Object[] table(int i) {
-        return tables[i];
+    public Object[] table(int index) {
+        assert index < numTables;
+        return tables[index];
+    }
+
+    public int maxSizeOf(int index) {
+        assert index < numTables;
+        return maxsizes[index];
+    }
+
+    public void ensureSizeAtLeast(int index, int targetSize) {
+        final int maxSize = maxSizeOf(index);
+        if (maxSize >= 0 && targetSize > maxSize) {
+            throw new WasmException("Table " + index + " cannot be resized to " + targetSize + ", " +
+                            "declared maximum size is " + maxSize);
+        }
+        Object[] table = tables[index];
+        if (table.length < targetSize) {
+            Object[] ntable = new Object[targetSize];
+            System.arraycopy(table, 0, ntable, 0, table.length);
+            tables[index] = table;
+        }
     }
 }

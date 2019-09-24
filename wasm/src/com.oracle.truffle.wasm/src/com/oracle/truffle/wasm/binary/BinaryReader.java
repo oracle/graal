@@ -222,6 +222,7 @@ import java.util.ArrayList;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.wasm.binary.constants.CallIndirect;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
@@ -356,22 +357,19 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case ImportIdentifier.TABLE: {
-                    // TODO: This table is normally supposed to be provided by the external environment (e.g. JS).
                     byte elemType = readElemType();
-                    Assert.assertIntEqual(elemType, 0x70, "Invalid element type for table import");
+                    Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import");
                     byte limitsPrefix = read1();
                     switch (limitsPrefix) {
                         case LimitsPrefix.NO_MAX: {
                             int initSize = readUnsignedInt32();  // initial size (in number of entries)
-                            // TODO: Import the table.
-                            // module.table().initialize(initSize);
+                            module.symbolTable().importTable(context, moduleName, memberName, initSize, -1);
                             break;
                         }
                         case LimitsPrefix.WITH_MAX: {
                             int initSize = readUnsignedInt32();  // initial size (in number of entries)
                             int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                            // TODO: Import the table.
-                            // module.table().initialize(initSize, maxSize);
+                            module.symbolTable().importTable(context, moduleName, memberName, initSize, maxSize);
                             break;
                         }
                         default:
@@ -427,7 +425,7 @@ public class BinaryReader extends BinaryStreamReader {
         // this loop should be executed at most once.
         for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
             byte elemType = readElemType();
-            Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table.");
+            Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table");
             byte limitsPrefix = readLimitsPrefix();
             switch (limitsPrefix) {
                 case LimitsPrefix.NO_MAX: {
@@ -438,7 +436,7 @@ public class BinaryReader extends BinaryStreamReader {
                 case LimitsPrefix.WITH_MAX: {
                     int initSize = readUnsignedInt32();  // initial size (in number of entries)
                     int maxSize = readUnsignedInt32();  // max size (in number of entries)
-                    Assert.assertIntLessOrEqual(initSize, maxSize, "Initial table size must be smaller or equal than maximum size.");
+                    Assert.assertIntLessOrEqual(initSize, maxSize, "Initial table size must be smaller or equal than maximum size");
                     module.symbolTable().allocateTable(language.getContextReference().get(), initSize, maxSize);
                     break;
                 }
@@ -701,11 +699,13 @@ public class BinaryReader extends BinaryStreamReader {
                     state.useByteConstant(bytesConsumed[0]);
                     int numArguments = module.symbolTable().getFunctionTypeNumArguments(expectedFunctionTypeIndex);
                     int returnLength = module.symbolTable().getFunctionTypeReturnTypeLength(expectedFunctionTypeIndex);
-                    state.pop();  // The function index to call.
+
+                    // Pop the function index to call, then pop the arguments and push the return value.
+                    state.pop();
                     state.pop(numArguments);
                     state.push(returnLength);
                     callNodes.add(Truffle.getRuntime().createIndirectCallNode());
-                    Assert.assertIntEqual(read1(), 0x00, "CALL_INDIRECT: Instruction must end with 0x00");
+                    Assert.assertIntEqual(read1(), CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00");
                     break;
                 }
                 case DROP:
@@ -1129,8 +1129,7 @@ public class BinaryReader extends BinaryStreamReader {
                     readEnd();
                     // Read the contents.
                     int[] contents = readElemContents();
-                    // TODO: Initialize the table contents.
-                    // module.table().initializeContents(offset, contents);
+                    module.symbolTable().initializeTableWithFunctions(context, offset, contents);
                     break;
                 }
                 case GLOBAL_GET: {
@@ -1150,7 +1149,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readEnd() {
         byte instruction = read1();
-        Assert.assertByteEqual(instruction, (byte) END, "Initialization expression must end with an END.");
+        Assert.assertByteEqual(instruction, (byte) END, "Initialization expression must end with an END");
     }
 
     private int[] readElemContents() {
@@ -1180,7 +1179,9 @@ public class BinaryReader extends BinaryStreamReader {
                 }
                 case ExportIdentifier.TABLE: {
                     int tableIndex = readTableIndex();
-                    // TODO: Store the export information somewhere (e.g. in the symbol table).
+                    Assert.assertTrue(module.symbolTable().tableExists(), "No table was imported or declared, so cannot export a table");
+                    Assert.assertIntEqual(tableIndex, 0, "Cannot export table index different than zero (only one table per module allowed)");
+                    module.symbolTable().exportTable(exportName);
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
@@ -1254,7 +1255,7 @@ public class BinaryReader extends BinaryStreamReader {
                     throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
             }
             instruction = read1();
-            Assert.assertByteEqual(instruction, (byte) END, "Global initialization must end with END.");
+            Assert.assertByteEqual(instruction, (byte) END, "Global initialization must end with END");
             final int address = module.symbolTable().declareGlobal(language.getContextReference().get(), i, type, mutability, resolution);
             if (resolution.isResolved()) {
                 globals.storeLong(address, value);
@@ -1270,7 +1271,7 @@ public class BinaryReader extends BinaryStreamReader {
         for (int i = 0; i != numDataSections; ++i) {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid memory index is 0.
-            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported.");
+            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported");
             long offset = 0;
             byte instruction;
             do {

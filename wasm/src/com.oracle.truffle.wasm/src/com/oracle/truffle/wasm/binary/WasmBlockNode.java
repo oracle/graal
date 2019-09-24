@@ -275,7 +275,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
             switch (opcode) {
                 case UNREACHABLE:
                     logger.finest("unreachable");
-                    throw new WasmTrap("unreachable", this);
+                    throw new WasmTrap(this, "unreachable");
                 case NOP:
                     logger.finest("noop");
                     break;
@@ -478,14 +478,15 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    int tableIndex = popInt(frame, stackPointer);
-                    // TODO: Re-enable and check if this validation should be performed at link time.
-                    // if (!module().table().validateIndex(tableIndex)) {
-                    //     throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
-                    // }
-                    // TODO: int functionIndex = module().table().functionIndex(tableIndex);
-                    int functionIndex = -1;
-                    WasmFunction function = module().symbolTable().function(functionIndex);
+                    final int tableIndex = module().symbolTable().tableIndex();
+                    final Object[] table = context.tables().table(tableIndex);
+                    final int elementIndex = popInt(frame, stackPointer);
+                    if (elementIndex < 0 || elementIndex >= table.length) {
+                        throw new WasmTrap(this, "Element index out of table bounds.");
+                    }
+                    // Currently, table elements may only be functions.
+                    // We can add a check here when this changes in the future.
+                    final WasmFunction function = (WasmFunction) table[elementIndex];
 
                     // Extract the function type index.
                     int expectedFunctionTypeIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);
@@ -493,12 +494,17 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
-                    offset += 1;  // For the 0x00 constant at the end of the CALL_INDIRECT instruction.
+                    // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT instruction.
+                    offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    // TODO: Check if this validation should be performed at link time.
                     if (expectedFunctionTypeIndex != function.typeIndex()) {
-                        throw new WasmTrap(format("CALL_INDIRECT: Actual (%d) and expected (%d) function types differ", function.typeIndex(), expectedFunctionTypeIndex), this);
+                        // TODO: This check may be too rigorous, as the WebAssembly specification seems to allow
+                        //  multiple definitions of the same type. We should refine the check.
+                        //  Alternatively, we should maybe refine our modules to avoid function type redefinition --
+                        //  the predefined modules may currently redefine a type.
+                        throw new WasmTrap(this, format("Actual (%d) and expected (%d) function types differ in the indirect call.",
+                                        function.typeIndex(), expectedFunctionTypeIndex));
                     }
 
                     // Invoke the resolved function.
@@ -694,10 +700,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     final GlobalResolution resolution = module().symbolTable().globalResolution(index);
                     if (!resolution.isResolved()) {
-                        // If the global is not yet resolved, then the execution must block
-                        // until the respective module is resolved.
-                        // TODO: Resolve the global.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
+                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
                     }
 
                     byte type = module().symbolTable().globalValueType(index);
@@ -746,12 +750,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     final GlobalResolution resolution = module().symbolTable().globalResolution(index);
                     if (!resolution.isResolved()) {
-                        // If the global is not yet resolved, then the execution must block
-                        // until the respective module is resolved.
-                        // Note: we could avoid waiting if the global was initialized with another global,
-                        // but we do not do this optimization.
-                        // TODO: Resolve the global.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
+                        throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
                     }
 
                     byte type = module().symbolTable().globalValueType(index);
@@ -910,7 +910,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             }
                         }
                     } catch (WasmMemoryException e) {
-                        throw new WasmTrap("memory address out-of-bounds", this);
+                        throw new WasmTrap(this, "memory address out-of-bounds");
                     }
                     stackPointer++;
                     break;
@@ -1029,7 +1029,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             }
                         }
                     } catch (WasmMemoryException e) {
-                        throw new WasmTrap("memory address out-of-bounds", this);
+                        throw new WasmTrap(this, "memory address out-of-bounds");
                     }
 
                     break;

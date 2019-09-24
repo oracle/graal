@@ -70,7 +70,7 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
                 charPrinter = System.err::print;
                 break;
             default:
-                throw new WasmTrap("WasiFdWrite: invalid file stream", this);
+                throw new WasmTrap(this, "WasiFdWrite: invalid file stream");
         }
 
         logger.finest("WasiFdWrite EXECUTE");

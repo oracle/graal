@@ -27,33 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.predefined.emscripten;
+package com.oracle.truffle.wasm.binary.constants;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.binary.exception.WasmTrap;
-import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
-
-public class AbortNode extends WasmPredefinedRootNode {
-    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        final int code = (int) frame.getArguments()[0];
-        throw fail(code);
-    }
-
-    @Override
-    public String name() {
-        return "abort";
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private WasmTrap fail(int code) {
-        throw new WasmTrap(this, "Program aborted: " + code);
-    }
+public final class CallIndirect {
+    public static final int ZERO_TABLE = 0x00;
 }

@@ -31,7 +31,6 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
-import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
@@ -67,7 +66,11 @@ public class Linker {
     }
 
     private void linkGlobals(WasmModule module) {
-        // TODO: Ensure that the globals are linked.
+        // TODO: Ensure that the globals are resolved.
+    }
+
+    private void linkTables(WasmModule module) {
+        // TODO: Ensure that tables are resolve
     }
 
     /**
@@ -88,7 +91,6 @@ public class Linker {
         // Check that the imported module is available.
         if (importedModule != null) {
             // Check that the imported global is resolved in the imported module.
-            assert importedModule != null;
             Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(globalName);
             if (exportedGlobalIndex == null) {
                 throw new WasmLinkerException("Global variable '" + globalName + "', imported into module '" + module.name() +
@@ -125,9 +127,7 @@ public class Linker {
         if (resolution.isResolved()) {
             int address = module.symbolTable().globalAddress(globalIndex);
             int offset = context.globals().loadAsInt(address);
-            // Read the contents.
-            // TODO: Initialize the array.
-            // module.table().initializeContents(offset, contents);
+            module.symbolTable().initializeTableWithFunctions(context, offset, contents);
         } else {
             // TODO: Record the contents array for later initialization - with a single module,
             //  the predefined modules will be already initialized, so we don't yet run into this case.
@@ -135,8 +135,31 @@ public class Linker {
         }
     }
 
-    int tryResolveTable(WasmContext context, WasmModule module, String importedModuleName, String tableName, int initSize, int maxSize) {
-        // TODO
-        throw new WasmException("Not implemented.");
+    int tryResolveTable(WasmContext context, WasmModule module, String importedModuleName, String importedTableName, int initSize, int maxSize) {
+        final WasmModule importedModule = context.modules().get(importedModuleName);
+        if (importedModule == null) {
+            // TODO: Record the fact that this table was not resolved, to be able to resolve it later during linking.
+            throw new WasmLinkerException("Postponed table resolution not implemented.");
+        } else {
+            final String exportedTableName = importedModule.symbolTable().exportedTable();
+            if (exportedTableName == null) {
+                throw new WasmLinkerException(String.format("The imported module '%s' does not export any tables.", importedModuleName));
+            }
+            if (!exportedTableName.equals(importedTableName)) {
+                throw new WasmLinkerException(String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
+                                importedModuleName, exportedTableName, module.name(), importedTableName));
+            }
+            final int tableIndex = importedModule.symbolTable().tableIndex();
+            final int declaredMaxSize = context.tables().maxSizeOf(tableIndex);
+            if (declaredMaxSize >= 0 && (initSize > declaredMaxSize || maxSize > declaredMaxSize)) {
+                // This requirement does not seem to be mentioned in the WebAssembly specification.
+                // It might be necessary to refine what maximum size means in the import-table declaration
+                // (and in particular what it means that it's unlimited).
+                throw new WasmLinkerException(String.format("The table '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
+                                importedTableName, importedModuleName, declaredMaxSize, module.name(), maxSize));
+            }
+            context.tables().ensureSizeAtLeast(tableIndex, initSize);
+            return tableIndex;
+        }
     }
 }
