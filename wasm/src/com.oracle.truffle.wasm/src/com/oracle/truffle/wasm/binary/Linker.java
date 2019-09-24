@@ -143,7 +143,8 @@ public class Linker {
         } else {
             final String exportedTableName = importedModule.symbolTable().exportedTable();
             if (exportedTableName == null) {
-                throw new WasmLinkerException(String.format("The imported module '%s' does not export any tables.", importedModuleName));
+                throw new WasmLinkerException(String.format("The imported module '%s' does not export any tables, so cannot resolve table '%s' imported in module '%s'.",
+                                importedModuleName, importedTableName, module.name()));
             }
             if (!exportedTableName.equals(importedTableName)) {
                 throw new WasmLinkerException(String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",

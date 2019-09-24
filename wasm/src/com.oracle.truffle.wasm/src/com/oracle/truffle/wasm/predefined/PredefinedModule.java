@@ -35,6 +35,8 @@ import java.util.Map;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.wasm.binary.Assert;
+import com.oracle.truffle.wasm.binary.ReferenceTypes;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
@@ -79,6 +81,13 @@ public abstract class PredefinedModule {
         int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability, GlobalResolution.DECLARED);
         context.globals().storeLong(address, value);
         return index;
+    }
+
+    protected int defineTable(WasmContext context, WasmModule module, String tableName, int initSize, int maxSize, byte type) {
+        Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
+        module.symbolTable().allocateTable(context, initSize, maxSize);
+        module.symbolTable().exportTable(tableName);
+        return 0;
     }
 
     protected byte[] types(byte... args) {

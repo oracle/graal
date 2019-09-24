@@ -516,7 +516,7 @@ public class SymbolTable {
     }
 
     public boolean tableExists() {
-        return importedTableDescriptor != null || (tableIndex & UNINITIALIZED_TABLE_BIT) != 0;
+        return importedTableDescriptor != null || (tableIndex & UNINITIALIZED_TABLE_BIT) == 0;
     }
 
     public void exportTable(String name) {

@@ -89,7 +89,7 @@ public class Tables {
         if (table.length < targetSize) {
             Object[] ntable = new Object[targetSize];
             System.arraycopy(table, 0, ntable, 0, table.length);
-            tables[index] = table;
+            tables[index] = ntable;
         }
     }
 }
