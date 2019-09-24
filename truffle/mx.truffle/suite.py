@@ -751,7 +751,8 @@ suite = {
         "requires" : [
           "static java.desktop",
           "jdk.unsupported", # sun.misc.Unsafe
-          "java.logging"
+          "java.logging",
+          "java.management"
         ],
         "exports" : [
           # Qualified exports
