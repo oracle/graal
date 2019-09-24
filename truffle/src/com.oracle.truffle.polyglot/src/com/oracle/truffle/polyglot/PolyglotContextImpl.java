@@ -691,7 +691,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void checkClosed() {
+    void checkClosed() {
         if (invalid && closingThread != Thread.currentThread()) {
             // try closing if this is the last thread
             throw PolyglotImpl.wrapGuestException(engine, new CancelExecution(null, invalidMessage));
