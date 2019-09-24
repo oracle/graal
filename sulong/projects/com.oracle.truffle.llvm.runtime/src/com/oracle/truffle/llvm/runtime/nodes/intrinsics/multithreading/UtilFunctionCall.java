@@ -143,21 +143,19 @@ final class UtilFunctionCall {
             this.functionSlot = frameDescriptor.findFrameSlot("function");
             this.argSlot = frameDescriptor.findFrameSlot("arg");
             this.spSlot = frameDescriptor.findFrameSlot("sp");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.callNode = context.getLanguage().getNodeFactory().createFunctionCall(
+                    context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
+                    new LLVMExpressionNode[]{
+                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, spSlot),
+                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, argSlot)
+                    },
+                    new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             LLVMStack.StackPointer sp = context.getThreadingStack().getStack().newFrame();
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = context.getLanguage().getNodeFactory().createFunctionCall(
-                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
-                        new LLVMExpressionNode[]{
-                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, spSlot),
-                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, argSlot)
-                        },
-                        new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
-            }
             // copy arguments to frame
             final Object[] arguments = frame.getArguments();
             Object function = arguments[0];
