@@ -1102,10 +1102,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                         '-H:-ParseRuntimeOptions',
                         '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
                     ]
-                if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
-                    build_args += ['-Dorg.graalvm.launcher.relative.language.home=' + image_config.destination.replace('/', os.path.sep)]
-                else:
-                    build_args += ['-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)]
+
+                build_args += [
+                    '--features=org.graalvm.home.HomeFinderFeature',
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)
+                ]
+
+                for language, path in image_config.relative_home_paths.items():
+                    build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
 
             build_args += [mx_subst.string_substitutions.substitute(arg) for arg in image_config.build_args]
 
@@ -1856,7 +1860,6 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         :type installable: GraalVmInstallableComponent
         """
         assert isinstance(installable.main_component, mx_sdk.GraalVmTruffleComponent)
-        support_dir_pattern = '<jre_base>/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
@@ -1868,24 +1871,44 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
+        # Compute paths from standalone component launchers to other homes
+        home_paths = {}
+        for dependency_name, details in installable.main_component.standalone_dependencies.items():
+            dependency_path = details[0]
+            component = get_installable_distribution(dependency_name).main_component
+            home_paths[component.installable_id] = base_dir + dependency_path
+
         def is_jar_distribution(val):
-            def _is_jar_distribution(val):
-                return isinstance(mx.dependency(val, fatalIfMissing=False), mx.JARDistribution)
+            return val['source_type'] == 'dependency' and isinstance(mx.dependency(val['dependency'], fatalIfMissing=False), mx.JARDistribution)
 
-            if isinstance(val, str):
-                return val.startswith('dependency:') and _is_jar_distribution(val.split(':', 1)[1])
-            if isinstance(val, dict):
-                return val['source_type'] == 'dependency' and _is_jar_distribution(val['dependency'])
-            return False
+        def add_files_from_installable(installable, path_prefix, excluded_paths):
+            component = installable.main_component
+            component_base_dir = installable.path_substitutions.substitute(_get_component_type_base(component))
+            support_dir_pattern = component_base_dir + component.dir_name + '/'
+            launcher_configs = _get_launcher_configs(component)
 
-        for key, value in installable.layout.items():
-            # if the key refers to the support dir
-            if key.startswith(support_dir_pattern):
-                # take only the values that are not JAR distributions
-                new_value = [v for v in value if not is_jar_distribution(v)]
-                if new_value:
-                    new_key = base_dir + key.split(support_dir_pattern, 1)[1]
-                    layout[new_key] = new_value
+            for path, source in installable._walk_layout():
+                if path.startswith(support_dir_pattern):
+                    path_from_home = path.split(support_dir_pattern, 1)[1]
+                    # take only the distributions that are not JAR distributions
+                    if not is_jar_distribution(source) and path_from_home not in excluded_paths:
+                        new_path = path_prefix + path_from_home
+                        layout.setdefault(new_path, []).append(source)
+
+            for launcher_config in launcher_configs:
+                destination = path_prefix + launcher_config.destination
+                for language, path_from_root in home_paths.items():
+                    relative_path_from_launcher_dir = relpath(path_from_root, dirname(destination))
+                    launcher_config.add_relative_home_path(language, relative_path_from_launcher_dir)
+
+        add_files_from_installable(installable, base_dir, [])
+
+        for dependency_name, details in installable.main_component.standalone_dependencies.items():
+            dependency_path = details[0]
+            excluded_paths = details[1] if len(details) > 1 else []
+            dependency = get_installable_distribution(dependency_name)
+            excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
+            add_files_from_installable(dependency, base_dir + dependency_path + '/', excluded_paths)
 
         self.maven = True
         super(GraalVmStandaloneComponent, self).__init__(
@@ -1934,6 +1957,21 @@ def get_final_graalvm_distribution():
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
+
+
+def get_installable_distribution(name):
+    """
+    :type name: str Component name
+    :rtype: GraalVmInstallableComponent
+    """
+    installables = _get_dists(GraalVmInstallableComponent)
+    if installables:
+        for installable in installables:
+            if installable.main_component.name == name:
+                return installable
+        mx.abort("Cannot find an installable with component name '{}'.\nAvailable installables:\n{}".format(name, '\n'.join((('- ' + s.main_component.name for s in installables)))))
+    else:
+        mx.abort('No installables available. Did you forget to dynamically import a component?')
 
 
 def get_standalone_distribution(comp_dir_name):
@@ -2134,8 +2172,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
         register_distribution(installable_component)
         with_debuginfo.append(installable_component)
+
+    for components in installables.values():
+        main_component = min(components, key=lambda c: c.priority)
         if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(main_component):
-            standalone = GraalVmStandaloneComponent(installable_component)
+            standalone = GraalVmStandaloneComponent(get_installable_distribution(main_component.name))
             register_distribution(standalone)
             with_debuginfo.append(standalone)
 
