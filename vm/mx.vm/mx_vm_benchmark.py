@@ -221,7 +221,7 @@ class NativeImageVM(GraalVm):
 
                 if needs_config:
                     config.config_dir = mx.mkdtemp(suffix='config', prefix='native-image')
-                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
+                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
                 if self.hotspot_pgo:
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]

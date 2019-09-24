@@ -41,7 +41,6 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -55,7 +54,6 @@ import org.graalvm.word.WordFactory;
  * {@link MBeanServer} in HotSpot heap. The instance is created by {@link HotSpotGraalRuntime} using
  * factory injected by {@code LibGraalFeature}.
  */
-@ServiceProvider(HotSpotGraalManagementRegistration.class)
 public final class HotSpotGraalManagement implements HotSpotGraalManagementRegistration {
 
     // Classes defined in HotSpot heap by JNI, the values are filled by LibGraalFeature.
