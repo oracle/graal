@@ -484,7 +484,6 @@ public class ResourceLimitsTest {
 
     @Test
     public void testParallelContextStatementLimit() throws InterruptedException, ExecutionException {
-        Engine engine = Engine.create();
         Map<Context, ResourceLimitEvent> events = new HashMap<>();
         final int limit = 10000;
         ResourceLimits limits = ResourceLimits.newBuilder().//
@@ -498,7 +497,7 @@ public class ResourceLimitsTest {
                         build();
         ExecutorService executorService = Executors.newFixedThreadPool(20);
         List<Future<?>> futures = new ArrayList<>();
-        try (Context c = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
+        try (Context c = Context.newBuilder().resourceLimits(limits).build()) {
             for (int i = 0; i < limit; i++) {
                 futures.add(executorService.submit(() -> {
                     c.eval(statements(1));

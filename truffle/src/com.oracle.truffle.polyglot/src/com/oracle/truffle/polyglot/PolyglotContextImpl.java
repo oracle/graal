@@ -577,11 +577,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 LANGUAGE.initializeMultiThreading(context.env);
             }
         }
+        engine.singleThreadPerContext.invalidate();
+        singleThreaded.invalidate();
 
         long statementsExecuted = statementLimit - statementCounter;
         STATEMENT_COUNTER_UPDATER.getAndAdd(this, -statementsExecuted);
-        engine.singleThreadPerContext.invalidate();
-        singleThreaded.invalidate();
     }
 
     private PolyglotThreadInfo createThreadInfo(Thread current) {
