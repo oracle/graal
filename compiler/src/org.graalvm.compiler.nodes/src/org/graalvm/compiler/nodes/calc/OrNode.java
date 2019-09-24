@@ -50,7 +50,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
     public static final NodeClass<OrNode> TYPE = NodeClass.create(OrNode.class);
 
     public OrNode(ValueNode x, ValueNode y) {
-        super(TYPE, ArithmeticOpTable::getOr, x, y);
+        super(TYPE, getArithmeticOpTable(x).getOr(), x, y);
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
@@ -61,6 +61,11 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             return tryConstantFold;
         }
         return canonical(null, op, stamp, x, y, view);
+    }
+
+    @Override
+    protected BinaryOp<Or> getOp(ArithmeticOpTable table) {
+        return table.getOr();
     }
 
     @Override
