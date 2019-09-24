@@ -387,12 +387,12 @@ public abstract class Shape {
         /**
          * Create a new location compatible with the given initial value.
          *
+         * Use {@link #locationForType(Class)} or {@link Shape#defineProperty(Object, Object, int)}
+         * instead.
+         *
          * @param value the initial value this location is going to be assigned
          * @since 0.8 or earlier
-         * @deprecated use {@link #locationForType(Class)} or
-         *             {@link Shape#defineProperty(Object, Object, int)} instead
          */
-        @Deprecated
         public final Location locationForValue(Object value) {
             return locationForValue(value, false, value != null);
         }
