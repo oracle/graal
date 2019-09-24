@@ -157,7 +157,6 @@ public class UninstallTest extends CommandTestBase {
         assertFalse(uc.getBrokenDependencies().isEmpty());
         assertEquals(1, uc.getUninstallComponents().size());
         class FD extends FeedbackAdapter {
-            boolean source;
             boolean target;
 
             @Override
@@ -169,7 +168,6 @@ public class UninstallTest extends CommandTestBase {
             public void output(String bundleKey, Object... params) {
                 switch (bundleKey) {
                     case "UNINSTALL_BreakDepSource":
-                        source = true;
                         assertEquals("org.graalvm.native-image", params[1]);
                         break;
 
