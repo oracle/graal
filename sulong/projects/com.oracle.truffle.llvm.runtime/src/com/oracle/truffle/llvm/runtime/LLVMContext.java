@@ -173,7 +173,7 @@ public final class LLVMContext {
 
     LLVMContext(LLVMLanguage language, Env env, String languageHome) {
         this.language = language;
-        this.libsulongDatalayout = new DataLayout();
+        this.libsulongDatalayout = null;
         this.datalayoutInitialised = false;
         this.env = env;
         this.initialized = false;
@@ -347,11 +347,11 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
-    public void addLibsulongDataLayout(DataLayout layout) {
+    public void addLibsulongDataLayout(DataLayout datalayout) {
         // Libsulong datalayout can only be set once. This should be called by
         // Runner#parseDefaultLibraries.
         if (!datalayoutInitialised) {
-            this.libsulongDatalayout = this.libsulongDatalayout.merge(layout);
+            this.libsulongDatalayout = datalayout;
             datalayoutInitialised = true;
         } else {
             throw new NullPointerException("The default datalayout cannot be overrwitten.");
