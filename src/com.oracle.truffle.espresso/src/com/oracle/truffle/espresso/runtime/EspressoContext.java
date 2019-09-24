@@ -30,8 +30,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -75,9 +73,7 @@ public final class EspressoContext {
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
-
-    private final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
-    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<StaticObject, Boolean>());
+    private final EspressoThreadManager threadManager;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
 
@@ -114,6 +110,7 @@ public final class EspressoContext {
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+        this.threadManager = new EspressoThreadManager(this);
 
         this.InlineFieldAccessors = env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
@@ -208,9 +205,6 @@ public final class EspressoContext {
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
-        // Create the discarding assumption
-        this.noThreadStop = Truffle.getRuntime().createAssumption("no thread.stop() called");
-
         initializeKnownClass(Type.Object);
 
         for (Symbol<Type> type : Arrays.asList(
@@ -270,8 +264,6 @@ public final class EspressoContext {
         meta.Thread_threadStatus.set(mainThread, Target_java_lang_Thread.State.RUNNABLE.value);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-        host2guest.put(Thread.currentThread(), mainThread);
-        activeThreads.add(mainThread);
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
@@ -284,13 +276,14 @@ public final class EspressoContext {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
+        threadManager.registerMainThread(Thread.currentThread(), mainThread);
     }
 
     public void interruptActiveThreads() {
         isClosing = true;
         invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
-        for (StaticObject guest : activeThreads) {
+        for (StaticObject guest : threadManager.activeThreads()) {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
             if (t != initiatingThread) {
                 try {
@@ -396,20 +389,22 @@ public final class EspressoContext {
         return outOfMemory;
     }
 
-    public void putHost2Guest(Thread hostThread, StaticObject guest) {
-        host2guest.put(hostThread, guest);
+    // Thread management
+
+    public StaticObject getGuestThreadFromHost(Thread host) {
+        return threadManager.getGuestThreadFromHost(host);
     }
 
-    public StaticObject getHost2Guest(Thread hostThread) {
-        return host2guest.get(hostThread);
+    public StaticObject getCurrentThread() {
+        return threadManager.getGuestThreadFromHost(Thread.currentThread());
     }
 
-    public void registerThread(StaticObject thread) {
-        activeThreads.add(thread);
+    public void registerThread(Thread host, StaticObject self) {
+        threadManager.registerThread(host, self);
     }
 
-    public void unregisterThread(StaticObject thread) {
-        activeThreads.remove(thread);
+    public void unregisterThread(StaticObject self) {
+        threadManager.unregisterThread(self);
     }
 
     public void invalidateNoThreadStop(String message) {

@@ -418,6 +418,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
+
+        // Special threads
+        public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
+        public static final Symbol<Type> ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
     }
 
     public static final class Signature extends Descriptor {

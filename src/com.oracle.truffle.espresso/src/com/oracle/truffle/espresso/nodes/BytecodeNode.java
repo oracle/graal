@@ -1211,7 +1211,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private void checkStopping(int curBCI, int targetBCI) {
         if (getContext().shouldCheckStop()) {
             if (targetBCI <= curBCI) {
-                StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
+                StaticObject thread = getContext().getCurrentThread();
                 Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
                 switch (status) {
                     case NORMAL:
@@ -1235,7 +1235,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
         if (getContext().shouldCheckSuspend()) {
             if (targetBCI <= curBCI) {
-                StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
+                StaticObject thread = getContext().getCurrentThread();
                 Target_java_lang_Thread.trySuspend(thread);
             }
         }

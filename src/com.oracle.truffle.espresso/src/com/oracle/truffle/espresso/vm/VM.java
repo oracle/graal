@@ -1124,7 +1124,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@Host(Class.class) StaticObject cls) {
-        return getContext().getHost2Guest(Thread.currentThread()).getField(getMeta().Thread_inheritedAccessControlContext);
+        return getContext().getCurrentThread().getField(getMeta().Thread_inheritedAccessControlContext);
     }
 
     @VmImpl

@@ -96,7 +96,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static @Host(Thread.class) StaticObject currentThread() {
-        return EspressoLanguage.getCurrentContext().getHost2Guest(Thread.currentThread());
+        return EspressoLanguage.getCurrentContext().getCurrentThread();
     }
 
     @SuppressWarnings("unused")
@@ -128,9 +128,9 @@ public final class Target_java_lang_Thread {
                     } catch (EspressoException uncaught) {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
-                        self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                         setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
+                        self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                         synchronized (self) {
                             // Notify waiting threads you are done working
                             self.notifyAll();
@@ -146,11 +146,10 @@ public final class Target_java_lang_Thread {
             });
 
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
-            context.putHost2Guest(hostThread, self);
-            context.registerThread(self);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             hostThread.setPriority(self.getIntField(meta.Thread_priority));
+            context.registerThread(hostThread, self);
             hostThread.start();
         } else {
             System.err.println(
