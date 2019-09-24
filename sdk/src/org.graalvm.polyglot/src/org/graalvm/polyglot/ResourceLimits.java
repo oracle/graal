@@ -194,7 +194,7 @@ public final class ResourceLimits {
          * disable the time limit for a builder. By default no time limit is configured. Invoking
          * this method multiple times overwrites previous time limit configurations. If the time
          * limit is exceeded then the {@link #onLimit(Consumer) onLimit} listener is notified. The
-         * minimal accuracy is one millisecond, values below that will be rounded up.
+         * minimal accuracy is 10 milliseconds, values below that will be rounded up.
          * <p>
          * The activation CPU time of a context typically does not include time spent waiting for
          * synchronization or IO. If the guest application is executed on multiple threads at the

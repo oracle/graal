@@ -57,6 +57,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -76,12 +77,6 @@ public class ResourceLimitsTest {
 
         try (Context context = Context.newBuilder().resourceLimits(limits).build()) {
             context.initialize(InstrumentationTestLanguage.ID);
-            try {
-                // we wait, because we want to test that the time limit
-                // has effect only for entered contexts
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-            }
             try {
                 evalStatements(context);
                 fail();
@@ -115,10 +110,12 @@ public class ResourceLimitsTest {
     public void testSharedContextTimeLimitParallel() throws InterruptedException, ExecutionException {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         cpuTimeLimit(Duration.ofMillis(5), Duration.ofMillis(1)).//
-                        build();
+                        onLimit((e) -> {
+
+                        }).build();
 
         Engine engine = Engine.create();
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
         List<Future<?>> futures = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             futures.add(executorService.submit(() -> {
@@ -135,13 +132,14 @@ public class ResourceLimitsTest {
         for (Future<?> future : futures) {
             future.get();
         }
-        executorService.shutdown();
+        executorService.shutdownNow();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     @Test
     public void testSharedContextTimeLimitResetParallel() throws InterruptedException, ExecutionException {
         ResourceLimits limits = ResourceLimits.newBuilder().//
-                        cpuTimeLimit(Duration.ofMillis(250), Duration.ofMillis(1)).//
+                        cpuTimeLimit(Duration.ofMillis(30), Duration.ofMillis(10)).//
                         build();
 
         System.gc(); // force gc before running this test
@@ -152,9 +150,9 @@ public class ResourceLimitsTest {
         for (int i = 0; i < 10; i++) {
             futures.add(executorService.submit(() -> {
                 try (Context c = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
-                    for (int j = 0; j < 10; j++) {
+                    for (int j = 0; j < 2; j++) {
                         c.enter();
-                        Thread.sleep(50);
+                        Thread.sleep(5);
                         c.leave();
                         c.resetLimits();
                     }
@@ -173,6 +171,7 @@ public class ResourceLimitsTest {
             future.get();
         }
         executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     private static void evalStatements(Context c) {
@@ -182,8 +181,9 @@ public class ResourceLimitsTest {
          */
         c.eval(statements(10));
         c.eval(statements(500));
-        c.eval(statements(1000));
-        c.eval(statements(Integer.MAX_VALUE));
+        while (true) {
+            c.eval(statements(1000));
+        }
     }
 
     private static void assertTimeout(Context c, PolyglotException e) {
@@ -352,7 +352,7 @@ public class ResourceLimitsTest {
     }
 
     @Test
-    public void testStatementLimitDifferentPerContextParallel() {
+    public void testStatementLimitDifferentPerContextParallel() throws InterruptedException {
         ResourceLimits limits1 = ResourceLimits.newBuilder().//
                         statementLimit(1, null).//
                         build();
@@ -399,6 +399,9 @@ public class ResourceLimitsTest {
                 }
             }));
         }
+
+        executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     private static Source statements(int count) {
@@ -473,6 +476,7 @@ public class ResourceLimitsTest {
             future.get();
         }
         executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
         synchronized (events) {
             assertEquals(tasks, events.size());
         }
@@ -516,6 +520,7 @@ public class ResourceLimitsTest {
             }
         }
         executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     @Test
@@ -575,6 +580,7 @@ public class ResourceLimitsTest {
 
         assertEquals(contexts, events.size());
         executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     @Test
@@ -638,6 +644,7 @@ public class ResourceLimitsTest {
 
         assertEquals(contexts, events.size());
         executorService.shutdown();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     @Test

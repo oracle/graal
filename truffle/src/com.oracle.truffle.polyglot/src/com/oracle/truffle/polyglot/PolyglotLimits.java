@@ -46,6 +46,7 @@ import java.time.Duration;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -225,28 +226,40 @@ final class PolyglotLimits {
 
     static final class TimeLimitChecker extends TimerTask {
 
-        private final WeakReference<PolyglotContextImpl> contextRef;
+        private final WeakReference<PolyglotContextImpl> context;
         private final long timeLimitNS;
+        private final EngineLimits limits;
+        private FutureTask<?> cancelResult;
 
-        TimeLimitChecker(PolyglotContextImpl context) {
-            this.contextRef = new WeakReference<>(context);
+        TimeLimitChecker(PolyglotContextImpl context, EngineLimits limits) {
+            this.context = new WeakReference<>(context);
             this.timeLimitNS = context.config.limits.timeLimit.toNanos();
+            this.limits = limits;
         }
 
         @Override
         public void run() {
-            PolyglotContextImpl context = contextRef.get();
-            if (context == null || context.closed) {
+            PolyglotContextImpl c = this.context.get();
+            if (cancelResult != null) {
+                if (cancelResult.isDone()) {
+                    cancel();
+                    try {
+                        cancelResult.get();
+                    } catch (Exception e) {
+                    }
+                }
+                return;
+            } else if (c == null || c.closed) {
                 cancel();
                 return;
             }
-            long timeActiveNS = context.getTimeActive();
+            long timeActiveNS = c.getTimeActive();
             if (timeActiveNS > timeLimitNS) {
-                if (!context.invalid) {
+                if (!c.invalid) {
                     String message = String.format("Time resource limit of %sms exceeded. Time executed %sms.",
-                                    context.config.limits.timeLimit.toMillis(),
+                                    c.config.limits.timeLimit.toMillis(),
                                     Duration.ofNanos(timeActiveNS).toMillis());
-                    boolean invalidated = context.invalidate(message);
+                    boolean invalidated = c.invalidate(message);
                     /*
                      * We immediately set the context invalid so it can no longer be entered. The
                      * cancel executor closes the context on a parallel thread and closes the
@@ -255,9 +268,12 @@ final class PolyglotLimits {
                      * that waits for the cancel to be complete.
                      */
                     if (invalidated) {
-                        EngineLimits.getCancelExecutor().submit(new Runnable() {
+                        limits.notifyEvent(c);
+                        cancelResult = (FutureTask<?>) EngineLimits.getCancelExecutor().submit(new Runnable() {
                             public void run() {
-                                context.close(context.creatorApi, true);
+                                if (!c.closed) {
+                                    c.close(c.creatorApi, true);
+                                }
                             }
                         });
                     }
@@ -368,8 +384,8 @@ final class PolyglotLimits {
                 engine.noThreadTimingNeeded.invalidate();
                 long timeLimitMillis = limits.timeLimit.toMillis();
                 assert timeLimitMillis > 0; // needs to verified before
-                TimeLimitChecker task = new TimeLimitChecker(context);
-                long accuracy = Math.max(1, limits.timeAccuracy.toMillis());
+                TimeLimitChecker task = new TimeLimitChecker(context, this);
+                long accuracy = Math.max(10, limits.timeAccuracy.toMillis());
                 getLimitTimer().scheduleAtFixedRate(task, accuracy, accuracy, TimeUnit.MILLISECONDS);
             }
 
@@ -405,6 +421,7 @@ final class PolyglotLimits {
                     if (executor == null) {
                         cancelExecutor = executor = (ThreadPoolExecutor) Executors.newCachedThreadPool(
                                         new HighPriorityThreadFactory("Polyglot Cancel Thread"));
+                        executor.setKeepAliveTime(1, TimeUnit.SECONDS);
                     }
                 }
             }
