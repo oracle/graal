@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -126,9 +127,22 @@ final class UtilFunctionCall {
 
         private final LLVMContext context;
 
+        @CompilerDirectives.CompilationFinal
+        final FrameSlot functionSlot;
+
+        @CompilerDirectives.CompilationFinal
+        final FrameSlot argSlot;
+
+        @CompilerDirectives.CompilationFinal
+        final FrameSlot spSlot;
+
+        @CompilerDirectives.TruffleBoundary
         FunctionCallNode(LLVMLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
             this.context = language.getContextReference().get();
+            this.functionSlot = frameDescriptor.findFrameSlot("function");
+            this.argSlot = frameDescriptor.findFrameSlot("arg");
+            this.spSlot = frameDescriptor.findFrameSlot("sp");
         }
 
         @Override
@@ -137,10 +151,10 @@ final class UtilFunctionCall {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = context.getLanguage().getNodeFactory().createFunctionCall(
-                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("function")),
+                        context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
                         new LLVMExpressionNode[]{
-                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("sp")),
-                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, this.getFrameDescriptor().findFrameSlot("arg"))
+                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, spSlot),
+                                context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, argSlot)
                         },
                         new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
             }
@@ -148,9 +162,9 @@ final class UtilFunctionCall {
             final Object[] arguments = frame.getArguments();
             Object function = arguments[0];
             Object arg = arguments[1];
-            frame.setObject(this.getFrameDescriptor().findFrameSlot("function"), function);
-            frame.setObject(this.getFrameDescriptor().findFrameSlot("arg"), arg);
-            frame.setObject(this.getFrameDescriptor().findFrameSlot("sp"), sp);
+            frame.setObject(functionSlot, function);
+            frame.setObject(argSlot, arg);
+            frame.setObject(spSlot, sp);
             // execute it
             return callNode.executeGeneric(frame);
         }
