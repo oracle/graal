@@ -231,15 +231,25 @@ class ReferenceOperand extends Operand {
                 return false;
             }
             if (other.getType() == type) {
-                // Bypass class loading if both types are the same, and we would use the same class
-                // loader.
-                if (((ReferenceOperand) other).klass == null && klass == null) {
-                    return true;
+                /*
+                 * If the two operand have the same type, we can shortcut a few cases:
+                 * 
+                 * - Both are not loaded -> would load using same CL.
+                 * 
+                 * - Only one of the two is loaded and in same CL as thisKlass.
+                 */
+                Klass otherKlass = ((ReferenceOperand) other).klass;
+                if (otherKlass == null || klass == null) {
+                    Klass k = klass == null ? otherKlass : klass;
+                    if (k == null || k.getDefiningClassLoader() == thisKlass.getDefiningClassLoader()) {
+                        return true;
+                    }
                 }
+
             }
             Klass otherKlass = other.getKlass();
             if (otherKlass.isInterface()) {
-                /**
+                /*
                  * 4.10.1.2. For assignments, interfaces are treated like Object.
                  */
                 return true;
@@ -247,6 +257,7 @@ class ReferenceOperand extends Operand {
             return otherKlass.isAssignableFrom(getKlass());
         }
         return other == Invalid;
+
     }
 
     @Override
