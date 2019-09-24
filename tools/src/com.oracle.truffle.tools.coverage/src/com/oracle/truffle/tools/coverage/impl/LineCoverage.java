@@ -139,7 +139,7 @@ final class LineCoverage {
     }
 
     char getStatementCoverageCharacter(int i) {
-        return getCoverageChar(i, 'p', '-', '+', loadedLineNumbers, coveredLineNumbers, nonCoveredLineNumbers);
+        return getCoverageChar(i, 'i', '-', '+', loadedLineNumbers, coveredLineNumbers, nonCoveredLineNumbers);
     }
 
     char getRootCoverageCharacter(int i) {

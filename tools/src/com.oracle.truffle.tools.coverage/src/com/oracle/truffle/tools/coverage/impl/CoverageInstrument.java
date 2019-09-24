@@ -137,7 +137,7 @@ public class CoverageInstrument extends TruffleInstrument {
     public static CoverageTracker getTracker(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
         if (instrument == null) {
-            throw new IllegalStateException("Sampler is not installed.");
+            throw new IllegalStateException("Tracker is not installed.");
         }
         return instrument.lookup(CoverageTracker.class);
     }
@@ -271,6 +271,9 @@ public class CoverageInstrument extends TruffleInstrument {
                 case JSON:
                     new JSONPrinter(out, coverage).print();
                     break;
+                case LCOV:
+                    new LCOVPrinter(out, coverage).print();
+                    break;
             }
             tracker.close();
         }
@@ -285,6 +288,7 @@ public class CoverageInstrument extends TruffleInstrument {
         HISTOGRAM,
         LINES,
         JSON,
+        LCOV,
     }
 
 }
