@@ -10,7 +10,6 @@
   (import "env" "abort" (func (;0;) (type 3)))
   (import "env" "_emscripten_memcpy_big" (func (;1;) (type 0)))
   (import "env" "___wasi_fd_write" (func (;2;) (type 4)))
-  (import "env" "__table_base" (global (;0;) i32))
   (import "env" "memory" (memory (;0;) 256 256))
   (import "env" "table" (table (;0;) 6 6 funcref))
   (func (;3;) (type 1) (param i32) (result i32)
@@ -348,6 +347,13 @@
   (func (;7;) (type 1) (param i32) (result i32)
     i32.const 0)
   (func (;8;) (type 5) (result i32)
+
+    ;; Initialization code -- handwritten
+    i32.const 3952
+    i32.const 5246864
+    i32.store
+    ;; Initialization code -- handwritten
+
     call 16
     i32.const 0)
   (func (;9;) (type 2) (param i32 i64 i32) (result i64)
@@ -796,10 +802,11 @@
     i32.and
     global.set 1
     local.get 2)
+  (global (;0;) i32 (i32.const 0))
   (global (;1;) (mut i32) (i32.const 3984))
   (export "_main" (func 8))
   (export "stackAlloc" (func 17))
-  (elem (;0;) (global.get 0) 11 7 10 6 9 5)
+  (elem (;0;) (i32.const 0) 11 7 10 6 9 5)
   (data (;0;) (i32.const 1024) "\05")
   (data (;1;) (i32.const 1036) "\01")
   (data (;2;) (i32.const 1060) "\01\00\00\00\01\00\00\00\b8\04\00\00\00\04")

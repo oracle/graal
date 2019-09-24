@@ -27,8 +27,6 @@
   (import "env" "___unlock" (func (;8;) (type 5)))
   (import "env" "abortOnCannotGrowMemory" (func (;9;) (type 4)))
   (import "env" "___lock" (func (;10;) (type 5)))
-  (import "env" "__table_base" (global (;0;) i32))
-  (import "env" "DYNAMICTOP_PTR" (global (;1;) i32))
   (import "env" "memory" (memory (;0;) 4096 4096))
   (import "env" "table" (table (;0;) 10 10 funcref))
   (func (;11;) (type 11) (param i32 i32 i32)
@@ -6640,6 +6638,13 @@
     end)
   (func (;35;) (type 7) (result i32)
     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+
+    ;; Initialization code -- handwritten
+    global.get 1
+    i32.const 5247808
+    i32.store
+    ;; Initialization code -- handwritten
+
     global.get 2
     local.set 1
     global.get 2
@@ -9568,11 +9573,13 @@
     i32.and
     global.set 2
     local.get 2)
+  (global (;0;) i32 (i32.const 0))
+  (global (;1;) i32 (i32.const 4896))
   (global (;2;) (mut i32) (i32.const 4928))
   (export "___errno_location" (func 51))
   (export "_main" (func 35))
   (export "stackAlloc" (func 54))
-  (elem (;0;) (global.get 0) 40 33 39 50 38 53 37 52 36 49)
+  (elem (;0;) (i32.const 0) 40 33 39 50 38 53 37 52 36 49)
   (data (;0;) (i32.const 1024) "\11\00\0a\00\11\11\11\00\00\00\00\05\00\00\00\00\00\00\09\00\00\00\00\0b")
   (data (;1;) (i32.const 1056) "\11\00\0f\0a\11\11\11\03\0a\07\00\01\13\09\0b\0b\00\00\09\06\0b\00\00\0b\00\06\11\00\00\00\11\11\11")
   (data (;2;) (i32.const 1105) "\0b")
