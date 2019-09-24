@@ -83,17 +83,18 @@ public class Linker {
         reader.resetGlobalState();
     }
 
-    GlobalResolution tryResolveGlobal(WasmModule module, String importedModuleName, String globalName, int valueType, int mutability) {
+    int importGlobal(WasmModule module, int index, String importedModuleName, String importedGlobalName, int valueType, int mutability) {
         GlobalResolution resolution = UNRESOLVED_IMPORT;
         final WasmContext context = language.getContextReference().get();
         final WasmModule importedModule = context.modules().get(importedModuleName);
+        int address = -1;
 
         // Check that the imported module is available.
         if (importedModule != null) {
             // Check that the imported global is resolved in the imported module.
-            Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(globalName);
+            Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(importedGlobalName);
             if (exportedGlobalIndex == null) {
-                throw new WasmLinkerException("Global variable '" + globalName + "', imported into module '" + module.name() +
+                throw new WasmLinkerException("Global variable '" + importedGlobalName + "', imported into module '" + module.name() +
                                 "', was not exported in the module '" + importedModuleName + "'.");
             }
             GlobalResolution exportedResolution = importedModule.symbolTable().globalResolution(exportedGlobalIndex);
@@ -102,24 +103,27 @@ public class Linker {
             }
             int exportedValueType = importedModule.symbolTable().globalValueType(exportedGlobalIndex);
             if (exportedValueType != valueType) {
-                throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
+                throw new WasmLinkerException("Global variable '" + importedGlobalName + "' is imported into module '" + module.name() +
                                 "' with the type " + ValueTypes.asString(valueType) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the type " + ValueTypes.asString(exportedValueType) + ".");
             }
             int exportedMutability = importedModule.symbolTable().globalMutability(exportedGlobalIndex);
             if (exportedMutability != mutability) {
-                throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
+                throw new WasmLinkerException("Global variable '" + importedGlobalName + "' is imported into module '" + module.name() +
                                 "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
                                 "'but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(exportedMutability) + ".");
             }
             if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
                 resolution = IMPORTED;
+                address = importedModule.symbolTable().globalAddress(exportedGlobalIndex);
             }
         }
 
         // TODO: Once we support asynchronous parsing, we will need to record the dependency on the global.
 
-        return resolution;
+        module.symbolTable().importGlobal(importedModuleName, importedGlobalName, index, valueType, mutability, resolution, address);
+
+        return address;
     }
 
     void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
@@ -135,7 +139,7 @@ public class Linker {
         }
     }
 
-    int tryResolveTable(WasmContext context, WasmModule module, String importedModuleName, String importedTableName, int initSize, int maxSize) {
+    int importTable(WasmContext context, WasmModule module, String importedModuleName, String importedTableName, int initSize, int maxSize) {
         final WasmModule importedModule = context.modules().get(importedModuleName);
         if (importedModule == null) {
             // TODO: Record the fact that this table was not resolved, to be able to resolve it later during linking.
@@ -160,6 +164,8 @@ public class Linker {
                                 importedTableName, importedModuleName, declaredMaxSize, module.name(), maxSize));
             }
             context.tables().ensureSizeAtLeast(tableIndex, initSize);
+            module.symbolTable().setImportedTable(new ImportDescriptor(importedModuleName, importedTableName));
+            module.symbolTable().setTableIndex(tableIndex);
             return tableIndex;
         }
     }
