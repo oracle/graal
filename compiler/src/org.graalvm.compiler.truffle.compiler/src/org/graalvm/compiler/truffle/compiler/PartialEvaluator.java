@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleInlining;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
@@ -419,7 +418,7 @@ public abstract class PartialEvaluator {
                 }
                 if (graph.getNodeCount() > inliningNodeLimit) {
                     logGraphTooBig();
-                    return DO_NOT_INLINE_WITH_EXCEPTION;
+                    return inlineInfo;
                 }
                 TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
                 if (decision != null && decision.shouldInline()) {
