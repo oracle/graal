@@ -773,7 +773,13 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                                 curBCI = targetBCI;
                                 continue loop;
                             }
-                            checkStopping(curBCI);
+                            /*
+                             * Thread.suspend() is much more time constrained than Thread.stop(). It
+                             * is expected to suspend execution almost immediately when suspend is
+                             * called. This is the most lightweight hack I could find to avoid
+                             * checking at each BCI, while passing the JCK tests.
+                             */
+                            checkSynchronousSuspend(curBCI);
                             break;
 
                         case JSR: // fall through
@@ -1201,7 +1207,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
         int newTop = top + Bytecodes.stackEffectOf(opCode);
         if (targetBCI <= curBCI) {
-            checkStopping(curBCI);
+            checkStopping(curBCI, targetBCI);
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
             }
@@ -1209,9 +1215,15 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return newTop;
     }
 
-    private void checkStopping(int curBCI) {
-        if (!getContext().noThreadStop()) {
+    private void checkSynchronousSuspend(int curBCI) {
+        if (getContext().shouldCheckSuspend()) {
             int targetBCI = bs.readBranchDest(curBCI);
+            checkStopping(curBCI, targetBCI);
+        }
+    }
+
+    private void checkStopping(int curBCI, int targetBCI) {
+        if (getContext().shouldCheckStop()) {
             if (targetBCI <= curBCI) {
                 StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
                 Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
@@ -1235,8 +1247,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 }
             }
         }
-        if (!getContext().noSuspend()) {
-            int targetBCI = bs.readBranchDest(curBCI);
+        if (getContext().shouldCheckSuspend()) {
             if (targetBCI <= curBCI) {
                 StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
                 Target_java_lang_Thread.trySuspend(thread);

@@ -110,7 +110,7 @@ public final class Target_java_lang_Thread {
             if (killStatus != null || context.isClosing()) {
                 self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                 synchronized (self) {
-                    // Notify waiting threads you are were terminated
+                    // Notify waiting threads you were terminated
                     self.notifyAll();
                 }
                 return;

@@ -416,16 +416,16 @@ public final class EspressoContext {
         noThreadStop.invalidate(message);
     }
 
-    public boolean noThreadStop() {
-        return noThreadStop.isValid();
+    public boolean shouldCheckStop() {
+        return !noThreadStop.isValid();
     }
 
     public void invalidateNoSuspend(String message) {
         noSuspend.invalidate(message);
     }
 
-    public boolean noSuspend() {
-        return noSuspend.isValid();
+    public boolean shouldCheckSuspend() {
+        return !noSuspend.isValid();
     }
 
     public boolean isClosing() {
