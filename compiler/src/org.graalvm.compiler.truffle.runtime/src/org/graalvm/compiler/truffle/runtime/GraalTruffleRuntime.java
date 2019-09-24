@@ -344,8 +344,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Dummy field for initializing atomic long field updater.
      */
     @SuppressWarnings("unused")
-    private static class Dummy {
-        private volatile long dummy;
+    public static class Dummy {
+        public volatile long dummy;
     }
 
     private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
