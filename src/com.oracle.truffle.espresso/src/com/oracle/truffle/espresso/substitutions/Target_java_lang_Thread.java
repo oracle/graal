@@ -250,7 +250,7 @@ public final class Target_java_lang_Thread {
         if (lock == null) {
             return;
         }
-        lock.suspended = false;
+        lock.shouldSuspend = false;
         synchronized (lock) {
             lock.notifyAll();
         }
@@ -265,7 +265,7 @@ public final class Target_java_lang_Thread {
         if (lock == null) {
             lock = initSuspendLock(self);
         }
-        lock.suspended = true;
+        suspendHandshake(lock);
     }
 
     @TruffleBoundary
@@ -335,10 +335,17 @@ public final class Target_java_lang_Thread {
     }
 
     public static class SuspendLock {
-        private boolean suspended;
+        private boolean shouldSuspend;
 
-        public boolean isSuspended() {
-            return suspended;
+        private Object notifier = new Object();
+        private boolean threadSuspended;
+
+        public boolean shouldSuspend() {
+            return shouldSuspend;
+        }
+
+        public boolean targetThreadIsSuspended() {
+            return threadSuspended;
         }
     }
 
@@ -360,7 +367,7 @@ public final class Target_java_lang_Thread {
 
     public static boolean isSuspended(StaticObject self) {
         assert getSuspendLock(self) != null;
-        return getSuspendLock(self).isSuspended();
+        return getSuspendLock(self).shouldSuspend();
     }
 
     public static void trySuspend(StaticObject self) {
@@ -368,10 +375,28 @@ public final class Target_java_lang_Thread {
         if (lock == null) {
             return;
         }
-        while (lock.isSuspended()) {
+        while (lock.shouldSuspend()) {
+            synchronized (lock.notifier) {
+                lock.threadSuspended = true;
+                lock.notifier.notifyAll();
+            }
             try {
                 synchronized (lock) {
                     lock.wait();
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+        lock.threadSuspended = false;
+    }
+
+    private static void suspendHandshake(SuspendLock lock) {
+        Object notifier = lock.notifier;
+        while (!lock.targetThreadIsSuspended()) {
+            lock.shouldSuspend = true;
+            try {
+                synchronized (notifier) {
+                    notifier.wait();
                 }
             } catch (InterruptedException e) {
             }
