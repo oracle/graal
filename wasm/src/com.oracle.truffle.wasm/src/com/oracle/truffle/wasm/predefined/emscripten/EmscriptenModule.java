@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
-import static com.oracle.truffle.wasm.binary.ReferenceTypes.*;
+import static com.oracle.truffle.wasm.binary.ReferenceTypes.FUNCREF;
 import static com.oracle.truffle.wasm.binary.ValueTypes.F64_TYPE;
 import static com.oracle.truffle.wasm.binary.ValueTypes.I32_TYPE;
 
@@ -54,8 +54,8 @@ public class EmscriptenModule extends PredefinedModule {
         defineFunction(module, "___lock", types(I32_TYPE), types(), new Lock(language, null));
         defineFunction(module, "___unlock", types(I32_TYPE), types(), new Unlock(language, null));
         defineFunction(module, "___setErrNo", types(I32_TYPE), types(), new SetErrNo(language, null));
-        defineGlobal(context, module, "__table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
-        defineGlobal(context, module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        // defineGlobal(context, module, "__table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        // defineGlobal(context, module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 4896);
         defineTable(context, module, "table", 0, -1, FUNCREF);
         return module;
     }
