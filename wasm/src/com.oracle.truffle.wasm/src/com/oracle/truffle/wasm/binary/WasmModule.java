@@ -57,44 +57,6 @@ public class WasmModule implements TruffleObject {
         this.data = data;
     }
 
-    // static final class Table {
-    //     /**
-    //      * A table is an array of u32 values, indexing the module functions (imported or defined).
-    //      */
-    //     @CompilationFinal(dimensions = 1) private int[] functionIndices;
-    //     private int maxSize;
-    //     private boolean initialized = false;
-    //
-    //     private Table() {
-    //     }
-    //
-    //     public void initialize(int initSize) {
-    //         this.initialize(initSize, Integer.MAX_VALUE);
-    //     }
-    //
-    //     public void initialize(int initSize, int maxSize) {
-    //         if (initialized) {
-    //             throw new WasmException("Table has already been initialized.");
-    //         }
-    //         this.functionIndices = new int[initSize];
-    //         this.maxSize = maxSize;
-    //         initialized = true;
-    //     }
-    //
-    //     public boolean validateIndex(int index) {
-    //         // TODO: Ensure index is initialized.
-    //         return index < functionIndices.length;
-    //     }
-    //
-    //     public void initializeContents(int offset, int[] contents) {
-    //         System.arraycopy(contents, 0, functionIndices, offset, contents.length);
-    //     }
-    //
-    //     public int functionIndex(int index) {
-    //         return functionIndices[index];
-    //     }
-    // }
-
     public SymbolTable symbolTable() {
         return symbolTable;
     }
