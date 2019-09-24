@@ -213,7 +213,7 @@ final class HotSpotToSVMEntryPoints {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.Invoke, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             String actionName = JNIUtil.createString(env, hsActionName);
-            int len = JNIUtil.GetArrayLength(env, hsSignature);
+            int len = hsSignature.isNull() ? 0 : JNIUtil.GetArrayLength(env, hsSignature);
             String[] signature = new String[len];
             for (int i = 0; i < len; i++) {
                 signature[i] = JNIUtil.createString(env, (JNI.JString) JNIUtil.GetObjectArrayElement(env, hsSignature, i));
