@@ -1011,7 +1011,7 @@ public class NativeImage {
         }
 
         imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
-        imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
