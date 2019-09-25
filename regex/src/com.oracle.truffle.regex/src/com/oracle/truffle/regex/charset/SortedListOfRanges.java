@@ -638,9 +638,6 @@ public interface SortedListOfRanges extends CharacterSet {
         if (equals(Constants.NON_WHITE_SPACE)) {
             return "\\S";
         }
-        if (matchesEverything()) {
-            return "[\\s\\S]";
-        }
         if (matchesNothing()) {
             return "[]";
         }
