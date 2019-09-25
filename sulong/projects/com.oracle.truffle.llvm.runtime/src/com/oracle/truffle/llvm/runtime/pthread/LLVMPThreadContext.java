@@ -30,8 +30,11 @@
 package com.oracle.truffle.llvm.runtime.pthread;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 import java.util.ArrayList;
@@ -40,8 +43,8 @@ import java.util.concurrent.ConcurrentMap;
 
 public final class LLVMPThreadContext {
 
-    // env for creating threads
-    private final Env env;
+    // associated context for creating threads
+    private final LLVMContext context;
 
     // the long-key is the thread-id
     private final ConcurrentMap<Long, Object> threadReturnValueStorage;
@@ -54,11 +57,11 @@ public final class LLVMPThreadContext {
     private final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> pThreadKeyStorage;
     private final ConcurrentMap<Integer, LLVMPointer> pThreadDestructorStorage;
 
-    public final Object callTargetLock;
-    public CallTarget pthreadCallTarget;
+    private final Object callTargetLock;
+    private CallTarget pthreadCallTarget;
 
-    public LLVMPThreadContext(Env env) {
-        this.env = env;
+    public LLVMPThreadContext(LLVMContext context) {
+        this.context = context;
 
         // pthread storages
         this.threadReturnValueStorage = new ConcurrentHashMap<>();
@@ -173,7 +176,7 @@ public final class LLVMPThreadContext {
     @TruffleBoundary
     public synchronized Thread createThread(Runnable runnable) {
         synchronized (threadStorage) {
-            final Thread thread = env.createThread(runnable);
+            final Thread thread = context.getEnv().createThread(runnable);
             threadStorage.put(thread.getId(), thread);
             return thread;
         }
@@ -192,5 +195,17 @@ public final class LLVMPThreadContext {
     @TruffleBoundary
     public Object getThreadReturnValue(long threadId) {
         return threadReturnValueStorage.get(threadId);
+    }
+
+    public CallTarget getPthreadCallTarget() {
+        if (pthreadCallTarget == null) {
+            synchronized (callTargetLock) {
+                if (pthreadCallTarget == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode());
+                }
+            }
+        }
+        return pthreadCallTarget;
     }
 }

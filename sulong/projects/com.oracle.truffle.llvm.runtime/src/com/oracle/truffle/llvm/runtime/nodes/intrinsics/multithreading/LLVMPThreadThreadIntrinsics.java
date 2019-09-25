@@ -61,7 +61,7 @@ public final class LLVMPThreadThreadIntrinsics {
                 store = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
 
-            UtilFunctionCall.LLVMPThreadRunnable init = new UtilFunctionCall.LLVMPThreadRunnable(startRoutine, arg, context, true);
+            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context, true);
             Thread t = context.getpThreadContext().createThread(init);
             store.executeWithTarget(thread, t.getId());
             t.start();
@@ -129,7 +129,7 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             // execute the init routine
-            UtilFunctionCall.LLVMPThreadRunnable init = new UtilFunctionCall.LLVMPThreadRunnable(initRoutine, null, context, false);
+            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(initRoutine, null, context, false);
             init.run();
 
             return 0;

@@ -219,7 +219,7 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
-        pThreadContext = new LLVMPThreadContext(env);
+        pThreadContext = new LLVMPThreadContext(this);
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {
