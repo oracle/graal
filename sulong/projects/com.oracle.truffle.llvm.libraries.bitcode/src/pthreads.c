@@ -120,9 +120,6 @@ int pthread_rwlockattr_init(pthread_rwlockattr_t *attr) {
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *attr, int pshared) {
   ERR_UNSUPPORTED(pthread_rwlockattr_setpshared);
 }
-//pthread_t pthread_self(void) {
-//  ERR_UNSUPPORTED(pthread_self);
-//}
 int pthread_setcancelstate(int state, int *oldstate) {
   ERR_UNSUPPORTED(pthread_setcancelstate);
 }
