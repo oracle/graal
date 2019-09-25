@@ -32,13 +32,6 @@ suite = {
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
-            {
-                "name": "regex",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-            },
         ]
     },
 
