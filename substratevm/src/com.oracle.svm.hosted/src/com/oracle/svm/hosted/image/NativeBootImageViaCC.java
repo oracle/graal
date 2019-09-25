@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -117,6 +118,22 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
+            }
+
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                /*
+                 * On Darwin we use -exported_symbols_list <file> to prevent symbols from static
+                 * jdk-libs to end up as global symbols in the image.
+                 */
+                try {
+                    List<String> exportedSymbols = entryPoints.stream().map(NativeBootImage::globalSymbolNameForMethod).collect(Collectors.toList());
+                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                    Files.write(exportedSymbolsPath, exportedSymbols);
+                    additionalPreOptions.add("-Wl,-exported_symbols_list");
+                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+                } catch (IOException e) {
+                    VMError.shouldNotReachHere();
+                }
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
