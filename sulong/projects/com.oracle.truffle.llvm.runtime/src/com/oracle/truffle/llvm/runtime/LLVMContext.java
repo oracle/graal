@@ -46,8 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -77,6 +75,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -117,22 +116,8 @@ public final class LLVMContext {
     private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
                                                                             // after initialization
 
-    private static final class Handle {
-
-        private int refcnt;
-        private final LLVMNativePointer pointer;
-        private final Object managed;
-
-        private Handle(LLVMNativePointer pointer, Object managed) {
-            this.refcnt = 0;
-            this.pointer = pointer;
-            this.managed = managed;
-        }
-    }
-
-    private final Object handlesLock;
-    private final EconomicMap<Object, Handle> handleFromManaged;
-    private final EconomicMap<LLVMNativePointer, Handle> handleFromPointer;
+    private final HandleContainer handleContainer;
+    private final HandleContainer derefHandleContainer;
 
     private final LLVMSourceContext sourceContext;
 
@@ -193,9 +178,9 @@ public final class LLVMContext {
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
-        this.handleFromManaged = EconomicMap.create();
-        this.handleFromPointer = EconomicMap.create();
-        this.handlesLock = new Object();
+        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        this.handleContainer = memory.createHandleContainer(false);
+        this.derefHandleContainer = memory.createHandleContainer(true);
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
@@ -654,64 +639,12 @@ public final class LLVMContext {
         return sigErr;
     }
 
-    @TruffleBoundary
-    public boolean isHandle(LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            return handleFromPointer.containsKey(address);
-        }
+    public HandleContainer getHandleContainer() {
+        return handleContainer;
     }
 
-    @TruffleBoundary
-    public Object getManagedObjectForHandle(LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            final Handle handle = handleFromPointer.get(address);
-
-            if (handle == null) {
-                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
-            }
-
-            return handle.managed;
-        }
-    }
-
-    @TruffleBoundary
-    public void releaseHandle(LLVMMemory memory, LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromPointer.get(address);
-            if (handle == null) {
-                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
-            }
-
-            if (--handle.refcnt == 0) {
-                handleFromPointer.removeKey(address);
-                handleFromManaged.removeKey(handle.managed);
-                memory.free(address);
-            }
-        }
-    }
-
-    public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, Object object) {
-        return getHandle(memory, object, false).copy();
-    }
-
-    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, Object object) {
-        return getHandle(memory, object, true).copy();
-    }
-
-    @TruffleBoundary
-    private LLVMNativePointer getHandle(LLVMMemory memory, Object object, boolean autoDeref) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromManaged.get(object);
-            if (handle == null) {
-                LLVMNativePointer allocatedMemory = LLVMNativePointer.create(memory.allocateHandle(autoDeref));
-                handle = new Handle(allocatedMemory, object);
-                handleFromManaged.put(object, handle);
-                handleFromPointer.put(allocatedMemory, handle);
-            }
-
-            handle.refcnt++;
-            return handle.pointer;
-        }
+    public HandleContainer getDerefHandleContainer() {
+        return derefHandleContainer;
     }
 
     @TruffleBoundary

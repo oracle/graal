@@ -36,11 +36,11 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -49,26 +49,24 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
     @CompilationFinal private LLVMMemory memory;
 
     @Specialization
-    protected boolean doLongCase(long a,
+    protected boolean doLongCase(long address,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        return doPointerCase(LLVMNativePointer.create(a), context);
+        if (memory == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+        }
+        if (memory.isDerefHandleMemory(address)) {
+            return context.get().getDerefHandleContainer().isHandle(address);
+        } else if (memory.isCommonHandleMemory(address)) {
+            return context.get().getHandleContainer().isHandle(address);
+        }
+        return false;
     }
 
     @Specialization
     protected boolean doPointerCase(LLVMNativePointer a,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (canBeHandle(a)) {
-            return context.get().isHandle(a);
-        }
-        return false;
-    }
-
-    private boolean canBeHandle(LLVMNativePointer a) {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = getLLVMMemory();
-        }
-        return memory.isHandleMemory(a.asNative());
+        return doLongCase(a.asNative(), context);
     }
 
     @Fallback
