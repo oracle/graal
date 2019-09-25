@@ -40,10 +40,10 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     private final Unsafe unsafe;
     private long startAddress;
-    private long size;
-    private final long maxSize;
+    private long byteSize;
+    private final long maxPageSize;
 
-    public UnsafeWasmMemory(long size, long maxSize) {
+    public UnsafeWasmMemory(long initPageSize, long maxPageSize) {
         try {
             Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
@@ -51,16 +51,16 @@ public class UnsafeWasmMemory implements WasmMemory {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        this.maxSize = maxSize;
-        this.size = size;
-        this.startAddress = unsafe.allocateMemory(size);
-        unsafe.setMemory(startAddress, size, (byte) 0);
+        this.maxPageSize = maxPageSize;
+        this.byteSize = initPageSize * PAGE_SIZE;
+        this.startAddress = unsafe.allocateMemory(byteSize);
+        unsafe.setMemory(startAddress, byteSize, (byte) 0);
     }
 
     @Override
     public void validateAddress(long address, int offset) {
         logger.finest(() -> String.format("validating memory address: 0x%016X (%d)", address, address));
-        if (address < 0 || address + offset >= this.size) {
+        if (address < 0 || address + offset >= this.byteSize) {
             throw new WasmException("Requested memory address out-of-bounds");
         }
     }
@@ -77,33 +77,35 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
-    public long size() {
-        return size;
+    public long pageSize() {
+        return byteSize;
     }
 
     @Override
-    public long maxSize() {
-        return maxSize;
+    public long maxPageSize() {
+        return maxPageSize;
     }
 
     @Override
-    public void grow(long extraSize) {
-        if (extraSize < 0) {
+    public boolean grow(long extraPageSize) {
+        if (extraPageSize < 0) {
             throw new WasmException("Extra size cannot be negative.");
         }
-        long targetSize = size + extraSize;
-        if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmException("Cannot grow the memory beyond " + maxSize + " bytes.");
+        long targetSize = byteSize + extraPageSize * PAGE_SIZE;
+        if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {
+            // Cannot grow the memory beyond maxPageSize bytes.
+            return false;
         }
-        if (targetSize == size) {
-            return;
+        if (targetSize * PAGE_SIZE == byteSize) {
+            return true;
         }
         long updatedStartAddress = unsafe.allocateMemory(targetSize);
-        unsafe.copyMemory(startAddress, updatedStartAddress, size);
-        unsafe.setMemory(updatedStartAddress + size, targetSize - size, (byte) 0);
+        unsafe.copyMemory(startAddress, updatedStartAddress, byteSize);
+        unsafe.setMemory(updatedStartAddress + byteSize, targetSize - byteSize, (byte) 0);
         unsafe.freeMemory(startAddress);
         startAddress = updatedStartAddress;
-        size = targetSize;
+        byteSize = targetSize;
+        return true;
     }
 
     @Override

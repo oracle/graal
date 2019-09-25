@@ -829,11 +829,16 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case MEMORY_SIZE: {
-                    read1();  // 0x00
+                    // Skip the constant 0x00.
+                    read1();
+                    state.push();
                     break;
                 }
                 case MEMORY_GROW: {
-                    read1();  // 0x00
+                    // Skip the constant 0x00.
+                    read1();
+                    state.pop();
+                    state.push();
                     break;
                 }
                 case I32_CONST: {

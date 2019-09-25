@@ -33,7 +33,6 @@ import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
-import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.UNRESOLVED_IMPORT;
@@ -187,13 +186,13 @@ public class Linker {
                                 importedModuleName, exportedMemoryName, module.name(), importedModuleName));
             }
             final WasmMemory memory = importedModule.symbolTable().memory();
-            if (memory.maxSize() >= 0 && (initSize > memory.maxSize() || maxSize > memory.maxSize())) {
+            if (memory.maxPageSize() >= 0 && (initSize > memory.maxPageSize() || maxSize > memory.maxPageSize())) {
                 // This requirement does not seem to be mentioned in the WebAssembly specification.
                 throw new WasmLinkerException(String.format("The memory '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
-                                importedMemoryName, importedModuleName, memory.maxSize(), module.name(), maxSize));
+                                importedMemoryName, importedModuleName, memory.maxPageSize(), module.name(), maxSize));
             }
-            if (memory.size() < initSize) {
-                memory.grow(initSize - memory.size());
+            if (memory.pageSize() < initSize) {
+                memory.grow(initSize - memory.pageSize());
             }
             return memory;
         }
