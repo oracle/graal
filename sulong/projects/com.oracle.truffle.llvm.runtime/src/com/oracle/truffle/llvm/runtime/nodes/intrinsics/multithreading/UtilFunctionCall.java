@@ -127,14 +127,11 @@ final class UtilFunctionCall {
 
         private final LLVMContext context;
 
-        @CompilerDirectives.CompilationFinal
-        final FrameSlot functionSlot;
+        @CompilerDirectives.CompilationFinal final FrameSlot functionSlot;
 
-        @CompilerDirectives.CompilationFinal
-        final FrameSlot argSlot;
+        @CompilerDirectives.CompilationFinal final FrameSlot argSlot;
 
-        @CompilerDirectives.CompilationFinal
-        final FrameSlot spSlot;
+        @CompilerDirectives.CompilationFinal final FrameSlot spSlot;
 
         @CompilerDirectives.TruffleBoundary
         FunctionCallNode(LLVMLanguage language, FrameDescriptor frameDescriptor) {
@@ -145,12 +142,12 @@ final class UtilFunctionCall {
             this.spSlot = frameDescriptor.findFrameSlot("sp");
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.callNode = context.getLanguage().getNodeFactory().createFunctionCall(
-                    context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
-                    new LLVMExpressionNode[]{
-                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, spSlot),
-                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, argSlot)
-                    },
-                    new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
+                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
+                            new LLVMExpressionNode[]{
+                                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, spSlot),
+                                            context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, argSlot)
+                            },
+                            new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
         }
 
         @Override
