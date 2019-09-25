@@ -52,7 +52,7 @@ public final class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "arg")
     public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
 
-        @Child LLVMStoreNode store = null;
+        @Child private LLVMStoreNode store = null;
 
         @Specialization
         protected int doIntrinsic(LLVMPointer thread, @SuppressWarnings("unused") LLVMPointer attr, LLVMPointer startRoutine, LLVMPointer arg, @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -61,7 +61,7 @@ public final class LLVMPThreadThreadIntrinsics {
                 store = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
 
-            UtilFunctionCall.FunctionCallRunnable init = new UtilFunctionCall.FunctionCallRunnable(startRoutine, arg, context, true);
+            UtilFunctionCall.LLVMPThreadRunnable init = new UtilFunctionCall.LLVMPThreadRunnable(startRoutine, arg, context, true);
             Thread t = context.getpThreadContext().createThread(init);
             store.executeWithTarget(thread, t.getId());
             t.start();
@@ -83,7 +83,7 @@ public final class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "threadReturn")
     public abstract static class LLVMPThreadJoin extends LLVMBuiltin {
 
-        @Child LLVMStoreNode storeNode;
+        @Child private LLVMStoreNode storeNode;
 
         @Specialization
         protected int doIntrinsic(long threadId, LLVMPointer threadReturn, @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -129,7 +129,7 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             // execute the init routine
-            UtilFunctionCall.FunctionCallRunnable init = new UtilFunctionCall.FunctionCallRunnable(initRoutine, null, context, false);
+            UtilFunctionCall.LLVMPThreadRunnable init = new UtilFunctionCall.LLVMPThreadRunnable(initRoutine, null, context, false);
             init.run();
 
             return 0;

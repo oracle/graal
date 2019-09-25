@@ -49,7 +49,7 @@ public final class LLVMPThreadKeyIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
 
-        @Child LLVMStoreNode store = null;
+        @Child private LLVMStoreNode store = null;
 
         @Specialization
         protected int doIntrinsic(LLVMPointer key, LLVMPointer destructor, @CachedContext(LLVMLanguage.class) LLVMContext context) {

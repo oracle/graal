@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -50,14 +51,14 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class UtilFunctionCall {
 
-    static final class FunctionCallRunnable implements Runnable {
+    static final class LLVMPThreadRunnable implements Runnable {
 
         private boolean isThread;
         private Object startRoutine;
         private Object arg;
         private LLVMContext context;
 
-        FunctionCallRunnable(Object startRoutine, Object arg, LLVMContext context, boolean isThread) {
+        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context, boolean isThread) {
             this.startRoutine = startRoutine;
             this.arg = arg;
             this.context = context;
@@ -73,9 +74,10 @@ final class UtilFunctionCall {
                     frameDescriptor.addFrameSlot("function");
                     frameDescriptor.addFrameSlot("arg");
                     frameDescriptor.addFrameSlot("sp");
-                    pThreadContext.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new FunctionCallNode(LLVMLanguage.getLanguage(), frameDescriptor));
+                    pThreadContext.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadFunctionRootNode(LLVMLanguage.getLanguage(), frameDescriptor));
                 }
             }
+
             // pthread_exit throws a control flow exception to stop the thread
             try {
                 // save return value in storage
@@ -88,8 +90,10 @@ final class UtilFunctionCall {
             } catch (PThreadExitException e) {
                 // return value is written to retval storage in exit function before it throws this
                 // exception
+
             } catch (LLVMExitException e) {
                 System.exit(e.getExitStatus());
+
             } finally {
                 // call destructors from key create
                 if (this.isThread) {
@@ -99,7 +103,7 @@ final class UtilFunctionCall {
                             final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
                             if (keyMapping != null) {
                                 assert !keyMapping.isNull();
-                                new FunctionCallRunnable(destructor, keyMapping, this.context, false).run();
+                                new LLVMPThreadRunnable(destructor, keyMapping, this.context, false).run();
                             }
                         }
                     }
@@ -108,25 +112,26 @@ final class UtilFunctionCall {
         }
     }
 
-    private static final class FunctionCallNode extends RootNode {
+    private static final class LLVMPThreadFunctionRootNode extends RootNode {
 
-        @Child LLVMExpressionNode callNode = null;
+        @Child private LLVMExpressionNode callNode;
 
         private final LLVMContext context;
 
-        @CompilerDirectives.CompilationFinal final FrameSlot functionSlot;
+        private final FrameSlot functionSlot;
 
-        @CompilerDirectives.CompilationFinal final FrameSlot argSlot;
+        private final FrameSlot argSlot;
 
-        @CompilerDirectives.CompilationFinal final FrameSlot spSlot;
+        private final FrameSlot spSlot;
 
-        @CompilerDirectives.TruffleBoundary
-        FunctionCallNode(LLVMLanguage language, FrameDescriptor frameDescriptor) {
+        @TruffleBoundary
+        LLVMPThreadFunctionRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
             this.context = language.getContextReference().get();
             this.functionSlot = frameDescriptor.findFrameSlot("function");
             this.argSlot = frameDescriptor.findFrameSlot("arg");
             this.spSlot = frameDescriptor.findFrameSlot("sp");
+
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.callNode = context.getLanguage().getNodeFactory().createFunctionCall(
                             context.getLanguage().getNodeFactory().createFrameRead(PointerType.VOID, functionSlot),
