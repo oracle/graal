@@ -35,7 +35,7 @@ public interface HotSpotGraalManagementRegistration {
      * Completes the initialization of this registration by recording the
      * {@link HotSpotGraalRuntime} the MBean will provide an JMX interface to.
      */
-    void initialize(HotSpotGraalRuntime runtime);
+    void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config);
 
     /**
      * Polls this registration to see if the MBean is registered in a MBean server.

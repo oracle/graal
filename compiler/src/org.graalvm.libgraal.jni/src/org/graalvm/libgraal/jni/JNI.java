@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.libgraal.jni;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,40 +45,40 @@ import org.graalvm.word.PointerBase;
 
 import jdk.vm.ci.services.Services;
 
-final class JNI {
+public final class JNI {
 
     private JNI() {
         throw new IllegalStateException("No instance allowed");
     }
 
-    interface JMethodID extends PointerBase {
+    public interface JMethodID extends PointerBase {
     }
 
-    interface JObject extends PointerBase {
+    public interface JObject extends PointerBase {
     }
 
-    interface JArray extends JObject {
+    public interface JArray extends JObject {
         int MODE_WRITE_RELEASE = 0;
         int MODE_WRITE = 1;
         int MODE_RELEASE = 2;
     }
 
-    interface JByteArray extends JArray {
+    public interface JByteArray extends JArray {
     }
 
-    interface JLongArray extends JArray {
+    public interface JLongArray extends JArray {
     }
 
-    interface JObjectArray extends JArray {
+    public interface JObjectArray extends JArray {
     }
 
-    interface JClass extends JObject {
+    public interface JClass extends JObject {
     }
 
-    interface JString extends JObject {
+    public interface JString extends JObject {
     }
 
-    interface JThrowable extends JObject {
+    public interface JThrowable extends JObject {
     }
 
     /**
@@ -138,7 +138,7 @@ final class JNI {
 
     @CContext(JNIHeaderDirectives.class)
     @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
-    interface JNINativeInterface extends PointerBase {
+    public interface JNINativeInterface extends PointerBase {
 
         @CField("NewString")
         NewString getNewString();
@@ -173,6 +173,9 @@ final class JNI {
         @CField("NewByteArray")
         NewByteArray getNewByteArray();
 
+        @CField("NewLongArray")
+        NewLongArray getNewLongArray();
+
         @CField("GetObjectArrayElement")
         GetObjectArrayElement getGetObjectArrayElement();
 
@@ -193,6 +196,9 @@ final class JNI {
 
         @CField("FindClass")
         FindClass getFindClass();
+
+        @CField("DefineClass")
+        DefineClass getDefineClass();
 
         @CField("IsSameObject")
         IsSameObject getIsSameObject();
@@ -258,202 +264,212 @@ final class JNI {
         GetDirectBufferAddress getGetDirectBufferAddress();
     }
 
-    interface CallStaticIntMethodA extends CFunctionPointer {
+    public interface CallStaticIntMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface CallStaticBooleanMethodA extends CFunctionPointer {
+    public interface CallStaticBooleanMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         boolean call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface CallStaticVoidMethodA extends CFunctionPointer {
+    public interface CallStaticVoidMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface CallStaticObjectMethodA extends CFunctionPointer {
+    public interface CallStaticObjectMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface CallStaticLongMethodA extends CFunctionPointer {
+    public interface CallStaticLongMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         long call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface DeleteGlobalRef extends CFunctionPointer {
+    public interface DeleteGlobalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JObject gref);
     }
 
-    interface DeleteLocalRef extends CFunctionPointer {
+    public interface DeleteLocalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JObject lref);
     }
 
-    interface PushLocalFrame extends CFunctionPointer {
+    public interface PushLocalFrame extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, int capacity);
     }
 
-    interface PopLocalFrame extends CFunctionPointer {
+    public interface PopLocalFrame extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObject result);
     }
 
-    interface ExceptionCheck extends CFunctionPointer {
+    public interface ExceptionCheck extends CFunctionPointer {
         @InvokeCFunctionPointer
         boolean call(JNIEnv env);
     }
 
-    interface ExceptionClear extends CFunctionPointer {
+    public interface ExceptionClear extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env);
     }
 
-    interface ExceptionDescribe extends CFunctionPointer {
+    public interface ExceptionDescribe extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env);
     }
 
-    interface ExceptionOccurred extends CFunctionPointer {
+    public interface ExceptionOccurred extends CFunctionPointer {
         @InvokeCFunctionPointer
         JThrowable call(JNIEnv env);
     }
 
-    interface FindClass extends CFunctionPointer {
+    public interface FindClass extends CFunctionPointer {
         @InvokeCFunctionPointer
         JClass call(JNIEnv env, CCharPointer name);
     }
 
-    interface GetArrayLength extends CFunctionPointer {
+    public interface DefineClass extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JClass call(JNIEnv env, CCharPointer name, JObject loader, CCharPointer buf, long bufLen);
+    }
+
+    public interface GetArrayLength extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JArray array);
     }
 
-    interface GetByteArrayElements extends CFunctionPointer {
+    public interface GetByteArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         CCharPointer call(JNIEnv env, JByteArray array, JValue isCopy);
     }
 
-    interface GetLongArrayElements extends CFunctionPointer {
+    public interface GetLongArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         CLongPointer call(JNIEnv env, JLongArray array, JValue isCopy);
     }
 
-    interface GetMethodID extends CFunctionPointer {
+    public interface GetMethodID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JMethodID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
     }
 
-    interface GetObjectArrayElement extends CFunctionPointer {
+    public interface GetObjectArrayElement extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObjectArray array, int index);
     }
 
-    interface GetObjectClass extends CFunctionPointer {
+    public interface GetObjectClass extends CFunctionPointer {
         @InvokeCFunctionPointer
         JClass call(JNIEnv env, JObject object);
     }
 
-    interface GetObjectRefType extends CFunctionPointer {
+    public interface GetObjectRefType extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JObject obj);
     }
 
-    interface GetStaticMethodID extends CFunctionPointer {
+    public interface GetStaticMethodID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JMethodID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
     }
 
-    interface GetStringChars extends CFunctionPointer {
+    public interface GetStringChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         CShortPointer call(JNIEnv env, JString string, JValue isCopy);
     }
 
-    interface GetStringLength extends CFunctionPointer {
+    public interface GetStringLength extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JString string);
     }
 
-    interface GetStringUTFChars extends CFunctionPointer {
+    public interface GetStringUTFChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         CCharPointer call(JNIEnv env, JString string, JValue isCopy);
     }
 
-    interface GetStringUTFLength extends CFunctionPointer {
+    public interface GetStringUTFLength extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JString str);
     }
 
-    interface IsSameObject extends CFunctionPointer {
+    public interface IsSameObject extends CFunctionPointer {
         @InvokeCFunctionPointer
         boolean call(JNIEnv env, JObject ref1, JObject ref2);
     }
 
-    interface NewByteArray extends CFunctionPointer {
+    public interface NewByteArray extends CFunctionPointer {
         @InvokeCFunctionPointer
         JByteArray call(JNIEnv env, int len);
     }
 
-    interface NewGlobalRef extends CFunctionPointer {
+    public interface NewLongArray extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JLongArray call(JNIEnv env, int len);
+    }
+
+    public interface NewGlobalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObject lobj);
     }
 
-    interface NewObjectA extends CFunctionPointer {
+    public interface NewObjectA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JClass clazz, JMethodID methodID, JValue args);
     }
 
-    interface NewObjectArray extends CFunctionPointer {
+    public interface NewObjectArray extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObjectArray call(JNIEnv env, int len, JClass clazz, JObject init);
     }
 
-    interface NewString extends CFunctionPointer {
+    public interface NewString extends CFunctionPointer {
         @InvokeCFunctionPointer
         JString call(JNIEnv env, CShortPointer unicode, int len);
     }
 
-    interface NewStringUTF8 extends CFunctionPointer {
+    public interface NewStringUTF8 extends CFunctionPointer {
         @InvokeCFunctionPointer
         JString call(JNIEnv env, CCharPointer bytes);
     }
 
-    interface ReleaseByteArrayElements extends CFunctionPointer {
+    public interface ReleaseByteArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JByteArray array, CCharPointer elems, int mode);
     }
 
-    interface ReleaseLongArrayElements extends CFunctionPointer {
+    public interface ReleaseLongArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JLongArray array, CLongPointer elems, int mode);
     }
 
-    interface ReleaseStringChars extends CFunctionPointer {
+    public interface ReleaseStringChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JString string, CShortPointer chars);
     }
 
-    interface ReleaseStringUTFChars extends CFunctionPointer {
+    public interface ReleaseStringUTFChars extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JString string, CCharPointer chars);
     }
 
-    interface SetObjectArrayElement extends CFunctionPointer {
+    public interface SetObjectArrayElement extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JObjectArray array, int index, JObject val);
     }
 
-    interface Throw extends CFunctionPointer {
+    public interface Throw extends CFunctionPointer {
         @InvokeCFunctionPointer
         int call(JNIEnv env, JThrowable throwable);
     }
 
-    interface GetDirectBufferAddress extends CFunctionPointer {
+    public interface GetDirectBufferAddress extends CFunctionPointer {
         @InvokeCFunctionPointer
         VoidPointer call(JNIEnv env, JObject buf);
     }

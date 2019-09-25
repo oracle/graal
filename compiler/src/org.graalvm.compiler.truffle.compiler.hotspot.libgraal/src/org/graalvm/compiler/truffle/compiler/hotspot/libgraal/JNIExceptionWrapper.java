@@ -41,26 +41,27 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptio
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetThrowableMessage;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callUpdateStackTrace;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.isHotSpotCall;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ExceptionCheck;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ExceptionClear;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ExceptionDescribe;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ExceptionOccurred;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetArrayLength;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetObjectArrayElement;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.NewObjectArray;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.SetObjectArrayElement;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.Throw;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createHSString;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.JNIUtil.ExceptionCheck;
+import static org.graalvm.libgraal.jni.JNIUtil.ExceptionClear;
+import static org.graalvm.libgraal.jni.JNIUtil.ExceptionDescribe;
+import static org.graalvm.libgraal.jni.JNIUtil.ExceptionOccurred;
+import static org.graalvm.libgraal.jni.JNIUtil.GetArrayLength;
+import static org.graalvm.libgraal.jni.JNIUtil.GetObjectArrayElement;
+import static org.graalvm.libgraal.jni.JNIUtil.NewObjectArray;
+import static org.graalvm.libgraal.jni.JNIUtil.SetObjectArrayElement;
+import static org.graalvm.libgraal.jni.JNIUtil.Throw;
+import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
+import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JThrowable;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JObjectArray;
+import org.graalvm.libgraal.jni.JNI.JString;
+import org.graalvm.libgraal.jni.JNI.JThrowable;
+import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.word.WordFactory;
 
 /**
@@ -124,7 +125,7 @@ final class JNIExceptionWrapper extends RuntimeException {
     static void wrapAndThrowPendingJNIException(JNIEnv env) {
         if (ExceptionCheck(env)) {
             JThrowable exception = ExceptionOccurred(env);
-            if (HotSpotToSVMEntryPoints.tracingAt(1) && exception.isNonNull()) {
+            if (JNIUtil.tracingAt(1) && exception.isNonNull()) {
                 ExceptionDescribe(env);
             }
             ExceptionClear(env);
@@ -147,7 +148,7 @@ final class JNIExceptionWrapper extends RuntimeException {
      */
     @SVMToHotSpot(CreateException)
     static void throwInHotSpot(JNIEnv env, Throwable original) {
-        if (HotSpotToSVMEntryPoints.tracingAt(1)) {
+        if (JNIUtil.tracingAt(1)) {
             original.printStackTrace(TTY.out);
         }
         if (original.getClass() == JNIExceptionWrapper.class) {

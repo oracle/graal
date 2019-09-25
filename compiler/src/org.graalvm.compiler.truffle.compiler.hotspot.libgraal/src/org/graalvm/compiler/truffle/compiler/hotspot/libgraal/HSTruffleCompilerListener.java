@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.libgraal.jni.HSObject;
 import java.io.Closeable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnGraalTierFinished;
@@ -33,22 +34,24 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnSuccess;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createHSString;
+import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JString;
 
 /**
  * Proxy for a {@link TruffleCompilerListener} object in the HotSpot heap.
  */
 final class HSTruffleCompilerListener extends HSObject implements TruffleCompilerListener {
 
-    HSTruffleCompilerListener(HotSpotToSVMScope scope, JObject handle) {
+    HSTruffleCompilerListener(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
         super(scope, handle);
     }
 

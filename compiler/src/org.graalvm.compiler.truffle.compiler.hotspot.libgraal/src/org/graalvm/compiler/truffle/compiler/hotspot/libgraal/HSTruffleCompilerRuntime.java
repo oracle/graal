@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.libgraal.jni.HSObject;
+import org.graalvm.libgraal.jni.JNIUtil;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ConsumeOptimizedAssumptionDependency;
@@ -57,12 +59,12 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetArrayLength;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetLongArrayElements;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ReleaseLongArrayElements;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.getInternalName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.scope;
+import static org.graalvm.libgraal.jni.JNIUtil.GetArrayLength;
+import static org.graalvm.libgraal.jni.JNIUtil.GetLongArrayElements;
+import static org.graalvm.libgraal.jni.JNIUtil.ReleaseLongArrayElements;
+import static org.graalvm.libgraal.jni.JNIUtil.getInternalName;
+import static org.graalvm.libgraal.jni.HotSpotToSVMScope.env;
+import static org.graalvm.libgraal.jni.HotSpotToSVMScope.scope;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,11 +81,12 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JLongArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNI.JArray;
+import org.graalvm.libgraal.jni.JNI.JLongArray;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.WordFactory;
@@ -105,6 +108,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 
 /**
  * Proxy for a {@link HotSpotTruffleCompilerRuntime} object in the HotSpot heap.
@@ -133,20 +137,20 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @SVMToHotSpot(CreateInliningPlan)
     @Override
     public TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        HotSpotToSVMScope scope = HotSpotToSVMScope.scopeOrNull();
+        HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
         JObject compilableHandle = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject taskHandle = task == null ? WordFactory.nullPointer() : ((HSTruffleCompilationTask) task).getHandle();
         JObject hsInliningPlan = callCreateInliningPlan(scope.getEnv(), getHandle(), compilableHandle, taskHandle);
-        return new HSTruffleInliningPlan(scope, hsInliningPlan);
+        return new HSTruffleInliningPlan(scope.narrow(HotSpotToSVM.Id.class), hsInliningPlan);
     }
 
     @SVMToHotSpot(AsCompilableTruffleAST)
     @Override
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
-        HotSpotToSVMScope scope = HotSpotToSVMScope.scopeOrNull();
+        HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
@@ -155,7 +159,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         if (hsCompilable.isNull()) {
             return null;
         } else {
-            return new HSCompilableTruffleAST(scope, hsCompilable);
+            return new HSCompilableTruffleAST(scope.narrow(HotSpotToSVM.Id.class), hsCompilable);
         }
     }
 
@@ -173,7 +177,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         long optimizedAssumptionHandle = LibGraal.translate(runtime(), optimizedAssumption);
         JNIEnv env = env();
         JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(env, getHandle(), optimizedAssumptionHandle);
-        return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer);
+        return assumptionConsumer.isNull() ? null : new HSConsumer(scope().narrow(HotSpotToSVM.Id.class), assumptionConsumer);
     }
 
     @SVMToHotSpot(GetCallTargetForCallNode)
@@ -355,7 +359,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
 
-        HSConsumer(HotSpotToSVMScope scope, JObject handle) {
+        HSConsumer(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
             super(scope, handle);
         }
 

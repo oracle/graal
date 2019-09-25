@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.libgraal.jni.HSObject;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
@@ -51,7 +52,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetURI;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callIsTargetStable;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callShouldInline;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.JNIUtil.createString;
 
 import java.net.URI;
 
@@ -59,21 +60,23 @@ import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 
 /**
  * Proxy for a {@link TruffleInliningPlan} object in the HotSpot heap.
  */
 class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
 
-    final HotSpotToSVMScope scope;
+    final HotSpotToSVMScope<HotSpotToSVM.Id> scope;
 
-    HSTruffleInliningPlan(HotSpotToSVMScope scope, JObject handle) {
+    HSTruffleInliningPlan(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
         super(scope, handle);
         this.scope = scope;
     }
@@ -119,7 +122,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
      */
     private static final class HSDecision extends HSTruffleInliningPlan implements Decision {
 
-        HSDecision(HotSpotToSVMScope scope, JObject handle) {
+        HSDecision(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
             super(scope, handle);
         }
 
@@ -156,7 +159,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
      */
     private static final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-        HSTruffleSourceLanguagePosition(HotSpotToSVMScope scope, JObject handle) {
+        HSTruffleSourceLanguagePosition(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
             super(scope, handle);
         }
 

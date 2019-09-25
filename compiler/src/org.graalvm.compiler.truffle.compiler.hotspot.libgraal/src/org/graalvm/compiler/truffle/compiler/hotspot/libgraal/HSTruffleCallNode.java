@@ -33,24 +33,27 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCa
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callIsInliningForced;
-
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
+import static org.graalvm.libgraal.jni.HotSpotToSVMScope.env;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
+import org.graalvm.libgraal.jni.HSObject;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNIUtil;
 
 final class HSTruffleCallNode extends HSObject implements TruffleCallNode {
 
-    HSTruffleCallNode(HotSpotToSVMScope scope, JObject handle) {
+    HSTruffleCallNode(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
         super(scope, handle);
     }
 
     @SVMToHotSpot(GetCurrentCallTarget)
     @Override
     public CompilableTruffleAST getCurrentCallTarget() {
-        HotSpotToSVMScope scope = HotSpotToSVMScope.scope();
+        HotSpotToSVMScope<HotSpotToSVM.Id> scope = HotSpotToSVMScope.scope().narrow(HotSpotToSVM.Id.class);
         JObject hsCompilable = callGetCurrentCallTarget(scope.getEnv(), getHandle());
         if (hsCompilable.isNull()) {
             return null;

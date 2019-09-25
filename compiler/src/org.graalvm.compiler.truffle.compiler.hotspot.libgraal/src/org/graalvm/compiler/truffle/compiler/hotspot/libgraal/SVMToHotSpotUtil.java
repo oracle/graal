@@ -25,11 +25,11 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.FindClass;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetStaticMethodID;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.NewGlobalRef;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.getBinaryName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMEntryPoints.trace;
+import static org.graalvm.libgraal.jni.JNIUtil.FindClass;
+import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
+import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.libgraal.jni.JNIUtil.trace;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.lang.annotation.ElementType;
@@ -47,11 +47,11 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JClass;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JMethodID;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JValue;
+import org.graalvm.libgraal.jni.JNI.JClass;
+import org.graalvm.libgraal.jni.JNI.JMethodID;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
