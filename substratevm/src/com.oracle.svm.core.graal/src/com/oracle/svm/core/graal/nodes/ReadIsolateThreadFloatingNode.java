@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,15 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
 
 /**
  * Reads the value of a specific register.
@@ -49,23 +41,15 @@ import jdk.vm.ci.code.RegisterValue;
  * using a {@link ReadRegisterFixedNode}, but limits usages.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public abstract class ReadRegisterFloatingNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass<ReadRegisterFloatingNode> TYPE = NodeClass.create(ReadRegisterFloatingNode.class);
+public final class ReadIsolateThreadFloatingNode extends ReadRegisterFloatingNode implements LIRLowerable {
+    public static final NodeClass<ReadIsolateThreadFloatingNode> TYPE = NodeClass.create(ReadIsolateThreadFloatingNode.class);
 
-    public ReadRegisterFloatingNode(NodeClass<? extends ReadRegisterFloatingNode> c) {
-        super(c, FrameAccess.getWordStamp());
+    public ReadIsolateThreadFloatingNode() {
+        super(TYPE);
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        VMError.guarantee(usages().filter(FrameState.class).isEmpty(), "When used in a FrameState, need a ReadRegisterFixedNode and not a ReadRegisterFloatingNode");
-
-        LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        LIRKind lirKind = tool.getLIRKind(FrameAccess.getWordStamp());
-        RegisterValue value = getReadRegister(registerConfig).asValue(lirKind);
-        gen.setResult(this, value);
+    protected Register getReadRegister(SubstrateRegisterConfig registerConfig) {
+        return registerConfig.getThreadRegister();
     }
-
-    protected abstract Register getReadRegister(SubstrateRegisterConfig registerConfig);
 }
