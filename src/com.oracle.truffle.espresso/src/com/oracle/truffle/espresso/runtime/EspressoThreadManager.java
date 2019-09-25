@@ -52,9 +52,29 @@ class EspressoThreadManager implements ContextAccess {
 
     private final Object threadLock = new Object();
 
-    // Index 0 contains an Integer with the offset to substract to thread id to get the actual
-    // index.
+    /**
+     * Contains a mapping from host thread ID to guest thread object. The object at index 0 is an
+     * Integer which corresponds to the offset we need to substract to the thread ID to get the
+     * index of the corresponding guest thread. The referenced array might change, but its contents
+     * will not. Obtaining the reference locally and working with the local variable storing it thus
+     * corresponds to obtaining a snapshot of the state.
+     * <p>
+     * The offset is stored in the array, and not in a field because of concurrency issues. We want
+     * to be able to obtain the current thread quickly (ie: without locking). To do that, we obtain
+     * atomically a snapshot of the state (ie: the array). If we left the offset as a field, we
+     * would need to guarantee atomic read of two different fields, which is quite complex without
+     * locking.
+     * <p>
+     * By putting the offset inside the array, we make it part of the snapshot, thus guaranteeing
+     * consistency.
+     */
     private Object[] guestThreads = new Object[DEFAULT_THREAD_ARRAY_SIZE];
+
+    /**
+     * These three threads are a bit special. They are created at VM startup, and stay there for the
+     * whole duration of execution. They are stored individually so they do not appear in the thread
+     * snapshot, so as not to bloat the span of the array.
+     */
 
     @CompilationFinal private long mainThreadId = -1;
     @CompilationFinal private StaticObject guestMainThread = null;
@@ -65,63 +85,71 @@ class EspressoThreadManager implements ContextAccess {
     @CompilationFinal private long referenceHandlerThreadId = -1;
     @CompilationFinal private StaticObject guestReferenceHandlerThread = null;
 
+    public Iterable<StaticObject> activeThreads() {
+        return activeThreads;
+    }
+
     public void registerMainThread(Thread thread, StaticObject self) {
         mainThreadId = thread.getId();
         guestMainThread = self;
-        // Accounts also for Finalizer and ReferenceHandler.
         activeThreads.add(self);
     }
 
-    public void registerThread(Thread thread, StaticObject self) {
-        activeThreads.add(self);
-        // These two threads are created at VM startup, and are always active. Use special fields in
-        // order not to bloat the span of the guest threads array.
+    public void registerThread(Thread host, StaticObject guest) {
+        activeThreads.add(guest);
         if (finalizerThreadId == -1) {
-            if (getMeta().FinalizerThread.isAssignableFrom(self.getKlass())) {
+            if (getMeta().FinalizerThread.isAssignableFrom(guest.getKlass())) {
                 synchronized (threadLock) {
                     if (finalizerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        finalizerThreadId = thread.getId();
-                        guestFinalizerThread = self;
+                        finalizerThreadId = host.getId();
+                        guestFinalizerThread = guest;
                         return;
                     }
                 }
             }
         }
         if (referenceHandlerThreadId == -1) {
-            if (getMeta().ReferenceHandler.isAssignableFrom(self.getKlass())) {
+            if (getMeta().ReferenceHandler.isAssignableFrom(guest.getKlass())) {
                 synchronized (threadLock) {
                     if (finalizerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        referenceHandlerThreadId = thread.getId();
-                        guestReferenceHandlerThread = self;
+                        referenceHandlerThreadId = host.getId();
+                        guestReferenceHandlerThread = guest;
                         return;
                     }
                 }
             }
         }
-        pushThread((int) thread.getId(), self);
+        pushThread((int) host.getId(), guest);
+    }
+
+    public void unregisterThread(StaticObject thread) {
+        activeThreads.remove(thread);
     }
 
     /**
-     * Returns the guest object corresponding to the given host thread.
+     * Returns the guest object corresponding to the given host thread. For it to work as intended,
+     * there must be an invariant throughout all espresso:
+     * <p>
+     * Any call to this method must use a thread that is alive as argument.
+     * <p>
+     * Currently, this invariant is trivially verified, as it is always used with
+     * Thread.currentThread() as input.
      *
      * @param host The host thread.
      * @return The guest thread corresponding to the given thread.
      */
     public StaticObject getGuestThreadFromHost(Thread host) {
-        return getThreadFromId((int) host.getId());
-    }
-
-    /**
-     * Fetches the thread corresponding to the given host thread ID without locking. The only
-     * property we need to have is that fields accesses are regular (ie: a read with a concurrent
-     * write will return either the old or the new written value)
-     */
-    private StaticObject getThreadFromId(int id) {
+        int id = (int) host.getId();
         if (id == mainThreadId) {
             return guestMainThread;
         }
+        /*
+         * Fetches the thread corresponding to the given host thread ID without locking (for fresh
+         * threads). The only property we need to have is that fields accesses are regular (ie: a
+         * read with a concurrent write will return either the old or the new written value)
+         */
         if (id == finalizerThreadId) {
             return guestFinalizerThread;
         }
@@ -129,7 +157,7 @@ class EspressoThreadManager implements ContextAccess {
             return guestReferenceHandlerThread;
         }
         Object[] threads = guestThreads;
-        int index = getThreadIndex(id, threads);
+        int index = id - (int) threads[0];
         assert index > 0 && index < guestThreads.length;
         return (StaticObject) threads[index];
     }
@@ -195,16 +223,8 @@ class EspressoThreadManager implements ContextAccess {
         guestThreads = newThreads;
     }
 
-    public void unregisterThread(StaticObject thread) {
-        activeThreads.remove(thread);
-    }
-
     // Thread management helpers
     private static int getThreadIndex(int id, Object[] threads) {
         return id - (int) threads[0];
-    }
-
-    public Iterable<StaticObject> activeThreads() {
-        return activeThreads;
     }
 }

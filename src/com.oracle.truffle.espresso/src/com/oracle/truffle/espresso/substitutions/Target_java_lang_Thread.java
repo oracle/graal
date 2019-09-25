@@ -146,6 +146,7 @@ public final class Target_java_lang_Thread {
             });
 
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
+            self.setIntField(meta.Thread_state, State.RUNNABLE.value);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             hostThread.setPriority(self.getIntField(meta.Thread_priority));
@@ -262,9 +263,12 @@ public final class Target_java_lang_Thread {
         self.getKlass().getContext().invalidateNoSuspend("Calling Thread.suspend()");
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
+            if (!isAlive(self)) {
+                return;
+            }
             lock = initSuspendLock(self);
         }
-        suspendHandshake(lock);
+        suspendHandshake(lock, self.getKlass().getMeta());
     }
 
     @TruffleBoundary
@@ -389,8 +393,9 @@ public final class Target_java_lang_Thread {
         lock.threadSuspended = false;
     }
 
-    private static void suspendHandshake(SuspendLock lock) {
+    private static void suspendHandshake(SuspendLock lock, Meta meta) {
         Object notifier = lock.notifier;
+        boolean wasInterrupted = false;
         while (!lock.targetThreadIsSuspended()) {
             lock.shouldSuspend = true;
             try {
@@ -398,7 +403,12 @@ public final class Target_java_lang_Thread {
                     notifier.wait();
                 }
             } catch (InterruptedException e) {
+                /* Thread.suspend() is not supposed to be interrupted */
+                wasInterrupted = true;
             }
+        }
+        if (wasInterrupted) {
+            interrupt0(meta.getContext().getCurrentThread());
         }
     }
 }
