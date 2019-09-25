@@ -46,8 +46,6 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-import java.util.concurrent.ConcurrentMap;
-
 final class UtilFunctionCall {
 
     static final class FunctionCallRunnable implements Runnable {
@@ -92,27 +90,13 @@ final class UtilFunctionCall {
             } finally {
                 // call destructors from key create
                 if (this.isThread) {
-                    for (int key = 1; key <= context.curKeyVal; key++) {
-                        LLVMPointer destructor = UtilAccessCollectionWithBoundary.get(context.destructorStorage, key);
+                    for (int key = 1; key <= context.getNumberOfPthreadKeys(); key++) {
+                        final LLVMPointer destructor = context.getDestructor(key);
                         if (destructor != null && !destructor.isNull()) {
-                            ConcurrentMap<Long, LLVMPointer> specValueMap = UtilAccessCollectionWithBoundary.get(context.keyStorage, key);
-                            // if key was deleted continue with next destructor
-                            if (specValueMap == null) {
-                                continue;
-                            }
-                            Object keyVal = UtilAccessCollectionWithBoundary.get(specValueMap, Thread.currentThread().getId());
-                            if (keyVal != null) {
-                                // if key value is null pointer continue with next destructor
-                                try {
-                                    LLVMPointer keyValPointer = LLVMPointer.cast(keyVal);
-                                    if (keyValPointer.isNull()) {
-                                        continue;
-                                    }
-                                } catch (Exception e) {
-                                    // ignored
-                                }
-                                UtilAccessCollectionWithBoundary.remove(specValueMap, Thread.currentThread().getId());
-                                new FunctionCallRunnable(destructor, keyVal, this.context, false).run();
+                            final LLVMPointer keyMapping = context.getAndRemoveSpecificUnlessNull(key);
+                            if (keyMapping != null) {
+                                assert !keyMapping.isNull();
+                                new FunctionCallRunnable(destructor, keyMapping, this.context, false).run();
                             }
                         }
                     }

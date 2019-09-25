@@ -97,10 +97,10 @@ public final class LLVMContext {
 
     private final ArrayList<LLVMPointer> onceStorage;
 
-    public int curKeyVal;
-    public final Object keyLockObj;
-    public final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> keyStorage;
-    public final ConcurrentMap<Integer, LLVMPointer> destructorStorage;
+    private int pThreadKey;
+    private final Object pThreadKeyLock;
+    private final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> pThreadKeyStorage;
+    private final ConcurrentMap<Integer, LLVMPointer> pThreadDestructorStorage;
 
     public final Object callTargetLock;
     public CallTarget pthreadCallTarget;
@@ -233,10 +233,10 @@ public final class LLVMContext {
         this.threadReturnValueStorage = new ConcurrentHashMap<>();
         this.threadStorage = new ConcurrentHashMap<>();
         this.onceStorage = new ArrayList<>();
-        this.curKeyVal = 0;
-        this.keyLockObj = new Object();
-        this.keyStorage = new ConcurrentHashMap<>();
-        this.destructorStorage = new ConcurrentHashMap<>();
+        this.pThreadKey = 0;
+        this.pThreadKeyLock = new Object();
+        this.pThreadKeyStorage = new ConcurrentHashMap<>();
+        this.pThreadDestructorStorage = new ConcurrentHashMap<>();
         this.callTargetLock = new Object();
         this.pthreadCallTarget = null;
     }
@@ -782,6 +782,79 @@ public final class LLVMContext {
             node.awaitFinish();
             assert !runningThreads.contains(node); // should be unregistered by LLVMThreadNode
         }
+    }
+
+    public int createPThreadKey(LLVMPointer destructor) {
+        synchronized (pThreadKeyLock) {
+            // create new key
+            pThreadKey++;
+
+            // register the key
+            registerPThreadKey(pThreadKey, destructor);
+
+            // return the created key
+            return pThreadKey;
+        }
+    }
+
+    @TruffleBoundary
+    private void registerPThreadKey(int key, LLVMPointer destructor) {
+        // register destructor with new key
+        pThreadDestructorStorage.put(key, destructor);
+
+        // register key storage
+        pThreadKeyStorage.put(key, new ConcurrentHashMap<>());
+    }
+
+    public int getNumberOfPthreadKeys() {
+        return pThreadKey;
+    }
+
+    @TruffleBoundary
+    public void deletePThreadKey(int keyId) {
+        synchronized (pThreadKeyLock) {
+            pThreadKeyStorage.remove(keyId);
+            pThreadDestructorStorage.remove(keyId);
+        }
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getSpecific(int keyId) {
+        final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
+        if (value != null) {
+            final long threadId = Thread.currentThread().getId();
+            return value.get(threadId);
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    public boolean setSpecific(int keyId, LLVMPointer value) {
+        final ConcurrentMap<Long, LLVMPointer> specificStore = pThreadKeyStorage.get(keyId);
+        if (specificStore != null) {
+            specificStore.put(Thread.currentThread().getId(), value);
+            return true;
+        }
+        return false;
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId) {
+        final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
+        if (value != null) {
+            final long threadId = Thread.currentThread().getId();
+            final LLVMPointer keyMapping = value.get(threadId);
+            if (keyMapping != null && !keyMapping.isNull()) {
+                value.remove(threadId);
+                return keyMapping;
+            }
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getDestructor(int keyId) {
+        return pThreadDestructorStorage.get(keyId);
     }
 
     public RootCallTarget[] getDestructorFunctions() {
