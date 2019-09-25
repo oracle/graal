@@ -82,6 +82,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                /* We don't want any symbols from the static jdk-libs exported in the final image */
+                additionalPreOptions.add("-Wl,--exclude-libs");
+                additionalPreOptions.add("-Wl,ALL");
+            }
+
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
