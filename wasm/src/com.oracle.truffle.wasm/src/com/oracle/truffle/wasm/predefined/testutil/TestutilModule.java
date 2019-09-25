@@ -42,7 +42,7 @@ public class TestutilModule extends PredefinedModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);
-        defineFunction(module, Names.RESET_GLOBALS, types(), types(), new ResetGlobalsNode(language, null));
+        defineFunction(module, Names.RESET_GLOBALS, types(), types(), new ResetGlobalsNode(language, null, null));
         return module;
     }
 }

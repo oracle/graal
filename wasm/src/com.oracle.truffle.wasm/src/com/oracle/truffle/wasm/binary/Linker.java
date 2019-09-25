@@ -32,6 +32,8 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
+import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
 import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.UNRESOLVED_IMPORT;
@@ -161,6 +163,31 @@ public class Linker {
             }
             context.tables().ensureSizeAtLeast(tableIndex, initSize);
             return tableIndex;
+        }
+    }
+
+    WasmMemory tryResolveMemory(WasmContext context, WasmModule module, String importedModuleName, String importedMemoryName, int initSize, int maxSize) {
+        final WasmModule importedModule = context.modules().get(importedModuleName);
+        if (importedModule == null) {
+            throw new WasmLinkerException("Postponed memory resolution not yet implemented.");
+        } else {
+            final String exportedMemoryName = importedModule.symbolTable().exportedMemory();
+            if (exportedMemoryName == null) {
+                throw new WasmLinkerException(String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
+                                importedModuleName, importedMemoryName, module.name()));
+            }
+            if (!exportedMemoryName.equals(importedMemoryName)) {
+                throw new WasmLinkerException(String.format("The imported module '%s' exports a memory '%s', but module '%s' imports a memory '%s'.",
+                                importedModuleName, exportedMemoryName, module.name(), importedModuleName));
+            }
+            final WasmMemory memory = importedModule.symbolTable().memory();
+            if (memory.maxSize() >= 0 && (initSize > memory.maxSize() || maxSize > memory.maxSize())) {
+                // This requirement does not seem to be mentioned in the WebAssembly specification.
+                throw new WasmLinkerException(String.format("The memory '%s' in the imported module '%s' has maximum size %d, but module '%s' imports it with maximum size '%d'",
+                                importedMemoryName, importedModuleName, memory.maxSize(), module.name(), maxSize));
+            }
+            memory.grow(initSize);
+            return memory;
         }
     }
 }

@@ -36,7 +36,14 @@ public interface WasmMemory {
 
     void memcopy(long src, long dst, long n);
 
+    /**
+     * The size of the memory, measured in bytes.
+     */
     long size();
+
+    void grow(long newSize);
+
+    long maxSize();
 
     int load_i32(long address);
 

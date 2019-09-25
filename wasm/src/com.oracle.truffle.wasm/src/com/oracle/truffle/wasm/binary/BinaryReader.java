@@ -378,16 +378,21 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
-                    // TODO: This memory is normally supposed to be provided by the external environment (e.g. JS).
                     byte limitsPrefix = read1();
                     switch (limitsPrefix) {
                         case LimitsPrefix.NO_MAX: {
-                            readUnsignedInt32();  // initial size (in number of entries)
+                            // Read initial size (in number of entries).
+                            int initSize = readUnsignedInt32();
+                            int maxSize = -1;
+                            module.symbolTable().importMemory(context, moduleName, memberName, initSize, maxSize);
                             break;
                         }
                         case LimitsPrefix.WITH_MAX: {
-                            readUnsignedInt32();  // initial size (in number of entries)
-                            readUnsignedInt32();  // max size (in number of entries)
+                            // Read initial size (in number of entries).
+                            int initSize = readUnsignedInt32();
+                            // Read max size (in number of entries).
+                            int maxSize = readUnsignedInt32();
+                            module.symbolTable().importMemory(context, moduleName, memberName, initSize, maxSize);
                             break;
                         }
                         default:
@@ -421,7 +426,8 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readTableSection() {
         int numTables = readVectorLength();
-        // Since in the current version of WebAssembly supports at most one table instance,
+        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numTables, 1, "Can import or declare at most one table per module.");
+        // Since in the current version of WebAssembly supports at most one table instance per module.
         // this loop should be executed at most once.
         for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
             byte elemType = readElemType();
@@ -448,18 +454,24 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readMemorySection() {
         int numMemories = readVectorLength();
+        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numMemories, 1, "Can import or declare at most one memory per module.");
+        // Since in the current version of WebAssembly supports at most one table instance per module.
+        // this loop should be executed at most once.
         for (int i = 0; i != numMemories; ++i) {
             byte limitsPrefix = readLimitsPrefix();
             switch (limitsPrefix) {
                 case LimitsPrefix.NO_MAX: {
-                    /* Return value ignored, as we don't rely on the memory definition for the memory size. */
-                    readUnsignedInt32();  // initial size (in Wasm pages)
+                    // Read initial size (in Wasm pages).
+                    int initSize = readUnsignedInt32();
+                    int maxSize = -1;
+                    module.symbolTable().allocateMemory(language.getContextReference().get(), initSize, maxSize);
                     break;
                 }
                 case LimitsPrefix.WITH_MAX: {
-                    /* Return values ignored, as we don't rely on the memory definition for the memory size. */
-                    readUnsignedInt32();  // initial size (in Wasm pages)
-                    readUnsignedInt32();  // max size (in Wasm pages)
+                    // Read initial size (in Wasm pages).
+                    int initSize = readUnsignedInt32();
+                    // Read max size (in Wasm pages).
+                    int maxSize = readUnsignedInt32();
                     break;
                 }
                 default:
@@ -1266,7 +1278,8 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readDataSection() {
-        WasmMemory memory = WasmLanguage.getCurrentContext().memory();
+        WasmMemory memory = module.symbolTable().memory();
+        Assert.assertNotNull(memory, "No memory declared or imported in the module.");
         int numDataSections = readVectorLength();
         for (int i = 0; i != numDataSections; ++i) {
             int memIndex = readUnsignedInt32();

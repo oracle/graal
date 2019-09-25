@@ -43,6 +43,7 @@ import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
 import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 
@@ -88,6 +89,12 @@ public abstract class PredefinedModule {
         module.symbolTable().allocateTable(context, initSize, maxSize);
         module.symbolTable().exportTable(tableName);
         return 0;
+    }
+
+    protected WasmMemory defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize) {
+        final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
+        module.symbolTable().exportMemory(memoryName);
+        return memory;
     }
 
     protected byte[] types(byte... args) {

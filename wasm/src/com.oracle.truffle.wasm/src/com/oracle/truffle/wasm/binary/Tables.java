@@ -36,23 +36,23 @@ public class Tables {
     private static final int INITIAL_TABLES_SIZE = 8;
 
     @CompilationFinal(dimensions = 2) private Object[][] tables;
-    @CompilationFinal(dimensions = 1) private int[] maxsizes;
+    @CompilationFinal(dimensions = 1) private int[] maxSizes;
     private int numTables;
 
     public Tables() {
         this.tables = new Object[INITIAL_TABLES_SIZE][];
-        this.maxsizes = new int[INITIAL_TABLES_SIZE];
+        this.maxSizes = new int[INITIAL_TABLES_SIZE];
         this.numTables = 0;
     }
 
     private void ensureCapacity() {
         if (numTables == tables.length) {
-            final Object[][] nglobals = new Object[tables.length * 2][];
-            System.arraycopy(tables, 0, nglobals, 0, tables.length);
-            tables = nglobals;
-            final int[] nmaxsizes = new int[maxsizes.length * 2];
-            System.arraycopy(maxsizes, 0, nmaxsizes, 0, maxsizes.length);
-            maxsizes = nmaxsizes;
+            final Object[][] updatedGlobals = new Object[tables.length * 2][];
+            System.arraycopy(tables, 0, updatedGlobals, 0, tables.length);
+            tables = updatedGlobals;
+            final int[] updatedMaxSizes = new int[maxSizes.length * 2];
+            System.arraycopy(maxSizes, 0, updatedMaxSizes, 0, maxSizes.length);
+            maxSizes = updatedMaxSizes;
         }
     }
 
@@ -63,7 +63,7 @@ public class Tables {
     public int allocateTable(int initSize, int maxSize) {
         ensureCapacity();
         tables[numTables] = new Object[initSize];
-        maxsizes[numTables] = maxSize;
+        maxSizes[numTables] = maxSize;
         int idx = numTables;
         numTables++;
         return idx;
@@ -76,7 +76,7 @@ public class Tables {
 
     public int maxSizeOf(int index) {
         assert index < numTables;
-        return maxsizes[index];
+        return maxSizes[index];
     }
 
     public void ensureSizeAtLeast(int index, int targetSize) {

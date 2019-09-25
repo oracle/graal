@@ -35,11 +35,12 @@ import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.WasmVoidResult;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class ResetGlobalsNode extends WasmPredefinedRootNode {
-    public ResetGlobalsNode(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public ResetGlobalsNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override

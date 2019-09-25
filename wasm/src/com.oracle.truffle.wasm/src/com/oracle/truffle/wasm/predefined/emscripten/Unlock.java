@@ -32,11 +32,12 @@ package com.oracle.truffle.wasm.predefined.emscripten;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class Unlock extends WasmPredefinedRootNode {
-    public Unlock(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public Unlock(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override

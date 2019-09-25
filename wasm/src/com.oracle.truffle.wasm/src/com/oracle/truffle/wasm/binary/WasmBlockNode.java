@@ -218,6 +218,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -821,90 +822,91 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int baseAddress = popInt(frame, stackPointer);
                     int address = baseAddress + memOffset;
+                    WasmMemory memory = module().symbolTable().memory();
 
                     try {
                         switch (opcode) {
                             case I32_LOAD: {
-                                context.memory().validateAddress(address, 32);
-                                int value = context.memory().load_i32(address);
+                                memory.validateAddress(address, 32);
+                                int value = memory.load_i32(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD: {
-                                context.memory().validateAddress(address, 64);
-                                long value = context.memory().load_i64(address);
+                                memory.validateAddress(address, 64);
+                                long value = memory.load_i64(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case F32_LOAD: {
-                                context.memory().validateAddress(address, 32);
-                                float value = context.memory().load_f32(address);
+                                memory.validateAddress(address, 32);
+                                float value = memory.load_f32(address);
                                 pushFloat(frame, stackPointer, value);
                                 break;
                             }
                             case F64_LOAD: {
-                                context.memory().validateAddress(address, 64);
-                                double value = context.memory().load_f64(address);
+                                memory.validateAddress(address, 64);
+                                double value = memory.load_f64(address);
                                 pushDouble(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD8_S: {
-                                context.memory().validateAddress(address, 8);
-                                int value = context.memory().load_i32_8s(address);
+                                memory.validateAddress(address, 8);
+                                int value = memory.load_i32_8s(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD8_U: {
-                                context.memory().validateAddress(address, 8);
-                                int value = context.memory().load_i32_8u(address);
+                                memory.validateAddress(address, 8);
+                                int value = memory.load_i32_8u(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_S: {
-                                context.memory().validateAddress(address, 16);
-                                int value = context.memory().load_i32_16s(address);
+                                memory.validateAddress(address, 16);
+                                int value = memory.load_i32_16s(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_U: {
-                                context.memory().validateAddress(address, 16);
-                                int value = context.memory().load_i32_16u(address);
+                                memory.validateAddress(address, 16);
+                                int value = memory.load_i32_16u(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD8_S: {
-                                context.memory().validateAddress(address, 8);
-                                long value = context.memory().load_i64_8s(address);
+                                memory.validateAddress(address, 8);
+                                long value = memory.load_i64_8s(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD8_U: {
-                                context.memory().validateAddress(address, 8);
-                                long value = context.memory().load_i64_8u(address);
+                                memory.validateAddress(address, 8);
+                                long value = memory.load_i64_8u(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_S: {
-                                context.memory().validateAddress(address, 16);
-                                long value = context.memory().load_i64_16s(address);
+                                memory.validateAddress(address, 16);
+                                long value = memory.load_i64_16s(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_U: {
-                                context.memory().validateAddress(address, 16);
-                                long value = context.memory().load_i64_16u(address);
+                                memory.validateAddress(address, 16);
+                                long value = memory.load_i64_16u(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD32_S: {
-                                context.memory().validateAddress(address, 32);
-                                long value = context.memory().load_i64_32s(address);
+                                memory.validateAddress(address, 32);
+                                long value = memory.load_i64_32s(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD32_U: {
-                                context.memory().validateAddress(address, 32);
-                                long value = context.memory().load_i64_32u(address);
+                                memory.validateAddress(address, 32);
+                                long value = memory.load_i64_32u(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
@@ -934,6 +936,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += memOffsetConstantLength;
+                    WasmMemory memory = module().symbolTable().memory();
 
                     try {
                         switch (opcode) {
@@ -943,8 +946,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 32);
-                                context.memory().store_i32(address, value);
+                                memory.validateAddress(address, 32);
+                                memory.store_i32(address, value);
                                 break;
                             }
                             case I64_STORE: {
@@ -953,8 +956,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 64);
-                                context.memory().store_i64(address, value);
+                                memory.validateAddress(address, 64);
+                                memory.store_i64(address, value);
                                 break;
                             }
                             case F32_STORE: {
@@ -963,8 +966,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 32);
-                                context.memory().store_f32(address, value);
+                                memory.validateAddress(address, 32);
+                                memory.store_f32(address, value);
                                 break;
                             }
                             case F64_STORE: {
@@ -973,8 +976,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 64);
-                                context.memory().store_f64(address, value);
+                                memory.validateAddress(address, 64);
+                                memory.store_f64(address, value);
                                 break;
                             }
                             case I32_STORE_8: {
@@ -983,8 +986,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 8);
-                                context.memory().store_i32_8(address, (byte) value);
+                                memory.validateAddress(address, 8);
+                                memory.store_i32_8(address, (byte) value);
                                 break;
                             }
                             case I32_STORE_16: {
@@ -993,8 +996,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 16);
-                                context.memory().store_i32_16(address, (short) value);
+                                memory.validateAddress(address, 16);
+                                memory.store_i32_16(address, (short) value);
                                 break;
                             }
                             case I64_STORE_8: {
@@ -1003,8 +1006,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 8);
-                                context.memory().store_i64_8(address, (byte) value);
+                                memory.validateAddress(address, 8);
+                                memory.store_i64_8(address, (byte) value);
                                 break;
                             }
                             case I64_STORE_16: {
@@ -1013,8 +1016,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 16);
-                                context.memory().store_i64_16(address, (short) value);
+                                memory.validateAddress(address, 16);
+                                memory.store_i64_16(address, (short) value);
                                 break;
                             }
                             case I64_STORE_32: {
@@ -1023,8 +1026,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                context.memory().validateAddress(address, 32);
-                                context.memory().store_i64_32(address, (int) value);
+                                memory.validateAddress(address, 32);
+                                memory.store_i64_32(address, (int) value);
                                 break;
                             }
                         }

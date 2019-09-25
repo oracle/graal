@@ -37,13 +37,14 @@ import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class WasiFdWrite extends WasmPredefinedRootNode {
     private TruffleLogger logger = TruffleLogger.getLogger("wasm");
 
-    public WasiFdWrite(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public WasiFdWrite(WasmLanguage language, WasmMemory memory) {
+        super(language, null, memory);
     }
 
     @Override
@@ -54,14 +55,12 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
             logger.finest(() -> "argument: " + arg);
         }
 
-        WasmContext context = contextReference().get();
-
         int stream = (int) args[0];
         int iov = (int) args[1];
         int iovcnt = (int) args[2];
         int pnum = (int) args[3];
 
-        Consumer<Character> charPrinter = null;
+        Consumer<Character> charPrinter;
         switch (stream) {
             case 1:
                 charPrinter = System.out::print;
@@ -77,13 +76,13 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
 
         int num = 0;
         for (int i = 0; i < iovcnt; i++) {
-            int ptr = context.memory().load_i32(iov + i * 8);
-            int len = context.memory().load_i32(iov + (i * 8 + 4));
+            int ptr = memory.load_i32(iov + i * 8);
+            int len = memory.load_i32(iov + (i * 8 + 4));
             for (int j = 0; j < len; j++) {
-                charPrinter.accept((char) context.memory().load_i32_8u(ptr + j));
+                charPrinter.accept((char) memory.load_i32_8u(ptr + j));
             }
             num += len;
-            context.memory().store_i32(pnum, num);
+            memory.store_i32(pnum, num);
         }
 
         return 0;

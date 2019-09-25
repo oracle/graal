@@ -34,11 +34,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class AbortNode extends WasmPredefinedRootNode {
-    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override

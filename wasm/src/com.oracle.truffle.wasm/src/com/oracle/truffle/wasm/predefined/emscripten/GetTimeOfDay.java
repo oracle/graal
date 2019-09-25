@@ -34,11 +34,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class GetTimeOfDay extends WasmPredefinedRootNode {
-    public GetTimeOfDay(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public GetTimeOfDay(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override
@@ -56,8 +57,8 @@ public class GetTimeOfDay extends WasmPredefinedRootNode {
         logger.finest("GetTimeOfDay EXECUTE");
 
         long now = getCurrentTime();
-        context.memory().store_i32(ptr, (int) (now / 1000));
-        context.memory().store_i32(ptr + 4, (int) (now % 1000 * 1000));
+        memory.store_i32(ptr, (int) (now / 1000));
+        memory.store_i32(ptr + 4, (int) (now % 1000 * 1000));
 
         return 0;
     }

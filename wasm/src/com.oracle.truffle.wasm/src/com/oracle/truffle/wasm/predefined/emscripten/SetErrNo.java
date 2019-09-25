@@ -33,11 +33,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class SetErrNo extends WasmPredefinedRootNode {
-    public SetErrNo(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public SetErrNo(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override
@@ -55,7 +56,7 @@ public class SetErrNo extends WasmPredefinedRootNode {
         logger.finest("SetErrNo EXECUTE");
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
-        context.memory().store_i32(3120, value);
+        memory.store_i32(3120, value);
 
         return value;
     }

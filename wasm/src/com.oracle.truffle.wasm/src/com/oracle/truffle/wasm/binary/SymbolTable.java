@@ -39,6 +39,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
+import com.oracle.truffle.wasm.binary.memory.UnsafeWasmMemory;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.collection.LongArrayList;
@@ -151,7 +153,7 @@ public class SymbolTable {
     @CompilationFinal private int maxGlobalIndex;
 
     /**
-     * The index of the table from the global table space, which this module is using.
+     * The index of the table from the context-specific table space, which this module is using.
      *
      * In the current WebAssembly specification, a module can use at most one table.
      * The value {@link SymbolTable#UNINITIALIZED_TABLE_BIT} denotes that this module uses no table.
@@ -167,6 +169,24 @@ public class SymbolTable {
      * The name of the exported table of this module, if any.
      */
     @CompilationFinal private String exportedTable;
+
+    /**
+     * Memory that this module is using.
+     *
+     * In the current WebAssembly specification, a module can use at most one memory.
+     * The value {@code null} denotes that this module uses no memory.
+     */
+    @CompilationFinal private WasmMemory memory;
+
+    /**
+     * The memory used in this module.
+     */
+    @CompilationFinal private ImportDescriptor importedMemoryDescriptor;
+
+    /**
+     * The name of the exported memory of this module, if any.
+     */
+    @CompilationFinal private String exportedMemory;
 
     public SymbolTable(WasmModule module) {
         this.module = module;
@@ -188,6 +208,9 @@ public class SymbolTable {
         this.tableIndex = UNINITIALIZED_TABLE_BIT;
         this.importedTableDescriptor = null;
         this.exportedTable = null;
+        this.memory = null;
+        this.importedMemoryDescriptor = null;
+        this.exportedMemory = null;
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
@@ -350,7 +373,7 @@ public class SymbolTable {
         return (byte) typeData[typeOffset + 2 + numArgs + i];
     }
 
-    public ByteArrayList getFunctionTypeArgumentTypes(int typeIndex) {
+    ByteArrayList getFunctionTypeArgumentTypes(int typeIndex) {
         ByteArrayList types = new ByteArrayList();
         for (int i = 0; i != getFunctionTypeNumArguments(typeIndex); ++i) {
             types.add(getFunctionTypeArgumentTypeAt(typeIndex, i));
@@ -358,21 +381,21 @@ public class SymbolTable {
         return types;
     }
 
-    public void exportFunction(String exportName, int functionIndex) {
+    void exportFunction(String exportName, int functionIndex) {
         exportedFunctions.put(exportName, functions[functionIndex]);
     }
 
-    public Map<String, WasmFunction> exportedFunctions() {
+    Map<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
-    public WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
+    WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
         WasmFunction function = allocateFunction(typeIndex, new ImportDescriptor(moduleName, functionName));
         importedFunctions.add(function);
         return function;
     }
 
-    public List<WasmFunction> importedFunctions() {
+    List<WasmFunction> importedFunctions() {
         return importedFunctions;
     }
 
@@ -400,12 +423,12 @@ public class SymbolTable {
         return address;
     }
 
-    public int declareGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
+    int declareGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert !resolution.isImported();
         return allocateGlobal(context, index, valueType, mutability, resolution);
     }
 
-    public int importGlobal(WasmContext context, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
+    int importGlobal(WasmContext context, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert resolution.isImported();
         final int address = allocateGlobal(context, index, valueType, mutability, resolution);
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
@@ -416,25 +439,25 @@ public class SymbolTable {
         return maxGlobalIndex;
     }
 
-    public int globalAddress(int index) {
+    int globalAddress(int index) {
         return globalAddresses[index];
     }
 
-    public boolean globalExported(int index) {
+    boolean globalExported(int index) {
         final int exportStatus = globalTypes[index] & GLOBAL_EXPORT_BIT;
         return exportStatus != 0;
     }
 
-    public GlobalResolution globalResolution(int index) {
+    GlobalResolution globalResolution(int index) {
         final int resolutionValue = (globalTypes[index] >>> 16) & 0xff;
         return GlobalResolution.VALUES[resolutionValue];
     }
 
-    public byte globalMutability(int index) {
+    byte globalMutability(int index) {
         return (byte) ((globalTypes[index] >>> 8) & 0xff);
     }
 
-    public byte globalValueType(int index) {
+    byte globalValueType(int index) {
         return (byte) (globalTypes[index] & 0xff);
     }
 
@@ -466,7 +489,7 @@ public class SymbolTable {
         }
     }
 
-    public Map<String, Integer> exportedGlobals() {
+    Map<String, Integer> exportedGlobals() {
         return exportedGlobals;
     }
 
@@ -479,7 +502,7 @@ public class SymbolTable {
         return null;
     }
 
-    public void exportGlobal(String name, int index) {
+    void exportGlobal(String name, int index) {
         if (globalExported(index)) {
             throw new WasmMemoryException("Global " + index + " already exported under the name: " + nameOfExportedGlobal(index));
         }
@@ -499,14 +522,13 @@ public class SymbolTable {
         tableIndex = context.tables().allocateTable(initSize, maxSize);
     }
 
-    public void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
+    void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
         validateSingleTable();
         importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
         tableIndex = context.linker().tryResolveTable(context, module, moduleName, tableName, initSize, maxSize);
     }
 
     private void validateSingleTable() {
-        // TODO: Check if multiple table imports are actually allowed.
         if (importedTableDescriptor != null) {
             throw new WasmException("A table has been already imported in the module.");
         }
@@ -515,7 +537,7 @@ public class SymbolTable {
         }
     }
 
-    public boolean tableExists() {
+    boolean tableExists() {
         return importedTableDescriptor != null || (tableIndex & UNINITIALIZED_TABLE_BIT) == 0;
     }
 
@@ -529,19 +551,23 @@ public class SymbolTable {
         exportedTable = name;
     }
 
-    public int tableIndex() {
+    int tableIndex() {
         return tableIndex;
     }
 
-    public ImportDescriptor importedTable() {
+    int tableCount() {
+        return tableExists() ? 1 : 0;
+    }
+
+    ImportDescriptor importedTable() {
         return importedTableDescriptor;
     }
 
-    public String exportedTable() {
+    String exportedTable() {
         return exportedTable;
     }
 
-    public void initializeTableWithFunctions(WasmContext context, int offset, int[] contents) {
+    void initializeTableWithFunctions(WasmContext context, int offset, int[] contents) {
         context.tables().ensureSizeAtLeast(tableIndex, offset + contents.length);
         final Object[] table = context.tables().table(tableIndex);
         for (int i = 0; i < contents.length; i++) {
@@ -549,5 +575,57 @@ public class SymbolTable {
             final WasmFunction function = function(functionIndex);
             table[offset + i] = function;
         }
+    }
+
+    public WasmMemory allocateMemory(WasmContext context, int initSize, int maxSize) {
+        validateSingleMemory();
+        memory = new UnsafeWasmMemory(initSize, maxSize);
+        context.memories().allocateMemory(memory);
+        return memory;
+    }
+
+    void importMemory(WasmContext context, String moduleName, String memoryName, int initSize, int maxSize) {
+        validateSingleMemory();
+        importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);
+        memory = context.linker().tryResolveMemory(context, module, moduleName, memoryName, initSize, maxSize);
+    }
+
+    private void validateSingleMemory() {
+        if (importedMemoryDescriptor != null) {
+            throw new WasmException("Memory has been already imported in the module.");
+        }
+        if (memory == null) {
+            throw new WasmException("Memory has been already declared in the module.");
+        }
+    }
+
+    boolean memoryExists() {
+        return importedMemoryDescriptor != null || memory == null;
+    }
+
+    public void exportMemory(String name) {
+        if (exportedMemory != null) {
+            throw new WasmException("A memory has been already exported from this module.");
+        }
+        if (!memoryExists()) {
+            throw new WasmException("No memory has been declared or imported, so memory cannot be exported.");
+        }
+        exportedMemory = name;
+    }
+
+    WasmMemory memory() {
+        return memory;
+    }
+
+    int memoryCount() {
+        return memoryExists() ? 1 : 0;
+    }
+
+    ImportDescriptor importedMemory() {
+        return importedMemoryDescriptor;
+    }
+
+    String exportedMemory() {
+        return exportedMemory;
     }
 }

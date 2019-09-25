@@ -27,31 +27,57 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.predefined.emscripten;
+package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
-import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
-    public EmscriptenGetHeapSize(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class Memories {
+    private static final int INITIAL_MEMORIES_SIZE = 4;
+
+    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
+    private int numMemories;
+
+    public Memories() {
+        this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
+        this.numMemories = 0;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        WasmContext context = contextReference().get();
-
-        logger.finest("EmscriptenGetHeapSize EXECUTE");
-
-        return memory.size();
+    private void ensureCapacity() {
+        if (numMemories == memories.length) {
+            final WasmMemory[] updatedMemories = new WasmMemory[memories.length * 2];
+            System.arraycopy(memories, 0, updatedMemories, 0, memories.length);
+            memories = updatedMemories;
+        }
     }
 
-    @Override
-    public String name() {
-        return "_emscripten_get_heap_size";
+    public int memoryCount() {
+        return numMemories;
+    }
+
+    public int allocateMemory(WasmMemory memory) {
+        ensureCapacity();
+        memories[numMemories] = memory;
+        int idx = numMemories;
+        numMemories++;
+        return idx;
+    }
+
+    public WasmMemory memory(int index) {
+        assert index < numMemories;
+        return memories[index];
+    }
+
+    public void ensureSizeAtLeast(int index, long targetSize) {
+        final long maxSize = memories[index].maxSize();
+        if (maxSize >= 0 && targetSize > maxSize) {
+            throw new WasmException("Table " + index + " cannot be resized to " + targetSize + ", " +
+                            "declared maximum size is " + maxSize);
+        }
+        WasmMemory memory = memories[index];
+        if (memory.size() < targetSize) {
+            memory.grow(targetSize);
+        }
     }
 }

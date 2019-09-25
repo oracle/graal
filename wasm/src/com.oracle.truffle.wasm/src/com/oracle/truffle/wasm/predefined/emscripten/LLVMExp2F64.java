@@ -33,11 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 public class LLVMExp2F64 extends WasmPredefinedRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry) {
-        super(language, codeEntry);
+    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override
