@@ -31,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.function.Function;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -53,8 +52,6 @@ import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
@@ -88,12 +85,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
-        }
-
-        @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            cmd.add("-Wl,--defsym");
-            cmd.add("-Wl," + ent.getValue() + "=" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()));
         }
 
         @Override
@@ -135,11 +126,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
 
         @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            cmd.add("-Wl,-alias,_" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()) + ",_" + ent.getValue());
-        }
-
-        @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
                 case STATIC_EXECUTABLE:
@@ -159,11 +145,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         WindowsCCLinkerInvocation() {
             setCompilerCommand("CL");
-        }
-
-        @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            // cmd.add("-Wl,-alias," + ent.getValue() + "," + ent.getKey());
         }
 
         @Override
