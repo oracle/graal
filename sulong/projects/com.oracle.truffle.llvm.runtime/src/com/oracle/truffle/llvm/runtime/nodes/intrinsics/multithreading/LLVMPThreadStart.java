@@ -128,10 +128,10 @@ public final class LLVMPThreadStart {
 
             final NodeFactory nodeFactory = LLVMLanguage.getLanguage().getNodeFactory();
             this.callNode = nodeFactory.createFunctionCall(
-                    nodeFactory.createFrameRead(PointerType.VOID, functionSlot),
+                            nodeFactory.createFrameRead(PointerType.VOID, functionSlot),
                             new LLVMExpressionNode[]{
-                                    nodeFactory.createFrameRead(PointerType.VOID, spSlot),
-                                    nodeFactory.createFrameRead(PointerType.VOID, argSlot)
+                                            nodeFactory.createFrameRead(PointerType.VOID, spSlot),
+                                            nodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
                             new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
         }
