@@ -74,6 +74,13 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         AF2Offset = o2;
     }
 
+    // Side effect to create a deopt point, after possible virtualization.
+    static int sideEffectField;
+
+    private static void sideEffect() {
+        sideEffectField = 5;
+    }
+
     public static int unsafeSnippet1(double i1, boolean c) {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
@@ -230,6 +237,34 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getShort(t, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_INT_BASE_OFFSET);
     }
 
+    public static int unsafeSnippet15(long i1, boolean c) {
+        byte[] b = new byte[8];
+        UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getShort(b, getUnsafeByteArrayOffset(0));
+    }
+
+    private static long getUnsafeByteArrayOffset(int i) {
+        return (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * i + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
+
+    public static byte[] unsafeSnippet16(long l, int i, short s, double d, float f, boolean c) {
+        byte[] b = new byte[128];
+        UNSAFE.putLong(b, getUnsafeByteArrayOffset(8), l);
+        UNSAFE.putInt(b, getUnsafeByteArrayOffset(20), i);
+        UNSAFE.putShort(b, getUnsafeByteArrayOffset(26), s);
+        UNSAFE.putDouble(b, getUnsafeByteArrayOffset(32), d);
+        UNSAFE.putFloat(b, getUnsafeByteArrayOffset(44), f);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return b;
+    }
+
     @Test
     public void testUnsafePEA01() {
         performTest("unsafeSnippet1", 1.0);
@@ -304,6 +339,16 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         performTest("unsafeSnippet14", 0x0102030405060708L, 0x01020304);
     }
 
+    @Test
+    public void testUnsafePEA15() {
+        performTest("unsafeSnippet15", 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA16() {
+        performTest("unsafeSnippet16", 0x0102030405060708L, 0x01020304, (short) 0x0102, Double.longBitsToDouble(0x0102030405060708L), Float.intBitsToFloat(0x01020304));
+    }
+
     private void performTest(String snippet, int arg) {
         for (boolean b1 : FT) {
             for (boolean b2 : FT) {
@@ -348,6 +393,14 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         for (boolean b1 : FT) {
             for (boolean b2 : FT) {
                 testPartialEscapeReadElimination(snippet, b1, arg1, b2);
+            }
+        }
+    }
+
+    private void performTest(String snippet, long l, int i, short s, double d, float f) {
+        for (boolean b1 : FT) {
+            for (boolean b2 : FT) {
+                testPartialEscapeReadElimination(snippet, b1, l, i, s, d, f, b2);
             }
         }
     }
