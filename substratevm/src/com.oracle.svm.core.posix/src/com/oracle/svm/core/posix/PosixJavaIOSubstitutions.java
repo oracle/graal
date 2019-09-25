@@ -843,14 +843,6 @@ final class Target_java_io_FileInputStream_jni {
     static native void initIDs();
 }
 
-@TargetClass(java.io.RandomAccessFile.class)
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-final class Target_java_io_RandomAccessFile_jni {
-
-    @Alias
-    static native void initIDs();
-}
-
 @TargetClass(java.io.FileDescriptor.class)
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileDescriptor_jni {
@@ -885,14 +877,6 @@ public final class PosixJavaIOSubstitutions {
     @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static boolean initIDs() {
         try {
-            /*
-             * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
-             * initializeSystemClasses which loads zip.dll.
-             *
-             * We might want to consider calling System.initializeSystemClasses instead of
-             * explicitly loading the builtin zip library.
-             */
-
             System.loadLibrary("java");
 
             Target_java_io_FileDescriptor_jni.initIDs();
@@ -900,7 +884,6 @@ public final class PosixJavaIOSubstitutions {
             Target_java_io_FileOutputStream_jni.initIDs();
             Target_java_io_UnixFileSystem_jni.initIDs();
 
-            System.loadLibrary("zip");
             return true;
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();

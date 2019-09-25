@@ -83,6 +83,14 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
             JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "append"));
         }
 
+        /* Used by FileOutputStream.initIDs, which is called unconditionally during startup. */
+        JNIRuntimeAccess.register(fields(a, "java.io.FileOutputStream", "fd"));
+        /* Used by FileInputStream.initIDs, which is called unconditionally during startup. */
+        JNIRuntimeAccess.register(fields(a, "java.io.FileInputStream", "fd"));
+        /* Used by UnixFileSystem/WinNTFileSystem.initIDs, called unconditionally during startup. */
+        JNIRuntimeAccess.register(java.io.File.class);
+        JNIRuntimeAccess.register(fields(a, "java.io.File", "path"));
+
         // TODO classify the remaining registrations
 
         JNIRuntimeAccess.register(byte[].class); /* used by ProcessEnvironment.environ() */
@@ -96,24 +104,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
 
-        JNIRuntimeAccess.register(java.io.File.class);
-        JNIRuntimeAccess.register(fields(a, "java.io.File", "path"));
-
-        a.registerReachabilityHandler(JNIRegistrationJava::registerFileOutputStreamInitIDs, method(a, "java.io.FileOutputStream", "initIDs"));
-        a.registerReachabilityHandler(JNIRegistrationJava::registerFileInputStreamInitIDs, method(a, "java.io.FileInputStream", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            JNIRuntimeAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
-        }
-    }
-
-    private static void registerFileOutputStreamInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.io.FileOutputStream", "fd"));
-    }
-
-    private static void registerFileInputStreamInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.io.FileInputStream", "fd"));
     }
 
     private static void registerRandomAccessFileInitIDs(DuringAnalysisAccess a) {

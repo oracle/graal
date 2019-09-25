@@ -35,7 +35,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JDKLibZipSubstitutions;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -59,17 +58,10 @@ class WindowsNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
-        /*
-         * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
-         * initializeSystemClasses which loads zip.dll.
-         *
-         * We might want to consider calling System.initializeSystemClasses instead of explicitly
-         * loading the builtin zip library.
-         */
         if (!WindowsJavaIOSubstitutions.initIDs()) {
             return false;
         }
-        if (!JDKLibZipSubstitutions.initIDs()) {
+        if (!loadZipLibrary()) {
             return false;
         }
         return true;

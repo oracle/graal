@@ -35,7 +35,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JDKLibZipSubstitutions;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -62,7 +61,7 @@ class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
             if (!PosixJavaIOSubstitutions.initIDs()) {
                 return false;
             }
-            if (!JDKLibZipSubstitutions.initIDs()) {
+            if (!loadZipLibrary()) {
                 return false;
             }
             if (!PosixJavaLangSubstitutions.initIDs()) {
