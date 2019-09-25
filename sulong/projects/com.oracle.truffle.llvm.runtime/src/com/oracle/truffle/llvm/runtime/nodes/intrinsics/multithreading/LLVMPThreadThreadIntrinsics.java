@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Error;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pthread.LLVMThreadException;
+import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 
 public final class LLVMPThreadThreadIntrinsics {
 
@@ -60,7 +62,7 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             UtilFunctionCall.FunctionCallRunnable init = new UtilFunctionCall.FunctionCallRunnable(startRoutine, arg, context, true);
-            Thread t = context.createThread(init);
+            Thread t = context.getpThreadContext().createThread(init);
             store.executeWithTarget(thread, t.getId());
             t.start();
             return 0;
@@ -72,7 +74,7 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         protected int doIntrinsic(Object returnValue, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            context.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
+            context.getpThreadContext().setThreadReturnValue(Thread.currentThread().getId(), returnValue);
             throw new PThreadExitException();
         }
     }
@@ -91,13 +93,13 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             try {
-                Thread thread = context.getThread(threadId);
+                Thread thread = context.getpThreadContext().getThread(threadId);
                 if (thread == null) {
                     return 0;
                 }
 
                 thread.join();
-                Object retVal = context.getThreadReturnValue(threadId);
+                Object retVal = context.getpThreadContext().getThreadReturnValue(threadId);
                 if (!threadReturn.isNull()) {
                     storeNode.executeWithTarget(threadReturn, retVal);
                 }
@@ -122,7 +124,7 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             // check if pthread_once was called before
-            if (!context.shouldExecuteOnce(onceControl)) {
+            if (!context.getpThreadContext().shouldExecuteOnce(onceControl)) {
                 return 0;
             }
 

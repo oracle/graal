@@ -43,11 +43,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
@@ -91,19 +91,6 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
-    // the long-key is the thread-id
-    private final ConcurrentMap<Long, Object> threadReturnValueStorage;
-    private final ConcurrentMap<Long, Thread> threadStorage;
-
-    private final ArrayList<LLVMPointer> onceStorage;
-
-    private int pThreadKey;
-    private final Object pThreadKeyLock;
-    private final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> pThreadKeyStorage;
-    private final ConcurrentMap<Integer, LLVMPointer> pThreadDestructorStorage;
-
-    public final Object callTargetLock;
-    public CallTarget pthreadCallTarget;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -164,6 +151,9 @@ public final class LLVMContext {
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
     private final LLVMNativePointer sigErr;
+
+    // pThread state
+    private final LLVMPThreadContext pThreadContext;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -229,16 +219,7 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
-        // pthread storages
-        this.threadReturnValueStorage = new ConcurrentHashMap<>();
-        this.threadStorage = new ConcurrentHashMap<>();
-        this.onceStorage = new ArrayList<>();
-        this.pThreadKey = 0;
-        this.pThreadKeyLock = new Object();
-        this.pThreadKeyStorage = new ConcurrentHashMap<>();
-        this.pThreadDestructorStorage = new ConcurrentHashMap<>();
-        this.callTargetLock = new Object();
-        this.pthreadCallTarget = null;
+        pThreadContext = new LLVMPThreadContext(env);
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {
@@ -421,7 +402,7 @@ public final class LLVMContext {
 
     void dispose(LLVMMemory memory) {
         // join all created pthread - threads
-        joinAllThreads();
+        pThreadContext.joinAllThreads();
 
         printNativeCallStatistic();
 
@@ -446,18 +427,6 @@ public final class LLVMContext {
 
         if (tracer != null) {
             tracer.dispose();
-        }
-    }
-
-    private void joinAllThreads() {
-        synchronized (threadStorage) {
-            for (Thread createdThread : threadStorage.values()) {
-                try {
-                    createdThread.join();
-                } catch (InterruptedException e) {
-                    // ignored
-                }
-            }
         }
     }
 
@@ -784,121 +753,12 @@ public final class LLVMContext {
         }
     }
 
-    public int createPThreadKey(LLVMPointer destructor) {
-        synchronized (pThreadKeyLock) {
-            // create new key
-            pThreadKey++;
-
-            // register the key
-            registerPThreadKey(pThreadKey, destructor);
-
-            // return the created key
-            return pThreadKey;
-        }
-    }
-
-    @TruffleBoundary
-    private void registerPThreadKey(int key, LLVMPointer destructor) {
-        // register destructor with new key
-        pThreadDestructorStorage.put(key, destructor);
-
-        // register key storage
-        pThreadKeyStorage.put(key, new ConcurrentHashMap<>());
-    }
-
-    public int getNumberOfPthreadKeys() {
-        return pThreadKey;
-    }
-
-    @TruffleBoundary
-    public void deletePThreadKey(int keyId) {
-        synchronized (pThreadKeyLock) {
-            pThreadKeyStorage.remove(keyId);
-            pThreadDestructorStorage.remove(keyId);
-        }
-    }
-
-    @TruffleBoundary
-    public LLVMPointer getSpecific(int keyId) {
-        final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
-        if (value != null) {
-            final long threadId = Thread.currentThread().getId();
-            return value.get(threadId);
-        }
-        return null;
-    }
-
-    @TruffleBoundary
-    public boolean setSpecific(int keyId, LLVMPointer value) {
-        final ConcurrentMap<Long, LLVMPointer> specificStore = pThreadKeyStorage.get(keyId);
-        if (specificStore != null) {
-            specificStore.put(Thread.currentThread().getId(), value);
-            return true;
-        }
-        return false;
-    }
-
-    @TruffleBoundary
-    public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId) {
-        final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
-        if (value != null) {
-            final long threadId = Thread.currentThread().getId();
-            final LLVMPointer keyMapping = value.get(threadId);
-            if (keyMapping != null && !keyMapping.isNull()) {
-                value.remove(threadId);
-                return keyMapping;
-            }
-        }
-        return null;
-    }
-
-    @TruffleBoundary
-    public LLVMPointer getDestructor(int keyId) {
-        return pThreadDestructorStorage.get(keyId);
-    }
-
     public RootCallTarget[] getDestructorFunctions() {
         return destructorFunctions.toArray(new RootCallTarget[destructorFunctions.size()]);
     }
 
     public synchronized List<LLVMThread> getRunningThreads() {
         return Collections.unmodifiableList(runningThreads);
-    }
-
-    public boolean shouldExecuteOnce(LLVMPointer onceControl) {
-        boolean shouldExecute = true;
-        synchronized (onceStorage) {
-            if (onceStorage.contains(onceControl)) {
-                shouldExecute = false;
-            } else {
-                onceStorage.add(onceControl);
-            }
-        }
-        return shouldExecute;
-    }
-
-    @TruffleBoundary
-    public synchronized Thread createThread(Runnable runnable) {
-        synchronized (threadStorage) {
-            final Thread thread = env.createThread(runnable);
-            threadStorage.put(thread.getId(), thread);
-            return thread;
-        }
-    }
-
-    @TruffleBoundary
-    public Thread getThread(long threadID) {
-        return threadStorage.get(threadID);
-    }
-
-    @TruffleBoundary
-    public void setThreadReturnValue(long threadId, Object value) {
-        threadReturnValueStorage.put(threadId, value);
-    }
-
-    @TruffleBoundary
-    public Object getThreadReturnValue(long threadId) {
-        return threadReturnValueStorage.get(threadId);
     }
 
     public void addDataLayout(DataLayout layout) {
@@ -955,6 +815,10 @@ public final class LLVMContext {
                 System.err.println(String.format("Function %s \t count: %d", s, sorted.get(s)));
             }
         }
+    }
+
+    public LLVMPThreadContext getpThreadContext() {
+        return pThreadContext;
     }
 
     public static class ExternalLibrary {

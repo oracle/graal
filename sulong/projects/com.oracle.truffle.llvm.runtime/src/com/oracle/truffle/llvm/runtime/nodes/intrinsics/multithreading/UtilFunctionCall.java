@@ -42,6 +42,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -64,24 +66,25 @@ final class UtilFunctionCall {
 
         @Override
         public void run() {
-            synchronized (context.callTargetLock) {
-                if (context.pthreadCallTarget == null) {
+            final LLVMPThreadContext pThreadContext = context.getpThreadContext();
+            synchronized (pThreadContext.callTargetLock) {
+                if (pThreadContext.pthreadCallTarget == null) {
                     FrameDescriptor frameDescriptor = new FrameDescriptor();
                     frameDescriptor.addFrameSlot("function");
                     frameDescriptor.addFrameSlot("arg");
                     frameDescriptor.addFrameSlot("sp");
-                    context.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new FunctionCallNode(LLVMLanguage.getLanguage(), frameDescriptor));
+                    pThreadContext.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new FunctionCallNode(LLVMLanguage.getLanguage(), frameDescriptor));
                 }
             }
             // pthread_exit throws a control flow exception to stop the thread
             try {
                 // save return value in storage
-                Object returnValue = context.pthreadCallTarget.call(startRoutine, arg);
+                Object returnValue = pThreadContext.pthreadCallTarget.call(startRoutine, arg);
                 // no null values in concurrent hash map allowed
                 if (returnValue == null) {
                     returnValue = LLVMNativePointer.createNull();
                 }
-                context.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
+                pThreadContext.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
             } catch (PThreadExitException e) {
                 // return value is written to retval storage in exit function before it throws this
                 // exception
@@ -90,10 +93,10 @@ final class UtilFunctionCall {
             } finally {
                 // call destructors from key create
                 if (this.isThread) {
-                    for (int key = 1; key <= context.getNumberOfPthreadKeys(); key++) {
-                        final LLVMPointer destructor = context.getDestructor(key);
+                    for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
+                        final LLVMPointer destructor = pThreadContext.getDestructor(key);
                         if (destructor != null && !destructor.isNull()) {
-                            final LLVMPointer keyMapping = context.getAndRemoveSpecificUnlessNull(key);
+                            final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
                             if (keyMapping != null) {
                                 assert !keyMapping.isNull();
                                 new FunctionCallRunnable(destructor, keyMapping, this.context, false).run();

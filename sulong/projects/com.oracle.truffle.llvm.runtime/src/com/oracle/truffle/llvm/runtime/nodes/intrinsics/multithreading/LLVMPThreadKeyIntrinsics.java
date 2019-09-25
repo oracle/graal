@@ -60,7 +60,7 @@ public final class LLVMPThreadKeyIntrinsics {
 
             // add new key-value to key-storage, which is a
             // hashmap(key-value->hashmap(thread-id->specific-value))
-            final int keyId = context.createPThreadKey(destructor);
+            final int keyId = context.getpThreadContext().createPThreadKey(destructor);
             store.executeWithTarget(key, keyId);
 
             return 0;
@@ -72,7 +72,7 @@ public final class LLVMPThreadKeyIntrinsics {
 
         @Specialization
         protected int doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            context.deletePThreadKey(key);
+            context.getpThreadContext().deletePThreadKey(key);
             return 0;
         }
     }
@@ -82,7 +82,7 @@ public final class LLVMPThreadKeyIntrinsics {
 
         @Specialization
         protected LLVMPointer doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            final LLVMPointer value = context.getSpecific(key);
+            final LLVMPointer value = context.getpThreadContext().getSpecific(key);
             return value != null ? value : LLVMNativePointer.createNull();
         }
     }
@@ -94,7 +94,7 @@ public final class LLVMPThreadKeyIntrinsics {
         // [EINVAL] if key is not valid
         @Specialization
         protected int doIntrinsic(int key, LLVMPointer value, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            if (!context.setSpecific(key, value)) {
+            if (!context.getpThreadContext().setSpecific(key, value)) {
                 return LLVMAMD64Error.EINVAL;
             } else {
                 return 0;
