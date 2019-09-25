@@ -574,8 +574,24 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement$Factory", isFinal = true) private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true) private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
+
+    private static final class InjectedManagementComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            try {
+                Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass("org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement$Factory");
+                Constructor<?> constructor = clazz.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+            } catch (ClassNotFoundException cnf) {
+                return null;
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     @Substitute
     private static void shutdownLibGraal() {
@@ -662,7 +678,8 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement", onlyWith = LibGraalFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement", onlyWith = {LibGraalFeature.IsEnabled.class,
+                Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.IsEnabled.class})
 final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement {
 
     @Target(ElementType.FIELD)
@@ -757,6 +774,18 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraal
                 throw UserError.abort("ClassData must be given");
             }
             return classData.value().replace('.', '/');
+        }
+    }
+
+    static final class IsEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            try {
+                Class.forName("org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement", false, Thread.currentThread().getContextClassLoader());
+                return true;
+            } catch (ReflectiveOperationException e) {
+                return false;
+            }
         }
     }
 }

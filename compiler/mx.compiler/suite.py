@@ -2405,7 +2405,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-        "GRAAL_API",
+        "GRAAL",
       ],
       "maven": False,
       "javaCompliance" : "8+",
