@@ -152,7 +152,6 @@ class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
         env['BUILD_REF'] = '1' if self.buildRef else '0'
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
         env['SO_EXT'] = mx.add_lib_suffix("")
-        env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
         env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
         env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
         env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')

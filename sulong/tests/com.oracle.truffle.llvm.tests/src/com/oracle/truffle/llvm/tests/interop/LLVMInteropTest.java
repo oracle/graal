@@ -42,9 +42,11 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.tests.SulongSuite;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -1389,7 +1391,21 @@ public class LLVMInteropTest {
             runner.load();
             Assert.assertEquals("construct\n", buf.toString());
         }
-        Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
+        if (SulongSuite.IS_MAC) {
+            /*
+             * On MacOS, newer clang version implement destructors by registering it via `atexit` in
+             * a generated constructor. Our test also registers an `atexit` function in a
+             * constructor. which is called before the generated one. Thus, the destructor is called
+             * before the `atexit` function because `atexit` functions are called in the reverse
+             * registration order. Therefore, we only test that all `atexit` functions are called
+             * eventually and after the constructor.
+             */
+
+            String actual = buf.toString();
+            Assert.assertTrue("construct\natexit\ndestruct\n".equals(actual) || "construct\ndestruct\natexit\n".equals(actual));
+        } else {
+            Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
+        }
     }
 
     private static Map<String, Object> makeObjectA() {

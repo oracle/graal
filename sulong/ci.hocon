@@ -42,6 +42,7 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
         CLANG_CC: "clang-3.8"
         CLANG_CXX: "clang-3.8 --driver-mode=g++"
         CLANG_LLVM_OBJCOPY: "objcopy"
+        CLANG_NO_OPTNONE: "1"
     }
 }
 
@@ -53,6 +54,7 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
         CLANG_CC: "clang-4.0"
         CLANG_CXX: "clang-4.0 --driver-mode=g++"
         CLANG_LLVM_OBJCOPY: "objcopy"
+        CLANG_NO_OPTNONE: "1"
     }
 }
 
@@ -83,19 +85,22 @@ sulong-gateTestLLVMorg-linux: ${sulong-gateTest-linux} {
     }
 }
 
-darwin-llvm: ${sulong-gateTest-default-tools} {
+sulong-gateTest40-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong-gateTest-default-tools} {
     packages: {
         llvm: "==4.0.1"
     }
     environment: {
+        CPPFLAGS: "-g"
         CLANG_CC: "clang-4.0"
         CLANG_CXX: "clang-4.0 --driver-mode=g++"
+        CLANG_NO_OPTNONE: "1"
     }
 }
 
-sulong-gateTest40-darwin: ${sulong-gateCommon} ${darwin-amd64} ${darwin-llvm} {
+sulong-gateTestLLVMorg-darwin: ${sulong-gateCommon} ${darwin-amd64} {
+    # nothing to do
     environment: {
-        CPPFLAGS: "-g"
+        LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH"
     }
 }
 
@@ -169,6 +174,7 @@ builds += [
   ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-basic_v80, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTestLLVMorg-linux} ${requireGCC} { name: gate-sulong-basic_bundled-llvm, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
+  ${sulong-gateTestLLVMorg-darwin} { name: gate-sulong-basic_bundled-llvm_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
 
   ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
