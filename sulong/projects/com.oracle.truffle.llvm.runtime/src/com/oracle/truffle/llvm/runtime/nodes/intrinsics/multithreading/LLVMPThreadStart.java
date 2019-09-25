@@ -138,16 +138,19 @@ public final class LLVMPThreadStart {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            LLVMStack.StackPointer sp = LLVMLanguage.getLLVMContextReference().get().getThreadingStack().getStack().newFrame();
-            // copy arguments to frame
-            final Object[] arguments = frame.getArguments();
-            Object function = arguments[0];
-            Object arg = arguments[1];
-            frame.setObject(functionSlot, function);
-            frame.setObject(argSlot, arg);
-            frame.setObject(spSlot, sp);
-            // execute it
-            return callNode.executeGeneric(frame);
+            try (LLVMStack.StackPointer sp = LLVMLanguage.getLLVMContextReference().get().getThreadingStack().getStack().newFrame()) {
+
+                // copy arguments to frame
+                final Object[] arguments = frame.getArguments();
+                Object function = arguments[0];
+                Object arg = arguments[1];
+                frame.setObject(functionSlot, function);
+                frame.setObject(argSlot, arg);
+                frame.setObject(spSlot, sp);
+
+                // execute it
+                return callNode.executeGeneric(frame);
+            }
         }
     }
 }
