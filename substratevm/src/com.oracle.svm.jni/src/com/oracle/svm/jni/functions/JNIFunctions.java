@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,9 +67,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.JNIGlobalHandles;
 import com.oracle.svm.jni.JNIObjectHandles;
-import com.oracle.svm.jni.JNIThreadLocalHandles;
 import com.oracle.svm.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.jni.JNIThreadLocalPinnedObjects;
 import com.oracle.svm.jni.JNIThreadOwnedMonitors;
@@ -132,7 +130,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewLocalRef(JNIEnvironment env, JNIObjectHandle ref) {
-        return JNIThreadLocalHandles.get().create(JNIObjectHandles.getObject(ref));
+        return JNIObjectHandles.newLocalRef(ref);
     }
 
     /*
@@ -142,7 +140,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void DeleteLocalRef(JNIEnvironment env, JNIObjectHandle localRef) {
-        JNIThreadLocalHandles.get().delete(localRef);
+        JNIObjectHandles.deleteLocalRef(localRef);
     }
 
     /*
@@ -155,7 +153,7 @@ final class JNIFunctions {
         if (capacity < 0) {
             return JNIErrors.JNI_ERR();
         }
-        JNIThreadLocalHandles.get().ensureCapacity(capacity);
+        JNIObjectHandles.ensureLocalCapacity(capacity);
         return 0;
     }
 
@@ -169,7 +167,7 @@ final class JNIFunctions {
         if (capacity < 0) {
             return JNIErrors.JNI_ERR();
         }
-        JNIThreadLocalHandles.get().pushFrame(capacity);
+        JNIObjectHandles.pushLocalFrame(capacity);
         return 0;
     }
 
@@ -181,8 +179,8 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle PopLocalFrame(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
-        JNIThreadLocalHandles.get().popFrame();
-        return JNIThreadLocalHandles.get().create(obj);
+        JNIObjectHandles.popLocalFrame();
+        return JNIObjectHandles.createLocal(obj);
     }
 
     /*
@@ -222,7 +220,7 @@ final class JNIFunctions {
     static JNIObjectHandle GetObjectClass(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         Class<?> clazz = obj.getClass();
-        return JNIThreadLocalHandles.get().create(clazz);
+        return JNIObjectHandles.createLocal(clazz);
     }
 
     /*
@@ -233,7 +231,7 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle GetSuperclass(JNIEnvironment env, JNIObjectHandle handle) {
         Class<?> clazz = JNIObjectHandles.getObject(handle);
-        return JNIThreadLocalHandles.get().create(clazz.getSuperclass());
+        return JNIObjectHandles.createLocal(clazz.getSuperclass());
     }
 
     /*
@@ -255,12 +253,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewGlobalRef(JNIEnvironment env, JNIObjectHandle handle) {
-        JNIObjectHandle result = JNIObjectHandles.nullHandle();
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (obj != null) {
-            result = (JNIObjectHandle) JNIGlobalHandles.singleton().create(obj);
-        }
-        return result;
+        return JNIObjectHandles.newGlobalRef(handle);
     }
 
     /*
@@ -270,7 +263,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void DeleteGlobalRef(JNIEnvironment env, JNIObjectHandle globalRef) {
-        JNIGlobalHandles.singleton().destroy(globalRef);
+        JNIObjectHandles.deleteGlobalRef(globalRef);
     }
 
     /*
@@ -280,12 +273,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewWeakGlobalRef(JNIEnvironment env, JNIObjectHandle handle) {
-        JNIObjectHandle result = JNIObjectHandles.nullHandle();
-        Object obj = JNIObjectHandles.getObject(handle);
-        if (obj != null) {
-            result = (JNIObjectHandle) JNIGlobalHandles.singleton().createWeak(obj);
-        }
-        return result;
+        return JNIObjectHandles.newWeakGlobalRef(handle);
     }
 
     /*
@@ -295,7 +283,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void DeleteWeakGlobalRef(JNIEnvironment env, JNIObjectHandle weak) {
-        JNIGlobalHandles.singleton().destroyWeak(weak);
+        JNIObjectHandles.deleteWeakGlobalRef(weak);
     }
 
     /*
@@ -327,7 +315,7 @@ final class JNIFunctions {
         if (clazz == null) {
             throw new NoClassDefFoundError(name);
         }
-        return JNIThreadLocalHandles.get().create(clazz);
+        return JNIObjectHandles.createLocal(clazz);
     }
 
     /*
@@ -422,7 +410,7 @@ final class JNIFunctions {
         } catch (InstantiationException e) {
             instance = null;
         }
-        return JNIThreadLocalHandles.get().create(instance);
+        return JNIObjectHandles.createLocal(instance);
     }
 
     /*
@@ -439,7 +427,7 @@ final class JNIFunctions {
             chars[i] = (char) value;
         }
         str = new String(chars);
-        return JNIThreadLocalHandles.get().create(str);
+        return JNIObjectHandles.createLocal(str);
     }
 
     /*
@@ -457,7 +445,7 @@ final class JNIFunctions {
             } catch (CharConversionException ignore) {
             }
         }
-        return JNIThreadLocalHandles.get().create(str);
+        return JNIObjectHandles.createLocal(str);
     }
 
     /*
@@ -606,7 +594,7 @@ final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewDirectByteBuffer(JNIEnvironment env, WordPointer address, long capacity) {
         Target_java_nio_DirectByteBuffer bb = new Target_java_nio_DirectByteBuffer(address.rawValue(), (int) capacity);
-        return JNIThreadLocalHandles.get().create(bb);
+        return JNIObjectHandles.createLocal(bb);
     }
 
     /*
@@ -658,7 +646,7 @@ final class JNIFunctions {
             array = (Object[]) Array.newInstance(elementClass, length);
             Arrays.fill(array, initialElement);
         }
-        return JNIThreadLocalHandles.get().create(array);
+        return JNIObjectHandles.createLocal(array);
     }
 
     /*
@@ -669,7 +657,7 @@ final class JNIFunctions {
     static JNIObjectHandle GetObjectArrayElement(JNIEnvironment env, JNIObjectHandle harray, int index) {
         Object[] array = JNIObjectHandles.getObject(harray);
         Object value = array[index];
-        return JNIThreadLocalHandles.get().create(value);
+        return JNIObjectHandles.createLocal(value);
     }
 
     /*
@@ -732,7 +720,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle ExceptionOccurred(JNIEnvironment env) {
-        return JNIThreadLocalHandles.get().create(JNIThreadLocalPendingException.get());
+        return JNIObjectHandles.createLocal(JNIThreadLocalPendingException.get());
     }
 
     /*
@@ -855,7 +843,7 @@ final class JNIFunctions {
                 }
             }
         }
-        return JNIThreadLocalHandles.get().create(field);
+        return JNIObjectHandles.createLocal(field);
     }
 
     /*
@@ -907,7 +895,7 @@ final class JNIFunctions {
                 }
             }
         }
-        return JNIThreadLocalHandles.get().create(result);
+        return JNIObjectHandles.createLocal(result);
     }
 
     /*

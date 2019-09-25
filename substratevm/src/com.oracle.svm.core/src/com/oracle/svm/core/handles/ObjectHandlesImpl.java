@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -275,7 +275,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         destroy(handle);
     }
 
-    long getCurrentCount() {
+    public long computeCurrentCount() {
         long count = 0;
         int bucketIndex = 0;
         Object[] bucket = getBucket(bucketIndex);
@@ -291,7 +291,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         return count;
     }
 
-    long getCurrentCapacity() {
+    public long computeCurrentCapacity() {
         long capacity = 0;
         int bucketIndex = 0;
         Object[] bucket = getBucket(bucketIndex);
