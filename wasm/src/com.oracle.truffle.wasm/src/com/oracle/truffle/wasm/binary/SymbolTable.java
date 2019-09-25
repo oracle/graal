@@ -410,29 +410,31 @@ public class SymbolTable {
         }
     }
 
-    private int allocateGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
+    /**
+     * Allocates a global index in the symbol table, for a global variable that was already allocated.
+     */
+    private void allocateGlobal(int index, int valueType, int mutability, GlobalResolution resolution, int address) {
         assert (valueType & 0xff) == valueType;
         assert (mutability & 0xff) == mutability;
         ensureGlobalsCapacity(index);
         maxGlobalIndex = Math.max(maxGlobalIndex, index);
-        final Globals globals = context.globals();
-        final int address = globals.allocateGlobal();
         globalAddresses[index] = address;
         int globalType = (resolution.ordinal() << 16) | ((mutability << 8) | valueType);
         globalTypes[index] = globalType;
-        return address;
     }
 
     int declareGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert !resolution.isImported();
-        return allocateGlobal(context, index, valueType, mutability, resolution);
+        final Globals globals = context.globals();
+        final int address = globals.allocateGlobal();
+        allocateGlobal(index, valueType, mutability, resolution, address);
+        return address;
     }
 
-    int importGlobal(WasmContext context, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
+    public void importGlobal(String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution, int address) {
         assert resolution.isImported();
-        final int address = allocateGlobal(context, index, valueType, mutability, resolution);
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
-        return address;
+        allocateGlobal(index, valueType, mutability, resolution, address);
     }
 
     public int maxGlobalIndex() {
@@ -524,8 +526,7 @@ public class SymbolTable {
 
     void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
         validateSingleTable();
-        importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
-        tableIndex = context.linker().tryResolveTable(context, module, moduleName, tableName, initSize, maxSize);
+        context.linker().importTable(context, module, moduleName, tableName, initSize, maxSize);
     }
 
     private void validateSingleTable() {
@@ -559,11 +560,19 @@ public class SymbolTable {
         return tableExists() ? 1 : 0;
     }
 
-    ImportDescriptor importedTable() {
+    public void setTableIndex(int i) {
+        tableIndex = i;
+    }
+
+    public ImportDescriptor importedTable() {
         return importedTableDescriptor;
     }
 
-    String exportedTable() {
+    public void setImportedTable(ImportDescriptor descriptor) {
+        importedTableDescriptor = descriptor;
+    }
+
+    public String exportedTable() {
         return exportedTable;
     }
 
