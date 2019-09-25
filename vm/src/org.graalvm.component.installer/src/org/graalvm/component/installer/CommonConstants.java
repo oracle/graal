@@ -46,6 +46,21 @@ public class CommonConstants {
      */
     public static final String TOKEN_GRAALVM_PATH = "graalvm_home"; // NOI18N
 
+    /**
+     * Path to the runtime lib. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_RTLIB_DIR = "graalvm_rtlib_dir"; // NOI18N
+
+    /**
+     * Path to arch-dependent runtime lib. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_RTLIB_ARCH_DIR = "graalvm_rtlib_arch_dir"; // NOI18N
+
+    /**
+     * Path to languages home. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_LANG_DIR = "graalvm_languages_dir"; // NOI18N
+
     public static final String LANGUAGE_PARENT = "jre/languages"; // NOI18N
 
     /**
