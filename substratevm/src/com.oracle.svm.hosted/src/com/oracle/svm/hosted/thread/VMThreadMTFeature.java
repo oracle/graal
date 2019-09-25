@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.thread;
 
 import java.util.List;
 
-import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFloatingNode;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -47,7 +46,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFixedNode;
-import com.oracle.svm.core.graal.nodes.ReadRegisterFloatingNode;
+import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFloatingNode;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;

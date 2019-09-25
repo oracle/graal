@@ -34,12 +34,6 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.code.Register;
 
-/**
- * Reads the value of a specific register.
- *
- * This is a floating node that uses the register directly as the result. It is more efficient than
- * using a {@link ReadRegisterFixedNode}, but limits usages.
- */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public final class ReadIsolateThreadFloatingNode extends ReadRegisterFloatingNode implements LIRLowerable {
     public static final NodeClass<ReadIsolateThreadFloatingNode> TYPE = NodeClass.create(ReadIsolateThreadFloatingNode.class);
