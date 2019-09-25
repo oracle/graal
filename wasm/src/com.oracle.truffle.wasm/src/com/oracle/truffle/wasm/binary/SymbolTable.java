@@ -594,13 +594,13 @@ public class SymbolTable {
         if (importedMemoryDescriptor != null) {
             throw new WasmException("Memory has been already imported in the module.");
         }
-        if (memory == null) {
+        if (memory != null) {
             throw new WasmException("Memory has been already declared in the module.");
         }
     }
 
     boolean memoryExists() {
-        return importedMemoryDescriptor != null || memory == null;
+        return importedMemoryDescriptor != null || memory != null;
     }
 
     public void exportMemory(String name) {

@@ -40,10 +40,10 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     private final Unsafe unsafe;
     private long startAddress;
-    private long memorySize;
+    private long size;
     private final long maxSize;
 
-    public UnsafeWasmMemory(long memorySize, long maxSize) {
+    public UnsafeWasmMemory(long size, long maxSize) {
         try {
             Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
@@ -52,17 +52,16 @@ public class UnsafeWasmMemory implements WasmMemory {
             throw new RuntimeException(e);
         }
         this.maxSize = maxSize;
-        this.memorySize = memorySize;
-        this.startAddress = unsafe.allocateMemory(memorySize);
-        unsafe.setMemory(startAddress, memorySize, (byte) 0);
+        this.size = size;
+        this.startAddress = unsafe.allocateMemory(size);
+        unsafe.setMemory(startAddress, size, (byte) 0);
     }
 
     @Override
-    public void validateAddress(long address, int size) {
+    public void validateAddress(long address, int offset) {
         logger.finest(() -> String.format("validating memory address: 0x%016X (%d)", address, address));
-        if (address + size > memorySize || address < 0) {
-            // TODO: This should be a WasmTrap (and also a Truffle exception, which this would ensure).
-            throw new WasmMemoryException("Requested memory address out-of-bounds");
+        if (address < 0 || address + offset >= this.size) {
+            throw new WasmException("Requested memory address out-of-bounds");
         }
     }
 
@@ -79,7 +78,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public long size() {
-        return memorySize;
+        return size;
     }
 
     @Override
@@ -88,22 +87,23 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
-    public void grow(long targetSize) {
-        if (targetSize > maxSize) {
+    public void grow(long extraSize) {
+        if (extraSize < 0) {
+            throw new WasmException("Extra size cannot be negative.");
+        }
+        long targetSize = size + extraSize;
+        if (maxSize >= 0 && targetSize > maxSize) {
             throw new WasmException("Cannot grow the memory beyond " + maxSize + " bytes.");
         }
-        if (targetSize < memorySize) {
-            throw new WasmException("Cannot reduce memory size below " + targetSize + " bytes.");
-        }
-        if (targetSize == memorySize) {
+        if (targetSize == size) {
             return;
         }
         long updatedStartAddress = unsafe.allocateMemory(targetSize);
-        unsafe.copyMemory(startAddress, updatedStartAddress, memorySize);
-        unsafe.setMemory(updatedStartAddress + memorySize, targetSize - memorySize, (byte) 0);
+        unsafe.copyMemory(startAddress, updatedStartAddress, size);
+        unsafe.setMemory(updatedStartAddress + size, targetSize - size, (byte) 0);
         unsafe.freeMemory(startAddress);
         startAddress = updatedStartAddress;
-        memorySize = targetSize;
+        size = targetSize;
     }
 
     @Override

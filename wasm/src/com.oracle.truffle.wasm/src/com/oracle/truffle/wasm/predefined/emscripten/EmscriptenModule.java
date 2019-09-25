@@ -44,7 +44,7 @@ public class EmscriptenModule extends PredefinedModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);
-        final WasmMemory memory = defineMemory(context, module, "memory", 0, -1);
+        final WasmMemory memory = defineMemory(context, module, "memory", WasmMemory.INITIAL_MEMORY_SIZE, -1);
         defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null, memory));
         defineFunction(module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemory(language, null, memory));
         defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null, memory));

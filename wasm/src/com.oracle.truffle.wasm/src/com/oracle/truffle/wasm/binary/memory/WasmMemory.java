@@ -30,6 +30,8 @@
 package com.oracle.truffle.wasm.binary.memory;
 
 public interface WasmMemory {
+    int INITIAL_MEMORY_SIZE = 1 << 25;
+
     void validateAddress(long address, int size);
 
     long startAddress();

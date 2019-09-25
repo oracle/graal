@@ -30,7 +30,6 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 
 public class Memories {
@@ -67,17 +66,5 @@ public class Memories {
     public WasmMemory memory(int index) {
         assert index < numMemories;
         return memories[index];
-    }
-
-    public void ensureSizeAtLeast(int index, long targetSize) {
-        final long maxSize = memories[index].maxSize();
-        if (maxSize >= 0 && targetSize > maxSize) {
-            throw new WasmException("Table " + index + " cannot be resized to " + targetSize + ", " +
-                            "declared maximum size is " + maxSize);
-        }
-        WasmMemory memory = memories[index];
-        if (memory.size() < targetSize) {
-            memory.grow(targetSize);
-        }
     }
 }
