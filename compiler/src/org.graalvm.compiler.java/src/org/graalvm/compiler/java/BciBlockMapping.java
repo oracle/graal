@@ -835,6 +835,7 @@ public final class BciBlockMapping {
                 case SALOAD:
                 case ARRAYLENGTH:
                 case CHECKCAST:
+                case INSTANCEOF:
                 case NEW:
                 case NEWARRAY:
                 case ANEWARRAY:
@@ -845,7 +846,8 @@ public final class BciBlockMapping {
                 case GETFIELD:
                 case LDC:
                 case LDC_W:
-                case LDC2_W: {
+                case LDC2_W:
+                case MONITORENTER: {
                     /*
                      * All bytecodes that can trigger lazy class initialization via a
                      * ClassInitializationPlugin (allocations, static field access) must be listed
@@ -991,12 +993,11 @@ public final class BciBlockMapping {
                 case FCMPG:
                 case DCMPL:
                 case DCMPG:
-                case INSTANCEOF:
-                case MONITORENTER:
                 case MONITOREXIT:
                     // All stack manipulation, comparison, conversion and arithmetic operators
                     // except for idiv and irem can't throw exceptions so the don't need to connect
-                    // exception edges.
+                    // exception edges. MONITOREXIT can't throw exceptions in the context of
+                    // compiled code because of the structured locking requirement in the parser.
                     break;
 
                 case WIDE:
