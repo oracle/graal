@@ -92,21 +92,22 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         protected int doIntrinsic(long threadId, LLVMPointer threadReturn, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            if (storeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                storeNode = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
-            }
-
             final Thread thread = context.getpThreadContext().getThread(threadId);
             if (thread != null) {
                 joinThread(thread);
             }
 
-            Object retVal = context.getpThreadContext().getThreadReturnValue(threadId);
-            if (retVal == null) {
-                retVal = LLVMNativePointer.createNull();
-            }
             if (!threadReturn.isNull()) {
+                if (storeNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    storeNode = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+                }
+
+                Object retVal = context.getpThreadContext().getThreadReturnValue(threadId);
+                if (retVal == null) {
+                    retVal = LLVMNativePointer.createNull();
+                }
+
                 storeNode.executeWithTarget(threadReturn, retVal);
             }
 
