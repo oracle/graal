@@ -1510,7 +1510,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createArrayLiteral(LLVMExpressionNode[] arrayValues, ArrayType arrayType, GetStackSpaceFactory arrayGetStackSpaceFactory) {
         assert arrayType.getNumberOfElements() == arrayValues.length;
-        LLVMExpressionNode arrayGetStackSpace = arrayGetStackSpaceFactory.createGetStackSpace(context, arrayType);
+        LLVMExpressionNode arrayGetStackSpace = arrayGetStackSpaceFactory.createGetStackSpace(this, arrayType);
         Type elementType = arrayType.getElementType();
         int elementSize = getByteSize(elementType);
         if (elementSize == 0) {
@@ -1636,7 +1636,7 @@ public class BasicNodeFactory implements NodeFactory {
         int[] offsets = new int[types.length];
         LLVMStoreNode[] nodes = new LLVMStoreNode[types.length];
         int currentOffset = 0;
-        LLVMExpressionNode getStackSpace = getStackSpaceFactory.createGetStackSpace(context, structType);
+        LLVMExpressionNode getStackSpace = getStackSpaceFactory.createGetStackSpace(this, structType);
         for (int i = 0; i < types.length; i++) {
             Type resolvedType = types[i];
             if (!packed) {
@@ -2196,7 +2196,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createCopyStructByValue(Type type, GetStackSpaceFactory getStackSpaceFactory, LLVMExpressionNode parameterNode) {
-        LLVMExpressionNode getStackSpaceNode = getStackSpaceFactory.createGetStackSpace(context, type);
+        LLVMExpressionNode getStackSpaceNode = getStackSpaceFactory.createGetStackSpace(this, type);
         return LLVMStructByValueNodeGen.create(createMemMove(), getStackSpaceNode, parameterNode, getByteSize(type));
     }
 

@@ -169,7 +169,7 @@ public final class LLVMSymbolReadResolver {
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(context, type);
+                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(nodeFactory, type);
                     resolvedNode = nodeFactory.createZeroNode(target, arraySize);
                 }
             }
@@ -181,7 +181,7 @@ public final class LLVMSymbolReadResolver {
                     final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
                 } else {
-                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(context, structureType);
+                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(nodeFactory, structureType);
                     resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
                 }
             }
@@ -430,7 +430,7 @@ public final class LLVMSymbolReadResolver {
     public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout) {
         this.runtime = runtime;
         this.context = runtime.getContext();
-        this.nodeFactory = context.getLanguage().getNodeFactory();
+        this.nodeFactory = runtime.getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
         this.dataLayout = dataLayout;
