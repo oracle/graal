@@ -51,14 +51,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
@@ -71,9 +75,6 @@ import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Objects;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -221,25 +222,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
             sb.append(", Loaded from " + url);
         }
         return sb.toString();
-    }
-
-    private static String defaultId(final String name, final String className) {
-        String resolvedId;
-        if (name.isEmpty()) {
-            int lastIndex = className.lastIndexOf('$');
-            if (lastIndex == -1) {
-                lastIndex = className.lastIndexOf('.');
-            }
-            resolvedId = className.substring(lastIndex + 1, className.length());
-        } else {
-            // TODO remove this hack for single character languages
-            if (name.length() == 1) {
-                resolvedId = name;
-            } else {
-                resolvedId = name.toLowerCase();
-            }
-        }
-        return resolvedId;
     }
 
     public int compareTo(LanguageCache o) {
@@ -399,8 +381,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
         ArrayList<Class<?>> list = new ArrayList<>();
         for (LanguageCache cache : nativeImageCache.values()) {
             Class<? extends TruffleLanguage<?>> clz = cache.languageReflection.aotInitializeAtBuildTime();
-            assert clz != null;
-            list.add(clz);
+            if (clz != null) {
+                list.add(clz);
+            }
         }
         return list;
     }
@@ -477,7 +460,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             @Override
             @SuppressWarnings("unchecked")
             Class<? extends TruffleLanguage<?>> aotInitializeAtBuildTime() {
-                return (Class<? extends TruffleLanguage<?>>) languageInstance.getClass();
+                return null;
             }
 
             @Override
@@ -517,6 +500,56 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         abstract void loadImpl(ClassLoader loader, Collection<? super LanguageCache> into);
+
+        static String defaultId(final String name, final String className) {
+            String resolvedId;
+            if (name.isEmpty()) {
+                int lastIndex = className.lastIndexOf('$');
+                if (lastIndex == -1) {
+                    lastIndex = className.lastIndexOf('.');
+                }
+                resolvedId = className.substring(lastIndex + 1, className.length());
+            } else {
+                // TODO remove this hack for single character languages
+                if (name.length() == 1) {
+                    resolvedId = name;
+                } else {
+                    resolvedId = name.toLowerCase();
+                }
+            }
+            return resolvedId;
+        }
+
+        static String getLanguageHomeFromURLConnection(URLConnection connection) {
+            if (connection instanceof JarURLConnection) {
+                /*
+                 * The previous implementation used a `URL.getPath()`, but OS Windows is offended by
+                 * leading slash and maybe other irrelevant characters. Therefore, for JDK 1.7+ a
+                 * preferred way to go is URL -> URI -> Path.
+                 *
+                 * Also, Paths are more strict than Files and URLs, so we can't create an invalid
+                 * Path from a random string like "/C:/". This leads us to the `URISyntaxException`
+                 * for URL -> URI conversion and `java.nio.file.InvalidPathException` for URI ->
+                 * Path conversion.
+                 *
+                 * For fixing further bugs at this point, please read
+                 * http://tools.ietf.org/html/rfc1738 http://tools.ietf.org/html/rfc2396 (supersedes
+                 * rfc1738) http://tools.ietf.org/html/rfc3986 (supersedes rfc2396)
+                 *
+                 * http://url.spec.whatwg.org/ does not contain URI interpretation. When you call
+                 * `URI.toASCIIString()` all reserved and non-ASCII characters are percent-quoted.
+                 */
+                try {
+                    Path path;
+                    path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
+                    Path parent = path.getParent();
+                    return parent != null ? parent.toString() : null;
+                } catch (URISyntaxException e) {
+                    assert false : "Could not resolve path.";
+                }
+            }
+            return null;
+        }
 
         private static final class LegacyLoader extends Loader {
 
@@ -615,38 +648,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     mimeTypesSet.add(mt);
                 }
                 return mimeTypesSet;
-            }
-
-            private static String getLanguageHomeFromURLConnection(URLConnection connection) {
-                if (connection instanceof JarURLConnection) {
-                    /*
-                     * The previous implementation used a `URL.getPath()`, but OS Windows is
-                     * offended by leading slash and maybe other irrelevant characters. Therefore,
-                     * for JDK 1.7+ a preferred way to go is URL -> URI -> Path.
-                     *
-                     * Also, Paths are more strict than Files and URLs, so we can't create an
-                     * invalid Path from a random string like "/C:/". This leads us to the
-                     * `URISyntaxException` for URL -> URI conversion and
-                     * `java.nio.file.InvalidPathException` for URI -> Path conversion.
-                     *
-                     * For fixing further bugs at this point, please read
-                     * http://tools.ietf.org/html/rfc1738 http://tools.ietf.org/html/rfc2396
-                     * (supersedes rfc1738) http://tools.ietf.org/html/rfc3986 (supersedes rfc2396)
-                     *
-                     * http://url.spec.whatwg.org/ does not contain URI interpretation. When you
-                     * call `URI.toASCIIString()` all reserved and non-ASCII characters are
-                     * percent-quoted.
-                     */
-                    try {
-                        Path path;
-                        path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
-                        Path parent = path.getParent();
-                        return parent != null ? parent.toString() : null;
-                    } catch (URISyntaxException e) {
-                        assert false : "Could not resolve path.";
-                    }
-                }
-                return null;
             }
 
             private static final class LegacyLanguageReflection extends LanguageReflection {
@@ -800,6 +801,124 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
             @Override
             public void loadImpl(ClassLoader loader, Collection<? super LanguageCache> into) {
+                for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
+                    Registration reg = provider.getClass().getAnnotation(Registration.class);
+                    if (reg == null) {
+                        PrintStream out = System.err;
+                        out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
+                        continue;
+                    }
+
+                    String name = reg.name();
+                    String id = reg.id();
+                    if (id == null) {
+                        id = defaultId(name, provider.getLanguageClassName());
+                    }
+                    String className = provider.getLanguageClassName();
+                    String languageHome = System.getProperty(id + ".home");
+                    if (languageHome == null) {
+                        URL url = provider.getClass().getClassLoader().getResource(className.replace('.', '/') + ".class");
+                        if (url != null) {
+                            try {
+                                languageHome = getLanguageHomeFromURLConnection(url.openConnection());
+                            } catch (IOException ioe) {
+                            }
+                        }
+                    }
+                    String implementationName = reg.implementationName();
+                    String version = reg.version();
+                    TreeSet<String> characterMimes = new TreeSet<>();
+                    Collections.addAll(characterMimes, reg.characterMimeTypes());
+                    if (characterMimes.isEmpty()) {
+                        Collections.addAll(characterMimes, getMimeTypesDepecated(reg));
+                    }
+                    TreeSet<String> byteMimeTypes = new TreeSet<>();
+                    Collections.addAll(byteMimeTypes, reg.byteMimeTypes());
+                    String defaultMime = reg.defaultMimeType();
+                    TreeSet<String> dependentLanguages = new TreeSet<>();
+                    Collections.addAll(dependentLanguages, reg.dependentLanguages());
+                    boolean interactive = reg.interactive();
+                    boolean internal = reg.internal();
+                    Set<String> servicesClassNames = new TreeSet<>();
+                    for (Class<?> service : reg.services()) {
+                        servicesClassNames.add(service.getCanonicalName());
+                    }
+                    LanguageReflection reflection = new ServiceLoaderLanguageReflection(provider, reg.contextPolicy());
+                    into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
+                                    characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal,
+                                    servicesClassNames, reflection));
+                }
+            }
+
+            @SuppressWarnings("deprecation")
+            private static String[] getMimeTypesDepecated(Registration reg) {
+                return reg.mimeType();
+            }
+
+            private static final class ServiceLoaderLanguageReflection extends LanguageReflection {
+
+                private final TruffleLanguage.Provider provider;
+                private final ContextPolicy contextPolicy;
+                private volatile Set<Class<? extends Tag>> providedTags;
+
+                ServiceLoaderLanguageReflection(TruffleLanguage.Provider provider, ContextPolicy contextPolicy) {
+                    assert provider != null;
+                    assert contextPolicy != null;
+                    this.provider = provider;
+                    this.contextPolicy = contextPolicy;
+                }
+
+                @Override
+                TruffleLanguage<?> newInstance() {
+                    return provider.get();
+                }
+
+                @Override
+                List<? extends FileTypeDetector> getFileTypeDetectors() {
+                    return provider.getFileTypeDetectors();
+                }
+
+                @Override
+                ContextPolicy getContextPolicy() {
+                    return contextPolicy;
+                }
+
+                @Override
+                @SuppressWarnings("unchecked")
+                Set<? extends Class<? extends Tag>> getProvidedTags() {
+                    Set<Class<? extends Tag>> res = providedTags;
+                    if (res == null) {
+                        ProvidedTags tags = provider.getClass().getAnnotation(ProvidedTags.class);
+                        if (tags == null) {
+                            res = Collections.emptySet();
+                        } else {
+                            res = new HashSet<>();
+                            Collections.addAll(res, (Class<? extends Tag>[]) tags.value());
+                            res = Collections.unmodifiableSet(res);
+                        }
+                        providedTags = res;
+                    }
+                    return res;
+                }
+
+                @Override
+                Class<? extends TruffleLanguage<?>> aotInitializeAtBuildTime() {
+                    return null;
+                }
+
+                @Override
+                boolean hasSameCodeSource(LanguageReflection other) {
+                    if (other instanceof ServiceLoaderLanguageReflection) {
+                        return provider.getClass() == ((ServiceLoaderLanguageReflection) other).provider.getClass();
+                    }
+                    return false;
+                }
+
+                @Override
+                URL getCodeSource() {
+                    CodeSource source = providedTags.getClass().getProtectionDomain().getCodeSource();
+                    return source != null ? source.getLocation() : null;
+                }
             }
         }
     }

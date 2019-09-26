@@ -77,6 +77,7 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -451,6 +452,14 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
+    }
+
+    public interface Provider {
+        String getLanguageClassName();
+
+        TruffleLanguage<?> get();
+
+        List<FileTypeDetector> getFileTypeDetectors();
     }
 
     /**
