@@ -419,6 +419,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     'dependency': 'graalvm-jimage',
                     'path': '*',
                 })
+                # Temporary workaround until GR-16855 an SVM module provides the .a files
+                _add(layout, self.jdk_base + '/lib/', {
+                    'source_type': 'file',
+                    'path': _src_jdk_dir + '/lib/*.a',
+                })
 
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
