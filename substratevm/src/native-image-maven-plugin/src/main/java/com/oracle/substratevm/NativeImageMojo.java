@@ -478,5 +478,10 @@ public class NativeImageMojo extends AbstractMojo {
         public List<String> getBuildArgs() {
             return NativeImageMojo.this.getBuildArgs();
         }
+
+        @Override
+        public Path getAgentJAR() {
+           return getSelectedArtifactPaths(svmGroupId, "svm").get(0);
+        }
     }
 }

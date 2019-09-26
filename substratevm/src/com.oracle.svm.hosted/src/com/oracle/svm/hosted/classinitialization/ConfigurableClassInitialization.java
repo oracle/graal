@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 
 import java.lang.reflect.Proxy;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -105,6 +108,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void setConfigurationSealed(boolean sealed) {
         configurationSealed = sealed;
+        if (configurationSealed && ClassInitializationFeature.Options.PrintClassInitialization.getValue()) {
+            List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
+            allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
+            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
+                for (ClassOrPackageConfig config : allConfigs) {
+                    writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
+                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
+                }
+            });
+        }
     }
 
     @Override
@@ -258,7 +272,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private String classInitializationErrorMessage(Class<?> clazz, String action) {
         if (!TraceClassInitialization.getValue()) {
-            return " To see why " + clazz.getTypeName() + " got initialized use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
+            return "To see why " + clazz.getTypeName() + " got initialized use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
         } else if (initializedClasses.containsKey(clazz)) {
 
             StackTraceElement[] trace = initializedClasses.get(clazz);
@@ -315,7 +329,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 return " Object has been initialized through the following trace:\n" + getTraceString(instantiatedObjects.get(obj)) + ". " + action;
             }
         } else {
-            return "Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
+            return " Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
         }
     }
 
@@ -482,12 +496,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                     detailedMessage.append(c.getTypeName()).append(" was unintentionally initialized at build time. ");
                     detailedMessage.append(classInitializationErrorMessage(c,
                                     "Try marking this class for build-time initialization with " + SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization,
-                                                    c.getTypeName(), "initialize-at-build-time")));
+                                                    c.getTypeName(), "initialize-at-build-time")))
+                                    .append("\n");
                 } else {
-                    assert specifiedKind.isDelayed();
+                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
                     detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time (").append(reason).append("). ")
-                                    .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()));
+                                    .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
+                                    .append("\n");
                 }
             });
 
@@ -504,11 +520,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz.isAnnotation()) {
             throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: " + clazz.getTypeName());
         }
-    }
-
-    @Override
-    public List<ClassOrPackageConfig> getClassInitializationConfiguration() {
-        return classInitializationConfiguration.allConfigs();
     }
 
     /**
@@ -533,14 +544,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz.isEnum() && !UNSAFE.shouldBeInitialized(clazz)) {
             if (memoize) {
                 forceInitializeHosted(clazz, "enums referred in annotations must be initialized", false);
-            }
-            return InitKind.BUILD_TIME;
-        }
-
-        /* GR-14698 Lambdas get eagerly initialized in the method code. */
-        if (clazz.getTypeName().contains("$$Lambda$")) {
-            if (memoize) {
-                forceInitializeHosted(clazz, "lambdas must be initialized", false);
             }
             return InitKind.BUILD_TIME;
         }
@@ -600,9 +603,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (Proxy.isProxyClass(clazz)) {
             /* Proxy classes end up as constants in heap. */
-            return InitKind.BUILD_TIME;
-        } else if (clazz.getTypeName().contains("$$Lambda$")) {
-            /* GR-14698 Lambdas get eagerly initialized in the method code. */
             return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
             return InitKind.BUILD_TIME;

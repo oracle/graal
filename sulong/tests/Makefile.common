@@ -82,6 +82,12 @@ BC_FILE=%/O0.bc.o
 endif # darwin
 endif # NO_FEMBED_BITCODE
 
+ifdef CLANG_NO_OPTNONE
+SULONG_MAKE_CLANG_IMPLICIT_ARGS=
+else
+SULONG_MAKE_CLANG_IMPLICIT_ARGS=-Xclang -disable-O0-optnone
+endif
+
 tool-info.txt:
 	@echo "Tools:" > $@
 	@echo "  CLANG: $(CLANG)" >> $@

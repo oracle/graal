@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,15 @@ from mx_gate import Task
 
 jdk = mx.get_jdk(tag='default')
 
+def _check_jaotc_support():
+    if jdk.javaCompliance < '11':
+        mx.abort('jaotc command is only available if JAVA_HOME is JDK 11 or later')
+    if not mx_compiler._is_jaotc_supported():
+        mx.abort('jaotc executable is not present in ' + str(mx_compiler.jdk))
 
 def run_jaotc(args, classpath=None, cwd=None):
     """run AOT compiler with classes in this repo instead of those in the JDK"""
-    if jdk.javaCompliance < '11':
-        mx.abort('jaotc command is only available if JAVA_HOME is JDK 11 or later')
-
+    _check_jaotc_support()
     vm_args = [a for a in args if a.startswith('-J')]
     args = [a for a in args if not a.startswith('-J')]
 
@@ -62,6 +65,7 @@ def jaotc_gate_runner(tasks):
 
 def jaotc_test(args):
     """run (acceptance) tests for the AOT compiler (jaotc)"""
+    _check_jaotc_support()
     all_tests = ['HelloWorld', 'java.base', 'javac']
     parser = ArgumentParser(prog='mx jaotc-test')
     parser.add_argument("--list", default=None, action="store_true", help="Print the list of available jaotc tests.")
@@ -123,7 +127,6 @@ def test_class(classpath, main_class, program_args=None):
                       ['--exit-on-error', '--info', '--output', lib_module.name, main_class],
                       classpath=classpath)
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module, program_args)
-
 
 def test_modules(classpath, main_class, modules, program_args=None):
     """(jaotc-)Compiles `modules` and runs `main_class` + AOT library.

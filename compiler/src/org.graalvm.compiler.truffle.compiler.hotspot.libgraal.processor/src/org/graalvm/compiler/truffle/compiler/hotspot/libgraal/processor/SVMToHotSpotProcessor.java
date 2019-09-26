@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -194,10 +194,10 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
             }
             out.println("");
             out.println("import org.graalvm.nativeimage.StackValue;");
-            out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;");
-            out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JValue;");
+            out.println("import org.graalvm.libgraal.jni.JNI.JNIEnv;");
+            out.println("import org.graalvm.libgraal.jni.JNI.JValue;");
             if (usesJObject) {
-                out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;");
+                out.println("import org.graalvm.libgraal.jni.JNI.JObject;");
             }
             out.println("");
             out.printf("final class %s {%n", genClassName);

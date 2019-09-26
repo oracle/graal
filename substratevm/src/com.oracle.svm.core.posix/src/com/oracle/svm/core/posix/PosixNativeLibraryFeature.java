@@ -49,7 +49,7 @@ class PosixNativeLibraryFeature implements Feature {
     }
 }
 
-class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
+class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new PosixNativeLibrarySupport());
@@ -68,7 +68,22 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
             if (!PosixJavaLangSubstitutions.initIDs()) {
                 return false;
             }
+        }
+        return true;
+    }
 
+    @Override
+    public boolean initializeSharedBuiltinLibrariesOnce() {
+        if (!super.initializeSharedBuiltinLibrariesOnce()) {
+            return false;
+        }
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+            /*
+             * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
+             * value in process-wide shared native state, the property's value in the first launched
+             * isolate applies to all subsequently launched isolates.
+             */
             try {
                 System.loadLibrary("net");
             } catch (UnsatisfiedLinkError e) {

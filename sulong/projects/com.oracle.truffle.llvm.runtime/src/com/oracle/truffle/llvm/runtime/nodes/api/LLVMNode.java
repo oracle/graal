@@ -35,10 +35,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -103,5 +105,19 @@ public abstract class LLVMNode extends Node {
     protected static boolean isSameObject(Object a, Object b) {
         // used as a workaround for a DSL bug
         return a == b;
+    }
+
+    protected final DataLayout getDataLayout() {
+        Node datalayoutNode = this;
+        while (!(datalayoutNode instanceof LLVMHasDatalayoutNode)) {
+            if (datalayoutNode.getParent() != null) {
+                assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
+                datalayoutNode = datalayoutNode.getParent();
+            } else {
+                return LLVMLanguage.getLLVMContextReference().get().getLibsulongDataLayout();
+            }
+        }
+        return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
+
     }
 }

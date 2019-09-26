@@ -31,8 +31,8 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
@@ -188,11 +188,11 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
-    protected LLVM.LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
-        LLVM.LLVMTypeRef[] parameterTypes = super.getLLVMFunctionArgTypes(method, forMainFunction);
-        LLVM.LLVMTypeRef[] newParameterTypes = parameterTypes;
+    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
+        LLVMTypeRef[] parameterTypes = super.getLLVMFunctionArgTypes(method, forMainFunction);
+        LLVMTypeRef[] newParameterTypes = parameterTypes;
         if (!isEntryPoint(method) && registerStackSlots.length > 0) {
-            newParameterTypes = new LLVM.LLVMTypeRef[registerStackSlots.length + parameterTypes.length];
+            newParameterTypes = new LLVMTypeRef[registerStackSlots.length + parameterTypes.length];
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newParameterTypes[i] = canModifySpecialRegisters(method) ? builder.rawPointerType() : builder.longType();
             }
@@ -253,7 +253,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     private LLVMValueRef getSpecialRegisterArgument(int index, ResolvedJavaMethod targetMethod) {
         LLVMValueRef specialRegisterArg;
-        if (canModifySpecialRegisters(targetMethod)) {
+        if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
             assert (isEntryPoint || canModifySpecialRegisters);
             specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
         } else if (isEntryPoint || canModifySpecialRegisters) {
@@ -269,7 +269,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     public LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         LLVMValueRef[] newArgs = args;
 
-        if (targetMethod != null && !((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
             newArgs = new LLVMValueRef[registerStackSlots.length + args.length];
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newArgs[i] = getSpecialRegisterArgument(i, targetMethod);
@@ -280,7 +280,26 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
+    public LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] types, CallingConvention.Type callType) {
+        LLVMTypeRef[] newTypes = types;
+
+        if (!((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
+            newTypes = new LLVMTypeRef[registerStackSlots.length + types.length];
+            for (int i = 0; i < registerStackSlots.length; ++i) {
+                newTypes[i] = builder.longType();
+            }
+            System.arraycopy(types, 0, newTypes, LLVMFeature.SPECIAL_REGISTER_COUNT, types.length);
+        }
+        return newTypes;
+    }
+
+    @Override
     protected CallingConvention.Type getCallingConventionType(CallingConvention callingConvention) {
         return ((SubstrateCallingConvention) callingConvention).getType();
+    }
+
+    @Override
+    public LLVMValueRef getRetrieveExceptionFunction() {
+        return getFunction(LLVMFeature.retrieveExceptionMethod);
     }
 }

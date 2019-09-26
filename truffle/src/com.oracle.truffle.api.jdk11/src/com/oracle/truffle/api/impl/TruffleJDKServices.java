@@ -45,8 +45,6 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
 
-import com.oracle.truffle.api.TruffleRuntimeAccess;
-
 /**
  * JDK 11+ implementation of {@code TruffleJDKServices}.
  */
@@ -81,7 +79,14 @@ public class TruffleJDKServices {
         }
     }
 
-    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
-        return Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class));
+    public static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
+        return Collections.singletonList(ServiceLoader.load(serviceClass));
+    }
+
+    public static <S> void addUses(Class<S> service) {
+        Module module = TruffleJDKServices.class.getModule();
+        if (!module.canUse(service)) {
+            module.addUses(service);
+        }
     }
 }

@@ -61,7 +61,11 @@ public class StackTraceUtils {
      * Implements the shared semantic of Reflection.getCallerClass and StackWalker.getCallerClass.
      */
     public static Class<?> getCallerClass(Pointer startSP) {
-        GetCallerClassVisitor visitor = new GetCallerClassVisitor();
+        return getCallerClass(startSP, 0);
+    }
+
+    public static Class<?> getCallerClass(Pointer startSP, int depth) {
+        GetCallerClassVisitor visitor = new GetCallerClassVisitor(depth);
         JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
     }
@@ -131,8 +135,13 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 }
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
+    private int depth;
     private boolean foundCallee;
     Class<?> result;
+
+    GetCallerClassVisitor(final int depth) {
+        this.depth = depth;
+    }
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
@@ -154,6 +163,11 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
              */
+            return true;
+
+        } else if (depth > 0) {
+            /* Skip the number of frames specified by "depth". */
+            depth--;
             return true;
 
         } else {

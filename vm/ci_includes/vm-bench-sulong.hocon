@@ -97,7 +97,7 @@ builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-la-inline-csuite", environment: { JVM_CONFIG: jvm-la-inline } }
-  ${bench-llvm-sulong-graalvm-ce} {targets: [bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } } # failing (GR-17937)
+  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } }
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
   ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}

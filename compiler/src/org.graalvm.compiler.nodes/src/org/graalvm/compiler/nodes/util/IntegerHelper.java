@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,22 @@ public abstract class IntegerHelper {
 
     public int compare(long a, long b) {
         return rawCompare(cast(a), cast(b));
+    }
+
+    public boolean isGreater(long a, long b) {
+        return compare(a, b) > 0;
+    }
+
+    public boolean isSmaller(long a, long b) {
+        return compare(a, b) < 0;
+    }
+
+    public boolean isGreaterEqual(long a, long b) {
+        return compare(a, b) >= 0;
+    }
+
+    public boolean isSmallerEqual(long a, long b) {
+        return compare(a, b) <= 0;
     }
 
     public long min(long a, long b) {

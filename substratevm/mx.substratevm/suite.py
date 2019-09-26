@@ -1033,7 +1033,7 @@ suite = {
             "platformDependent" : False,
             "description" : "Native Image support distribution for the GraalVM",
             "layout" : {
-                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE.md",
+                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE",
             },
         },
 

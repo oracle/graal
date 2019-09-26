@@ -43,6 +43,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
+    static final String noServerOption = "--no-server";
+    static final String verboseServerOption = "--verbose-server";
+    static final String serverOptionPrefix = "--server-";
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -134,6 +137,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.setQueryOption("");
                 return true;
+            case noServerOption:
+            case verboseServerOption:
+                args.poll();
+                NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+                return true;
         }
 
         String debugAttach = "--debug-attach";
@@ -205,6 +213,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             } else {
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
             }
+            return true;
+        }
+        if (headArg.startsWith(serverOptionPrefix)) {
+            args.poll();
+            NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
             return true;
         }
         return false;

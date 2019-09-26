@@ -19,7 +19,7 @@ Subject: [PATCH 1/4] [GR-15965] [llvm-objcopy] add --set-section-flags
 
 diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test b/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test
 new file mode 100644
-index 00000000000..ca4870d539d
+index 000000000000..ca4870d539d2
 --- /dev/null
 +++ b/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test
 @@ -0,0 +1,115 @@
@@ -140,7 +140,7 @@ index 00000000000..ca4870d539d
 +# ARM-NEXT:   ]
 diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test b/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test
 new file mode 100644
-index 00000000000..ac97e6e06c0
+index 000000000000..ac97e6e06c01
 --- /dev/null
 +++ b/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test
 @@ -0,0 +1,74 @@
@@ -220,7 +220,7 @@ index 00000000000..ac97e6e06c0
 +# BAD-FLAG: unrecognized section flag 'xyzzy'
 diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags.test b/llvm/test/tools/llvm-objcopy/set-section-flags.test
 new file mode 100644
-index 00000000000..adc2a162f0b
+index 000000000000..adc2a162f0bf
 --- /dev/null
 +++ b/llvm/test/tools/llvm-objcopy/set-section-flags.test
 @@ -0,0 +1,60 @@
@@ -285,7 +285,7 @@ index 00000000000..adc2a162f0b
 +
 +# BAD-FLAG: Unrecognized section flag 'xyzzy'. Flags supported for GNU compatibility: alloc, load, noload, readonly, debug, code, data, rom, share, contents, merge, strings.
 diff --git a/llvm/tools/llvm-objcopy/CopyConfig.cpp b/llvm/tools/llvm-objcopy/CopyConfig.cpp
-index 3737f571ae6..5347afca570 100644
+index 3737f571ae61..5347afca5709 100644
 --- a/llvm/tools/llvm-objcopy/CopyConfig.cpp
 +++ b/llvm/tools/llvm-objcopy/CopyConfig.cpp
 @@ -171,6 +171,47 @@ static SectionRename parseRenameSectionValue(StringRef FlagValue) {
@@ -349,7 +349,7 @@ index 3737f571ae6..5347afca570 100644
    for (auto Arg : InputArgs.filtered(OBJCOPY_remove_section))
      Config.ToRemove.push_back(Arg->getValue());
 diff --git a/llvm/tools/llvm-objcopy/CopyConfig.h b/llvm/tools/llvm-objcopy/CopyConfig.h
-index 71a2423ae1c..bb5fbc1cb7d 100644
+index 71a2423ae1c8..bb5fbc1cb7d3 100644
 --- a/llvm/tools/llvm-objcopy/CopyConfig.h
 +++ b/llvm/tools/llvm-objcopy/CopyConfig.h
 @@ -38,6 +38,11 @@ struct SectionRename {
@@ -373,7 +373,7 @@ index 71a2423ae1c..bb5fbc1cb7d 100644
    // Boolean options
    bool DeterministicArchives = true;
 diff --git a/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp b/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
-index f5ab8e70826..9b33c4b35c5 100644
+index f5ab8e708267..9b33c4b35c57 100644
 --- a/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
 +++ b/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
 @@ -517,6 +517,23 @@ static void handleArgs(const CopyConfig &Config, Object &Obj,
@@ -401,7 +401,7 @@ index f5ab8e70826..9b33c4b35c5 100644
      for (const auto &Flag : Config.DumpSection) {
        std::pair<StringRef, StringRef> SecPair = Flag.split("=");
 diff --git a/llvm/tools/llvm-objcopy/ObjcopyOpts.td b/llvm/tools/llvm-objcopy/ObjcopyOpts.td
-index 1f7e64e4091..43debb1a0a7 100644
+index 1f7e64e4091c..43debb1a0a72 100644
 --- a/llvm/tools/llvm-objcopy/ObjcopyOpts.td
 +++ b/llvm/tools/llvm-objcopy/ObjcopyOpts.td
 @@ -73,6 +73,12 @@ defm rename_section

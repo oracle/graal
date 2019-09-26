@@ -1,0 +1,16 @@
+{
+    "Polyglot_eval": {
+        "prefix": "eval",
+        "body": [
+          "eval('${1|js,R,ruby,python|}', ${2:''})"
+        ],
+        "description": "Executes code in a foreign language identified by its ID"
+    },
+    "Polyglot_import": {
+      "prefix": "import",
+      "body": [
+          "import('${1:name}')"
+      ],
+      "description": "Imports and returns a value with a given name exported by other languages"
+    }
+}

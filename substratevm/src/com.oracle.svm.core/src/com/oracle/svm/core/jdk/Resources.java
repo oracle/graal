@@ -121,6 +121,11 @@ public final class Resources {
             public InputStream getInputStream() throws IOException {
                 return new ByteArrayInputStream(resourceBytes);
             }
+
+            @Override
+            public long getContentLengthLong() {
+                return resourceBytes.length;
+            }
         }
 
         try {

@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
@@ -45,6 +44,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -80,7 +80,7 @@ public class LLVMPersonalityFunction {
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
     @CEntryPoint
-    @CEntryPointOptions(include = IncludeForLLVMOnly.class)
+    @CEntryPointOptions(include = IncludeForLLVMOnly.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);
@@ -97,14 +97,6 @@ public class LLVMPersonalityFunction {
         if ((action & _UA_SEARCH_PHASE()) != 0) {
             return _URC_HANDLER_FOUND();
         } else if ((action & _UA_CLEANUP_PHASE()) != 0) {
-            Throwable exception = SnippetRuntime.currentException.get();
-            SnippetRuntime.currentException.set(null);
-
-            int exceptionRegister = 0; // builtinEHReturnDataRegno(0);
-            int typeRegister = 1; // builtinEHReturnDataRegno(1);
-
-            setGR(context, exceptionRegister, Word.objectToTrackedPointer(exception).rawValue());
-            setGR(context, typeRegister, 1);
             setIP(context, functionStart.add(handlerOffset.intValue()));
 
             ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
@@ -136,6 +128,13 @@ public class LLVMPersonalityFunction {
         exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
         exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
         raiseException(exceptionStructure);
+    }
+
+    @Uninterruptible(reason = "Called before Java state is restored")
+    public static Throwable retrieveException() {
+        Throwable exception = SnippetRuntime.currentException.get();
+        SnippetRuntime.currentException.set(null);
+        return exception;
     }
 
     // Allow methods with non-standard names: Checkstyle: stop

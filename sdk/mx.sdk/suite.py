@@ -186,6 +186,16 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
     },
+    "org.graalvm.home" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.nativeimage",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -206,6 +216,7 @@ suite = {
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
         "org.graalvm.collections",
+        "org.graalvm.home",
       ],
       "distDependencies" : [],
       "javadocType": "api",
@@ -214,6 +225,7 @@ suite = {
         "requires" : ["java.logging"],
         "exports" : [
           "org.graalvm.collections",
+          "org.graalvm.home",
           "org.graalvm.nativeimage.hosted",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",

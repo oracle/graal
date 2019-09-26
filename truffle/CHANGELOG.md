@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Threads created by the embedder may now be collected by the GC before they can be [disposed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#disposeThread-C-java.lang.Thread-). If languages hold onto thread objects exposed via `initializeThread` they now need to do so with `WeakReference` to avoid leaking thread instances.
 * Support boolean literals in DSL expressions used in [@Specialization](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization) and [@Cached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached) fields.
 * Added standard [block node](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BlockNode.html) for language implementations. Using the block node allows the optimizing runtime to split big blocks into multiple compilation units. This optimization may be enabled using `--engine.PartialBlockCompilation` (on by default) and configured using `--engine.PartialBlockCompilationSize` (default 3000).
+* Added new experimental inlining heuristic in which inlining budgets are based on Graal IR node counts and not Truffle Node counts. Enable with `-Dgraal.TruffleLanguageAgnosticInlining=true`.
 
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).

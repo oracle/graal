@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -235,9 +235,11 @@ def ctw(args, extraVMarguments=None):
 
     args, vmargs = parser.parse_known_args(args)
 
+    vmargs.extend(_remove_empty_entries(extraVMarguments))
+
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
-        vmargs = ['-Djava.awt.headless=true'] + vmargs
+        vmargs.append('-Djava.awt.headless=true')
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -252,9 +254,10 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
-        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-            vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs, 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs, 'UseJVMCICompiler', False):
+            if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) == None:
+                vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if not _is_jvmci_enabled(vmargs):
@@ -277,7 +280,7 @@ def ctw(args, extraVMarguments=None):
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
 
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
+    run_vm(vmargs + mainClassAndArgs)
 
 def verify_jvmci_ci_versions(args):
     """
@@ -640,11 +643,15 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
+def _is_jaotc_supported():
+    return exists(jdk.exe_path('jaotc'))
+
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
-    mx_jaotc.jaotc_gate_runner(tasks)
+    if _is_jaotc_supported():
+        mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -826,8 +833,8 @@ class StdoutUnstripping:
                     candidate = e + '.map'
                     if exists(candidate):
                         if self.mapFiles is None:
-                            self.mapFiles = set()
-                        self.mapFiles.add(candidate)
+                            self.mapFiles = []
+                        self.mapFiles.append(candidate)
             self.capture = mx.OutputCapture()
             self.out = mx.TeeOutputCapture(self.capture)
             self.err = self.out
@@ -842,7 +849,7 @@ class StdoutUnstripping:
                         inputFile.write(data)
                         inputFile.flush()
                         retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in self.mapFiles] + [inputFile.name]
+                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
                         mx.unstrip(unstrip_args, out=retraceOut)
                         if data != retraceOut.data:
                             mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
@@ -865,7 +872,8 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
-    with StdoutUnstripping(args, out, err) as u:
+    map_file = join(graaljdk.home, 'proguard.map')
+    with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
 
 _JVMCI_JDK_TAG = 'jvmci'
@@ -1051,7 +1059,7 @@ def makegraaljdk_cli(args):
     if args.license:
         shutil.copy(args.license, join(dst_jdk_dir, 'LICENSE'))
     if args.bootstrap:
-        map_file = dst_jdk_dir + '.map'
+        map_file = join(dst_jdk_dir, 'proguard.map')
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
             select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
             mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1162,7 +1170,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         else:
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names)
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1207,7 +1215,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
         line = None
-        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\(build.*')
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\((?:[a-zA-Z]+ )?build.*')
         for line in out.lines:
             m = pattern.match(line)
             if m:
@@ -1224,7 +1232,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         unstrip_map = mx.make_unstrip_map(_graal_config().dists)
         if unstrip_map:
-            with open(tmp_dst_jdk_dir + '.map', 'w') as fp:
+            with open(join(tmp_dst_jdk_dir, 'proguard.map'), 'w') as fp:
                 fp.write(unstrip_map)
 
     except:
@@ -1301,7 +1309,7 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8:
+    if not isJDK8 and _is_jaotc_supported():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',

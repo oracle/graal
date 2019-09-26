@@ -178,12 +178,21 @@ def _path_args(depNames=None):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    if mx.get_jdk(tag='default').javaCompliance > '1.8':
+    jdk = mx.get_jdk(tag='default')
+    if jdk.javaCompliance > '1.8':
         # This is required to access jdk.internal.module.Modules which
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # Needed for om.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+        # The arguments below are only actually needed if Truffle is deployed as a
+        # module. However, that's determined by the compiler suite which may not
+        # be present. In that case, adding these options results in annoying
+        # but harmless messages from the VM:
+        #
+        #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
+        #
+
+        # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
         # This is required for the call to setAccessible in

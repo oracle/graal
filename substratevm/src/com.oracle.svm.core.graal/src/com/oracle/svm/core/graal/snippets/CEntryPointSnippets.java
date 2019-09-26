@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -68,6 +69,8 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -92,6 +95,10 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -201,12 +208,51 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return CEntryPointErrors.NO_ERROR;
     }
 
+    /** States for {@link #FIRST_ISOLATE_INIT_STATE}. */
+    private static final class FirstIsolateInitStates {
+        static final int UNINITIALIZED = 0;
+        static final int IN_PROGRESS = 1;
+        static final int SUCCESSFUL = 2;
+
+        static final int FAILED = -1;
+    }
+
+    /**
+     * Certain initialization tasks must be done exactly once per process, by the first launched
+     * isolate, which is coordinated via this variable.
+     */
+    private static final CGlobalData<PointerBase> FIRST_ISOLATE_INIT_STATE = CGlobalDataFactory.createWord();
+
     @SubstrateForeignCallTarget
     private static int initializeIsolate() {
-        boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
+        boolean firstIsolate = false;
+
+        final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
+        final Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+        int state = unsafe.getInt(initStateAddr);
+        if (state != FirstIsolateInitStates.SUCCESSFUL) {
+            firstIsolate = unsafe.compareAndSwapInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+            if (!firstIsolate) {
+                while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
+                    state = unsafe.getIntVolatile(null, initStateAddr);
+                }
+                if (state == FirstIsolateInitStates.FAILED) {
+                    return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+                }
+            }
+        }
+
+        boolean success = true;
+        if (firstIsolate) {
+            success = PlatformNativeLibrarySupport.singleton().initializeSharedBuiltinLibrariesOnce();
+            state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
+            unsafe.putIntVolatile(null, initStateAddr, state);
+        }
+        success = success && PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+
         if (UseDedicatedVMOperationThread.getValue()) {
             VMOperationControl.startVMOperationThread();
         }

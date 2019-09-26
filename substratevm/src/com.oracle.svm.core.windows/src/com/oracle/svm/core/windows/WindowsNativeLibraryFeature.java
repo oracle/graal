@@ -51,7 +51,7 @@ class WindowsNativeLibraryFeature implements Feature {
     }
 }
 
-class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
+class WindowsNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new WindowsNativeLibrarySupport());
@@ -72,13 +72,25 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (!JDKLibZipSubstitutions.initIDs()) {
             return false;
         }
+        return true;
+    }
+
+    @Override
+    public boolean initializeSharedBuiltinLibrariesOnce() {
+        if (!super.initializeSharedBuiltinLibrariesOnce()) {
+            return false;
+        }
         try {
             WinSock.init();
             System.loadLibrary("net");
+            /*
+             * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
+             * value in process-wide shared native state, the property's value in the first launched
+             * isolate applies to all subsequently launched isolates.
+             */
         } catch (UnsatisfiedLinkError e) {
             return false;
         }
-
         return true;
     }
 

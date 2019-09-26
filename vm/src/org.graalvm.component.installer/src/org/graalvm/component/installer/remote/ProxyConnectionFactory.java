@@ -34,6 +34,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -170,6 +172,8 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         private final Consumer<URLConnection> configCallback;
         private final CountDownLatch countDown;
         private final URL url;
+        private final List<Connector> tryConnectors = new ArrayList<>();
+
         // @GuardedBy(this)
         private Connector winner;
         // @GuardedBy(this)
@@ -178,6 +182,8 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         private IOException exProxy;
         // @GuardedBy(this)
         private IOException exDirect;
+        // @GuardedBy(this);
+        private int outcomes;
 
         ConnectionContext(URL url, Consumer<URLConnection> configCallback, CountDownLatch latch) {
             this.configCallback = configCallback;
@@ -219,6 +225,9 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                 } else {
                     exProxy = e;
                 }
+                if (++outcomes == tryConnectors.size()) {
+                    countDown.countDown();
+                }
             }
         }
 
@@ -227,6 +236,16 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                 return exDirect;
             }
             return new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
+        }
+
+        synchronized void submit(Connector c) {
+            tryConnectors.add(c);
+        }
+
+        void start() {
+            for (Connector c : tryConnectors) {
+                connectors.submit(c);
+            }
         }
     }
 
@@ -366,19 +385,21 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         if (winner != null && winner.accepts(url)) {
             winner.bind(ctx);
             // submit the winner so we can also recover from long connect delays
-            connectors.submit(winner);
+            ctx.submit(winner);
             // note: the winner will benefit from larger timeout as it is just one
             // connection
         } else {
             if (httpProxy != null) {
-                connectors.submit(new Connector(httpProxy).bind(ctx));
+                ctx.submit(new Connector(httpProxy).bind(ctx));
             }
             // do not attempt 2nd probe try if http+https are set to the same value.
             if (httpsProxy != null && !Objects.equals(httpProxy, httpsProxy)) {
-                connectors.submit(new Connector(httpsProxy).bind(ctx));
+                ctx.submit(new Connector(httpsProxy).bind(ctx));
             }
-            connectors.submit(new Connector(null).bind(ctx));
+            ctx.submit(new Connector(null).bind(ctx));
         }
+
+        ctx.start();
 
         int shouldDelay = haveProxy ? connectDelay : directConnectDelay;
 

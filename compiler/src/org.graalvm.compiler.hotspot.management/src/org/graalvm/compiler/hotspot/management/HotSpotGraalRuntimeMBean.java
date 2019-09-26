@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,7 @@ import jdk.vm.ci.services.Services;
 /**
  * MBean used to access properties and operations of a {@link HotSpotGraalRuntime} instance.
  */
-final class HotSpotGraalRuntimeMBean implements DynamicMBean {
+public final class HotSpotGraalRuntimeMBean implements DynamicMBean {
 
     /**
      * The runtime instance to which this bean provides a management connection.
@@ -69,16 +69,16 @@ final class HotSpotGraalRuntimeMBean implements DynamicMBean {
      */
     private final ObjectName objectName;
 
-    HotSpotGraalRuntimeMBean(ObjectName objectName, HotSpotGraalRuntime runtime) {
+    public HotSpotGraalRuntimeMBean(ObjectName objectName, HotSpotGraalRuntime runtime) {
         this.objectName = objectName;
         this.runtime = runtime;
     }
 
-    ObjectName getObjectName() {
+    public ObjectName getObjectName() {
         return objectName;
     }
 
-    HotSpotGraalRuntime getRuntime() {
+    public HotSpotGraalRuntime getRuntime() {
         return runtime;
     }
 

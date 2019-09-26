@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,8 +44,12 @@ import static jdk.vm.ci.aarch64.AArch64.r23;
 import static jdk.vm.ci.aarch64.AArch64.r24;
 import static jdk.vm.ci.aarch64.AArch64.r25;
 import static jdk.vm.ci.aarch64.AArch64.r26;
+import static jdk.vm.ci.aarch64.AArch64.r27;
 import static jdk.vm.ci.aarch64.AArch64.r28;
+import static jdk.vm.ci.aarch64.AArch64.r29;
 import static jdk.vm.ci.aarch64.AArch64.r3;
+import static jdk.vm.ci.aarch64.AArch64.r30;
+import static jdk.vm.ci.aarch64.AArch64.r31;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
@@ -101,7 +105,7 @@ public class AArch64HotSpotRegisterAllocationConfig extends RegisterAllocationCo
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
         r8,  r9,  r10, r11, r12, r13, r14, r15,
         r16, r17, r18, r19, r20, r21, r22, r23,
-        r24, r25, r26, /* r27, */ r28, /* r29, r30, r31 */
+        r24, r25, r26, r27, r28, r29, r30, r31,
 
         v0,  v1,  v2,  v3,  v4,  v5,  v6,  v7,
         v8,  v9,  v10, v11, v12, v13, v14, v15,

@@ -46,9 +46,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntimeAccess;
-
 /**
  * JDK 8 implementation of {@code TruffleJDKServices}.
  */
@@ -64,13 +61,19 @@ public class TruffleJDKServices {
         // No need to do anything on JDK 8
     }
 
+    @SuppressWarnings("unused")
+    public static <S> void addUses(Class<S> service) {
+        // No need to do anything on JDK 8
+    }
+
     /**
      * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
      */
-    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
-        Iterable<TruffleRuntimeAccess> jvmciProviders = getJVMCIProviders();
+    public static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
+        // public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
+        Iterable<Service> jvmciProviders = getJVMCIProviders(serviceClass);
         if (Boolean.getBoolean("truffle.TrustAllTruffleRuntimeProviders")) {
-            ServiceLoader<TruffleRuntimeAccess> standardProviders = ServiceLoader.load(TruffleRuntimeAccess.class);
+            ServiceLoader<Service> standardProviders = ServiceLoader.load(serviceClass);
             return Arrays.asList(jvmciProviders, standardProviders);
         } else {
             return Collections.singletonList(jvmciProviders);
@@ -78,10 +81,10 @@ public class TruffleJDKServices {
     }
 
     /**
-     * Gets the {@link TruffleRuntimeAccess} providers available on the JVMCI class path.
+     * Gets the providers of {@code Service} available on the JVMCI class path.
      */
-    private static Iterable<TruffleRuntimeAccess> getJVMCIProviders() {
-        ClassLoader cl = Truffle.class.getClassLoader();
+    private static <Service> Iterable<Service> getJVMCIProviders(Class<Service> serviceClass) {
+        ClassLoader cl = TruffleJDKServices.class.getClassLoader();
         ClassLoader scl = ClassLoader.getSystemClassLoader();
         while (cl != null) {
             if (cl == scl) {
@@ -97,24 +100,24 @@ public class TruffleJDKServices {
             cl = cl.getParent();
         }
 
-        Class<?> servicesClass;
+        Class<?> jvmciServicesClass;
         try {
             // Access JVMCI via reflection to avoid a hard
             // dependency on JVMCI from Truffle.
-            servicesClass = Class.forName("jdk.vm.ci.services.Services");
+            jvmciServicesClass = Class.forName("jdk.vm.ci.services.Services");
         } catch (ClassNotFoundException e) {
             // JVMCI is unavailable so the default TruffleRuntime will be used
             return null;
         }
 
-        return reflectiveServiceLoaderLoad(servicesClass);
+        return reflectiveServiceLoaderLoad(jvmciServicesClass, serviceClass);
     }
 
     @SuppressWarnings("unchecked")
-    private static Iterable<TruffleRuntimeAccess> reflectiveServiceLoaderLoad(Class<?> servicesClass) {
+    private static <Service> Iterable<Service> reflectiveServiceLoaderLoad(Class<?> servicesClass, Class<Service> serviceClass) {
         try {
             Method m = servicesClass.getDeclaredMethod("load", Class.class);
-            return (Iterable<TruffleRuntimeAccess>) m.invoke(null, TruffleRuntimeAccess.class);
+            return (Iterable<Service>) m.invoke(null, serviceClass);
         } catch (Throwable e) {
             throw (InternalError) new InternalError().initCause(e);
         }

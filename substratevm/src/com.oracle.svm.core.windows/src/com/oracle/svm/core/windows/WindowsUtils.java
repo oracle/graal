@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.WinBase;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -42,32 +41,35 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.windows.headers.FileAPI;
+import com.oracle.svm.core.windows.headers.WinBase;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsUtils {
 
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
-        @Alias int fd;
-        @Alias long handle;
+        /** Invalidates the standard FileDescriptors, which are allowed in the image heap. */
+        static class InvalidHandleValueComputer implements CustomFieldValueComputer {
+            @Override
+            public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+                return -1L;
+            }
+        }
+
+        @Alias @RecomputeFieldValue(kind = Custom, declClass = InvalidHandleValueComputer.class)//
+        long handle;
     }
 
-    public static long getHandle(FileDescriptor descriptor) {
-        return SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle;
-    }
-
-    public static void setHandle(FileDescriptor descriptor, long handle) {
+    static void setHandle(FileDescriptor descriptor, long handle) {
         SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
-    }
-
-    public static int getFD(FileDescriptor descriptor) {
-        return SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd;
-    }
-
-    public static void setFD(FileDescriptor descriptor, int fd) {
-        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
     static boolean outOfBounds(int off, int len, byte[] array) {

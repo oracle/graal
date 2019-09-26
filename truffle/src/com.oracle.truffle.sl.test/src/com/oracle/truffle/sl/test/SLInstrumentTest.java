@@ -814,6 +814,9 @@ public class SLInstrumentTest {
      */
     @Test
     public void testReplaceNodeReturnValue() throws Exception {
+        if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
+            return; // GR-16755
+        }
         String code = "function main() {\n" +
                         "  a = new();\n" +
                         "  b = a.rp1;\n" +

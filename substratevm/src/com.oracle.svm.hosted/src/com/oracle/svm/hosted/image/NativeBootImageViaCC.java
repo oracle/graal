@@ -187,7 +187,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(compilerCommand);
+            cmd.add(getCompilerCommand());
 
             setOutputKind(cmd);
 

@@ -42,7 +42,7 @@ public final class LinuxLinker extends Driver {
     }
 
     public static List<String> getLinkerFlags() {
-        return Arrays.asList("--plugin-opt=embed-bitcode", "--lto-O0");
+        return Arrays.asList("--mllvm=-lto-embed-bitcode=all", "--lto-O0");
     }
 
     public void link(String[] args) {

@@ -7,5 +7,5 @@ maven-deploy-all-suites : ${svm-common-linux-gate} {
 
 builds += [
   ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${oraclejdk8}  {name: "gate-maven-dry-run-all-jdk8-linux-amd64"}
-  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${oraclejdk11} {name: "gate-maven-dry-run-all-jdk11-linux-amd64"}
+  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${labsjdk11}   {name: "gate-maven-dry-run-all-jdk11-linux-amd64"}
 ]
