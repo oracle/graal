@@ -129,6 +129,10 @@ public final class Target_java_lang_reflect_Array {
                 throw meta.throwEx(meta.NegativeArraySizeException);
             }
         }
+        if (dimensions.length == 1) {
+            // getArrayClass(0) is undefined.
+            return meta.getInterpreterToVM().newMultiArray(component, dimensions);
+        }
         return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }
 
