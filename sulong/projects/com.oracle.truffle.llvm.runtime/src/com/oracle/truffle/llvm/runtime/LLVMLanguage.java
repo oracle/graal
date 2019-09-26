@@ -180,10 +180,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return nodeFactory;
     }
 
-    public Configuration getActiveConfiguration() {
-        return activeConfiguration;
-    }
-
     @Override
     protected void initializeContext(LLVMContext context) {
         context.initialize();
