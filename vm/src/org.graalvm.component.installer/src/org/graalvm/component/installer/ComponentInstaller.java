@@ -35,7 +35,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.text.MessageFormat;
@@ -53,7 +52,6 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
-import org.graalvm.component.installer.SystemUtils.OS;
 import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
 import org.graalvm.component.installer.commands.InstallCommand;
@@ -381,23 +379,11 @@ public final class ComponentInstaller {
         String libpath = System.getProperty("java.library.path"); // NOI18N
         if (libpath == null || libpath.isEmpty()) {
             // SVM mode: libpath is not define, define it to the JRE:
-            String newLibPath = "";
-            switch (OS.get()) {
-                case LINUX:
-                    String arch = System.getProperty("os.arch");
-                    newLibPath = graalHomePath.resolve(Paths.get("jre/lib", arch)).toString();
-                    break;
-                case MAC:
-                    newLibPath = graalHomePath.resolve(Paths.get("jre/lib")).toString();
-                    break;
-                case WINDOWS:
-                    newLibPath = graalHomePath.resolve(Paths.get("jre/bin")).toString();
-                    break;
-                case UNKNOWN:
-                default:
-                    throw SIMPLE_ENV.failure("ERROR_UnknownSystem", null, System.getProperty("os.name"));
+            Path newLibPath = SystemUtils.getRuntimeLibDir(graalPath, true);
+            if (newLibPath == null) {
+                throw SIMPLE_ENV.failure("ERROR_UnknownSystem", null, System.getProperty("os.name")); // NOI18N
             }
-            System.setProperty("java.library.path", newLibPath);
+            System.setProperty("java.library.path", newLibPath.toString()); // NOI18N
         }
         return graalPath;
     }
