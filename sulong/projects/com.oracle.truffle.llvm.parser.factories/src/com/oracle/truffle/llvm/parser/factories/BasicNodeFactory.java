@@ -2355,15 +2355,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly) {
-        if (readOnly) {
-            return new FreeReadOnlyGlobalsBlockNode(context);
-        } else {
-            return LLVMFreeNodeGen.create(null);
-        }
-    }
-
-    @Override
     public LLVMMemSetNode createMemSet() {
         return NativeMemSetNodeGen.create();
     }
