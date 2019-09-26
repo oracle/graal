@@ -1099,7 +1099,7 @@ public class BinaryReader extends BinaryStreamReader {
         state.setStackPointer(blockTypeId != ValueTypes.VOID_TYPE ? initialStackPointer : initialStackPointer - 1);
 
         // Read false branch, if it exists.
-        WasmNode falseBranch;
+        WasmNode falseBranchBlock;
         if (peek1(-1) == ELSE) {
             // If the if instruction has a true and a false branch, and it has non-void type, then each one of the two
             // readBlock above and below would push once, hence we need to pop once to compensate for the extra push.
@@ -1107,7 +1107,7 @@ public class BinaryReader extends BinaryStreamReader {
                 state.pop();
             }
 
-            falseBranch = readBlock(codeEntry, state, blockTypeId);
+            falseBranchBlock = readBlock(codeEntry, state, blockTypeId);
 
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 // TODO: Hack to correctly set the stack pointer for abstract interpretation.
@@ -1120,10 +1120,10 @@ public class BinaryReader extends BinaryStreamReader {
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 Assert.fail("An if statement without an else branch block cannot return values.");
             }
-            falseBranch = new WasmEmptyNode(module, codeEntry, 0);
+            falseBranchBlock = new WasmEmptyNode(module, codeEntry, 0);
         }
 
-        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer,
+        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer,
                 state.byteConstantOffset() - initialByteConstantOffset, state.numericLiteralOffset() - initialNumericLiteralOffset);
     }
 
