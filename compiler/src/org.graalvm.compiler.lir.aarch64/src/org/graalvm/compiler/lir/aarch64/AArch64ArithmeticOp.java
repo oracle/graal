@@ -481,7 +481,7 @@ public enum AArch64ArithmeticOp {
          */
         public MultiplyAddSubOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AllocatableValue src3) {
             super(TYPE);
-            assert op == ADD || op == SUB;
+            assert op == ADD || op == SUB || op == FADD;
             this.op = op;
             this.result = result;
             this.src1 = src1;
@@ -498,6 +498,9 @@ public enum AArch64ArithmeticOp {
                     break;
                 case SUB:
                     masm.msub(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    break;
+                case FADD:
+                    masm.fmadd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
