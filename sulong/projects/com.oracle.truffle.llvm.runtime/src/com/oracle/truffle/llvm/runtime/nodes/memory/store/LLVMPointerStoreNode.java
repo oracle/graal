@@ -30,9 +30,12 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -42,14 +45,16 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doAddress(LLVMNativePointer addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        getLLVMMemoryCached().putPointer(addr, toNative.executeWithTarget(value));
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getCapability(LLVMMemory.class).putPointer(addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doAddress(long addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        getLLVMMemoryCached().putPointer(addr, toNative.executeWithTarget(value));
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getCapability(LLVMMemory.class).putPointer(addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

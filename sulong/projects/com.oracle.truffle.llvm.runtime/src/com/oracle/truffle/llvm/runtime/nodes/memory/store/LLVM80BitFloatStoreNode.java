@@ -30,11 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -47,8 +50,9 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     protected abstract void executeManaged(LLVMManagedPointer address, LLVM80BitFloat value);
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value) {
-        getLLVMMemoryCached().put80BitFloat(addr, value);
+    protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getCapability(LLVMMemory.class).put80BitFloat(addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

@@ -30,10 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -46,8 +49,9 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
     protected abstract void executeManaged(LLVMManagedPointer address, LLVMIVarBit value);
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected void doOp(LLVMNativePointer addr, LLVMIVarBit value) {
-        getLLVMMemoryCached().putIVarBit(addr, value);
+    protected void doOp(LLVMNativePointer addr, LLVMIVarBit value,
+                    @CachedLanguage LLVMLanguage language) {
+        language.getCapability(LLVMMemory.class).putIVarBit(addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
