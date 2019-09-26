@@ -65,7 +65,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -91,7 +90,6 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 public final class LLVMSymbolReadResolver {
 
     private final LLVMParserRuntime runtime;
-    private final LLVMContext context;
     private final NodeFactory nodeFactory;
     private final FrameDescriptor frame;
     private final GetStackSpaceFactory getStackSpaceFactory;
@@ -429,7 +427,6 @@ public final class LLVMSymbolReadResolver {
 
     public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout) {
         this.runtime = runtime;
-        this.context = runtime.getContext();
         this.nodeFactory = runtime.getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;

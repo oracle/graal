@@ -203,7 +203,7 @@ final class Runner {
                         InitializeModuleNode[] initModules) {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(runner.context, res, res.getRuntime().getNodeFactory());
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory());
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -362,7 +362,7 @@ final class Runner {
 
         final LLVMScope fileScope;
 
-        InitializeSymbolsNode(LLVMContext context, LLVMParserResult res,  NodeFactory nodeFactory) {
+        InitializeSymbolsNode(LLVMParserResult res,  NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
 
             // allocate all non-pointer types as two structs
@@ -878,9 +878,9 @@ final class Runner {
             this.destructor = runner.createDestructor(parserResult);
             this.dataLayout = parserResult.getDataLayout();
 
-            this.globalVarInit = runner.createGlobalVariableInitializer(rootFrame, parserResult);
+            this.globalVarInit = Runner.createGlobalVariableInitializer(rootFrame, parserResult);
             this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
-            this.constructor = runner.createConstructor(parserResult);
+            this.constructor = Runner.createConstructor(parserResult);
         }
 
         void execute(VirtualFrame frame, LLVMContext ctx, LLVMPointer roDataBase) {
@@ -901,7 +901,7 @@ final class Runner {
         }
     }
 
-    private StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
+    private static StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory(), parserResult.getDataLayout());
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
@@ -915,7 +915,7 @@ final class Runner {
         return new StaticInitsNode(initNodes);
     }
 
-    private LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
+    private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -942,7 +942,7 @@ final class Runner {
         return null;
     }
 
-    private StaticInitsNode createConstructor(LLVMParserResult parserResult) {
+    private static StaticInitsNode createConstructor(LLVMParserResult parserResult) {
         return new StaticInitsNode(createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY));
     }
 
@@ -956,7 +956,7 @@ final class Runner {
         }
     }
 
-    private LLVMStatementNode[] createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private static LLVMStatementNode[] createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
         for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
             if (globalVariable.getName().equals(name)) {
                 return resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator, parserResult.getDataLayout(), parserResult.getRuntime().getNodeFactory());
@@ -965,7 +965,7 @@ final class Runner {
         return LLVMStatementNode.NO_STATEMENTS;
     }
 
-    private LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout, NodeFactory nodeFactory) {
+    private static LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout, NodeFactory nodeFactory) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMStatementNode.NO_STATEMENTS;
