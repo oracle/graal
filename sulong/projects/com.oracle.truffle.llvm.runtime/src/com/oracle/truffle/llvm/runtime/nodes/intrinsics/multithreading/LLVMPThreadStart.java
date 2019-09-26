@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -82,6 +83,7 @@ public final class LLVMPThreadStart {
                 // exception
 
             } catch (LLVMExitException e) {
+                CompilerDirectives.transferToInterpreter();
                 System.exit(e.getExitStatus());
 
             } finally {
