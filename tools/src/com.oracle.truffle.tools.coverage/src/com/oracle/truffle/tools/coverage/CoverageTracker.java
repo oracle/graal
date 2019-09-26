@@ -122,6 +122,14 @@ public final class CoverageTracker implements AutoCloseable {
         return coverageNode instanceof CountingCoverageNode ? ((CountingCoverageNode) coverageNode).getCount() : -1;
     }
 
+    /**
+     * Start coverage tracking with the given config.
+     * 
+     * @param config The configuration for the coverage tracking.
+     * @throws IllegalStateException if the tracker is {@link CoverageTracker#close() closed} or
+     *             already started.
+     * @since 19.3.0
+     */
     public synchronized void start(Config config) {
         if (closed) {
             throw new IllegalStateException("Coverage Tracker is closed");
@@ -141,6 +149,13 @@ public final class CoverageTracker implements AutoCloseable {
         this.coverageNodes.clear();
     }
 
+    /**
+     * Stop tracking coverage.
+     * 
+     * @throws IllegalStateException if called on a tracker that has not been
+     *             {@link CoverageTracker#start(Config) started}
+     * @since 19.3.0
+     */
     public synchronized void end() {
         if (!tracking) {
             throw new IllegalStateException("Coverage tracker is not tracking");
@@ -149,6 +164,10 @@ public final class CoverageTracker implements AutoCloseable {
         disposeBindings();
     }
 
+    /**
+     * @return the coverage gathered thus far.
+     * @since 19.3.0
+     */
     public synchronized SourceCoverage[] getCoverage() {
         return sourceCoverage(mapping());
     }
@@ -215,6 +234,11 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
+    /**
+     * Closes the CoverageTracker. This makes it unusable further.
+     * 
+     * @since 19.3.0
+     */
     @Override
     public synchronized void close() {
         closed = true;
@@ -299,6 +323,13 @@ public final class CoverageTracker implements AutoCloseable {
 
     }
 
+    /**
+     * Configuration for the {@link CoverageTracker}. Specifies the {@link SourceSectionFilter
+     * filter} for which {@link SourceSection source sections} to include in tracking as well as
+     * whether to keep track of how many times a particular source section was executed.
+     * 
+     * @since 19.3.0
+     */
     public static class Config {
         private final SourceSectionFilter sourceSectionFilter;
         private final boolean count;

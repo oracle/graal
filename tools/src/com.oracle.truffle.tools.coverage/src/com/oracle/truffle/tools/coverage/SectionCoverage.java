@@ -26,6 +26,11 @@ package com.oracle.truffle.tools.coverage;
 
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Coverage data of a particular {@link SourceSection}.
+ *
+ * @since 19.3.0
+ */
 public final class SectionCoverage {
 
     private final SourceSection sourceSection;
@@ -38,14 +43,34 @@ public final class SectionCoverage {
         this.count = count;
     }
 
+    /**
+     * @return The source section this coverage relates to.
+     *
+     * @since 19.3.0
+     */
     public SourceSection getSourceSection() {
         return sourceSection;
     }
 
+    /**
+     * @return Was this root covered (i.e. executed) during the tracking execution.
+     *
+     * @since 19.3.0
+     */
     public boolean isCovered() {
         return covered;
     }
 
+    /**
+     * This value is only available if the
+     * {@link com.oracle.truffle.tools.coverage.CoverageTracker.Config tracker config} specified to
+     * count executions.
+     *
+     * @return How many times was the corresponding {@link SourceSection} executed. -1 if counting
+     *         was disabled.
+     *
+     * @since 19.3.0
+     */
     public long getCount() {
         return count;
     }
