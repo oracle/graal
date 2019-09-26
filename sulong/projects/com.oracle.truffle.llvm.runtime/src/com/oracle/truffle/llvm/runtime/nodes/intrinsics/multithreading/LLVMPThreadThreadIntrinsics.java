@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -96,25 +97,31 @@ public final class LLVMPThreadThreadIntrinsics {
                 storeNode = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
 
+            final Thread thread = context.getpThreadContext().getThread(threadId);
+            if (thread != null) {
+                joinThread(thread);
+            }
+
+            Object retVal = context.getpThreadContext().getThreadReturnValue(threadId);
+            if (retVal == null) {
+                retVal = LLVMNativePointer.createNull();
+            }
+            if (!threadReturn.isNull()) {
+                storeNode.executeWithTarget(threadReturn, retVal);
+            }
+
+            return 0;
+        }
+
+        @TruffleBoundary
+        private void joinThread(Thread thread) {
+            assert thread != null;
             try {
-                Thread thread = context.getpThreadContext().getThread(threadId);
-                if (thread != null) {
-                    thread.join();
-                }
-
-                Object retVal = context.getpThreadContext().getThreadReturnValue(threadId);
-                if (retVal == null) {
-                    retVal = LLVMNativePointer.createNull();
-                }
-                if (!threadReturn.isNull()) {
-                    storeNode.executeWithTarget(threadReturn, retVal);
-                }
-
+                thread.join();
             } catch (InterruptedException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMThreadException(this, "Failed to join thread", e);
             }
-            return 0;
         }
     }
 
