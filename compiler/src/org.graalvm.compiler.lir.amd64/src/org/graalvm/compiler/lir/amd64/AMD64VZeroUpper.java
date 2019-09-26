@@ -62,19 +62,22 @@ import jdk.vm.ci.meta.Value;
  * On JDK8, C2 does not emit many vzeroupper instructions, potentially because that YMM registers
  * are not heavily employed (C2 vectorization starts using YMM registers in 9, source
  * https://cr.openjdk.java.net/~vlivanov/talks/2017_Vectorization_in_HotSpot_JVM.pdf) and thus less
- * care has been taken to place these instructions. One example is that many intrinsics use AVX2
- * instructions starting from https://bugs.openjdk.java.net/browse/JDK-8005419, but does not
- * properly place vzeroupper upon returning of the intrinsic stub or the caller (C2-compiled) of the
- * stubs.
+ * care has been taken to place these instructions. One example is that many intrinsics employ YMM
+ * registers starting from https://bugs.openjdk.java.net/browse/JDK-8005419, but does not properly
+ * place vzeroupper upon returning of the intrinsic stub or the caller of the stub.
  *
- * On JDK11 however, C2 is likely overdoing the vzeroupper: a) before any foreign call, even if the
- * call links to a compiled stub where C2 has knowledge about; b) upon returning of intrinsic stubs
- * (search for clear_upper_avx() in opto/library_call.cpp) or C2-compiled Java method, if the method
- * contains invocation to the aforementioned intrinsic stubs or vectorization code that employs YMM
- * registers. This means, if a Java method only performs System.arraycopy, which will be compiled
- * into a call to an intrinsic stub, the C2 compiled code will vzeroupper before the call, upon the
- * returning of the sub, and upon the returning of the current method; while Graal will only do the
- * last.
+ * Most vzeroupper were added in JDK 10 (https://bugs.openjdk.java.net/browse/JDK-8178811), and was
+ * later restricted on Haswell Xeon due to performance regression
+ * (https://bugs.openjdk.java.net/browse/JDK-8190934). The actual condition for placing vzeroupper
+ * is at http://hg.openjdk.java.net/jdk/jdk/file/c7d9df2e470c/src/hotspot/cpu/x86/x86_64.ad#l428. To
+ * summarize, if nmethod employs YMM registers (or intrinsics which use them, search for
+ * clear_upper_avx() in opto/library_call.cpp) vzeroupper will be generated on nmethod's exit and
+ * before any calls in nmethod, because even compiled nmethods can still use only SSE instructions.
+ * 
+ * This means, if a Java method performs a call to an intrinsic that employs YMM registers,
+ * C2-compiled code will place a vzeroupper before the call, upon exit of the stub and upon exit of
+ * this method. Graal will only place the last, because it ensures that Graal-compiled Java method
+ * and stubs will be consistent on using VEX-encoding.
  *
  * In SubstrateVM, since the whole image is compiled consistently with or without VEX encoding (the
  * later is the default behavior, see {@code NativeImageGenerator.createTarget}), there is no need
