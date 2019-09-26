@@ -30,10 +30,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -66,38 +63,6 @@ public class CoverageInstrument extends TruffleInstrument {
                             }
                         }
                     });
-    // TODO: following should be a shared lib for tools.
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
-                    new Function<String, Object[]>() {
-                        @Override
-                        public Object[] apply(String filterWildcardExpression) {
-                            if (filterWildcardExpression == null) {
-                                return null;
-                            }
-                            String[] expressions = filterWildcardExpression.split(",");
-                            Object[] builtExpressions = new Object[expressions.length];
-                            for (int i = 0; i < expressions.length; i++) {
-                                String expression = expressions[i];
-                                expression = expression.trim();
-                                Object result = expression;
-                                if (expression.contains("?") || expression.contains("*")) {
-                                    try {
-                                        result = Pattern.compile(wildcardToRegex(expression));
-                                    } catch (PatternSyntaxException e) {
-                                        throw new IllegalArgumentException(
-                                                        String.format("Invalid wildcard pattern %s.", expression), e);
-                                    }
-                                }
-                                builtExpressions[i] = result;
-                            }
-                            return builtExpressions;
-                        }
-                    }, new Consumer<Object[]>() {
-                        @Override
-                        public void accept(Object[] objects) {
-
-                        }
-                    });
     // @formatter:off
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
@@ -106,9 +71,9 @@ public class CoverageInstrument extends TruffleInstrument {
     @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WildcardHandler.WILDCARD_FILTER_TYPE);
     @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WildcardHandler.WILDCARD_FILTER_TYPE);
     @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
     @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
@@ -149,65 +114,6 @@ public class CoverageInstrument extends TruffleInstrument {
         CoverageInstrument.factory = factory;
     }
 
-    private static String wildcardToRegex(String wildcard) {
-        StringBuilder s = new StringBuilder(wildcard.length());
-        s.append('^');
-        for (int i = 0, is = wildcard.length(); i < is; i++) {
-            char c = wildcard.charAt(i);
-            switch (c) {
-                case '*':
-                    s.append("\\S*");
-                    break;
-                case '?':
-                    s.append("\\S");
-                    break;
-                // escape special regexp-characters
-                case '(':
-                case ')':
-                case '[':
-                case ']':
-                case '$':
-                case '^':
-                case '.':
-                case '{':
-                case '}':
-                case '|':
-                case '\\':
-                    s.append("\\");
-                    s.append(c);
-                    break;
-                default:
-                    s.append(c);
-                    break;
-            }
-        }
-        s.append('$');
-        return s.toString();
-    }
-
-    private static boolean testWildcardExpressions(String value, Object[] fileFilters) {
-        if (fileFilters == null || fileFilters.length == 0) {
-            return true;
-        }
-        if (value == null) {
-            return false;
-        }
-        for (Object filter : fileFilters) {
-            if (filter instanceof Pattern) {
-                if (((Pattern) filter).matcher(value).matches()) {
-                    return true;
-                }
-            } else if (filter instanceof String) {
-                if (filter.equals(value)) {
-                    return true;
-                }
-            } else {
-                throw new AssertionError();
-            }
-        }
-        return false;
-    }
-
     // @formatter:on
 
     private static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
@@ -235,13 +141,13 @@ public class CoverageInstrument extends TruffleInstrument {
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         builder.sourceIs(source -> {
             boolean internal = (internals || !source.isInternal());
-            boolean file = testWildcardExpressions(source.getPath(), filterFile);
+            boolean file = WildcardHandler.testWildcardExpressions(source.getPath(), filterFile);
             boolean mimeType = filterMimeType.equals("") || filterMimeType.equals(source.getMimeType());
             final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
             return internal && file && mimeType && languageId;
         });
         final Object[] filterRootName = FILTER_ROOT.getValue(options);
-        builder.rootNameIs(s -> testWildcardExpressions(s, filterRootName));
+        builder.rootNameIs(s -> WildcardHandler.testWildcardExpressions(s, filterRootName));
         return builder.build();
     }
 
