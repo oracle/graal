@@ -150,7 +150,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     build_tags = ['build_' + t for t in tags]
     run_tags = ['run_' + t for t in tags]
     if not unittestArgs:
-        unittestArgs = []
+        unittestArgs = ['--very-verbose', '--enable-timing']
     unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
