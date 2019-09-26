@@ -40,10 +40,12 @@ final class CoverageCLI {
     private final String summaryHeader;
     private final int summaryHeaderLen;
     private final SourceCoverage[] coverage;
+    private final boolean strictLines;
 
-    CoverageCLI(PrintStream out, SourceCoverage[] coverage) {
+    CoverageCLI(PrintStream out, SourceCoverage[] coverage, boolean strictLines) {
         this.out = out;
         this.coverage = coverage;
+        this.strictLines = strictLines;
         sortCoverage();
         format = getHistogramLineFormat(coverage);
         summaryHeader = String.format(format, "Path", "Statements", "Lines", "Roots");
@@ -101,7 +103,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             printLine();
             printSummaryHeader();
-            final LineCoverage lineCoverage = new LineCoverage(sourceCoverage);
+            final LineCoverage lineCoverage = LineCoverage.detailed(sourceCoverage, strictLines);
             out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
             out.println();
             printLinesOfSource(sourceCoverage.getSource(), lineCoverage);
@@ -121,7 +123,9 @@ final class CoverageCLI {
         out.println("Code coverage per line of code and what percent of each element was covered during execution (per source)");
         out.println("  + indicates the line is part of a statement that was covered during execution");
         out.println("  - indicates the line is part of a statement that was not covered during execution");
-        out.println("  i indicates the line is part of a statement that was incidentally covered during execution");
+        if (strictLines) {
+            out.println("  i indicates the line is part of a statement that was incidentally covered during execution");
+        }
         out.println("    e.g. a not-taken branch of a covered if statement");
         out.println("  ! indicates the line is part of a root that was NOT covered during execution");
     }
@@ -137,7 +141,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             final String line = String.format(format, path,
                             statementCoverage(sourceCoverage),
-                            lineCoverage(new LineCoverage(sourceCoverage, false)),
+                            lineCoverage(LineCoverage.basic(sourceCoverage, strictLines)),
                             rootCoverage(sourceCoverage));
             out.println(line);
         }

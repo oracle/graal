@@ -36,18 +36,22 @@ class LCOVPrinter {
 
     private final PrintStream out;
     private final SourceCoverage[] coverage;
+    private final boolean strictLines;
 
-    LCOVPrinter(PrintStream out, SourceCoverage[] coverage) {
+    LCOVPrinter(PrintStream out, SourceCoverage[] coverage, boolean strictLines) {
         this.out = out;
         this.coverage = coverage;
+        this.strictLines = strictLines;
     }
 
-    private static HashMap<Integer, Long> linesToCount(SourceCoverage coverage) {
+    private HashMap<Integer, Long> linesToCount(SourceCoverage coverage) {
         final HashMap<Integer, Long> linesToCount = new HashMap<>();
         for (RootCoverage root : coverage.getRoots()) {
             final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
             addCoverageCounts(linesToCount, sectionCoverage);
-            removeIncidentalCoverage(linesToCount, sectionCoverage);
+            if (strictLines) {
+                removeIncidentalCoverage(linesToCount, sectionCoverage);
+            }
         }
         return linesToCount;
     }
