@@ -29,17 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected short doShortNative(LLVMNativePointer addr) {
-        return getLLVMMemoryCached().getI16(addr);
+    protected short doShortNative(LLVMNativePointer addr,
+                    @CachedLanguage LLVMLanguage language) {
+        return language.getCapability(LLVMMemory.class).getI16(addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
