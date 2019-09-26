@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThre
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -49,6 +50,7 @@ public final class LLVMPThreadContext {
     // the long-key is the thread-id
     private final ConcurrentMap<Long, Object> threadReturnValueStorage;
     private final ConcurrentMap<Long, Thread> threadStorage;
+    private boolean isCreateThreadAllowed;
 
     private final ArrayList<LLVMPointer> onceStorage;
 
@@ -73,17 +75,21 @@ public final class LLVMPThreadContext {
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
         this.callTargetLock = new Object();
         this.pthreadCallTarget = null;
+        this.isCreateThreadAllowed = true;
     }
 
     @TruffleBoundary
     public void joinAllThreads() {
+        final Collection<Thread> threadsToJoin;
         synchronized (threadStorage) {
-            for (Thread createdThread : threadStorage.values()) {
-                try {
-                    createdThread.join();
-                } catch (InterruptedException e) {
-                    // ignored
-                }
+            this.isCreateThreadAllowed = false;
+            threadsToJoin = threadStorage.values();
+        }
+        for (Thread createdThread : threadsToJoin) {
+            try {
+                createdThread.join();
+            } catch (InterruptedException e) {
+                // ignored
             }
         }
     }
@@ -176,9 +182,13 @@ public final class LLVMPThreadContext {
     @TruffleBoundary
     public synchronized Thread createThread(Runnable runnable) {
         synchronized (threadStorage) {
-            final Thread thread = context.getEnv().createThread(runnable);
-            threadStorage.put(thread.getId(), thread);
-            return thread;
+            if (isCreateThreadAllowed) {
+                final Thread thread = context.getEnv().createThread(runnable);
+                threadStorage.put(thread.getId(), thread);
+                return thread;
+            } else {
+                return null;
+            }
         }
     }
 

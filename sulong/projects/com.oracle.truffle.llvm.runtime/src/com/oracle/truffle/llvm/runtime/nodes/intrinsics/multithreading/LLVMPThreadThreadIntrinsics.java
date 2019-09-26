@@ -62,7 +62,10 @@ public final class LLVMPThreadThreadIntrinsics {
             }
 
             LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context, true);
-            Thread t = context.getpThreadContext().createThread(init);
+            final Thread t = context.getpThreadContext().createThread(init);
+            if (t == null) {
+                return LLVMAMD64Error.EAGAIN;
+            }
             store.executeWithTarget(thread, t.getId());
             t.start();
             return 0;
