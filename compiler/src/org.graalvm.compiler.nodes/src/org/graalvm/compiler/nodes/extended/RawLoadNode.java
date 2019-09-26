@@ -106,8 +106,8 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
                     JavaKind entryKind = virtual.entryKind(entryIndex);
 
-                    if (virtual.isVirtualByteArrayAccess(accessKind())) {
-                        if (virtual.canVirtualizeRead(entry, entryIndex, accessKind(), tool)) {
+                    if (virtual.isLargeVirtualByteArrayAccess(accessKind())) {
+                        if (virtual.canVirtualizeLargeByteArrayUnsafeRead(entry, entryIndex, accessKind(), tool)) {
                             tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, accessKind(), stamp));
                         }
                     } else if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {

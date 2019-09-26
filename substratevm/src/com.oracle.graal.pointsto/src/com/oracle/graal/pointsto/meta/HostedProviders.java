@@ -28,7 +28,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
@@ -47,8 +47,8 @@ public class HostedProviders extends Providers {
 
     public HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    WordTypes wordTypes, GCProvider gc) {
-        super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, gc);
+                    WordTypes wordTypes, VMFeaturesProvider vmFeaturesProvider) {
+        super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, vmFeaturesProvider);
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
     }
@@ -72,6 +72,6 @@ public class HostedProviders extends Providers {
     @Override
     public Providers copyWith(Replacements substitution) {
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution, getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getGC());
+                        getSnippetReflection(), getWordTypes(), getVmFeaturesProvider());
     }
 }

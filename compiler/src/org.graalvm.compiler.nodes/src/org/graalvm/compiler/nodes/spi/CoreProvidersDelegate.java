@@ -74,7 +74,7 @@ public class CoreProvidersDelegate implements CoreProviders {
     }
 
     @Override
-    public GCProvider getGC() {
-        return providers.getGC();
+    public VMFeaturesProvider getVmFeaturesProvider() {
+        return providers.getVmFeaturesProvider();
     }
 }

@@ -34,16 +34,24 @@ import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class HotSpotGCProvider implements GCProvider {
+public class HotSpotVMFeaturesProvider implements VMFeaturesProvider {
     private final BarrierSet barrierSet;
 
-    public HotSpotGCProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    private final boolean canVirtualizeLargeByteArrayAccess;
+
+    public HotSpotVMFeaturesProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         this.barrierSet = createBarrierSet(config, metaAccess);
+        this.canVirtualizeLargeByteArrayAccess = config.deoptimizationSupportLargeAccessByteArrayVirtualization;
+    }
+
+    @Override
+    public boolean canVirtualizeLargeByteArrayAccess() {
+        return canVirtualizeLargeByteArrayAccess;
     }
 
     @Override
@@ -74,6 +82,7 @@ public class HotSpotGCProvider implements GCProvider {
                     }
                     return !useDeferredInitBarriers || !isWriteToNewObject(initializingWrite);
                 }
+
             };
         }
     }

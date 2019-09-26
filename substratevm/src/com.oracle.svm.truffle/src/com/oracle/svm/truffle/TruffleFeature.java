@@ -442,7 +442,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                             partialEvaluator.getProviders().getStampProvider(),
                             snippetReflection,
                             graalFeature.getHostedProviders().getWordTypes(),
-                            graalFeature.getHostedProviders().getGC());
+                            graalFeature.getHostedProviders().getVmFeaturesProvider());
             newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
             graalFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::includeCallee, this::deoptimizeOnException);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.spi;
+
+package com.oracle.svm.hosted.code;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 
-public interface GCProvider {
-    /** Returns the barrier set that is used to insert the needed read/write barriers. */
-    BarrierSet getBarrierSet();
+public class SVM_VMFeaturesProvider implements VMFeaturesProvider {
+    private final BarrierSet barrierSet;
+
+    public SVM_VMFeaturesProvider(BarrierSet barrierSet) {
+        this.barrierSet = barrierSet;
+    }
+
+    @Override
+    public BarrierSet getBarrierSet() {
+        return barrierSet;
+    }
+
+    @Override
+    public boolean canVirtualizeLargeByteArrayAccess() {
+        return true;
+    }
 }

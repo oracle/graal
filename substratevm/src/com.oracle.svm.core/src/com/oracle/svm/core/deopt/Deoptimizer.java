@@ -34,6 +34,10 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
@@ -954,12 +958,15 @@ public final class Deoptimizer {
         DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
+        boolean materializingByteArray = false;
+
         int curIdx;
         UnsignedWord curOffset;
         if (LayoutEncoding.isArray(hub.getLayoutEncoding())) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
             obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
+            materializingByteArray = obj.getClass() == byte[].class;
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
@@ -979,6 +986,18 @@ public final class Deoptimizer {
 
         while (curIdx < encodings.length) {
             ValueInfo value = encodings[curIdx];
+            if (value.getKind() == JavaKind.Illegal) {
+                if (materializingByteArray) {
+                    /**
+                     * For more information, see
+                     * {@link org.graalvm.compiler.core.gen.DebugInfoBuilder#build(FrameState, LabelRef)}
+                     * and
+                     * {@link org.graalvm.compiler.virtual.phases.ea.VirtualizerToolImpl#setVirtualEntry(VirtualObjectNode, int, ValueNode, JavaKind, long)}
+                     */
+                    curIdx++;
+                    continue;
+                }
+            }
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
             writeValueInMaterializedObj(obj, curOffset, con);

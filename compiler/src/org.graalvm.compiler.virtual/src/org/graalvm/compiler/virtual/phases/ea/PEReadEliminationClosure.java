@@ -62,6 +62,7 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -88,8 +89,8 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     public PEReadEliminationClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    LoweringProvider loweringProvider) {
-        super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider);
+                    LoweringProvider loweringProvider, VMFeaturesProvider vmFeaturesProvider) {
+        super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider, vmFeaturesProvider);
     }
 
     @Override

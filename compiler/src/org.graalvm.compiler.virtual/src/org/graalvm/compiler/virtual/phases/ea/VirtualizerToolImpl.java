@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
@@ -61,6 +62,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final ConstantFieldProvider constantFieldProvider;
+    private final VMFeaturesProvider vmFeaturesProvider;
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
     private final OptionValues options;
@@ -68,11 +70,12 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final LoweringProvider loweringProvider;
     private ConstantNode illegalConstant;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, PartialEscapeClosure<?> closure,
-                    Assumptions assumptions, OptionValues options, DebugContext debug, LoweringProvider loweringProvider) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, VMFeaturesProvider vmFeaturesProvider,
+                    PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug, LoweringProvider loweringProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
+        this.vmFeaturesProvider = vmFeaturesProvider;
         this.closure = closure;
         this.assumptions = assumptions;
         this.options = options;
@@ -156,7 +159,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     assert nextIndex == index + 1 : "expected to be sequential";
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
-            } else if (virtual.isVirtualByteArrayAccess(accessKind)) {
+            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind)) {
                 /*
                  * Special case: Allow storing any primitive inside a byte array, as long as there
                  * is enough room left, and all accesses and subsequent writes are on the exact
@@ -187,7 +190,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 }
-            } else if (virtual.isVirtualByteArrayAccess(accessKind)) {
+            } else if (canVirtualizeLargeByteArrayUnsafeWrite(virtual, accessKind)) {
                 for (int i = index + 1; i < index + accessKind.getByteCount(); i++) {
                     state.setEntry(virtual.getObjectId(), i, getIllegalConstant());
                 }
@@ -217,6 +220,10 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
             return true;
         }
         return accessKind.getByteCount() == virtual.byteArrayEntryByteCount(index, this);
+    }
+
+    private boolean canVirtualizeLargeByteArrayUnsafeWrite(VirtualObjectNode virtual, JavaKind accessKind) {
+        return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isLargeVirtualByteArrayAccess(accessKind);
     }
 
     private boolean isEntryDefaults(VirtualArrayNode virtual, JavaKind accessKind, int index) {
@@ -342,6 +349,11 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public ConstantReflectionProvider getConstantReflection() {
         return constantReflection;
+    }
+
+    @Override
+    public boolean canVirtualizeLargeByteArrayUnsafeAccess() {
+        return vmFeaturesProvider.canVirtualizeLargeByteArrayAccess();
     }
 
     @Override

@@ -157,12 +157,13 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
         return (i - index);
     }
 
+    /**
+     * Performs some sanity checks.
+     */
     public static ValueNode virtualizeByteArrayRead(ValueNode entry, JavaKind accessKind, Stamp targetStamp) {
         assert !entry.isIllegalConstant();
         assert targetStamp.getStackKind().isPrimitive();
-        int entryBits = accessKind.getBitCount();
-        int targetBits = PrimitiveStamp.getBits(targetStamp);
-        assert entryBits <= targetBits;
+        assert accessKind.getBitCount() <= PrimitiveStamp.getBits(targetStamp);
         return entry;
     }
 }

@@ -1123,7 +1123,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     CommitAllocationNode commit,
                     VirtualObjectNode virtual,
                     int valuePos) {
-        if (!virtual.isVirtualByteArrayAccess(entryKind)) {
+        if (!virtual.isVirtualByteArray()) {
             return implicitStoreConvert(graph, entryKind, value);
         }
         // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit

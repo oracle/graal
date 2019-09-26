@@ -32,7 +32,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
@@ -106,8 +106,8 @@ public abstract class SharedRuntimeConfigurationBuilder {
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, null);
         Replacements replacements = createReplacements(p, snippetReflection);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, null);
-        GCProvider gc = ImageSingletons.lookup(Heap.class).getGCProvider();
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, gc);
+        VMFeaturesProvider vmFeaturesProvider = new SVM_VMFeaturesProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, vmFeaturesProvider);
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
@@ -116,7 +116,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
-                            snippetReflection, gc);
+                            snippetReflection, vmFeaturesProvider);
             backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
         }
 
@@ -129,8 +129,9 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection, GCProvider gc) {
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, gc);
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection,
+                    VMFeaturesProvider vmFeaturesProvider) {
+        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, vmFeaturesProvider);
     }
 
     public RuntimeConfiguration getRuntimeConfig() {

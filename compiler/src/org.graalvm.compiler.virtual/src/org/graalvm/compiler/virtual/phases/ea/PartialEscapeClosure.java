@@ -66,6 +66,7 @@ import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -165,8 +166,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
         public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                        LoweringProvider loweringProvider) {
-            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider);
+                        LoweringProvider loweringProvider, VMFeaturesProvider vmFeaturesProvider) {
+            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider, vmFeaturesProvider);
         }
 
         @Override
@@ -181,15 +182,15 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider) {
-        this(schedule, metaAccess, constantReflection, constantFieldProvider, null);
+        this(schedule, metaAccess, constantReflection, constantFieldProvider, null, null);
     }
 
     public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    LoweringProvider loweringProvider) {
+                    LoweringProvider loweringProvider, VMFeaturesProvider vmFeaturesProvider) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), graph.getOptions(), debug, loweringProvider);
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, vmFeaturesProvider, this, graph.getAssumptions(), graph.getOptions(), debug, loweringProvider);
     }
 
     /**
