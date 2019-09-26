@@ -89,9 +89,9 @@ class LCOVPrinter {
         }
     }
 
-    private HashMap<Integer, Long> linesToCount(SourceCoverage coverage) {
+    private HashMap<Integer, Long> linesToCount(SourceCoverage sourceCoverage) {
         final HashMap<Integer, Long> linesToCount = new HashMap<>();
-        for (RootCoverage root : coverage.getRoots()) {
+        for (RootCoverage root : sourceCoverage.getRoots()) {
             final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
             addCoverageCounts(linesToCount, sectionCoverage);
             if (strictLines) {
