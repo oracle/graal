@@ -152,7 +152,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguageHome();
     }
 
-    public Configuration getActiveConfiguration(){
+    public Configuration getActiveConfiguration() {
         if (activeConfiguration != null) {
             return activeConfiguration;
         }
