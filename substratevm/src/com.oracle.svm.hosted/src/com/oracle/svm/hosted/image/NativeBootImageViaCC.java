@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -128,9 +129,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                  */
                 try {
                     List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
-                                    .filter(ObjectFile.Symbol::isGlobal).map(ObjectFile.Symbol::getName).collect(Collectors.toList());
+                                    .filter(ObjectFile.Symbol::isGlobal)
+                                    .filter(ObjectFile.Symbol::isDefined)
+                                    .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                                    .collect(Collectors.toList());
                     Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    // System.out.println(String.join("\n", exportedSymbols));
                     Files.write(exportedSymbolsPath, exportedSymbols);
                     additionalPreOptions.add("-Wl,-exported_symbols_list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
