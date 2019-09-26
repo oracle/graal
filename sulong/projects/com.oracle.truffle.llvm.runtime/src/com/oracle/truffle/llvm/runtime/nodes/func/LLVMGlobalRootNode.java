@@ -55,11 +55,13 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
+    private final LLVMFunctionDescriptor mainFunctionDesc;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunctionDescriptor mainFunctionDescriptor, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunctionDescriptor);
+        this.mainFunctionDesc = mainFunctionDescriptor;
         this.applicationPath = applicationPath;
     }
 
@@ -79,7 +81,7 @@ public class LLVMGlobalRootNode extends RootNode {
             try {
                 Object appPath = new LLVMArgumentBuffer(applicationPath);
                 LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
-                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
+                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj, LLVMManagedPointer.create(mainFunctionDesc)};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();
                 return (int) result;
