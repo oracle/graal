@@ -26,10 +26,6 @@ suite = {
       ],
       "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
     },
-    "LLVM_ORG_LIBCXX_SRC" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334.tar.gz"],
-      "sha1" : "5e291cefe0beb2e2e3784b5aaac621c5081de5ef",
-    },
     "GCC_SOURCE" : {
       "packedResource" : True,
       "urls" : [
