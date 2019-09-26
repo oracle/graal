@@ -1107,7 +1107,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String[].class) StaticObject JVM_GetSystemPackages() {
-        String[] packages = getRegistries().getBootClassRegistry().getPackagePaths();
+        String[] packages = getRegistries().getBootClassRegistry().getPackages();
         StaticObject[] array = new StaticObject[packages.length];
         for (int i = 0; i < packages.length; i++) {
             array[i] = getMeta().toGuestString(packages[i]);
