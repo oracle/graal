@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
@@ -55,7 +56,7 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
 
     @Specialization
     protected LLVMNativePointer alloc(VirtualFrame frame, long size,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size, 8));
+                    @CachedLanguage LLVMLanguage language) {
+        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getCapability(LLVMMemory.class), getStackPointerSlot(), size, 8));
     }
 }

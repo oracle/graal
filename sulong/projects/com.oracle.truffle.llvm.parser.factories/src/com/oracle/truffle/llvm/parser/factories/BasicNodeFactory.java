@@ -184,7 +184,7 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI64VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateGlobalsBlockNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.AllocateReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMCompareExchangeNodeGen;
@@ -1637,7 +1637,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (readOnly) {
             return new AllocateReadOnlyGlobalsBlockNode(context, structType, dataLayout);
         } else {
-            return new AllocateGlobalsBlockNode(context, structType, dataLayout);
+            return AllocateGlobalsBlockNodeGen.create(structType, dataLayout);
         }
     }
 

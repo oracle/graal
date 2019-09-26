@@ -29,15 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public abstract class LLVMFence extends LLVMStatementNode {
 
     @Specialization
-    protected void doOp(@Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.fullFence();
+    protected void doOp(@CachedLanguage LLVMLanguage language) {
+        language.getCapability(LLVMMemory.class).fullFence();
     }
 }
