@@ -107,7 +107,9 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
     'jdk.internal.vm.ci/jdk.vm.ci.services',
     'jdk.internal.vm.ci/jdk.vm.ci.common',
-    'jdk.internal.vm.ci/jdk.vm.ci.code.site']
+    'jdk.internal.vm.ci/jdk.vm.ci.code.site',
+    'jdk.internal.vm.ci/jdk.vm.ci.code.stack',
+]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 graal_compiler_opens_packages = [
