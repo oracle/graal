@@ -1723,6 +1723,8 @@ public abstract class ObjectFile {
         long getDefinedAbsoluteValue();
 
         boolean isFunction();
+
+        boolean isGlobal();
     }
 
     public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);

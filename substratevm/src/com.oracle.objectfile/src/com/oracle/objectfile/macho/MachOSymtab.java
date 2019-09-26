@@ -273,6 +273,7 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
             return !isGlobal();
         }
 
+        @Override
         public boolean isGlobal() {
             return extern || privateExtern;
         }

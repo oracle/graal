@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -126,8 +127,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                  * jdk-libs to end up as global symbols in the image.
                  */
                 try {
-                    List<String> exportedSymbols = entryPoints.stream().map(NativeBootImage::globalSymbolNameForMethod).collect(Collectors.toList());
+                    List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                    .filter(ObjectFile.Symbol::isGlobal).map(ObjectFile.Symbol::getName).collect(Collectors.toList());
                     Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                    // System.out.println(String.join("\n", exportedSymbols));
                     Files.write(exportedSymbolsPath, exportedSymbols);
                     additionalPreOptions.add("-Wl,-exported_symbols_list");
                     additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
