@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -66,10 +67,11 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
     private boolean initDebugValues;
+    private final DataLayout dataLayout;
 
     LLVMBitcodeFunctionVisitor(LLVMContext context, ExternalLibrary library, FrameDescriptor frame, UniquesRegion uniquesRegion, Map<InstructionBlock, List<Phi>> phis, int argCount,
                     LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition, LLVMLivenessAnalysisResult liveness, List<FrameSlot> notNullable,
-                    LLVMRuntimeDebugInformation dbgInfoHandler) {
+                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout) {
         this.context = context;
         this.library = library;
         this.frame = frame;
@@ -83,6 +85,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.dbgInfoHandler = dbgInfoHandler;
         this.blocks = new ArrayList<>();
         this.initDebugValues = dbgInfoHandler.isEnabled();
+        this.dataLayout = dataLayout;
     }
 
     public List<LLVMStatementNode> getBlocks() {
@@ -98,7 +101,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         List<Phi> blockPhis = phis.get(block);
         ArrayList<LLVMLivenessAnalysis.NullerInformation> blockNullerInfos = liveness.getNullableWithinBlock()[block.getBlockIndex()];
         LLVMBitcodeInstructionVisitor visitor = LLVMBitcodeInstructionVisitor.create(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, blockNullerInfos, notNullable,
-                        dbgInfoHandler);
+                        dbgInfoHandler, dataLayout);
 
         if (initDebugValues) {
             for (SourceVariable variable : function.getSourceFunction().getVariables()) {

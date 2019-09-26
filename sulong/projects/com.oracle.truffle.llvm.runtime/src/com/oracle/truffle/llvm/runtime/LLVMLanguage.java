@@ -99,10 +99,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getCurrentLanguage(LLVMLanguage.class).getContextReference();
     }
 
-    public NodeFactory getNodeFactory() {
-        return nodeFactory;
-    }
-
     public List<ContextExtension> getLanguageContextExtension() {
         return contextExtensions;
     }
@@ -158,8 +154,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
-        this.nodeFactory = activeConfiguration.createNodeFactory(context);
         return context;
+    }
+
+    public void setNodeFactory(NodeFactory nodeFactory) {
+        this.nodeFactory = nodeFactory;
+    }
+
+    public NodeFactory getNodeFactory() {
+        return nodeFactory;
+    }
+
+    public Configuration getActiveConfiguration() {
+        return activeConfiguration;
     }
 
     @Override

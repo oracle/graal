@@ -46,11 +46,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -85,9 +85,7 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
@@ -105,8 +103,6 @@ public final class LLVMContext {
     private final Object globalsStoreLock = new Object();
 
     private final String languageHome;
-
-    private DataLayout dataLayout;
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
@@ -134,7 +130,6 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
-    private final LLVMLanguage language;
     private final Env env;
     private final LLVMScope globalScope;
     private final DynamicLinkChain dynamicLinkChain;
@@ -152,6 +147,9 @@ public final class LLVMContext {
 
     private boolean initialized;
     private boolean cleanupNecessary;
+    private DataLayout libsulongDatalayout;
+    private Boolean datalayoutInitialised;
+    private final LLVMLanguage language;
 
     private final LLVMTracerInstrument tracer;
 
@@ -175,10 +173,11 @@ public final class LLVMContext {
 
     LLVMContext(LLVMLanguage language, Env env, String languageHome) {
         this.language = language;
+        this.libsulongDatalayout = null;
+        this.datalayoutInitialised = false;
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
-        this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
@@ -348,6 +347,21 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
+    public void addLibsulongDataLayout(DataLayout datalayout) {
+        // Libsulong datalayout can only be set once. This should be called by
+        // Runner#parseDefaultLibraries.
+        if (!datalayoutInitialised) {
+            this.libsulongDatalayout = datalayout;
+            datalayoutInitialised = true;
+        } else {
+            throw new NullPointerException("The default datalayout cannot be overrwitten.");
+        }
+    }
+
+    public DataLayout getLibsulongDataLayout() {
+        return libsulongDatalayout;
+    }
+
     void finalizeContext() {
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
@@ -419,26 +433,6 @@ public final class LLVMContext {
         if (tracer != null) {
             tracer.dispose();
         }
-    }
-
-    public int getByteAlignment(Type type) {
-        return type.getAlignment(dataLayout);
-    }
-
-    public int getByteSize(Type type) {
-        return type.getSize(dataLayout);
-    }
-
-    public int getBytePadding(long offset, Type type) {
-        return Type.getPadding(offset, type, dataLayout);
-    }
-
-    public long getIndexOffset(long index, AggregateType type) {
-        return type.getOffsetOf(index, dataLayout);
-    }
-
-    public DataLayout getDataSpecConverter() {
-        return dataLayout;
     }
 
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
@@ -750,10 +744,6 @@ public final class LLVMContext {
 
     public synchronized List<LLVMThread> getRunningThreads() {
         return Collections.unmodifiableList(runningThreads);
-    }
-
-    public void addDataLayout(DataLayout layout) {
-        this.dataLayout = this.dataLayout.merge(layout);
     }
 
     public LLVMSourceContext getSourceContext() {

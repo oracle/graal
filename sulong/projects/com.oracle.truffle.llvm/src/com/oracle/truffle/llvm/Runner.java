@@ -62,8 +62,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -104,9 +102,12 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -356,7 +357,7 @@ final class Runner {
         final LLVMScope fileScope;
 
         InitializeSymbolsNode(LLVMContext context, LLVMParserResult res) {
-            DataLayout dataLayout = context.getDataSpecConverter();
+            DataLayout dataLayout = res.getDataLayout();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -496,6 +497,9 @@ final class Runner {
         LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
             sulongLibraryResults[i] = parse(parserResults, dependencyQueue, sulongLibraries[i]);
+            if (sulongLibraries[i].getName().equalsIgnoreCase("libsulong")) {
+                context.addLibsulongDataLayout(sulongLibraryResults[i].getDataLayout());
+            }
         }
         while (!dependencyQueue.isEmpty()) {
             ExternalLibrary lib = dependencyQueue.removeFirst();
@@ -849,9 +853,10 @@ final class Runner {
         }
     }
 
-    private static final class InitializeModuleNode extends LLVMNode {
+    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
 
         private final RootCallTarget destructor;
+        private final DataLayout dataLayout;
 
         @Child StaticInitsNode globalVarInit;
         @Child LLVMMemoryOpNode protectRoData;
@@ -860,6 +865,7 @@ final class Runner {
 
         InitializeModuleNode(Runner runner, FrameDescriptor rootFrame, LLVMParserResult parserResult) {
             this.destructor = runner.createDestructor(parserResult);
+            this.dataLayout = parserResult.getDataLayout();
 
             this.globalVarInit = runner.createGlobalVariableInitializer(rootFrame, parserResult);
             this.protectRoData = runner.language.getNodeFactory().createProtectGlobalsBlock();
@@ -877,14 +883,19 @@ final class Runner {
             }
             constructor.execute(frame);
         }
+
+        @Override
+        public DataLayout getDatalayout() {
+            return dataLayout;
+        }
     }
 
     private StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory());
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory(), parserResult.getDataLayout());
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMStatementNode store = createGlobalInitialization(runtime, symbolResolver, global);
+            final LLVMStatementNode store = createGlobalInitialization(runtime, symbolResolver, global, parserResult.getDataLayout());
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -893,7 +904,7 @@ final class Runner {
         return new StaticInitsNode(initNodes);
     }
 
-    private LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
+    private LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -901,7 +912,7 @@ final class Runner {
         LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
             final Type type = global.getType().getPointeeType();
-            final int size = context.getByteSize(type);
+            final int size = type.getSize(dataLayout);
 
             // for fetching the address of the global that we want to initialize, we must use the
             // file scope because we are initializing the globals of the current file
@@ -937,13 +948,13 @@ final class Runner {
     private LLVMStatementNode[] createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
         for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
             if (globalVariable.getName().equals(name)) {
-                return resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator);
+                return resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator, parserResult.getDataLayout());
             }
         }
         return LLVMStatementNode.NO_STATEMENTS;
     }
 
-    private LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMStatementNode.NO_STATEMENTS;
@@ -954,10 +965,10 @@ final class Runner {
         final int elemCount = arrayConstant.getElementCount();
 
         final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
-        final int elementSize = context.getByteSize(elementType);
+        final int elementSize = elementType.getSize(dataLayout);
 
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
-        final int indexedTypeLength = context.getByteAlignment(functionType);
+        final int indexedTypeLength = functionType.getAlignment(dataLayout);
 
         final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
         FrameDescriptor rootFrame = StackManager.createRootFrame();
