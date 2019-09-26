@@ -316,7 +316,7 @@ public abstract class Accessor {
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
-        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
+        public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
 

@@ -652,8 +652,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
-            return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
+        public Set<? extends Class<?>> getProvidedTags(LanguageInfo language) {
+            return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getProvidedTags();
         }
 
         @SuppressWarnings("unchecked")
