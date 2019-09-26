@@ -152,6 +152,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguageHome();
     }
 
+    public Configuration getActiveConfiguration(){
+        if (activeConfiguration != null) {
+            return activeConfiguration;
+        }
+        throw new IllegalStateException("No context, please create the context before accessing the configuration.");
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
