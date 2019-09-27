@@ -85,10 +85,25 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
-            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-                /* We don't want any symbols from the static jdk-libs exported in the final image */
-                additionalPreOptions.add("-Wl,--exclude-libs");
-                additionalPreOptions.add("-Wl,ALL");
+            /*
+             * On Linux we use --dynamic-list to ensure only our defined entrypoints end up as
+             * global symbols in the dynamic symbol table of the image.
+             */
+            try {
+                List<String> exportedSymbols = new ArrayList<>();
+                exportedSymbols.add("{");
+                StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                .filter(ObjectFile.Symbol::isGlobal)
+                                .filter(ObjectFile.Symbol::isDefined)
+                                .map(symbol -> symbol.getName() + ";")
+                                .forEachOrdered(exportedSymbols::add);
+                exportedSymbols.add("};");
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, exportedSymbols);
+                additionalPreOptions.add("-Wl,--dynamic-list");
+                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere();
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
@@ -122,24 +137,22 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 additionalPreOptions.add("-Wl,-dead_strip");
             }
 
-            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-                /*
-                 * On Darwin we use -exported_symbols_list <file> to prevent symbols from static
-                 * jdk-libs to end up as global symbols in the image.
-                 */
-                try {
-                    List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
-                                    .filter(ObjectFile.Symbol::isGlobal)
-                                    .filter(ObjectFile.Symbol::isDefined)
-                                    .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
-                                    .collect(Collectors.toList());
-                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, exportedSymbols);
-                    additionalPreOptions.add("-Wl,-exported_symbols_list");
-                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-                } catch (IOException e) {
-                    VMError.shouldNotReachHere();
-                }
+            /*
+             * On Darwin we use -exported_symbols_list to ensure only our defined entrypoints end up
+             * as global symbols in the dynamic symbol table of the image.
+             */
+            try {
+                List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                .filter(ObjectFile.Symbol::isGlobal)
+                                .filter(ObjectFile.Symbol::isDefined)
+                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                                .collect(Collectors.toList());
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, exportedSymbols);
+                additionalPreOptions.add("-Wl,-exported_symbols_list");
+                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere();
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
