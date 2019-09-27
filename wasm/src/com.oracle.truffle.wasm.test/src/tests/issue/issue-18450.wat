@@ -42,7 +42,7 @@
       i32.const 2082
       local.get 2
       call 1
-      i32.const 0
+      i32.const 17
     end
     local.set 4
     local.get 1

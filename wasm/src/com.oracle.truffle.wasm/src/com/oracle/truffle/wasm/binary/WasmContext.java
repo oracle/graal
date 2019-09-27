@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.wasm.binary;
 
+import static com.oracle.truffle.api.CompilerDirectives.*;
 import static com.oracle.truffle.api.TruffleLanguage.Env;
 
 import java.util.ArrayList;
@@ -43,9 +44,9 @@ import com.oracle.truffle.wasm.predefined.PredefinedModule;
 public class WasmContext {
     private Env env;
     private WasmLanguage language;
-    private Memories memories;
-    private Globals globals;
-    private Tables tables;
+    private @CompilationFinal Memories memories;
+    private @CompilationFinal Globals globals;
+    private @CompilationFinal Tables tables;
     private Linker linker;
     private Map<String, WasmModule> modules;
 

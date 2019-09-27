@@ -69,7 +69,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Value function = context.getBindings("wasm").getMember("_main");
             Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
             if (WasmTestOptions.TRIGGER_GRAAL) {
-                for (int i = 0; i !=  10_000_000; ++i) {
+                for (int i = 0; i != 10_000_000; ++i) {
                     function.execute();
                     resetGlobals.execute();
                 }

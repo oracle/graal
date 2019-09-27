@@ -204,7 +204,9 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -258,7 +260,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         return rawContextReference;
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public int execute(WasmContext context, VirtualFrame frame) {
         int nestedControlOffset = 0;
         int callNodeOffset = 0;
@@ -273,6 +275,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
+            CompilerAsserts.partialEvaluationConstant(offset);
             switch (opcode) {
                 case UNREACHABLE:
                     logger.finest("unreachable");
@@ -368,8 +371,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case BR_IF: {
                     stackPointer--;
-                    int cond = popInt(frame, stackPointer);
-                    if (cond != 0) {
+                    if (popCondition(frame, stackPointer)) {
                         int unwindCounter = codeEntry().numericLiteralAsInt(numericLiteralOffset);
 
                         // Reset the stack pointer to the target block stack pointer.
@@ -431,8 +433,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
                         // Lazily create the direct call node at this code position, and recompile to eliminate this check.
-                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
-                        callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
+                        resolveCallNode(callNodeOffset);
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
                     DirectCallNode callNode = (DirectCallNode) callNodeTable[callNodeOffset];
@@ -2247,6 +2248,17 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         return -1;
     }
 
+    private boolean popCondition(VirtualFrame frame, int stackPointer) {
+        int condition = popInt(frame, stackPointer);
+        return condition != 0;
+    }
+
+    @TruffleBoundary
+    private void resolveCallNode(int callNodeOffset) {
+        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
+        callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
+    }
+
     @ExplodeLoop
     private Object[] createArgumentsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointer) {
         Object[] args = new Object[numArgs];
@@ -2272,7 +2284,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int targetBlockReturnLength) {
+    private void unwindStack(VirtualFrame frame, int initStackPointer, int initialContinuationStackPointer, int targetBlockReturnLength) {
+        // TODO: If the targetBlockReturnLength could ever be > 1, this would invert the stack values.
+        //  The spec seems to imply that the operand stack should not be inverted.
+        CompilerAsserts.partialEvaluationConstant(targetBlockReturnLength);
+        int stackPointer = initStackPointer;
+        int continuationStackPointer = initialContinuationStackPointer;
         for (int i = 0; i != targetBlockReturnLength; ++i) {
             stackPointer--;
             long value = pop(frame, stackPointer);

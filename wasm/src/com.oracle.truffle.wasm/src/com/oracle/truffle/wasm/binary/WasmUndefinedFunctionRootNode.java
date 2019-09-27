@@ -43,4 +43,9 @@ public class WasmUndefinedFunctionRootNode extends WasmRootNode {
         // TODO: See how to return a Unit value
         return Boolean.TRUE;
     }
+
+    @Override
+    public String toString() {
+        return "wasm-undefined-function-root-node";
+    }
 }
