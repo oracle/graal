@@ -95,7 +95,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
                                 .filter(ObjectFile.Symbol::isGlobal)
                                 .filter(ObjectFile.Symbol::isDefined)
-                                .map(symbol -> symbol.getName() + ";")
+                                .map(symbol -> "\"" + symbol.getName() + "\";")
                                 .forEachOrdered(exportedSymbols::add);
                 exportedSymbols.add("};");
                 Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
