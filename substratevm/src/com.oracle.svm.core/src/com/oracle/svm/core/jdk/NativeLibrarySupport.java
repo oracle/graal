@@ -70,7 +70,7 @@ public final class NativeLibrarySupport {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final List<NativeLibrary> loadedLibraries = new ArrayList<>();
+    private final List<NativeLibrary> knownLibraries = new ArrayList<>();
 
     private final Deque<NativeLibrary> currentLoadContext = new ArrayDeque<>();
 
@@ -85,6 +85,16 @@ public final class NativeLibrarySupport {
     public void registerLibraryInitializer(LibraryInitializer initializer) {
         assert this.libraryInitializer == null;
         this.libraryInitializer = initializer;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public void preregisterUninitializedBuiltinLibrary(String name) {
+        knownLibraries.add(PlatformNativeLibrarySupport.singleton().createLibrary(name, true));
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public boolean isPreregisteredBuiltinLibrary(String name) {
+        return knownLibraries.stream().anyMatch(l -> l.isBuiltin() && l.getCanonicalIdentifier().equals(name));
     }
 
     public void loadLibrary(String name, boolean isAbsolute) {
@@ -122,9 +132,6 @@ public final class NativeLibrarySupport {
     }
 
     private boolean loadLibrary0(File file, boolean asBuiltin) {
-        if (asBuiltin && (libraryInitializer == null || !libraryInitializer.isBuiltinLibrary(file.getName()))) {
-            return false;
-        }
         String canonical;
         try {
             canonical = asBuiltin ? file.getName() : file.getCanonicalPath();
@@ -137,10 +144,21 @@ public final class NativeLibrarySupport {
     private boolean addLibrary(boolean asBuiltin, String canonical, boolean loadAndInitialize) {
         lock.lock();
         try {
-            for (NativeLibrary loaded : loadedLibraries) {
-                if (canonical.equals(loaded.getCanonicalIdentifier())) {
-                    return true;
+            NativeLibrary lib = null;
+            for (NativeLibrary known : knownLibraries) {
+                if (canonical.equals(known.getCanonicalIdentifier())) {
+                    if (known.isLoaded()) {
+                        return true;
+                    } else {
+                        assert known.isBuiltin() : "non-built-in libraries must always have been loaded";
+                        assert asBuiltin : "must have tried loading as built-in first";
+                        lib = known; // load and initialize below
+                        break;
+                    }
                 }
+            }
+            if (asBuiltin && lib == null && (libraryInitializer == null || !libraryInitializer.isBuiltinLibrary(canonical))) {
+                return false;
             }
             // Libraries can load libraries during initialization, avoid recursion with a stack
             for (NativeLibrary loading : currentLoadContext) {
@@ -148,7 +166,11 @@ public final class NativeLibrarySupport {
                     return true;
                 }
             }
-            NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
+            boolean created = false;
+            if (lib == null) {
+                lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
+                created = true;
+            }
             if (loadAndInitialize) {
                 currentLoadContext.push(lib);
                 try {
@@ -163,7 +185,9 @@ public final class NativeLibrarySupport {
                     assert top == lib;
                 }
             }
-            loadedLibraries.add(lib);
+            if (created) {
+                knownLibraries.add(lib);
+            }
             return true;
         } finally {
             lock.unlock();
@@ -173,7 +197,7 @@ public final class NativeLibrarySupport {
     public PointerBase findSymbol(String name) {
         lock.lock();
         try {
-            for (NativeLibrary lib : loadedLibraries) {
+            for (NativeLibrary lib : knownLibraries) {
                 PointerBase entry = lib.findSymbol(name);
                 if (entry.isNonNull()) {
                     return entry;

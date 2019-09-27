@@ -59,7 +59,7 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     PosixNativeLibrarySupport() {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            addBuiltInLibrary("extnet");
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
         }
     }
 
@@ -126,15 +126,9 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         private final String canonicalIdentifier;
         private final boolean builtin;
         private PointerBase dlhandle = WordFactory.nullPointer();
+        private boolean loaded = false;
 
         PosixNativeLibrary(String canonicalIdentifier, boolean builtin) {
-            // Make sure the jvm.lib is available for linking
-            // Need a better place to put this.
-            if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
-                            Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
-                Jvm.initialize();
-            }
-
             this.canonicalIdentifier = canonicalIdentifier;
             this.builtin = builtin;
         }
@@ -151,12 +145,30 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
         @Override
         public boolean load() {
+            assert !loaded;
+            loaded = doLoad();
+            return loaded;
+        }
+
+        private boolean doLoad() {
+            // Make sure the jvm.lib is available for linking
+            // Need a better place to put this.
+            if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                            Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+                Jvm.initialize();
+            }
+
             if (builtin) {
                 return true;
             }
             assert dlhandle.isNull();
             dlhandle = PosixUtils.dlopen(canonicalIdentifier, Dlfcn.RTLD_LAZY());
             return dlhandle.isNonNull();
+        }
+
+        @Override
+        public boolean isLoaded() {
+            return loaded;
         }
 
         @Override

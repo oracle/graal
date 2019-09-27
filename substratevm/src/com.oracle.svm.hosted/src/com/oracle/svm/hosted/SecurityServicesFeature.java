@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -223,7 +224,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         NativeLibraries nativeLibraries = a.getNativeLibraries();
         if (nativeLibraries.getStaticLibraryPath("sunec") != null) {
             /* We statically link sunec thus we classify it as builtIn library */
-            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("sunec");
+            PlatformNativeLibrarySupport.singleton();
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunec");
             /* and ensure native calls to sun_security_ec* will be resolved as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
@@ -239,7 +241,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess).getNativeLibraries();
         if (nativeLibraries.getStaticLibraryPath("jaas") != null) {
             /* We can statically link jaas, thus we classify it as builtIn library */
-            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("jaas_unix");
+            PlatformNativeLibrarySupport.singleton();
+            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("jaas_unix");
             /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
             nativeLibraries.addLibrary("jaas", true);
