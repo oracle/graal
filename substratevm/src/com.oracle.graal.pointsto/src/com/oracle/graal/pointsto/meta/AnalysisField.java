@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.meta;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +35,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.util.GuardedAnnotationAccess;
+
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -41,13 +43,14 @@ import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnalysisField implements ResolvedJavaField {
+public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     private final int id;
 
@@ -203,7 +206,7 @@ public class AnalysisField implements ResolvedJavaField {
 //        }
 //        return fieldCanBeNull;
 //    }
-    //@formatter: on
+    //@formatter:on
 
     public FieldTypeFlow getInitialInstanceFieldFlow() {
         return initialInstanceFieldFlow;
@@ -277,8 +280,8 @@ public class AnalysisField implements ResolvedJavaField {
             /*
              * The atomic boolean ensures that the field is registered as unsafe accessed with its
              * declaring class only once. However, at the end of this call the registration might
-             * still be in progress. The first thread that calls this methods enters the if and starts
-             * the registration, the next threads return right away, while the registration
+             * still be in progress. The first thread that calls this methods enters the if and
+             * starts the registration, the next threads return right away, while the registration
              * might still be in progress.
              */
 
@@ -410,5 +413,10 @@ public class AnalysisField implements ResolvedJavaField {
 
     public boolean isUsedInComparison() {
         return isUsedInComparison;
+    }
+
+    @Override
+    public Field getJavaField() {
+        return OriginalFieldProvider.getJavaField(getDeclaringClass().universe.getOriginalSnippetReflection(), wrapped);
     }
 }
