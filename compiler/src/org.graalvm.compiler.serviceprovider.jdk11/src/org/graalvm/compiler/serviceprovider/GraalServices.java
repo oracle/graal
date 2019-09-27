@@ -29,7 +29,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.IOException;
-import java.io.InputStream; 
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -250,7 +250,6 @@ public final class GraalServices {
 
         Module module = c.getModule();
         Module jvmciModule = JVMCI_MODULE;
-        assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
         if (module == jvmciModule || jvmciModule.isOpen(JVMCI_RUNTIME_PACKAGE, module)) {
             // Can access non-statically-exported package in JVMCI
             return true;
