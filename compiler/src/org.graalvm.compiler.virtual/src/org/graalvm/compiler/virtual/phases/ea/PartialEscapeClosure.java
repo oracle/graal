@@ -66,7 +66,7 @@ import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -166,8 +166,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
         public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                        LoweringProvider loweringProvider, VMFeaturesProvider vmFeaturesProvider) {
-            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider, vmFeaturesProvider);
+                        LoweringProvider loweringProvider, PlatformConfigurationProvider platformConfigurationProvider) {
+            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider, platformConfigurationProvider);
         }
 
         @Override
@@ -186,11 +186,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    LoweringProvider loweringProvider, VMFeaturesProvider vmFeaturesProvider) {
+                    LoweringProvider loweringProvider, PlatformConfigurationProvider platformConfigurationProvider) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, vmFeaturesProvider, this, graph.getAssumptions(), graph.getOptions(), debug, loweringProvider);
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, platformConfigurationProvider, this, graph.getAssumptions(), graph.getOptions(), debug,
+                        loweringProvider);
     }
 
     /**

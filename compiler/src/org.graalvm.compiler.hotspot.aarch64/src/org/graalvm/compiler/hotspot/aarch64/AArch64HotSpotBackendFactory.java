@@ -44,7 +44,7 @@ import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.AddressLoweringHotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotVMFeaturesProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -114,7 +114,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
         HotSpotConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
         HotSpotLoweringProvider lowerer;
         HotSpotStampProvider stampProvider;
-        HotSpotVMFeaturesProvider vmFeaturesProvider;
+        HotSpotPlatformConfigurationProvider platformConfigurationProvider;
         HotSpotSnippetReflectionProvider snippetReflection;
         HotSpotReplacementsImpl replacements;
         HotSpotSuitesProvider suites;
@@ -141,10 +141,10 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                 stampProvider = createStampProvider();
             }
             try (InitTimer rt = timer("create GC provider")) {
-                vmFeaturesProvider = createConfigInfoProvider(config, metaAccess);
+                platformConfigurationProvider = createConfigInfoProvider(config, metaAccess);
             }
 
-            Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, vmFeaturesProvider);
+            Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
@@ -164,7 +164,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                 suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, replacements);
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
-                            snippetReflection, wordTypes, plugins, vmFeaturesProvider);
+                            snippetReflection, wordTypes, plugins, platformConfigurationProvider);
             replacements.setProviders(providers);
             replacements.maybeInitializeEncoder(options);
         }

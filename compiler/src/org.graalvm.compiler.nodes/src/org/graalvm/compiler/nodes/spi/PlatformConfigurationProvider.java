@@ -26,7 +26,7 @@ package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 
-public interface VMFeaturesProvider {
+public interface PlatformConfigurationProvider {
     /**
      * Returns the barrier set that is used to insert the needed read/write barriers.
      */

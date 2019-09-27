@@ -92,10 +92,10 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         assert schedule != null;
         if (readElimination) {
             return new PEReadEliminationClosure(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), context.getLowerer(),
-                            context.getVmFeaturesProvider());
+                            context.getPlatformConfigurationProvider());
         } else {
             return new PartialEscapeClosure.Final(schedule, context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), context.getLowerer(),
-                            context.getVmFeaturesProvider());
+                            context.getPlatformConfigurationProvider());
         }
     }
 

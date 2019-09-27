@@ -26,12 +26,12 @@
 package com.oracle.svm.hosted.code;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
-public class SVM_VMFeaturesProvider implements VMFeaturesProvider {
+public class SVMPlatformConfigurationProvider implements PlatformConfigurationProvider {
     private final BarrierSet barrierSet;
 
-    public SVM_VMFeaturesProvider(BarrierSet barrierSet) {
+    public SVMPlatformConfigurationProvider(BarrierSet barrierSet) {
         this.barrierSet = barrierSet;
     }
 

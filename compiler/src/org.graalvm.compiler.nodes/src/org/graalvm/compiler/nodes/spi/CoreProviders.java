@@ -46,5 +46,5 @@ public interface CoreProviders {
 
     ForeignCallsProvider getForeignCalls();
 
-    VMFeaturesProvider getVmFeaturesProvider();
+    PlatformConfigurationProvider getPlatformConfigurationProvider();
 }

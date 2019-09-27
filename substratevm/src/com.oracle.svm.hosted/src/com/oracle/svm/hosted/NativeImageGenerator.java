@@ -80,8 +80,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
@@ -233,7 +233,7 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
-import com.oracle.svm.hosted.code.SVM_VMFeaturesProvider;
+import com.oracle.svm.hosted.code.SVMPlatformConfigurationProvider;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -991,13 +991,13 @@ public class NativeImageGenerator {
          */
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.create(aMetaAccess, null);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
-        VMFeaturesProvider vmFeaturesProvider = new SVM_VMFeaturesProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
+        PlatformConfigurationProvider platformConfigurationProvider = new SVMPlatformConfigurationProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
-                        aWordTypes, vmFeaturesProvider);
+                        aWordTypes, platformConfigurationProvider);
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         SubstrateReplacements aReplacments = new SubstrateReplacements(aProviders, aSnippetReflection, bytecodeProvider, target, new SubstrateGraphMakerFactory(aWordTypes));
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
-                        aSnippetReflection, aWordTypes, vmFeaturesProvider);
+                        aSnippetReflection, aWordTypes, platformConfigurationProvider);
 
         return new Inflation(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor);
     }

@@ -74,7 +74,7 @@ public class CoreProvidersDelegate implements CoreProviders {
     }
 
     @Override
-    public VMFeaturesProvider getVmFeaturesProvider() {
-        return providers.getVmFeaturesProvider();
+    public PlatformConfigurationProvider getPlatformConfigurationProvider() {
+        return providers.getPlatformConfigurationProvider();
     }
 }

@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
@@ -62,7 +62,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final ConstantFieldProvider constantFieldProvider;
-    private final VMFeaturesProvider vmFeaturesProvider;
+    private final PlatformConfigurationProvider platformConfigurationProvider;
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
     private final OptionValues options;
@@ -70,12 +70,13 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final LoweringProvider loweringProvider;
     private ConstantNode illegalConstant;
 
-    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, VMFeaturesProvider vmFeaturesProvider,
-                    PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug, LoweringProvider loweringProvider) {
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                    PlatformConfigurationProvider platformConfigurationProvider, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug,
+                    LoweringProvider loweringProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
-        this.vmFeaturesProvider = vmFeaturesProvider;
+        this.platformConfigurationProvider = platformConfigurationProvider;
         this.closure = closure;
         this.assumptions = assumptions;
         this.options = options;
@@ -353,7 +354,10 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public boolean canVirtualizeLargeByteArrayUnsafeAccess() {
-        return vmFeaturesProvider.canVirtualizeLargeByteArrayAccess();
+        if (platformConfigurationProvider != null) {
+            return platformConfigurationProvider.canVirtualizeLargeByteArrayAccess();
+        }
+        return false;
     }
 
     @Override

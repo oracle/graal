@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -119,8 +118,7 @@ public abstract class Heap {
     public abstract void endSafepoint();
 
     /**
-     * Returns a suitable {@link VMFeaturesProvider} for the garbage collector that is used for this
-     * heap.
+     * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
      */
     public abstract BarrierSet getBarrierSet();
 

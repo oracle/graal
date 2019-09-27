@@ -34,17 +34,17 @@ import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.spi.VMFeaturesProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class HotSpotVMFeaturesProvider implements VMFeaturesProvider {
+public class HotSpotPlatformConfigurationProvider implements PlatformConfigurationProvider {
     private final BarrierSet barrierSet;
 
     private final boolean canVirtualizeLargeByteArrayAccess;
 
-    public HotSpotVMFeaturesProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
+    public HotSpotPlatformConfigurationProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         this.barrierSet = createBarrierSet(config, metaAccess);
         this.canVirtualizeLargeByteArrayAccess = config.deoptimizationSupportLargeAccessByteArrayVirtualization;
     }

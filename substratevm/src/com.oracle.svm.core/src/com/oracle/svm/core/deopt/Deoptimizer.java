@@ -986,17 +986,18 @@ public final class Deoptimizer {
 
         while (curIdx < encodings.length) {
             ValueInfo value = encodings[curIdx];
-            if (value.getKind() == JavaKind.Illegal) {
-                if (materializingByteArray) {
-                    /**
-                     * For more information, see
-                     * {@link org.graalvm.compiler.core.gen.DebugInfoBuilder#build(FrameState, LabelRef)}
-                     * and
-                     * {@link org.graalvm.compiler.virtual.phases.ea.VirtualizerToolImpl#setVirtualEntry(VirtualObjectNode, int, ValueNode, JavaKind, long)}
-                     */
-                    curIdx++;
-                    continue;
-                }
+            if (value.getKind() == JavaKind.Illegal && materializingByteArray) {
+                /**
+                 * Virtualized byte arrays might look like:
+                 * <p>
+                 * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
+                 * <p>
+                 * The written int will have written over the 4 illegals, and we can then simply
+                 * ignore them. see {@link org.graalvm.compiler.core.gen.DebugInfoBuilder} for more
+                 * information.
+                 */
+                curIdx++;
+                continue;
             }
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
