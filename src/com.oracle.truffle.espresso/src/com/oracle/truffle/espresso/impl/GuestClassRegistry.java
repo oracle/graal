@@ -44,6 +44,16 @@ public final class GuestClassRegistry extends ClassRegistry {
     static final DebugCounter loadKlassCount = DebugCounter.create("Guest loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("Guest loadKlassCacheHits");
 
+    @Override
+    protected void loadKlassCountInc() {
+        loadKlassCount.inc();
+    }
+
+    @Override
+    protected void loadKlassCacheHitsInc() {
+        loadKlassCacheHits.inc();
+    }
+
     /**
      * The class loader associated with this registry.
      */
@@ -61,26 +71,11 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
-    @SuppressWarnings("unused")
     @Override
-    public Klass loadKlass(Symbol<Type> type) {
-        if (Types.isArray(type)) {
-            Klass elemental = loadKlass(getTypes().getElementalType(type));
-            if (elemental == null) {
-                return null;
-            }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
-        }
-
-        loadKlassCount.inc();
-        Klass klass = classes.get(type);
-        if (klass != null) {
-            loadKlassCacheHits.inc();
-            return klass;
-        }
+    public Klass loadKlassImpl(Symbol<Type> type) {
         assert StaticObject.notNull(classLoader);
         StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
-        klass = guestClass.getMirrorKlass();
+        Klass klass = guestClass.getMirrorKlass();
         getRegistries().recordConstraint(type, klass, getClassLoader());
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
