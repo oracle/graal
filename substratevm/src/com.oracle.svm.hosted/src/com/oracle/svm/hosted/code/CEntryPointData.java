@@ -78,8 +78,10 @@ public final class CEntryPointData {
     }
 
     public static CEntryPointData createCustomUnpublished() {
-        return create(null, null, DEFAULT_NAME_TRANSFORMATION, "", Builtin.NO_BUILTIN,
-                        CEntryPointOptions.NoPrologue.class, CEntryPointOptions.NoEpilogue.class, DEFAULT_EXCEPTION_HANDLER, Publish.NotPublished);
+        CEntryPointData unpublished = new CEntryPointData(null, DEFAULT_NAME, "", Builtin.NO_BUILTIN, CEntryPointOptions.NoPrologue.class, CEntryPointOptions.NoEpilogue.class,
+                        DEFAULT_EXCEPTION_HANDLER, Publish.NotPublished);
+        unpublished.symbolName = DEFAULT_NAME;
+        return unpublished;
     }
 
     @SuppressWarnings("deprecation")
