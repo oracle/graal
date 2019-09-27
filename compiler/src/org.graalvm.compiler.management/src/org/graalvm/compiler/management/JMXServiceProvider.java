@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.management;
+package org.graalvm.compiler.management;
 
 import static java.lang.Thread.currentThread;
 
@@ -35,7 +35,7 @@ import org.graalvm.compiler.serviceprovider.JMXService;
 import com.sun.management.ThreadMXBean;
 
 /**
- * Implementation of {@link JMXService} for JDK 13 and later.
+ * Implementation of {@link JMXService} for JDK 11+.
  */
 @ServiceProvider(JMXService.class)
 public class JMXServiceProvider extends JMXService {
