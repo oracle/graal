@@ -398,17 +398,17 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
                     int[] table = codeEntry().branchTable(branchTableOffset);
-                    int[] continuationStackPointers = codeEntry().branchTable(branchTableOffset + 1);
-                    int[] targetBlocksReturnLengths = codeEntry().branchTable(branchTableOffset + 2);
                     index = index >= table.length ? table.length - 1 : index;
                     // Technically, we should increment the branchTableOffset at this point,
                     // but since we are returning, it does not really matter.
 
-                    int target = table[index];
+                    int returnTypeLength = table[0];
+                    int target = table[1 + 2 * index];
+                    int continuationStackPointer = table[1 + 2 * index + 1];
                     logger.finest(() -> String.format("br_table, target = %d", target));
 
                     // Populate the stack with the return values of the current block (the one we are escaping from).
-                    unwindStack(frame, stackPointer, continuationStackPointers[index], targetBlocksReturnLengths[index]);
+                    unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
 
                     return target;
                 }

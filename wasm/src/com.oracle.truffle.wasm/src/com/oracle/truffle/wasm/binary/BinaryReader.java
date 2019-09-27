@@ -662,21 +662,26 @@ public class BinaryReader extends BinaryStreamReader {
                     // We need to save three tables here, to maintain the mapping target -> state mapping:
                     // - a table containing the branch targets for the instruction
                     // - a table containing the stack state for each corresponding branch target
-                    // - a table containing the target block return length, so that we can unwind the stack
-                    int[] branchTable = new int[numLabels + 1];
-                    int[] stackStates = new int[numLabels + 1];
-                    int[] blockReturnLengths = new int[numLabels + 1];
+                    // - the length of the return type
+                    // We encode this in a single array.
+                    int[] branchTable = new int[2 * (numLabels + 1) + 1];
+                    int returnLength = -1;
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
-                        branchTable[i] = readLabelIndex();
-                        stackStates[i] = state.getStackState(branchTable[i]);
-                        blockReturnLengths[i] = state.getBlockReturnLength(branchTable[i]);
+                        branchTable[1 + 2 * i] = readLabelIndex();
+                        branchTable[1 + 2 * i + 1] = state.getStackState(branchTable[i]);
+                        final int blockReturnLength = state.getBlockReturnLength(branchTable[i]);
+                        if (returnLength == -1) {
+                            returnLength = blockReturnLength;
+                        } else {
+                            Assert.assertIntEqual(returnLength, blockReturnLength,
+                                            "All target blocks in br.table must have the same return type length.");
+                        }
                     }
+                    branchTable[0] = returnLength;
                     state.pop();  // The offset to the branch table.
                     state.saveBranchTable(branchTable);
-                    state.saveBranchTable(stackStates);
-                    state.saveBranchTable(blockReturnLengths);
                     break;
                 }
                 case RETURN: {
