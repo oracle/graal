@@ -55,26 +55,99 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
+    private Context getInterpretedNoInline(Context.Builder contextBuilder) {
+        contextBuilder.option("engine.Compilation", "false");
+        contextBuilder.option("engine.Inlining", "false");
+        return contextBuilder.build();
+    }
+
+    private Context getSyncCompiledNoInline(Context.Builder contextBuilder) {
+        contextBuilder.option("engine.Compilation", "true");
+        contextBuilder.option("engine.BackgroundCompilation", "false");
+        contextBuilder.option("engine.CompileImmediately", "true");
+        contextBuilder.option("engine.Inlining", "false");
+        return contextBuilder.build();
+    }
+
+    private Context getInterpretedWithInline(Context.Builder contextBuilder) {
+        contextBuilder.option("engine.Compilation", "false");
+        contextBuilder.option("engine.Inlining", "true");
+        return contextBuilder.build();
+    }
+
+    private Context getSyncCompiledWithInline(Context.Builder contextBuilder) {
+        contextBuilder.option("engine.Compilation", "true");
+        contextBuilder.option("engine.BackgroundCompilation", "false");
+        contextBuilder.option("engine.CompileImmediately", "true");
+        contextBuilder.option("engine.Inlining", "true");
+        return contextBuilder.build();
+    }
+
+    private Context getAsyncCompiled(Context.Builder contextBuilder) {
+        contextBuilder.option("engine.Compilation", "true");
+        contextBuilder.option("engine.BackgroundCompilation", "true");
+        contextBuilder.option("engine.CompileImmediately", "false");
+        contextBuilder.option("engine.Inlining", "true");
+        return contextBuilder.build();
+    }
+
+    private Value runInContext(Context context, Source source, int iterations) {
+        context.eval(source);
+
+        // The sequence of WebAssembly functions to execute.
+        // First, we execute the main function (exported as "_main").
+        // Then, we execute a special function, which resets the globals to their initial values.
+        Value mainFunction = context.getBindings("wasm").getMember("_main");
+        Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
+
+        Value result = null;
+
+        for (int i = 0; i != iterations; ++i) {
+            result = mainFunction.execute();
+            resetGlobals.execute();
+        }
+
+        return result;
+    }
+
     private WasmTestStatus runTestCase(WasmTestCase testCase) {
         try {
             byte[] binary = testCase.selfCompile();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
+            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
+
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
+
+            contextBuilder.allowExperimentalOptions(true);
             contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
-            Context context = contextBuilder.build();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-            context.eval(source);
-            Value function = context.getBindings("wasm").getMember("_main");
-            Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
-            if (WasmTestOptions.TRIGGER_GRAAL) {
-                for (int i = 0; i != 10_000_000; ++i) {
-                    function.execute();
-                    resetGlobals.execute();
-                }
-            }
-            final Value result = function.execute();
+            Source source = sourceBuilder.build();
+
+            Context context;
+
+            // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
+            context = getInterpretedNoInline(contextBuilder);
+            runInContext(context, source, 1);
+
+            // Run in synchronous compiled mode, with inlining turned off.
+            // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            context = getSyncCompiledNoInline(contextBuilder);
+            runInContext(context, source, 2);
+
+            // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
+            context = getInterpretedWithInline(contextBuilder);
+            runInContext(context, source, 1);
+
+            // Run in synchronous compiled mode, with inlining turned on.
+            // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            context = getSyncCompiledWithInline(contextBuilder);
+            runInContext(context, source, 2);
+
+            // Run with normal, asynchronous compilation, 1000 times.
+            context = getAsyncCompiled(contextBuilder);
+            final Value result = runInContext(context, source, 1000);
+
             validateResult(testCase.data.resultValidator, result);
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
