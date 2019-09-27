@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -47,6 +49,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -99,13 +102,16 @@ public final class NativeLibraries {
 
     private final CAnnotationProcessorCache cache;
 
+    public final Path tempDirectory;
+
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
-                    ClassInitializationSupport classInitializationSupport) {
+                    ClassInitializationSupport classInitializationSupport, Path tempDirectory) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.classInitializationSupport = classInitializationSupport;
+        this.tempDirectory = tempDirectory;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -177,9 +183,8 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            UserError.guarantee(OS.getCurrent() != OS.WINDOWS,
-                            "Building images for " + OS.getCurrent().className +
-                                            " requires static JDK libraries." +
+            UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
+                            "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
                                             "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases");
         }
         return libraryPaths;
@@ -343,7 +348,7 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish(Path tempDirectory) {
+    public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
