@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -72,6 +73,7 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             try {
                 loadJavaLibrary();
                 loadZipLibrary();
+                loadNetLibrary();
 
                 /*
                  * The JDK uses posix_spawn on the Mac to launch executables. This requires a
@@ -94,24 +96,17 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 
-    @Override
-    public boolean initializeSharedBuiltinLibrariesOnce() {
-        if (!super.initializeSharedBuiltinLibrariesOnce()) {
-            return false;
-        }
-        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+    protected void loadNetLibrary() {
+        if (isFirstIsolate()) {
             /*
              * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
              * value in process-wide shared native state, the property's value in the first launched
              * isolate applies to all subsequently launched isolates.
              */
-            try {
-                System.loadLibrary("net");
-            } catch (UnsatisfiedLinkError e) {
-                return false;
-            }
+            System.loadLibrary("net");
+        } else {
+            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        return true;
     }
 
     @Override

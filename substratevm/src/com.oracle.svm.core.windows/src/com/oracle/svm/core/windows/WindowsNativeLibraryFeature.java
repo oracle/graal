@@ -26,6 +26,7 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -68,6 +69,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         try {
             loadJavaLibrary();
             loadZipLibrary();
+            loadNetLibrary();
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
             return false;
@@ -86,12 +88,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         WindowsUtils.setHandle(FileDescriptor.err, FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE()));
     }
 
-    @Override
-    public boolean initializeSharedBuiltinLibrariesOnce() {
-        if (!super.initializeSharedBuiltinLibrariesOnce()) {
-            return false;
-        }
-        try {
+    protected void loadNetLibrary() {
+        if (isFirstIsolate()) {
             WinSock.init();
             System.loadLibrary("net");
             /*
@@ -99,10 +97,9 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
              * value in process-wide shared native state, the property's value in the first launched
              * isolate applies to all subsequently launched isolates.
              */
-        } catch (UnsatisfiedLinkError e) {
-            return false;
+        } else {
+            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        return true;
     }
 
     @Override
