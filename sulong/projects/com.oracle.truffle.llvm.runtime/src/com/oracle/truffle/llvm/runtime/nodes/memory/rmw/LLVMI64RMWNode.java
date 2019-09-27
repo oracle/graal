@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -58,8 +60,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSetI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndSetI64(address, value);
         }
 
         @Specialization
@@ -78,8 +80,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndAddI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndAddI64(address, value);
         }
 
         @Specialization
@@ -99,8 +101,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSubI64(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndSubI64(address, value);
         }
 
         @Specialization
@@ -120,8 +122,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a & b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI64(address, value, (a, b) -> a & b);
         }
 
         @Specialization
@@ -141,8 +143,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> ~(a & b));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI64(address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
@@ -162,8 +164,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a | b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI64(address, value, (a, b) -> a | b);
         }
 
         @Specialization
@@ -183,8 +185,8 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI64(address, value, (a, b) -> a ^ b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI64(address, value, (a, b) -> a ^ b);
         }
 
         @Specialization

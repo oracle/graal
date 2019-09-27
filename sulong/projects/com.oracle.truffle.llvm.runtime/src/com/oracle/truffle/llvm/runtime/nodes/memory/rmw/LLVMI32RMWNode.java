@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -57,8 +59,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSetI32(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndSetI32(address, value);
         }
 
         @Specialization
@@ -77,8 +79,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndAddI32(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndAddI32(address, value);
         }
 
         @Specialization
@@ -97,8 +99,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndSubI32(address, value);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndSubI32(address, value);
         }
 
         @Specialization
@@ -117,8 +119,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI32(address, value, (a, b) -> a & b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI32(address, value, (a, b) -> a & b);
         }
 
         @Specialization
@@ -137,8 +139,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI32(address, value, (a, b) -> ~(a & b));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI32(address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
@@ -157,8 +159,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI32(address, value, (a, b) -> a | b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI32(address, value, (a, b) -> a | b);
         }
 
         @Specialization
@@ -177,8 +179,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected int doOp(LLVMNativePointer address, int value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI32(address, value, (a, b) -> a ^ b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI32(address, value, (a, b) -> a ^ b);
         }
 
         @Specialization

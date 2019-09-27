@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -57,8 +59,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> b);
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> b);
         }
 
         @Specialization
@@ -77,8 +79,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) (a + b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) (a + b)));
         }
 
         @Specialization
@@ -97,8 +99,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) (a - b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) (a - b)));
         }
 
         @Specialization
@@ -117,8 +119,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) (a & b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) (a & b)));
         }
 
         @Specialization
@@ -137,8 +139,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) ~(a & b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) ~(a & b)));
         }
 
         @Specialization
@@ -157,8 +159,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) (a | b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) (a | b)));
         }
 
         @Specialization
@@ -177,8 +179,8 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
         @Specialization
         protected short doOp(LLVMNativePointer address, short value,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI16(address, value, (a, b) -> ((short) (a ^ b)));
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getAndOpI16(address, value, (a, b) -> ((short) (a ^ b)));
         }
 
         @Specialization
