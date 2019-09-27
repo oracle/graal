@@ -38,19 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic;
+package com.oracle.truffle.object;
 
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.object.LayoutImpl;
-import com.oracle.truffle.object.LayoutStrategy;
-import com.oracle.truffle.object.LocationImpl;
-import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.ShapeImpl.BaseAllocator;
 
-class DefaultStrategy extends LayoutStrategy {
+final class DefaultStrategy extends LayoutStrategy {
+    static final LayoutStrategy SINGLETON = new DefaultStrategy();
+
+    private DefaultStrategy() {
+    }
+
     @Override
     public boolean updateShape(DynamicObject object) {
         assert object.getShape().isValid();
@@ -64,7 +65,7 @@ class DefaultStrategy extends LayoutStrategy {
     }
 
     private static boolean assertLocationInRange(ShapeImpl shape, Location location) {
-        BasicLayout layout = (BasicLayout) shape.getLayout();
+        DefaultLayout layout = (DefaultLayout) shape.getLayout();
         assert (shape.getPrimitiveFieldSize() + ((LocationImpl) location).primitiveFieldCount() <= layout.getPrimitiveFieldCount());
         assert (shape.getObjectFieldSize() + ((LocationImpl) location).objectFieldCount() <= layout.getObjectFieldCount());
         return true;
@@ -79,11 +80,11 @@ class DefaultStrategy extends LayoutStrategy {
 
     @Override
     public BaseAllocator createAllocator(ShapeImpl shape) {
-        return new BasicAllocator(shape);
+        return new CoreAllocator(shape);
     }
 
     @Override
     public BaseAllocator createAllocator(LayoutImpl layout) {
-        return new BasicAllocator(layout);
+        return new CoreAllocator(layout);
     }
 }

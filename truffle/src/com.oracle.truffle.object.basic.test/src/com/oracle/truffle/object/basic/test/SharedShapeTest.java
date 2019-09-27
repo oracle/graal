@@ -59,6 +59,7 @@ public class SharedShapeTest {
     final Shape rootShape = layout.createShape(new ObjectType());
     final Shape sharedShape = rootShape.makeSharedShape();
 
+    @SuppressWarnings("deprecation")
     private static Class<?> getLocationType(Location location) {
         return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
     }

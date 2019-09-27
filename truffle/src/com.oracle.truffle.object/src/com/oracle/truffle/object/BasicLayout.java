@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic;
+package com.oracle.truffle.object;
 
+import java.util.EnumSet;
+
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.object.PropertyMap;
-import com.oracle.truffle.object.ShapeImpl;
-import com.oracle.truffle.object.Transition;
+import com.oracle.truffle.api.object.Shape;
 
-public final class ShapeBasic extends ShapeImpl {
-    ShapeBasic(Layout layout, Object sharedData, ObjectType objectType, int id) {
-        super(layout, objectType, sharedData, id);
+public class BasicLayout extends DefaultLayout {
+    BasicLayout(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy) {
+        super(allowedImplicitCasts, dynamicObjectClass, strategy);
     }
 
-    ShapeBasic(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
-        super(layout, parent, objectType, sharedData, propertyMap, transition, allocator, id);
+    public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
+        return new BasicLayout(getAllowedImplicitCasts(builder), DynamicObjectBasic.class, DefaultStrategy.SINGLETON);
     }
 
-    @SuppressWarnings("hiding")
     @Override
-    protected ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int id) {
-        return new ShapeBasic(layout, sharedData, parent, objectType, propertyMap, transition, allocator, id);
+    public DynamicObject newInstance(Shape shape) {
+        return new DynamicObjectBasic(shape);
+    }
+
+    @Override
+    protected int getLongFieldSize() {
+        return 1;
     }
 }
