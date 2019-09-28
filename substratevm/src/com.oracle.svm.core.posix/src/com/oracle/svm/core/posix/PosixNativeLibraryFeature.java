@@ -25,25 +25,30 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Resource;
+import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 
 @AutomaticFeature
 @Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
@@ -69,12 +74,29 @@ class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
+        if (isFirstIsolate()) { // raise process file descriptor limit to hard max if possible
+            Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
+            if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
+                UnsignedWord newValue = rlp.rlim_max();
+                if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
+                    // On Darwin, getrlimit may return RLIM_INFINITY for rlim_max, but then OPEN_MAX
+                    // must be used for setrlimit or it will fail with errno EINVAL.
+                    newValue = WordFactory.unsigned(DarwinSyslimits.OPEN_MAX());
+                }
+                rlp.set_rlim_cur(newValue);
+                if (Resource.setrlimit(Resource.RLIMIT_NOFILE(), rlp) != 0) {
+                    Log.log().string("setrlimit to increase file descriptor limit failed, errno ").signed(Errno.errno()).newline();
+                }
+            } else {
+                Log.log().string("getrlimit failed, errno ").signed(Errno.errno()).newline();
+            }
+        }
+
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             try {
                 loadJavaLibrary();
                 loadZipLibrary();
                 loadNetLibrary();
-
                 /*
                  * The JDK uses posix_spawn on the Mac to launch executables. This requires a
                  * separate process "jspawnhelper" which we don't want to have to rely on. Force the

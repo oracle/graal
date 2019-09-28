@@ -138,10 +138,16 @@ class Linux64Suffix {
     @CContext(PosixDirectives.class)
     interface rlimit64 extends PointerBase {
         @KeepOriginal
-        long rlim_cur();
+        UnsignedWord rlim_cur();
 
         @KeepOriginal
-        long rlim_max();
+        void set_rlim_cur(UnsignedWord value);
+
+        @KeepOriginal
+        UnsignedWord rlim_max();
+
+        @KeepOriginal
+        void set_rlim_max(UnsignedWord value);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Resource.class)
