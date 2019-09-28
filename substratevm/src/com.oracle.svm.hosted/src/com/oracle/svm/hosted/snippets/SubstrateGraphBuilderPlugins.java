@@ -124,6 +124,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -500,6 +501,11 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processObjectFieldOffset(GraphBuilderContext b, Field targetField, boolean analysis, MetaAccessProvider metaAccess) {
+        if (targetField == null) {
+            /* A NullPointerException will be thrown at run time for this call. */
+            return false;
+        }
+
         if (analysis) {
             /* Register the field for unsafe access. */
             AnalysisField analysisTargetField = (AnalysisField) metaAccess.lookupJavaField(targetField);
@@ -510,9 +516,19 @@ public class SubstrateGraphBuilderPlugins {
         } else {
             /* Compute the offset value and constant fold the call. */
             HostedMetaAccess hostedMetaAccess = (HostedMetaAccess) metaAccess;
-            JavaConstant offsetValue = JavaConstant.forLong(hostedMetaAccess.lookupJavaField(targetField).getLocation());
-            b.addPush(JavaKind.Long, ConstantNode.forConstant(offsetValue, b.getMetaAccess(), b.getGraph()));
-            return true;
+            HostedField hostedField = hostedMetaAccess.lookupJavaField(targetField);
+            if (hostedField.wrapped.isUnsafeAccessed()) {
+                JavaConstant offsetValue = JavaConstant.forLong(hostedField.getLocation());
+                b.addPush(JavaKind.Long, ConstantNode.forConstant(offsetValue, b.getMetaAccess(), b.getGraph()));
+                return true;
+            } else {
+                /*
+                 * The target field was not constant folded during static analysis, so the above
+                 * unsafe access registration did not run. A UnsupportedFeatureError will be thrown
+                 * at run time for this call.
+                 */
+                return false;
+            }
         }
     }
 
