@@ -440,7 +440,7 @@ class IgnoreSIGPIPEFeature implements Feature {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 @TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_misc_VM {
 
