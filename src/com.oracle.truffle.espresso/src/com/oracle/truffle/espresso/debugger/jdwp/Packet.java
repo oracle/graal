@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.transport;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import java.io.IOException;
 
@@ -44,7 +44,6 @@ public class Packet {
     short cmd;
     short errorCode;
     byte[] data;
-    volatile boolean replied = false;
 
     /**
      *
@@ -134,5 +133,52 @@ public class Packet {
          * VirtualMachine.notifySuspend, for example.
          */
         return uID++;
+    }
+
+    public void dump(boolean sending) {
+        String direction = sending ? "Sending" : "Receiving";
+        if (sending) {
+            System.out.println(direction + " Command. id=" + id +
+                    ", length=" + data.length +
+                    ", commandSet=" + cmdSet +
+                    ", command=" + cmd +
+                    ", flags=" + flags);
+        } else {
+            String type = (flags & Packet.Reply) != 0 ?
+                    "Reply" : "Event";
+            System.out.println(direction + " " + type + ". id=" + id +
+                    ", length=" + data.length +
+                    ", errorCode=" + errorCode +
+                    ", flags=" + flags);
+        }
+
+        StringBuffer line = new StringBuffer(80);
+
+        line.append("0000: ");
+        if (data.length == 0) {
+            line.append("no data in packet");
+        }
+        for (int i = 0; i < data.length; i++) {
+            if ((i > 0) && (i % 16 == 0)) {
+                System.out.println(line.toString());
+                line.setLength(0);
+                line.append(String.valueOf(i));
+                line.append(": ");
+                int len = line.length();
+                for (int j = 0; j < 6 - len; j++) {
+                    line.insert(0, '0');
+                }
+            }
+            int val = 0xff & data[i];
+            String str = Integer.toHexString(val);
+            if (str.length() == 1) {
+                line.append('0');
+            }
+            line.append(str);
+            line.append(' ');
+        }
+        if (line.length() > 6) {
+            System.out.println(line.toString());
+        }
     }
 }

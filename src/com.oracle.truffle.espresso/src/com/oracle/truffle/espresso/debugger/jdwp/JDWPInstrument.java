@@ -20,12 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.espresso.jdwp.transport.SocketConnection;
-import com.oracle.truffle.espresso.jdwp.transport.TransportController;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 import java.io.IOException;
@@ -36,16 +34,18 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     public static final String ID = "jdwp";
 
     private JDWPDebuggerController controller;
+    private EspressoContext context;
 
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
         assert this.controller == null;
-        this.controller = new JDWPController(env, this);
+        this.controller = new JDWPController(this);
         env.registerService(controller);
     }
 
     @CompilerDirectives.TruffleBoundary
     public void init(EspressoContext context) {
+        this.context = context;
         try {
             if (controller.shouldWaitForAttach()) {
                 doConnect();
@@ -54,8 +54,6 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
                 // don't suspend until debugger attaches, so fire up deamon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");
                 handshakeThread.setDaemon(true);
-                // register thread to Espresso context
-                context.registerThread(handshakeThread);
                 handshakeThread.start();
             }
         } catch (IOException e) {
@@ -64,11 +62,9 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     }
 
     private void doConnect() throws IOException {
-        SocketConnection socketConnection = TransportController.createSocketConnection(controller.getListeningPort());
-        // transport is established, so start a new debugger session.
-        System.out.println("starting debugger session");
-        controller.startDebuggerSession();
-        // TODO(Gregersen) - fire up the jdwp transport thread
+        SocketConnection socketConnection = JDWPHandshakeController.createSocketConnection(controller.getListeningPort());
+        // connection established with handshake. Prepare to process commands from debugger
+        new DebuggerConnection(socketConnection, controller).doProcessCommands();
     }
 
     @Override
@@ -80,10 +76,14 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         }
     }
 
+    public EspressoContext getContext() {
+        return context;
+    }
+
     private static final class JDWPController extends JDWPDebuggerController {
 
-        JDWPController(TruffleInstrument.Env env, JDWPInstrument instrument) {
-            super(env, instrument);
+        JDWPController(JDWPInstrument instrument) {
+            super(instrument);
         }
     }
 

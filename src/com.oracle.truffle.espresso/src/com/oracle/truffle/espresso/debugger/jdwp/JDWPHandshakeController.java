@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.transport;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 
-public class TransportController {
+public class JDWPHandshakeController {
 
     /**
      * Initializes a Socket connection which serves as a transport for jdwp communication.
@@ -43,7 +43,11 @@ public class TransportController {
         if (!handshake(connectionSocket)) {
             throw new IOException("Unable to handshake with debubgger");
         }
-        return new SocketConnection(connectionSocket);
+        SocketConnection connection = new SocketConnection(connectionSocket);
+        Thread JDWPSender = new Thread(connection, "jdwp-transmitter");
+        JDWPSender.setDaemon(true);
+        JDWPSender.start();
+        return connection;
     }
 
     /**

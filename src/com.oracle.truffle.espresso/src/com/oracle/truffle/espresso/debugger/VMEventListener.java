@@ -20,17 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp;
+package com.oracle.truffle.espresso.debugger;
 
-import com.oracle.truffle.api.debug.SuspendedCallback;
-import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-public class SuspendedCallbackImpl implements SuspendedCallback {
+public interface VMEventListener {
+    void classPrepared(ObjectKlass klass);
+    void classUnloaded(ObjectKlass klass);
+    void threadStarted(Thread thread);
+    void threadDied(Thread thread);
 
-    @Override
-    public void onSuspend(SuspendedEvent event) {
-        // TODO(Gregersen) - do the actual thread suspension here
-
-        System.out.println("onSuspend " + event.toString());
-    }
+    void addClassPrepareRequestId(int id);
+    void addClassUnloadRequestId(int id);
+    void addThreadStartedRequestId(int id);
+    void addThreadDiedRequestId(int id);
 }

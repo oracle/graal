@@ -47,6 +47,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -146,6 +148,8 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public Symbol<Type>[] getParsedSignature() {
         return parsedSignature;
     }
+
+    private Source source;
 
     Method(Method method) {
         this.declaringKlass = method.declaringKlass;
@@ -771,5 +775,17 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             return codeAttribute.getLineNumberTableAttribute();
         }
         return LineNumberTable.EMPTY;
+    }
+
+    /**
+     * @return the source object associated with this method
+     */
+
+    public final Source getSource() {
+        Source localSource = this.source;
+        if (localSource == null) {
+            this.source = localSource = getContext().findOrCreateSource(this);
+        }
+        return localSource;
     }
 }

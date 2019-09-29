@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -39,11 +40,14 @@ public final class ClassRegistries {
     private final ClassRegistry bootClassRegistry;
     private final ConcurrentHashMap<StaticObject, ClassRegistry> registries;
     private final EspressoContext context;
+    private final HashSet<StaticObject> classLoaders;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
         this.registries = new ConcurrentHashMap<>();
         this.bootClassRegistry = new BootClassRegistry(context);
+        this.classLoaders = new HashSet<>();
+        classLoaders.add(StaticObject.NULL); // add the boot class loader
     }
 
     @TruffleBoundary
@@ -71,6 +75,21 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
+    public Klass findLoadedClassAny(Symbol<Type> type) {
+        for (StaticObject classLoader : classLoaders) {
+            if (StaticObject.isNull(classLoader)) {
+                continue;
+            }
+            ClassRegistry registry = registries.get(classLoader);
+
+            if (registry!= null && registry.classes != null && registry.classes.containsKey(type)) {
+                return registry.classes.get(type);
+            }
+        }
+        return null;
+    }
+
+    @TruffleBoundary
     public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
         return loadKlass(type, StaticObject.NULL);
     }
@@ -78,6 +97,10 @@ public final class ClassRegistries {
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
+
+        if (!classLoaders.contains(classLoader)) {
+            classLoaders.add(classLoader);
+        }
 
         // System.err.println("loadKlass: " + type + " " + classLoader);
 
@@ -115,6 +138,9 @@ public final class ClassRegistries {
                             }
                         });
 
+        if (!classLoaders.contains(classLoader)) {
+            classLoaders.add(classLoader);
+        }
         return registry.defineKlass(type, bytes);
     }
 

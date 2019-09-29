@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestClassLoadingNotifier;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.object.DebugCounter;
@@ -83,6 +84,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         klass = guestClass.getMirrorKlass();
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
+        GuestClassLoadingNotifier.getInstance().notifyClassLoaded(type);
         return klass;
     }
 
@@ -96,6 +98,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         ObjectKlass klass = super.defineKlass(type, bytes);
         // Register class in guest CL. Mimics HotSpot behavior.
         ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
+        GuestClassLoadingNotifier.getInstance().notifyClassLoaded(type);
         return klass;
     }
 }

@@ -20,14 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.transport;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
 
-public class SocketConnection  {
+public class SocketConnection implements Runnable {
     private Socket socket;
     private boolean closed = false;
     private OutputStream socketOutput;
@@ -35,6 +38,8 @@ public class SocketConnection  {
     private Object receiveLock = new Object();
     private Object sendLock = new Object();
     private Object closeLock = new Object();
+
+    private BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
 
     SocketConnection(Socket socket) throws IOException {
         this.socket = socket;
@@ -59,6 +64,27 @@ public class SocketConnection  {
         synchronized (closeLock) {
             return !closed;
         }
+    }
+
+    @Override
+    public void run() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                PacketStream take = queue.take();
+                byte[] shipment = take.prepareForShipment();
+                //take.dumpPacket();
+                writePacket(shipment);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (IOException ex) {
+                // TODO(Gregersen) - we should add a retry mechanism or verification of communication
+                throw new RuntimeException("Failed sending packet to debugger instance", ex);
+            }
+        }
+    }
+
+    public void queuePacket(PacketStream stream) {
+        queue.add(stream);
     }
 
     public byte[] readPacket() throws IOException {

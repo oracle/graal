@@ -35,8 +35,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.jdwp.JDWPDebuggerController;
-import com.oracle.truffle.espresso.jdwp.JDWPInstrument;
+import com.oracle.truffle.espresso.debugger.VMEventListeners;
+import com.oracle.truffle.espresso.debugger.jdwp.JDWPDebuggerController;
+import com.oracle.truffle.espresso.debugger.jdwp.JDWPInstrument;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -184,9 +185,10 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        jdwpInit(); // should this happen after spawning the VM?
+        jdwpInit();
         spawnVM();
         this.initialized = true;
+        VMInitializedListeners.getDefault().fire();
     }
 
     private void jdwpInit() {
@@ -404,10 +406,16 @@ public final class EspressoContext {
 
     public void registerThread(Thread thread) {
         activeThreads.add(thread);
+        VMEventListeners.getDefault().threadStarted(thread);
     }
 
     public void unregisterThread(Thread thread) {
         activeThreads.remove(thread);
+        VMEventListeners.getDefault().threadDied(thread);
+    }
+
+    public Thread[] getAllActiveTrheads() {
+        return activeThreads.toArray(new Thread[0]);
     }
 
     // region Options
