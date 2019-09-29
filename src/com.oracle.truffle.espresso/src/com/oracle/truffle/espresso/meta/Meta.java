@@ -146,6 +146,7 @@ public final class Meta implements ContextAccess {
         Throwable = knownKlass(Type.Throwable);
         HIDDEN_FRAMES = Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
+        Throwable_cause = Throwable.lookupField(Name.cause, Type.Throwable);
 
         StackTraceElement = knownKlass(Type.StackTraceElement);
         StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
@@ -437,6 +438,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Throwable;
     public final Field HIDDEN_FRAMES;
     public final Field Throwable_backtrace;
+    public final Field Throwable_cause;
 
     public final ObjectKlass Error;
     public final ObjectKlass NoSuchFieldError;

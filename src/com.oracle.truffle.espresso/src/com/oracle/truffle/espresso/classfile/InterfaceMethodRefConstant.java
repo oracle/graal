@@ -133,6 +133,8 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(name));
             }
 
+            method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
+
             return new Resolved(method);
         }
     }

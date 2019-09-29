@@ -211,4 +211,8 @@ public final class Field implements ModifiersProvider {
     public StaticObject getAndSetObject(StaticObject self, StaticObject value) {
         return self.getAndSetObject(this, value);
     }
+
+    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+    }
 }

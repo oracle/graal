@@ -58,13 +58,13 @@ public final class GuestClassRegistry extends ClassRegistry {
         super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
     @SuppressWarnings("unused")
     @Override
-    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
+    public Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {
@@ -80,8 +80,9 @@ public final class GuestClassRegistry extends ClassRegistry {
             return klass;
         }
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
+        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
         klass = guestClass.getMirrorKlass();
+        getRegistries().recordConstraint(type, klass, getClassLoader());
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
         GuestClassLoadingNotifier.getInstance().notifyClassLoaded(type);

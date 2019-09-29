@@ -65,6 +65,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -585,7 +586,11 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(signature, i);
-            paramsKlasses[i] = getMeta().loadKlass(paramType, getDeclaringKlass().getDefiningClassLoader());
+            if (Types.isPrimitive(paramType)) {
+                paramsKlasses[i] = getMeta().loadKlass(paramType, StaticObject.NULL);
+            } else {
+                paramsKlasses[i] = getMeta().loadKlass(paramType, getDeclaringKlass().getDefiningClassLoader());
+            }
         }
         return paramsKlasses;
     }
@@ -593,7 +598,11 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public Klass resolveReturnKlass() {
         // TODO(peterssen): Use resolved signature.
         Symbol<Type> returnType = Signatures.returnType(getParsedSignature());
-        return getMeta().loadKlass(returnType, getDeclaringKlass().getDefiningClassLoader());
+        if (Types.isPrimitive(returnType)) {
+            return getMeta().loadKlass(returnType, StaticObject.NULL);
+        } else {
+            return getMeta().loadKlass(returnType, getDeclaringKlass().getDefiningClassLoader());
+        }
     }
 
     public int getParameterCount() {
@@ -787,5 +796,11 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             this.source = localSource = getContext().findOrCreateSource(this);
         }
         return localSource;
+    }
+
+    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+        for (Symbol<Type> type : getParsedSignature()) {
+            getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+        }
     }
 }
