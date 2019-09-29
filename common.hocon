@@ -6,9 +6,9 @@ overlay = 65ec1eda27777ca059329673b0df467a4e86f4f8
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u221-jvmci-19.3-b02", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u222-jvmci-19.3-b02", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.3-b02-fastdebug", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u221-jvmci-19.3-b03", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u222-jvmci-19.3-b03", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.3-b03-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
   labsjdk11:       {name : labsjdk,   version : "ce-11-20190917-093434", platformspecific: true}
