@@ -332,7 +332,7 @@ public class SymbolTable {
         return function;
     }
 
-    public int getFunctionTypeNumArguments(int typeIndex) {
+    public int functionTypeArgumentCount(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgs = typeData[typeOffset + 0];
         return numArgs;
@@ -375,7 +375,7 @@ public class SymbolTable {
 
     ByteArrayList getFunctionTypeArgumentTypes(int typeIndex) {
         ByteArrayList types = new ByteArrayList();
-        for (int i = 0; i != getFunctionTypeNumArguments(typeIndex); ++i) {
+        for (int i = 0; i != functionTypeArgumentCount(typeIndex); ++i) {
             types.add(getFunctionTypeArgumentTypeAt(typeIndex, i));
         }
         return types;

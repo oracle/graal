@@ -714,7 +714,7 @@ public class BinaryReader extends BinaryStreamReader {
                     int expectedFunctionTypeIndex = readTypeIndex(bytesConsumed);
                     state.saveNumericLiteral(expectedFunctionTypeIndex);
                     state.useByteConstant(bytesConsumed[0]);
-                    int numArguments = module.symbolTable().getFunctionTypeNumArguments(expectedFunctionTypeIndex);
+                    int numArguments = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                     int returnLength = module.symbolTable().getFunctionTypeReturnTypeLength(expectedFunctionTypeIndex);
 
                     // Pop the function index to call, then pop the arguments and push the return value.
