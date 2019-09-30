@@ -122,7 +122,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             implementedMethod.getModifiers().remove(Modifier.ABSTRACT);
             CodeTreeBuilder builder = implementedMethod.createBuilder();
             switch (method.getSimpleName().toString()) {
-                case "get":
+                case "create":
                     DeclaredType languageType = (DeclaredType) language.asType();
                     List<? extends TypeParameterElement> typeParams = language.getTypeParameters();
                     if (!typeParams.isEmpty()) {
@@ -135,7 +135,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     builder.startReturn().startNew(languageType).end().end();
                     break;
 
-                case "getFileTypeDetectors":
+                case "createFileTypeDetectors":
                     List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors");
                     if (detectors.isEmpty()) {
                         builder.startReturn().startStaticCall(context.getType(Collections.class), "emptyList").end().end();

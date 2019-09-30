@@ -473,18 +473,18 @@ public abstract class TruffleLanguage<C> {
         String getLanguageClassName();
 
         /**
-         * Return a new instance of a {@link TruffleLanguage}.
+         * Creates a new instance of a {@link TruffleLanguage}.
          *
          * @since 19.3.0
          */
-        TruffleLanguage<?> get();
+        TruffleLanguage<?> create();
 
         /**
-         * Returns file type detectors used by the {@link TruffleLanguage}.
+         * Creates file type detectors used by the {@link TruffleLanguage}.
          *
          * @since 19.3.0
          */
-        List<FileTypeDetector> getFileTypeDetectors();
+        List<FileTypeDetector> createFileTypeDetectors();
     }
 
     /**

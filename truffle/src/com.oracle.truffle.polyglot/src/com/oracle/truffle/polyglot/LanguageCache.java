@@ -872,7 +872,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 @Override
                 TruffleLanguage<?> newInstance() {
                     exportTruffleIfNeeded();
-                    return provider.get();
+                    return provider.create();
                 }
 
                 @Override
@@ -880,7 +880,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     List<FileTypeDetector> result = fileTypeDetectors;
                     if (result == null) {
                         exportTruffleIfNeeded();
-                        result = provider.getFileTypeDetectors();
+                        result = provider.createFileTypeDetectors();
                         fileTypeDetectors = result;
                     }
                     return result;
