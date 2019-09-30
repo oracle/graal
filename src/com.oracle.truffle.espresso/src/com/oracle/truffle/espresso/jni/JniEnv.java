@@ -614,7 +614,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 Klass klass = clazz.getMirrorKlass();
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                method = klass.lookupMethod(methodName, methodSignature, klass);
+                if (Name.CLINIT.equals(methodName)) {
+                    // Never search superclasses for static initializers.
+                    method = klass.lookupDeclaredMethod(methodName, methodSignature);
+                } else {
+                    method = klass.lookupMethod(methodName, methodSignature);
+                }
             }
         }
         if (method == null || !method.isStatic()) {
