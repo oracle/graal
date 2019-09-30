@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.hosted.jdk;
 
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -43,7 +42,6 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@CLibrary(value = "nio", requireStatic = true)
 @AutomaticFeature
 class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
 

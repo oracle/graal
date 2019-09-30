@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -125,26 +124,6 @@ public abstract class PlatformNativeLibrarySupport {
             }
         }
         return false;
-    }
-
-    protected boolean loadZipLibrary() {
-        /*
-         * On JDK 8, the zip library is loaded early during VM startup and not by individual class
-         * initializers of classes that actually need the library. JDK 11 changed that behavior, the
-         * zip library is properly loaded by classes that depend on it.
-         *
-         * Therefore, this helper method unconditionally loads the zip library for Java 8. The only
-         * other alternative would be to substitute and modify all class initializers of classes
-         * that depend on the zip library, which is complicated.
-         */
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
-            try {
-                System.loadLibrary("zip");
-            } catch (UnsatisfiedLinkError e) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public interface NativeLibrary {

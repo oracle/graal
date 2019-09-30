@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,9 +35,13 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 
 @AutomaticFeature
@@ -48,7 +53,14 @@ class PosixNativeLibraryFeature implements Feature {
     }
 }
 
-class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
+class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    PosixNativeLibrarySupport() {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            addBuiltInLibrary("extnet");
+        }
+    }
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new PosixNativeLibrarySupport());
@@ -56,15 +68,20 @@ class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
-                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
-            if (!PosixJavaIOSubstitutions.initIDs()) {
-                return false;
-            }
-            if (!loadZipLibrary()) {
-                return false;
-            }
-            if (!PosixJavaLangSubstitutions.initIDs()) {
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+            try {
+                loadJavaLibrary();
+                loadZipLibrary();
+
+                /*
+                 * The JDK uses posix_spawn on the Mac to launch executables. This requires a
+                 * separate process "jspawnhelper" which we don't want to have to rely on. Force the
+                 * use of FORK on Linux and Mac.
+                 */
+                System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
+
+            } catch (UnsatisfiedLinkError e) {
+                Log.log().string("System.loadLibrary failed, " + e).newline();
                 return false;
             }
         }
@@ -72,12 +89,17 @@ class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
     }
 
     @Override
+    protected void loadJavaLibrary() {
+        super.loadJavaLibrary();
+        Target_java_io_UnixFileSystem_JNI.initIDs();
+    }
+
+    @Override
     public boolean initializeSharedBuiltinLibrariesOnce() {
         if (!super.initializeSharedBuiltinLibrariesOnce()) {
             return false;
         }
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
-                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             /*
              * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
              * value in process-wide shared native state, the property's value in the first launched
@@ -153,4 +175,11 @@ class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
             }
         }
     }
+}
+
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+@TargetClass(className = "java.io.UnixFileSystem")
+final class Target_java_io_UnixFileSystem_JNI {
+    @Alias
+    static native void initIDs();
 }
