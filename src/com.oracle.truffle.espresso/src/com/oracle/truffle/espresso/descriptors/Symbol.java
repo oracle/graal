@@ -230,6 +230,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> Null = StaticSymbols.putName("null");
         public static final Symbol<Name> getCallerClass = StaticSymbols.putName("getCallerClass");
 
+        public static final Symbol<Name> createMemoryPool = StaticSymbols.putName("createMemoryPool");
+        public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
+        public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
+
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
         public static final Symbol<Name> invokeExact = StaticSymbols.putName("invokeExact");
@@ -455,6 +459,11 @@ public final class Symbol<T> extends ByteSequence {
         // Special threads
         public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
         public static final Symbol<Type> ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
+        // java.management
+        public static final Symbol<Type> MemoryManagerMXBean = StaticSymbols.putType(java.lang.management.MemoryManagerMXBean.class);
+        public static final Symbol<Type> MemoryPoolMXBean = StaticSymbols.putType(java.lang.management.MemoryPoolMXBean.class);
+        public static final Symbol<Type> GarbageCollectorMXBean = StaticSymbols.putType(java.lang.management.GarbageCollectorMXBean.class);
+        public static final Symbol<Type> sun_management_ManagementFactory = StaticSymbols.putType("Lsun/management/ManagementFactory;");
     }
 
     public static final class Signature extends Descriptor {
@@ -525,5 +534,9 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
 
+        // java.management
+        public static final Symbol<Signature> MemoryPoolMXBean_String_boolean_long_long = StaticSymbols.putSignature(Type.MemoryPoolMXBean, Type.String, Type._boolean, Type._long, Type._long);
+        public static final Symbol<Signature> MemoryManagerMXBean_String = StaticSymbols.putSignature(Type.MemoryManagerMXBean, Type.String);
+        public static final Symbol<Signature> GarbageCollectorMXBean_String_String = StaticSymbols.putSignature(Type.GarbageCollectorMXBean, Type.String, Type.String);
     }
 }

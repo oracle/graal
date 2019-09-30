@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import java.lang.management.MemoryUsage;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -350,6 +354,16 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
         sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+
+        // java.management
+        MemoryUsage = knownKlass(MemoryUsage.class);
+        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
+        // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
+        sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
+        // MemoryManagerMXBean createMemoryManager(String var0)
+        sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
+        // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
+        sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector, Signature.GarbageCollectorMXBean_String_String);
     }
 
     // Checkstyle: stop field name check
@@ -610,7 +624,6 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_fixMethodType;
 
     // References
-
     public final ObjectKlass Finalizer;
     public final Method Finalizer_register;
     public final ObjectKlass Reference;
@@ -631,6 +644,12 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ReferenceQueue;
     public final Field ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
+
+    public final ObjectKlass MemoryUsage;
+    public final ObjectKlass sun_management_ManagementFactory;
+    public final Method sun_management_ManagementFactory_createMemoryPool;
+    public final Method sun_management_ManagementFactory_createMemoryManager;
+    public final Method sun_management_ManagementFactory_createGarbageCollector;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

@@ -87,6 +87,7 @@ public final class EspressoContext {
     private StaticObject mainThreadGroup;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
+    public long initVMDoneMs;
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
@@ -354,6 +355,9 @@ public final class EspressoContext {
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
         EspressoLogger.log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
+        initVMDoneMs = System.currentTimeMillis();
+
+        System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
     private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
