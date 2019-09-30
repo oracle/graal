@@ -264,7 +264,7 @@ public final class Target_java_lang_Class {
                 SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
                 StaticObject genericSignature = StaticObject.NULL;
                 if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
+                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
                     genericSignature = meta.toGuestString(sig);
                 }
 
@@ -374,7 +374,7 @@ public final class Target_java_lang_Class {
                 SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
                 StaticObject genericSignature = StaticObject.NULL;
                 if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
+                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
                     genericSignature = meta.toGuestString(sig);
                 }
 
@@ -633,7 +633,7 @@ public final class Target_java_lang_Class {
             ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
             SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
             if (signature != null) {
-                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex(), "signature").toString();
+                String sig = klass.getConstantPool().symbolAt(signature.getSignatureIndex(), "signature").toString();
                 return klass.getMeta().toGuestString(sig);
             }
         }

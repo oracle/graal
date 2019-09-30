@@ -27,6 +27,15 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 
 public final class Utf8Constant implements PoolConstant {
 
+    private static final int VALID_CLASS_NAME = 0x01;
+    private static final int VALID_METHOD_NAME = 0x02;
+    private static final int VALID_FIELD_NAME = 0x04;
+    private static final int VALID_SIGNATURE = 0x04;
+    private static final int VALID_UTF8 = 0x08;
+    private static final int VALID_TYPE = 0x1;
+
+    private byte validationCache;
+
     @Override
     public final Tag tag() {
         return Tag.UTF8;
@@ -42,6 +51,64 @@ public final class Utf8Constant implements PoolConstant {
     public <T> Symbol<T> value() {
         // TODO(peterssen): Maybe assert signature/type is valid.
         return (Symbol<T>) value;
+    }
+
+    @Override
+    public void validate(ConstantPool pool) {
+        validateUTF8();
+    }
+
+    public void validateUTF8() {
+        if ((validationCache & VALID_UTF8) == 0) {
+            // TODO(peterssen): Validate well-formed modified UTF8 constant, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_UTF8;
+        }
+    }
+
+    public void validateClassName() {
+        validateUTF8();
+        if ((validationCache & VALID_CLASS_NAME) == 0) {
+            // TODO(peterssen): Validate class name, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_CLASS_NAME;
+        }
+    }
+
+    public void validateType() {
+        validateUTF8();
+        if ((validationCache & VALID_TYPE) == 0) {
+            // TODO(peterssen): Validate type in internal form, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_TYPE;
+        }
+    }
+
+    public void validateMethodName() {
+        validateUTF8();
+        if ((validationCache & VALID_METHOD_NAME) == 0) {
+            // TODO(peterssen): Validate method name, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_METHOD_NAME;
+        }
+    }
+
+    public void validateFieldName() {
+        validateUTF8();
+        if ((validationCache & VALID_FIELD_NAME) == 0) {
+            // TODO(peterssen): Validate field name, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_FIELD_NAME;
+        }
+    }
+
+    public void validateSignature() {
+        validateUTF8();
+        if ((validationCache & VALID_SIGNATURE) == 0) {
+            // TODO(peterssen): Validate signature, throws guest ClassFormatError otherwise.
+
+            validationCache |= VALID_SIGNATURE;
+        }
     }
 
     @Override

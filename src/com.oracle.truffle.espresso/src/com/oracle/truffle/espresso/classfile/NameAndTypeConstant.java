@@ -26,10 +26,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.descriptors.Types;
-
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 
 public interface NameAndTypeConstant extends PoolConstant {
 
@@ -49,11 +45,9 @@ public interface NameAndTypeConstant extends PoolConstant {
      */
     Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-    Symbol<Signature> getSignature(ConstantPool pool);
+    void validateMethod(ConstantPool pool);
 
-    int getNameIndex();
-
-    int getTypeIndex();
+    void validateField(ConstantPool pool);
 
     @Override
     default Tag tag() {
@@ -66,15 +60,6 @@ public interface NameAndTypeConstant extends PoolConstant {
     }
 
     final class Indexes implements NameAndTypeConstant {
-        @Override
-        public int getNameIndex() {
-            return nameIndex;
-        }
-
-        @Override
-        public int getTypeIndex() {
-            return typeIndex;
-        }
 
         private final char nameIndex;
         private final char typeIndex;
@@ -86,27 +71,24 @@ public interface NameAndTypeConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.utf8At(nameIndex);
+            return pool.symbolAt(nameIndex);
         }
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return pool.utf8At(typeIndex);
+            return pool.symbolAt(typeIndex);
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public Symbol<Signature> getSignature(ConstantPool pool) {
-            return (Symbol<Signature>) getDescriptor(pool);
+        public void validateMethod(ConstantPool pool) {
+            pool.utf8At(nameIndex).validateFieldName();
+            pool.utf8At(typeIndex).validateSignature();
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(nameIndex).tag() != UTF8 || pool.at(typeIndex).tag() != UTF8) {
-                throw new VerifyError("Ill-formed constant: " + tag());
-            }
-            pool.at(nameIndex).checkValidity(pool);
-            pool.at(typeIndex).checkValidity(pool);
+        public void validateField(ConstantPool pool) {
+            pool.utf8At(nameIndex).validateMethodName();
+            pool.utf8At(typeIndex).validateType();
         }
     }
 }

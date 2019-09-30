@@ -439,7 +439,7 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int signatureIndex = stream.readU2();
 
-        final Symbol<Name> name = pool.utf8At(nameIndex, "field name");
+        final Symbol<Name> name = pool.symbolAt(nameIndex, "field name");
         verifyMethodName(name, true);
 
         int extraFlags = methodFlags;
@@ -463,7 +463,7 @@ public final class ClassfileParser {
 
         verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
 
-        final Symbol<Signature> signature = Signatures.check(pool.utf8At(signatureIndex, "method descriptor"));
+        final Symbol<Signature> signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
 
         if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
             throw classFormatError("Too many arguments in method signature: " + signature);
@@ -491,7 +491,7 @@ public final class ClassfileParser {
 
             for (int i = 0; i < attributeCount; ++i) {
                 final int attributeNameIndex = stream.readU2();
-                final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+                final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
                 final int attributeSize = stream.readS4();
                 final int startPosition = stream.getPosition();
                 if (attributeName.equals(Name.Code)) {
@@ -583,7 +583,7 @@ public final class ClassfileParser {
         final Attribute[] classAttributes = new Attribute[attributeCount];
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
             if (attributeName.equals(Name.SourceFile)) {
@@ -659,7 +659,7 @@ public final class ClassfileParser {
 
     private Attribute parseAttribute() {
         int nameIndex = stream.readU2();
-        Symbol<Name> name = pool.utf8At(nameIndex);
+        Symbol<Name> name = pool.symbolAt(nameIndex);
         int length = stream.readS4();
         if (CodeAttribute.NAME.equals(name)) {
             return parseCodeAttribute(name);
@@ -922,7 +922,7 @@ public final class ClassfileParser {
 
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
 
@@ -1063,13 +1063,13 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int typeIndex = stream.readU2();
 
-        final Symbol<Name> name = pool.utf8At(nameIndex, "field name");
+        final Symbol<Name> name = pool.symbolAt(nameIndex, "field name");
         verifyFieldName(name);
         verifyFieldFlags(name, fieldFlags, isInterface);
 
         final boolean isStatic = Modifier.isStatic(fieldFlags);
 
-        Symbol<ModifiedUTF8> rawDescriptor = pool.utf8At(typeIndex, "field descriptor");
+        Symbol<ModifiedUTF8> rawDescriptor = pool.symbolAt(typeIndex, "field descriptor");
         final Symbol<Type> descriptor = Types.fromSymbol(rawDescriptor);
         if (descriptor == null) {
             throw classFormatError("Invalid descriptor: " + rawDescriptor);
@@ -1086,7 +1086,7 @@ public final class ClassfileParser {
 
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
             if (isStatic && attributeName.equals(Name.ConstantValue)) {

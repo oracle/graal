@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -62,7 +61,7 @@ public interface MethodTypeConstant extends PoolConstant {
         @Override
         public Symbol<Signature> getSignature(ConstantPool pool) {
             // TODO(peterssen): Assert valid signature.
-            return pool.utf8At(descriptorIndex);
+            return pool.symbolAt(descriptorIndex);
         }
 
         public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
@@ -72,11 +71,8 @@ public interface MethodTypeConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(descriptorIndex).tag() != UTF8) {
-                throw new VerifyError("Invalid pool constant: " + tag());
-            }
-            pool.at(descriptorIndex).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.utf8At(descriptorIndex).validateSignature();
         }
     }
 

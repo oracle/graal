@@ -557,7 +557,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
-        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
+        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().symbolAt(index).toString());
     }
 
     @VmImpl
@@ -1036,7 +1036,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 // For a 0 index, give an empty name.
                 String hostName = "";
                 if (entry.getNameIndex() != 0) {
-                    hostName = method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString();
+                    hostName = method.getConstantPool().symbolAt(entry.getNameIndex(), "parameter name").toString();
                 }
                 parameterInit.invokeDirect(/* this */ instance,
                                 /* name */ getMeta().toGuestString(hostName),

@@ -95,12 +95,9 @@ public interface MemberRefConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(classIndex).tag() != CLASS || pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
-                throw new VerifyError("Ill-formed constant: " + tag());
-            }
-            pool.at(classIndex).checkValidity(pool);
-            pool.at(nameAndTypeIndex).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.classAt(classIndex).validate(pool);
+            pool.nameAndTypeAt(nameAndTypeIndex).validate(pool);
         }
     }
 

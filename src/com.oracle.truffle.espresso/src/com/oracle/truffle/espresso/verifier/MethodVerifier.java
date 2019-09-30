@@ -1294,7 +1294,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LDC: 
                 case LDC_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
@@ -1307,7 +1307,7 @@ public final class MethodVerifier implements ContextAccess {
                 }
                 case LDC2_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (!isType2(op)) {
                         throw new VerifyError("Loading non-Long or Double with LDC2_W, please use LDC or LDC_W.");
@@ -1618,7 +1618,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.INVOKEDYNAMIC) {
             throw new VerifyError("Invalid CP constant for INVOKEDYNAMIC: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
         Symbol<Name> name = idc.getName(pool);
@@ -1649,7 +1649,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != CLASS) {
             throw new VerifyError(s + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         ClassConstant cc = (ClassConstant) pc;
         Symbol<Type> type = getTypes().fromName(cc.getName(pool));
         Types.verify(type);
@@ -1768,7 +1768,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for PUTFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
@@ -1798,7 +1798,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for GETFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
@@ -1914,7 +1914,7 @@ public final class MethodVerifier implements ContextAccess {
         if (!(pc instanceof MethodRefConstant)) {
             throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         return (MethodRefConstant) pc;
     }
 

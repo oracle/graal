@@ -62,7 +62,7 @@ public final class Field extends Member<Type> {
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
-                genericSignature = holder.getConstantPool().utf8At(attr.getSignatureIndex());
+                genericSignature = holder.getConstantPool().symbolAt(attr.getSignatureIndex());
             }
         }
         return genericSignature;
@@ -209,6 +209,6 @@ public final class Field extends Member<Type> {
     }
 
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
 }
