@@ -88,7 +88,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
-            p.destroy();
+            p.destroyForcibly().waitFor();
         }
     }
 
@@ -99,7 +99,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
-            p.destroy();
+            p.destroyForcibly().waitFor();
         }
     }
 
@@ -114,7 +114,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
         Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
-        if (!p.waitFor(10, TimeUnit.SECONDS)) {
+        if (!p.waitFor(30, TimeUnit.SECONDS)) {
             p.destroy();
             Assert.fail("Process did not finish in expected time.");
         }
