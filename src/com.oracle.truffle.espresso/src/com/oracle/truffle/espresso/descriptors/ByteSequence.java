@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 /**
  * A <tt>ByteSequence</tt> is a readable sequence of <code>byte</code> values. This interface
  * provides uniform, read-only access to different kinds of <code>byte</code> sequences. Implements
- * a "view" over a byte array.
+ * a slice "view" over a byte array.
  */
 // TODO(peterssen): Should not be public.
 public abstract class ByteSequence {
@@ -127,6 +127,18 @@ public abstract class ByteSequence {
             return this;
         }
         return wrap(getUnderlyingBytes(), offset() + offset, length);
+    }
+
+    public final boolean contentEquals(ByteSequence other) {
+        if (length() != other.length()) {
+            return false;
+        }
+        for (int i = 0; i < length(); ++i) {
+            if (byteAt(i) != other.byteAt(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
