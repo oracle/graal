@@ -168,8 +168,6 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
-                    if isinstance(component, mx_sdk.GraalVmLanguage):
-                        components.append(mx_sdk.graalvm_component_by_name('Truffle Macro'))
 
         # Expand dependencies
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
