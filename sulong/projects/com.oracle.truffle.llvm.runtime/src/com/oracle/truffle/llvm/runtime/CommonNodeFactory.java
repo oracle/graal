@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGe
 public class CommonNodeFactory {
 
     public CommonNodeFactory(){
-
     }
 
     public static LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
@@ -134,4 +133,55 @@ public class CommonNodeFactory {
                 throw new IllegalStateException(type.toString());
         }
     }
+
+    /*public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
+        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value);
+        if (complexObject != null) {
+            return complexObject;
+        }
+
+        return LLVMDebugManagedValue.create(llvmType, value);
+    }
+
+    private static TruffleObject asDebuggerIRValue(Object llvmType, Object value) {
+        final Type type;
+        if (llvmType instanceof Type) {
+            type = (Type) llvmType;
+        } else {
+            return null;
+        }
+
+        // e.g. debugger symbols
+        if (type instanceof MetaType) {
+            return null;
+        }
+
+        final LLVMSourceType sourceType = LLVMSourceTypeFactory.resolveType(type, dataLayout);
+        if (sourceType == null) {
+            return null;
+        }
+
+        // after frame-nulling the actual vector length does not correspond to the type anymore
+        if (value instanceof LLVMVector && ((LLVMVector) value).getLength() == 0) {
+            return null;
+        }
+
+        // after frame-nulling the actual bitsize does not correspond to the type anymore
+        if (value instanceof LLVMIVarBit && ((LLVMIVarBit) value).getBitSize() == 0) {
+            return null;
+        }
+
+        final LLVMDebugValue debugValue = createDebugValueBuilder().build(value);
+        if (debugValue == LLVMDebugValue.UNAVAILABLE) {
+            return null;
+        }
+
+        return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
+    }
+
+    public static LLVMDebugValue.Builder createDebugValueBuilder() {
+        return LLVMToDebugValueNodeGen.create();
+    }*/
+
+
 }
