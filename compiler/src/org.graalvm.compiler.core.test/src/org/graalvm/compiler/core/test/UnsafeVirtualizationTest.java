@@ -84,6 +84,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static int unsafeSnippet1(double i1, boolean c) {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -94,6 +95,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         a.f1 = i1;
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -104,6 +106,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         a.f2 = i1;
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -114,6 +117,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         UNSAFE.putInt(a, AF1Offset, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -124,6 +128,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         UNSAFE.putInt(a, AF2Offset, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -134,6 +139,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         A a = new A();
         UNSAFE.putDouble(a, AF1Offset, i1);
         UNSAFE.putDouble(a, AF1Offset, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -143,16 +149,17 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static int unsafeSnippet5(long i1, boolean c) {
         int[] t = new int[2];
         UNSAFE.putLong(t, (long) Unsafe.ARRAY_INT_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
         return UNSAFE.getShort(t, (long) Unsafe.ARRAY_BYTE_INDEX_SCALE * 6 + Unsafe.ARRAY_INT_BASE_OFFSET);
-
     }
 
     public static int unsafeSnippet6(long i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -162,6 +169,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static int unsafeSnippet7(int i1, boolean c) {
         byte[] b = new byte[4];
         UNSAFE.putInt(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -172,6 +180,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
         UNSAFE.putInt(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + 4 * Unsafe.ARRAY_BYTE_INDEX_SCALE, i2);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -182,6 +191,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         byte[] b = new byte[8];
         UNSAFE.putLong(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
         UNSAFE.putShort(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + 4 * Unsafe.ARRAY_BYTE_INDEX_SCALE, i2);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -191,6 +201,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static int unsafeSnippet10(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -200,6 +211,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static float unsafeSnippet11(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -209,6 +221,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static long unsafeSnippet12(double i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putDouble(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -218,6 +231,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     public static short unsafeSnippet13(short i1, boolean c) {
         byte[] b = new byte[8];
         UNSAFE.putShort(b, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -231,6 +245,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         } else {
             UNSAFE.putInt(t, (long) Unsafe.ARRAY_INT_BASE_OFFSET, i);
         }
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }
@@ -263,6 +278,16 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
             GraalDirectives.deoptimize();
         }
         return b;
+    }
+
+    public static long unsafeSnippet17(long i1, boolean c) {
+        byte[] t = new byte[8];
+        UNSAFE.putLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET, i1);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
     @Test
@@ -347,6 +372,11 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     @Test
     public void testUnsafePEA16() {
         performTest("unsafeSnippet16", 0x0102030405060708L, 0x01020304, (short) 0x0102, Double.longBitsToDouble(0x0102030405060708L), Float.intBitsToFloat(0x01020304));
+    }
+
+    @Test
+    public void testUnsafePEA17() {
+        performTest("unsafeSnippet17", 0x0102030405060708L);
     }
 
     private void performTest(String snippet, int arg) {

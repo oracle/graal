@@ -215,7 +215,9 @@ public class DebugInfoBuilder {
                     }
                 } else {
                     for (int i = 0; i < values.length; i++) {
-                        assert slotKinds[i] == componentKind || componentKind.getBitCount() >= slotKinds[i].getBitCount() ||
+                        assert slotKinds[i] == componentKind ||
+                                        (slotKinds[i] == JavaKind.Illegal && storageKind(type.getComponentType()) == JavaKind.Byte) ||
+                                        componentKind.getBitCount() >= slotKinds[i].getBitCount() ||
                                         (componentKind == JavaKind.Int && slotKinds[i].getBitCount() >= JavaKind.Int.getBitCount()) : slotKinds[i] + " != " + componentKind;
                     }
                 }
