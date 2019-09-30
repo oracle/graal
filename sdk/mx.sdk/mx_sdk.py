@@ -611,6 +611,7 @@ register_graalvm_component(GraalVmJreComponent(
     dir_name='graalvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     jar_distributions=['sdk:LAUNCHER_COMMON'],
     boot_jars=['sdk:GRAAL_SDK']
 ))
