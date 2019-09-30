@@ -101,7 +101,7 @@ public abstract class LLVMNode extends Node {
         return a == b;
     }
 
-    protected final DataLayout getDataLayout() {
+    public final DataLayout getDataLayout() {
         Node datalayoutNode = this;
         while (!(datalayoutNode instanceof LLVMHasDatalayoutNode)) {
             if (datalayoutNode.getParent() != null) {

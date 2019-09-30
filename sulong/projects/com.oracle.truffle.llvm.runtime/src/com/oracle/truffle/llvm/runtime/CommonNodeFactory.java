@@ -1,5 +1,12 @@
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -16,6 +23,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen;
@@ -32,6 +40,9 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public class CommonNodeFactory {
 
@@ -134,8 +145,8 @@ public class CommonNodeFactory {
         }
     }
 
-    /*public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value) {
-        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value);
+    public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value, DataLayout dataLayout) {
+        final TruffleObject complexObject = asDebuggerIRValue(llvmType, value, dataLayout);
         if (complexObject != null) {
             return complexObject;
         }
@@ -143,7 +154,7 @@ public class CommonNodeFactory {
         return LLVMDebugManagedValue.create(llvmType, value);
     }
 
-    private static TruffleObject asDebuggerIRValue(Object llvmType, Object value) {
+    private static TruffleObject asDebuggerIRValue(Object llvmType, Object value, DataLayout dataLayout) {
         final Type type;
         if (llvmType instanceof Type) {
             type = (Type) llvmType;
@@ -181,7 +192,7 @@ public class CommonNodeFactory {
 
     public static LLVMDebugValue.Builder createDebugValueBuilder() {
         return LLVMToDebugValueNodeGen.create();
-    }*/
+    }
 
 
 }

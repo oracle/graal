@@ -33,7 +33,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
@@ -221,8 +220,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
     LLVMStatementNode createDebugTrap();
-
-    TruffleObject toGenericDebuggerValue(Object llvmType, Object value);
 
     LLVMMemMoveNode createMemMove();
 
