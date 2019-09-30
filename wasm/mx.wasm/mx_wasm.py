@@ -41,4 +41,65 @@
 import mx
 import mx_wasm_benchmark  # pylint: disable=unused-import
 
+import errno
+import os
+
 _suite = mx.suite('wasm')
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+class GraalWasmEmccProject(mx.NativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, results, output, **args):
+        self.suite = suite
+        self.name = name
+        mx.log(str(args))
+        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, suite.dir, **args)
+
+    def getBuildTask(self, args):
+        output_base = self.get_output_base()
+        return GraalWasmEmccTask(self, args, output_base)
+
+class GraalWasmEmccTask(mx.NativeBuildTask):
+    def __init__(self, project, args, output_base):
+        self.output_base = output_base
+        self.project = project
+        mx.NativeBuildTask.__init__(self, args, project)
+
+    def __str__(self):
+        return 'Building {} with Emscripten'.format(self.subject.name)
+
+    def build(self):
+        source_dir = os.path.join(self.project.dir, "src", self.project.name, self.project.subDir)
+        output_dir = os.path.join(self.output_base, self.project.name)
+        mkdir_p(output_dir)
+        emcc_dir = mx.get_env("EMCC_DIR", None)
+        if not emcc_dir:
+            mx.warn("No EMCC_DIR specified - the source programs will not be compiled to .wat and .wasm.")
+            return
+        mx.log("Building files from the source dir: " + source_dir)
+        emcc_cmd = os.path.join(emcc_dir, "emcc")
+        flags = ["-Os"]
+        for root, dirs, files in os.walk(source_dir):
+            for filename in files:
+                path = os.path.join(root, filename)
+                output_path = os.path.join(output_dir, self._remove_extension(filename) + ".js")
+                mx.run([emcc_cmd] + flags + [path, "-o", output_path])
+
+    def _remove_extension(self, filename):
+        if filename.endswith(".c"):
+            return filename[:-2]
+        else:
+            mx.abort("Unknown extension: " + filename)
+
+    def needsBuild(self, newestInput):
+        return (True, None)
+
+    def clean(self, forBuild=False):
+        pass

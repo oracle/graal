@@ -56,6 +56,21 @@ suite = {
   },
 
   "projects" : {
+    "com.oracle.truffle.wasm" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+        "sdk:GRAAL_SDK",
+        "truffle:ANTLR4",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle, WebAssembly",
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.wasm.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -71,20 +86,19 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
     },
-    "com.oracle.truffle.wasm" : {
+
+    "com.oracle.truffle.wasm.emcc.test" : {
       "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
-        "truffle:ANTLR4",
-      ],
+      "dependencies" : [],
+      "class" : "GraalWasmEmccProject",
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, WebAssembly",
-      "license" : "BSD-new",
+      "workingSets" : "Truffle,WebAssembly",
+      "testProject" : True,
+      "results" : [],
+      "output" : ".",
     },
+
     "com.oracle.truffle.wasm.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -114,9 +128,10 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
-    "WASM_UNIT_TESTS" : {
+    "WASM_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
+        "com.oracle.truffle.wasm.emcc.test",
         "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
@@ -129,6 +144,7 @@ suite = {
       ],
       "maven" : False,
     },
+
     "WASM_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : [
