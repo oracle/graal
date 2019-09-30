@@ -729,10 +729,70 @@ public final class Meta implements ContextAccess {
         return knownPrimitive(getTypes().fromClass(primitiveClass));
     }
 
+    /**
+     * Performs class loading according to {§5.3. Creation and Loading}. This method directly asks
+     * the given class loader to perform the load, even for internal primitive types. This is the
+     * method to use when loading symbols that are not directly taken from a constant pool, for
+     * example, when loading a class whose name is given by a guest string..
+     * 
+     * @param type The symbolic type.
+     * @param classLoader The class loader
+     * @return The asked Klass.
+     */
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         return getRegistries().loadKlass(type, classLoader);
+    }
+
+    /**
+     * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
+     * corresponding Klass.
+     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns
+     * immediately returns the corresponding primitive. Thus, primitives are not 'loaded'.
+     * <li>If the symbol is a symbolic references, it asks the given ClassLoader to load the
+     * corresponding Klass.
+     * <li>If the symbol represents an array, recursively resolve its elemental type, and returns
+     * the array Klass need.
+     * 
+     * @param type The symbolic type
+     * @param classLoader The class loader of the constant pool holder.
+     * @return The asked Klass.
+     */
+    public Klass resolveSymbol(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+        // Resolution only resolves references. Bypass loading for primitives.
+        if (type.length() == 1) {
+            switch (type.byteAt(0)) {
+                case 'B': // byte
+                    return _byte;
+                case 'C': // char
+                    return _char;
+                case 'D': // double
+                    return _double;
+                case 'F': // float
+                    return _float;
+                case 'I': // int
+                    return _int;
+                case 'J': // long
+                    return _long;
+                case 'S': // short
+                    return _short;
+                case 'V': // void
+                    return _void;
+                case 'Z': // boolean
+                    return _boolean;
+                default:
+            }
+        }
+        if (Types.isArray(type)) {
+            Klass elemental = resolveSymbol(getTypes().getElementalType(type), classLoader);
+            if (elemental == null) {
+                return null;
+            }
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
+        }
+        return loadKlass(type, classLoader);
     }
 
     @TruffleBoundary

@@ -183,7 +183,7 @@ public final class Field implements ModifiersProvider {
             synchronized (this) {
                 tk = typeKlassCache;
                 if (tk == null) {
-                    tk = getDeclaringKlass().getRegistries().loadKlass(getType(), getDeclaringKlass().getDefiningClassLoader());
+                    tk = getDeclaringKlass().getMeta().resolveSymbol(getType(), getDeclaringKlass().getDefiningClassLoader());
                     typeKlassCache = tk;
                 }
             }

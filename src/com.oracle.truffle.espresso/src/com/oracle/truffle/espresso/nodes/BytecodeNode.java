@@ -1643,14 +1643,14 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbol(paramType, declaringKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
             throw meta.throwEx(NoClassDefFoundError.class);
         }
         StaticObject rtype;
         try {
-            rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbol(rt, declaringKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
             throw meta.throwEx(BootstrapMethodError.class);
         }
