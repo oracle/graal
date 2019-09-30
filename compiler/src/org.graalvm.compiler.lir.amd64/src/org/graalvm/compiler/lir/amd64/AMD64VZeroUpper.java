@@ -73,7 +73,7 @@ import jdk.vm.ci.meta.Value;
  * summarize, if nmethod employs YMM registers (or intrinsics which use them, search for
  * clear_upper_avx() in opto/library_call.cpp) vzeroupper will be generated on nmethod's exit and
  * before any calls in nmethod, because even compiled nmethods can still use only SSE instructions.
- * 
+ *
  * This means, if a Java method performs a call to an intrinsic that employs YMM registers,
  * C2-compiled code will place a vzeroupper before the call, upon exit of the stub and upon exit of
  * this method. Graal will only place the last, because it ensures that Graal-compiled Java method
