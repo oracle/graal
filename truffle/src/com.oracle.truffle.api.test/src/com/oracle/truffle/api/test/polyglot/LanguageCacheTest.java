@@ -52,7 +52,9 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -105,13 +107,20 @@ public class LanguageCacheTest {
      */
     private static final class TestClassLoader extends ClassLoader {
 
+        private static final Set<String> IMPORTANT_CLASSES;
+        static {
+            IMPORTANT_CLASSES = new HashSet<>();
+            IMPORTANT_CLASSES.add(DuplicateIdLanguage.class.getName());
+            IMPORTANT_CLASSES.add(LanguageCacheTestDuplicateIdLanguageProvider.class.getName());
+        }
+
         TestClassLoader() {
             super(TestClassLoader.class.getClassLoader());
         }
 
         @Override
         protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-            if (!DuplicateIdLanguage.class.getName().equals(name)) {
+            if (!IMPORTANT_CLASSES.contains(name)) {
                 return super.loadClass(name, resolve);
             } else {
                 synchronized (getClassLoadingLock(name)) {
@@ -129,16 +138,16 @@ public class LanguageCacheTest {
 
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
-            if (!DuplicateIdLanguage.class.getName().equals(name)) {
-                throw new IllegalArgumentException("Only " + DuplicateIdLanguage.class + " can be loaded.");
+            if (!IMPORTANT_CLASSES.contains(name)) {
+                throw new IllegalArgumentException("Only " + String.join(", ", IMPORTANT_CLASSES) + " can be loaded.");
             }
             try {
                 URL location = DuplicateIdLanguage.class.getProtectionDomain().getCodeSource().getLocation();
                 Path path = Paths.get(location.toURI());
                 if (Files.isRegularFile(path)) {
-                    location = new URL("jar:" + location.toExternalForm() + "!/" + binaryName(DuplicateIdLanguage.class.getName()) + ".class");
+                    location = new URL("jar:" + location.toExternalForm() + "!/" + binaryName(name) + ".class");
                 } else {
-                    location = new URL(location.toExternalForm() + binaryName(DuplicateIdLanguage.class.getName()) + ".class");
+                    location = new URL(location.toExternalForm() + binaryName(name) + ".class");
                 }
                 try (InputStream in = location.openStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                     copy(in, out);
