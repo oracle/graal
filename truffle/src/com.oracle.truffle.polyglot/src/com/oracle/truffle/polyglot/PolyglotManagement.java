@@ -51,8 +51,8 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -70,21 +70,23 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
+final class PolyglotManagement extends AbstractManagementImpl {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
     private final PolyglotImpl engineImpl;
 
-    PolyglotExecutionListener(PolyglotImpl engineImpl) {
+    PolyglotManagement(PolyglotImpl engineImpl) {
         super(engineImpl);
         this.engineImpl = engineImpl;
     }
+
+    // implementation for org.graalvm.polyglot.management.ExecutionListener
 
     @Override
     public Object attachExecutionListener(Engine engineAPI, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
-        PolyglotEngineImpl engine = (PolyglotEngineImpl) engineImpl.getAPIAccess().getImpl(engineAPI);
+        PolyglotEngineImpl engine = getEngine(engineAPI);
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 
         List<Class<? extends Tag>> tags = new ArrayList<>();
@@ -188,7 +190,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
     }
 
     @Override
-    public List<Value> getInputValues(Object impl) {
+    public List<Value> getExecutionEventInputValues(Object impl) {
         try {
             return ((Event) impl).getInputValues();
         } catch (Throwable t) {
@@ -197,7 +199,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
     }
 
     @Override
-    public String getRootName(Object impl) {
+    public String getExecutionEventRootName(Object impl) {
         try {
             return ((Event) impl).getRootName();
         } catch (Throwable t) {
@@ -206,7 +208,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
     }
 
     @Override
-    public Value getReturnValue(Object impl) {
+    public Value getExecutionEventReturnValue(Object impl) {
         try {
             return ((Event) impl).getReturnValue();
         } catch (Throwable t) {
@@ -215,27 +217,27 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
     }
 
     @Override
-    public SourceSection getLocation(Object impl) {
+    public SourceSection getExecutionEventLocation(Object impl) {
         return ((Event) impl).getLocation();
     }
 
     @Override
-    public PolyglotException getException(Object impl) {
+    public PolyglotException getExecutionEventException(Object impl) {
         return ((Event) impl).getException();
     }
 
     @Override
-    public boolean isExpression(Object impl) {
+    public boolean isExecutionEventExpression(Object impl) {
         return hasTag(impl, StandardTags.ExpressionTag.class);
     }
 
     @Override
-    public boolean isStatement(Object impl) {
+    public boolean isExecutionEventStatement(Object impl) {
         return hasTag(impl, StandardTags.StatementTag.class);
     }
 
     @Override
-    public boolean isRoot(Object impl) {
+    public boolean isExecutionEventRoot(Object impl) {
         return hasTag(impl, StandardTags.RootTag.class);
     }
 
@@ -260,7 +262,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
         final PolyglotEngineImpl engine;
         final Consumer<ExecutionEvent> onEnter;
         final Consumer<ExecutionEvent> onReturn;
-        final MonitoringAccess monitoring;
+        final ManagementAccess management;
         final boolean collectInputValues;
         final boolean collectReturnValues;
         final boolean collectExceptions;
@@ -277,7 +279,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
             this.onEnter = onEnter;
             this.onReturn = onReturn;
             // monitoring is not final so we need to pull it out into a final field
-            this.monitoring = engine.impl.getMonitoring();
+            this.management = engine.impl.getManagement();
             this.collectInputValues = collectInputValues;
             this.collectReturnValues = collectReturnValues;
             this.collectExceptions = collectExceptions;
@@ -478,7 +480,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
             PolyglotException ex = e != null ? PolyglotImpl.wrapGuestException(language.getCurrentLanguageContext(), e) : null;
-            config.onReturn.accept(config.monitoring.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
+            config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
         }
 
     }
@@ -524,7 +526,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
             this.config = config;
             this.context = context;
             this.location = config.engine.impl.getPolyglotSourceSection(context.getInstrumentedSourceSection());
-            this.cachedEvent = config.engine.impl.getMonitoring().newExecutionEvent(this);
+            this.cachedEvent = config.engine.impl.getManagement().newExecutionEvent(this);
         }
 
         public String getRootName() {
@@ -573,7 +575,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeReturnAllocate(List<Value> inputValues, Value returnValue) {
-            config.onReturn.accept(config.monitoring.newExecutionEvent(new DynamicEvent(this, inputValues, returnValue, null)));
+            config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, returnValue, null)));
         }
 
         public final SourceSection getLocation() {
@@ -621,6 +623,12 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
             return valueArray.length;
         }
 
+    }
+
+    // implementation for org.graalvm.polyglot.management.Limits
+
+    private PolyglotEngineImpl getEngine(Engine engineAPI) {
+        return (PolyglotEngineImpl) engineImpl.getAPIAccess().getImpl(engineAPI);
     }
 
 }

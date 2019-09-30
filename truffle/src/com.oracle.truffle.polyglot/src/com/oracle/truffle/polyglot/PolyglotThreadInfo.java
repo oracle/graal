@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class PolyglotThreadInfo {
 
@@ -53,6 +58,10 @@ final class PolyglotThreadInfo {
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
+    private volatile long lastEntered;
+    private volatile long timeExecuted;
+
+    private static final ThreadMXBean THREAD_BEAN = ManagementFactory.getThreadMXBean();
 
     PolyglotThreadInfo(Thread thread) {
         this.thread = new WeakReference<>(thread);
@@ -66,9 +75,41 @@ final class PolyglotThreadInfo {
         return getThread() == Thread.currentThread();
     }
 
-    void enter() {
+    void enter(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
-        enteredCount++;
+        int count = ++enteredCount;
+        if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
+            lastEntered = getTime();
+        }
+    }
+
+    void resetTiming() {
+        if (enteredCount > 0) {
+            lastEntered = getTime();
+        }
+        this.timeExecuted = 0;
+    }
+
+    long getTimeExecuted() {
+        long totalTime = timeExecuted;
+        long last = this.lastEntered;
+        if (last > 0) {
+            totalTime += getTime() - last;
+        }
+        return totalTime;
+    }
+
+    @TruffleBoundary
+    private long getTime() {
+        Thread t = getThread();
+        if (t == null) {
+            return timeExecuted;
+        }
+        long time = THREAD_BEAN.getThreadCpuTime(t.getId());
+        if (time == -1) {
+            return TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), TimeUnit.NANOSECONDS);
+        }
+        return time;
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -78,9 +119,14 @@ final class PolyglotThreadInfo {
         return false;
     }
 
-    void leave() {
+    void leave(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
-        --enteredCount;
+        int count = --enteredCount;
+        if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
+            long last = this.lastEntered;
+            this.lastEntered = 0;
+            this.timeExecuted += getTime() - last;
+        }
     }
 
     boolean isLastActive() {

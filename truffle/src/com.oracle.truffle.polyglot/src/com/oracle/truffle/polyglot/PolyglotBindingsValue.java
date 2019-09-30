@@ -58,7 +58,7 @@ final class PolyglotBindingsValue extends PolyglotValue {
     PolyglotBindingsValue(PolyglotLanguageContext context) {
         super(context);
         this.values = context.context.polyglotBindings;
-        this.delegateBindings = context.asValue(new PolyglotBindings(context, values));
+        this.delegateBindings = context.asValue(new PolyglotBindings(context));
     }
 
     @Override

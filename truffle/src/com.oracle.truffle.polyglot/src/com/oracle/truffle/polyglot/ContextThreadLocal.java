@@ -48,17 +48,19 @@ import com.oracle.truffle.api.Truffle;
 
 final class ContextThreadLocal extends ThreadLocal<Object> {
 
-    private final Assumption singleThread = Truffle.getRuntime().createAssumption("constant context store");
-    private PolyglotContextImpl firstContext;
-    @CompilationFinal private volatile Thread firstThread;
+    private final Assumption singleThread = Truffle.getRuntime().createAssumption("single thread");
+    private volatile PolyglotContextImpl activeSingleContext;
+    private PolyglotContextImpl activeSingleContextNonVolatile;
+    @CompilationFinal private volatile Thread activeSingleThread;
 
     @Override
     protected Object initialValue() {
-        if (Thread.currentThread() == firstThread) {
+        if (Thread.currentThread() == activeSingleThread) {
             // must only happen once
-            Object context = firstContext;
-            firstContext = null;
-            firstThread = null;
+            Object context = activeSingleContext;
+            activeSingleContext = null;
+            activeSingleThread = null;
+            activeSingleContextNonVolatile = null;
             return context;
         }
         return null;
@@ -66,16 +68,21 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
 
     public boolean isSet() {
         if (singleThread.isValid()) {
-            boolean set = firstContext != null;
-            return Thread.currentThread() == firstThread && set;
+            boolean set = activeSingleContext != null;
+            return Thread.currentThread() == activeSingleThread && set;
         } else {
             return getTL() != null;
         }
     }
 
-    public Object getNoThreadCheck() {
+    /**
+     * If we are entered and there is a single thread we can globally ignore the thread check. We
+     * can also read from a non volatile field in order to allow moving of context reads.
+     */
+    public Object getEntered() {
         if (singleThread.isValid()) {
-            return firstContext;
+            assert Thread.currentThread() == activeSingleThread;
+            return activeSingleContextNonVolatile;
         } else {
             return getTL();
         }
@@ -85,8 +92,8 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
     public Object get() {
         Object context;
         if (singleThread.isValid()) {
-            if (Thread.currentThread() == firstThread) {
-                context = firstContext;
+            if (Thread.currentThread() == activeSingleThread) {
+                context = activeSingleContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 context = getImplSlowPath();
@@ -105,9 +112,10 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
     Object setReturnParent(Object value) {
         if (singleThread.isValid()) {
             Object prev;
-            if (Thread.currentThread() == firstThread) {
-                prev = this.firstContext;
-                this.firstContext = (PolyglotContextImpl) value;
+            if (Thread.currentThread() == activeSingleThread) {
+                prev = this.activeSingleContext;
+                this.activeSingleContext = (PolyglotContextImpl) value;
+                this.activeSingleContextNonVolatile = (PolyglotContextImpl) value;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 prev = setReturnParentSlowPath(value);
@@ -131,10 +139,11 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
         if (current instanceof PolyglotThread) {
             PolyglotThread polyglotThread = ((PolyglotThread) current);
             Object context = polyglotThread.context;
-            if (context == null && firstThread == current) {
-                context = polyglotThread.context = firstContext;
-                firstContext = null;
-                firstThread = null;
+            if (context == null && activeSingleThread == current) {
+                context = polyglotThread.context = activeSingleContext;
+                activeSingleContext = null;
+                activeSingleContextNonVolatile = null;
+                activeSingleThread = null;
             }
             return context;
         } else {
@@ -162,16 +171,18 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
             return setTLReturnParent(context);
         }
         Thread currentThread = Thread.currentThread();
-        Thread storeThread = firstThread;
-        Object prev = this.firstContext;
+        Thread storeThread = activeSingleThread;
+        Object prev = this.activeSingleContext;
         if (currentThread == storeThread) {
-            this.firstContext = (PolyglotContextImpl) context;
+            this.activeSingleContext = (PolyglotContextImpl) context;
+            this.activeSingleContextNonVolatile = (PolyglotContextImpl) context;
         } else {
             if (storeThread == null) {
-                this.firstThread = currentThread;
-                this.firstContext = (PolyglotContextImpl) context;
+                this.activeSingleThread = currentThread;
+                this.activeSingleContext = (PolyglotContextImpl) context;
+                this.activeSingleContextNonVolatile = (PolyglotContextImpl) context;
             } else {
-                singleThread.invalidate();
+                this.singleThread.invalidate();
                 return setTLReturnParent(context);
             }
         }

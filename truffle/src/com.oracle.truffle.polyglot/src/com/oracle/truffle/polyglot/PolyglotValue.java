@@ -424,12 +424,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     private static Object enter(PolyglotLanguageContext languageContext) {
-        return languageContext != null ? languageContext.context.enterIfNeeded() : null;
+        return languageContext != null ? languageContext.context.engine.enterIfNeeded(languageContext.context) : null;
     }
 
     private static void leave(PolyglotLanguageContext languageContext, Object prev) {
         if (languageContext != null) {
-            languageContext.context.leaveIfNeeded(prev);
+            languageContext.context.engine.leaveIfNeeded(prev, languageContext.context);
         }
     }
 

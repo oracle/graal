@@ -84,13 +84,15 @@ final class PolyglotContextConfig {
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
     private volatile ZoneId timeZone;
+    final PolyglotLimits limits;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, FileSystem internalFileSystem, Handler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId timeZone) {
+                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
+                    ZoneId timeZone, PolyglotLimits limits) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -112,6 +114,7 @@ final class PolyglotContextConfig {
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
         this.timeZone = timeZone;
+        this.limits = limits;
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);

@@ -229,6 +229,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         return new InstrumentContext(env, initSource, runInitAfterExec);
     }
 
+    private CallTarget lastParsed;
+
+    public static CallTarget getLastParsedCalltarget() {
+        return getCurrentLanguage(InstrumentationTestLanguage.class).lastParsed;
+    }
+
     @Override
     protected void initializeContext(InstrumentContext context) throws Exception {
         super.initializeContext(context);
@@ -260,7 +266,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             throw new IOException(e);
         }
         RootCallTarget afterTarget = getContextReference().get().afterTarget;
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+        return lastParsed = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
     }
 
     public static RootNode parse(String code) {

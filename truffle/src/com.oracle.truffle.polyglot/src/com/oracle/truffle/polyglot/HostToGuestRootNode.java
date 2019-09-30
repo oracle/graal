@@ -60,8 +60,12 @@ abstract class HostToGuestRootNode extends RootNode {
 
     @CompilationFinal private volatile ContextProfile profile;
 
+    private final PolyglotEngineImpl engine;
+
     HostToGuestRootNode() {
         super(null);
+        this.engine = (PolyglotEngineImpl) EngineAccessor.NODES.getSourceVM(this);
+        assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
     }
 
     protected abstract Class<?> getReceiverType();
@@ -72,14 +76,14 @@ abstract class HostToGuestRootNode extends RootNode {
         PolyglotLanguageContext languageContext = profileContext(args[0]);
         assert languageContext != null;
         PolyglotContextImpl context = languageContext.context;
-        boolean needsEnter = languageContext != null && context.needsEnter();
+        boolean needsEnter = languageContext != null && engine.needsEnter(context);
         Object prev;
         if (needsEnter) {
             if (!seenEnter) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 seenEnter = true;
             }
-            prev = context.enter();
+            prev = engine.enter(context);
         } else {
             if (!seenNonEnter) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -99,7 +103,7 @@ abstract class HostToGuestRootNode extends RootNode {
             throw PolyglotImpl.wrapGuestException((languageContext), e);
         } finally {
             if (needsEnter) {
-                context.leave(prev);
+                engine.leave(prev, context);
             }
         }
     }
