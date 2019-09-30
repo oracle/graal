@@ -108,6 +108,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return props.isSimpleCG();
     }
 
+    public boolean isGenericCG() {
+        return props.isGenericCG();
+    }
+
     public boolean isRegressionTestMode() {
         return props.isRegressionTestMode();
     }
@@ -138,7 +142,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private DFACaptureGroupTrackingData createCGData() {
-        if (props.isTrackCaptureGroups() || isSimpleCG()) {
+        if (isGenericCG() || isSimpleCG()) {
             return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props);
         } else {
             return null;
@@ -160,7 +164,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
         }
-        if (props.isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
         } else if (isSimpleCG()) {
@@ -170,7 +174,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
             // no match possible, break immediately
-            return props.isTrackCaptureGroups() || props.isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
+            return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
             debugRecorder.startRecording(locals);
@@ -218,7 +222,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             int[] result = props.isSimpleCGMustCopy() ? locals.getCGData().currentResult : locals.getCGData().results;
             return locals.getResultInt() == 0 ? result : null;
         }
-        if (props.isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             return locals.getResultInt() == 0 ? locals.getCGData().currentResult : null;
         }
         return locals.getResultInt();
@@ -314,7 +318,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGReorderRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;
@@ -334,7 +338,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGArrayCopyRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;

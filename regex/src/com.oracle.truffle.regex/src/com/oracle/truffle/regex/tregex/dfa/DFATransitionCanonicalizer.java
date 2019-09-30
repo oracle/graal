@@ -47,15 +47,15 @@ import java.util.Iterator;
 
 public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFATransitionSet, DFAStateTransitionBuilder> {
 
-    private final boolean trackCaptureGroups;
+    private final boolean genericCG;
 
-    public DFATransitionCanonicalizer(boolean trackCaptureGroups) {
-        this.trackCaptureGroups = trackCaptureGroups;
+    public DFATransitionCanonicalizer(boolean genericCG) {
+        this.genericCG = genericCG;
     }
 
     @Override
     protected boolean isSameTargetMergeAllowed(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        if (!trackCaptureGroups) {
+        if (!genericCG) {
             return true;
         }
         assert a.getTransitionSet().isForward() && b.getTransitionSet().isForward();

@@ -143,7 +143,7 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
     }
 
     private static int getStartingTransition(NFAState curState) {
-        return Math.min(Short.toUnsignedInt(curState.getTransitionToUnAnchoredFinalStateId(true)), curState.getNext().length - 1);
+        return curState.hasTransitionToUnAnchoredFinalState(true) ? curState.getTransitionToUnAnchoredFinalStateId(true) : curState.getNext().length - 1;
     }
 
     public boolean regionMatches(TRegexExecutorLocals locals, int startIndex1, int startIndex2, int length) {

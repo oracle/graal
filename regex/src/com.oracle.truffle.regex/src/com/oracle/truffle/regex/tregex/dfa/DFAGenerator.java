@@ -144,13 +144,13 @@ public final class DFAGenerator implements JsonConvertible {
         this.nfa = nfa;
         this.executorProps = executorProps;
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
-        this.canonicalizer = new DFATransitionCanonicalizer(isTrackCaptureGroups());
+        this.canonicalizer = new DFATransitionCanonicalizer(isGenericCG());
         this.compilationBuffer = compilationBuffer;
         this.engineOptions = engineOptions;
         this.cgPartialTransitions = debugMode() ? new ArrayList<>() : null;
         this.bfsTraversalCur = needBFSTraversalLists() ? new ArrayList<>() : null;
         this.bfsTraversalNext = needBFSTraversalLists() ? new ArrayList<>() : null;
-        this.initialCGTransition = isTrackCaptureGroups() ? new DFACaptureGroupTransitionBuilder(null, null, null) : null;
+        this.initialCGTransition = isGenericCG() ? new DFACaptureGroupTransitionBuilder(null, null, null) : null;
         this.transitionIDCounter.inc(); // zero is reserved for initialCGTransition
         this.cgPartialTransitionIDCounter.inc(); // zero is reserved for static empty instance
         if (debugMode()) {
@@ -179,8 +179,8 @@ public final class DFAGenerator implements JsonConvertible {
         return executorProps.isForward();
     }
 
-    public boolean isTrackCaptureGroups() {
-        return executorProps.isTrackCaptureGroups();
+    public boolean isGenericCG() {
+        return executorProps.isGenericCG();
     }
 
     public boolean isSearching() {
@@ -293,7 +293,7 @@ public final class DFAGenerator implements JsonConvertible {
      */
     @TruffleBoundary
     public TRegexDFAExecutorNode createDFAExecutor() {
-        if (isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             int maxNumberOfEntryStateSuccessors = 0;
             for (DFAStateNodeBuilder entryState : entryStates) {
                 if (entryState == null) {
@@ -321,7 +321,7 @@ public final class DFAGenerator implements JsonConvertible {
                 entryStateIDs[i] = entryStates[i].getId();
             }
         }
-        states[0] = new DFAInitialStateNode(entryStateIDs, isSearching(), isTrackCaptureGroups());
+        states[0] = new DFAInitialStateNode(entryStateIDs, isSearching(), isGenericCG());
         if (TRegexOptions.TRegexEnableNodeSplitter) {
             states = tryMakeReducible(states);
         }
@@ -367,7 +367,7 @@ public final class DFAGenerator implements JsonConvertible {
             lookup.updateFinalStateData(this);
         }
         transition.setTarget(lookup);
-        if (isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             lookup.addPrecedingTransition(initialCGTransition);
         }
         return lookup;
@@ -424,7 +424,7 @@ public final class DFAGenerator implements JsonConvertible {
             }
             transition.setTarget(successorState);
             successorState.updateFinalStateData(this);
-            if (isTrackCaptureGroups()) {
+            if (isGenericCG()) {
                 transition.getTarget().addPrecedingTransition((DFACaptureGroupTransitionBuilder) transition);
             }
             if (state.isFinalState() && !(successorState.isFinalState() || successorState.isAnchoredFinalState())) {
@@ -439,7 +439,7 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private DFAStateTransitionBuilder createTransitionBuilder(CharSet matcherBuilder, NFATransitionSet transitionSet) {
-        if (isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             return new DFACaptureGroupTransitionBuilder(matcherBuilder, transitionSet, this);
         } else {
             return new DFAStateTransitionBuilder(matcherBuilder, transitionSet);
@@ -538,7 +538,7 @@ public final class DFAGenerator implements JsonConvertible {
         DFAStateNodeBuilder dfaState = new DFAStateNodeBuilder(nextID++, transitionSet, isBackwardPrefixState, isInitialState);
         stateMap.put(dfaState, dfaState);
         if (stateMap.size() + (isForward() ? expansionQueue.size() : 0) > TRegexOptions.TRegexMaxDFASize) {
-            throw new UnsupportedRegexException((isForward() ? (isTrackCaptureGroups() ? "CG" : "Forward") : "Backward") + " DFA explosion");
+            throw new UnsupportedRegexException((isForward() ? (isGenericCG() ? "CG" : "Forward") : "Backward") + " DFA explosion");
         }
         if (!hasAmbiguousStates && (transitionSet.size() > 2 || (transitionSet.size() == 2 && transitionSet.getTransition(1) != nfa.getInitialLoopBackTransition()))) {
             hasAmbiguousStates = true;
@@ -553,12 +553,12 @@ public final class DFAGenerator implements JsonConvertible {
         doSimpleCG = executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&
                         !nfa.isTraceFinderNFA() &&
-                        !isTrackCaptureGroups() &&
+                        !isGenericCG() &&
                         (isSearching() || props.hasCaptureGroups()) &&
                         (props.hasAlternations() || props.hasLookAroundAssertions());
 
         // inner-literal-optimization
-        if (isForward() && isSearching() && !isTrackCaptureGroups() && !nfa.getAst().getFlags().isSticky() && props.hasInnerLiteral()) {
+        if (isForward() && isSearching() && !isGenericCG() && !nfa.getAst().getFlags().isSticky() && props.hasInnerLiteral()) {
             int literalEnd = props.getInnerLiteralEnd();
             int literalStart = props.getInnerLiteralStart();
             Sequence rootSeq = nfa.getAst().getRoot().getAlternatives().get(0);
@@ -829,7 +829,7 @@ public final class DFAGenerator implements JsonConvertible {
             short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
             short[] cgTransitions = null;
             short[] cgPrecedingTransitions = null;
-            if (isTrackCaptureGroups()) {
+            if (isGenericCG()) {
                 cgTransitions = new short[s.getTransitions().length];
                 List<DFACaptureGroupTransitionBuilder> precedingTransitions = s.getPrecedingTransitions();
                 assert !precedingTransitions.isEmpty();
@@ -851,7 +851,7 @@ public final class DFAGenerator implements JsonConvertible {
                     }
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
-                if (isTrackCaptureGroups()) {
+                if (isGenericCG()) {
                     final DFACaptureGroupLazyTransition transition = ((DFACaptureGroupTransitionBuilder) s.getTransitions()[i]).toLazyTransition(compilationBuffer);
                     cgTransitions[i] = transition.getId();
                     registerCGTransition(transition);
@@ -872,7 +872,7 @@ public final class DFAGenerator implements JsonConvertible {
                                 createSimpleCGTransition(s.getAnchoredFinalStateTransition()));
             }
             DFAStateNode stateNode;
-            if (isTrackCaptureGroups()) {
+            if (isGenericCG()) {
                 stateNode = new CGTrackingDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher, cgTransitions, cgPrecedingTransitions,
                                 createCGFinalTransition(s.getAnchoredFinalStateTransition()),
                                 createCGFinalTransition(s.getUnAnchoredFinalStateTransition()));
@@ -996,7 +996,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     public String getDebugDumpName() {
         if (isForward()) {
-            if (isTrackCaptureGroups()) {
+            if (isGenericCG()) {
                 if (isSearching()) {
                     return "eagerCG";
                 } else {
