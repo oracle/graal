@@ -98,8 +98,8 @@ public final class BootClassRegistry extends ClassRegistry {
         return result;
     }
 
-    public String[] getPackagePaths() {
-        return packageMap.values().toArray(new String[0]);
+    public String[] getPackages() {
+        return packageMap.keySet().toArray(new String[0]);
     }
 
     @Override
