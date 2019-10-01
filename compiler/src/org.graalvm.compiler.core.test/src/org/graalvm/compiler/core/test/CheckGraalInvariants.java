@@ -432,6 +432,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             try {
                 Class<?> c = Class.forName(className, true, CheckGraalInvariants.class.getClassLoader());
                 classes.add(c);
+            } catch (UnsupportedClassVersionError e) {
+                // graal-test.jar can contain classes compiled for different Java versions
             } catch (Throwable t) {
                 tool.handleClassLoadingException(t);
             }

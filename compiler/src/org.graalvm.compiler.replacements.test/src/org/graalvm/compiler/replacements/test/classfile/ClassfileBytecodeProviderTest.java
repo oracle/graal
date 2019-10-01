@@ -209,6 +209,9 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                     }
                                     try {
                                         checkClass(metaAccess, getSnippetReflection(), className);
+                                    } catch (UnsupportedClassVersionError e) {
+                                        // graal-test.jar can contain classes compiled for different
+                                        // Java versions
                                     } catch (ClassNotFoundException e) {
                                         throw new AssertionError(e);
                                     }
