@@ -22,8 +22,13 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
+import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.VMEventListener;
 import com.oracle.truffle.espresso.debugger.VMEventListeners;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+
+import java.util.regex.Pattern;
 
 public class RequestedJDWPEvents {
 
@@ -52,14 +57,15 @@ public class RequestedJDWPEvents {
     public static final byte VM_DISCONNECTED = 100;
 
     private final SocketConnection connection;
-    private final VMEventListener VMEventListener;
+    private final VMEventListener eventListener;
 
     RequestedJDWPEvents(SocketConnection connection) {
         this.connection = connection;
-        VMEventListener = new VMEventListenerImpl(connection);
+        eventListener = new VMEventListenerImpl(connection);
+        VMEventListeners.getDefault().registerListener(eventListener);
     }
 
-    public PacketStream registerEvent(Packet packet) {
+    public PacketStream registerEvent(Packet packet, JDWPCommands callback) {
 
         PacketStream reply = null;
         PacketStream stream = new PacketStream(packet);
@@ -68,35 +74,29 @@ public class RequestedJDWPEvents {
         byte suspendPolicy = stream.readByte();
         int modifiers = stream.readInt();
 
-        //System.out.println("event kind is: " + eventKind);
-
         for (int i = 0; i < modifiers; i++) {
-            // TODO(Gregersen) - not implemented
+            byte modCount = stream.readByte();
+            handleModCount(stream, modCount, packet.id, suspendPolicy, callback);
         }
 
         switch (eventKind) {
+            case BREAKPOINT:
+                reply = toReply(packet);
+                break;
             case THREAD_START:
-                VMEventListener.addThreadStartedRequestId(packet.id);
-                VMEventListeners.getDefault().registerListener(VMEventListener);
-                reply = new PacketStream().replyPacket(packet.id, Packet.ReplyNoError);
-                reply.writeInt(packet.id);
+                eventListener.addThreadStartedRequestId(packet.id);
+                reply = toReply(packet);
                 break;
             case THREAD_DEATH:
-                VMEventListener.addThreadDiedRequestId(packet.id);
-                VMEventListeners.getDefault().registerListener(VMEventListener);
-                reply = new PacketStream().replyPacket(packet.id, Packet.ReplyNoError);
-                reply.writeInt(packet.id);
+                eventListener.addThreadDiedRequestId(packet.id);
+                reply = toReply(packet);
                 break;
             case CLASS_PREPARE:
-                VMEventListener.addClassPrepareRequestId(packet.id);
-                VMEventListeners.getDefault().registerListener(VMEventListener);
-                reply = new PacketStream().replyPacket(packet.id, Packet.ReplyNoError);
-                reply.writeInt(packet.id);
+                reply = toReply(packet);
                 break;
             case CLASS_UNLOAD:
-                VMEventListener.addClassUnloadRequestId(packet.id);
-                reply = new PacketStream().replyPacket(packet.id, Packet.ReplyNoError);
-                reply.writeInt(packet.id);
+                eventListener.addClassUnloadRequestId(packet.id);
+                reply = toReply(packet);
                 break;
             default:
                 break;
@@ -105,6 +105,55 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
+    private PacketStream toReply(Packet packet) {
+        PacketStream reply;
+        reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+        reply.writeInt(packet.id);
+        return reply;
+    }
 
+    private void handleModCount(PacketStream stream, byte modCount, int id, byte suspendPolicy, JDWPCommands callback) {
+        switch (modCount) {
+            case 1:
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+            case 4:
+                break;
+            case 5: // class prepare positive pattern
+                String classPattern = stream.readString();
+                eventListener.addClassPrepareRequest(new ClassPrepareRequest(Pattern.compile(classPattern), id));
+                break;
+            case 6:
+                break;
+            case 7: // breakpoint
+                byte typeTag = stream.readByte();
+                long classId = stream.readLong();
+                long methodId = stream.readLong();
+                long bci = stream.readLong();
+                BreakpointInfo info = new BreakpointInfo(id, typeTag, classId, methodId, bci);
 
+                Klass klass = (Klass) Ids.fromId((int) classId);
+                String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(klass.getType().toString());
+                Method method = (Method) Ids.fromId((int) methodId);
+                int line = method.BCItoLineNumber((int) bci);
+
+                callback.createLineBreakpointCommand(slashName, line, suspendPolicy, info);
+                break;
+            case 8:
+                break;
+            case 9:
+                break;
+            case 10:
+                break;
+            case 11:
+                break;
+            case 12:
+                break;
+            default:
+                break;
+        }
+    }
 }

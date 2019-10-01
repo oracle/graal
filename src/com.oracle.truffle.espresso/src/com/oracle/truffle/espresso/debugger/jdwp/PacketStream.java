@@ -40,17 +40,33 @@ public class PacketStream {
         this.packet = packet;
     }
 
-    PacketStream commandPacket(int command, int commandSet) {
+    PacketStream commandPacket() {
         packet.id = Packet.uID;
+        return this;
+    }
+
+    PacketStream command(int command) {
         packet.cmd = (short) command;
+        return this;
+    }
+
+    PacketStream commandSet(int commandSet) {
         packet.cmdSet = (short) commandSet;
         return this;
     }
 
-    PacketStream replyPacket(int id, int errorCode) {
-        packet.id = id;
-        packet.errorCode = (short) errorCode;
+    PacketStream replyPacket() {
         packet.flags = Packet.Reply;
+        return this;
+    }
+
+    PacketStream id(int id) {
+        packet.id = id;
+        return this;
+    }
+
+    PacketStream errorCode(short errorCode) {
+        packet.errorCode = errorCode;
         return this;
     }
 

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.SourceLocation;
 
 class DebuggerCommand {
@@ -39,6 +40,7 @@ class DebuggerCommand {
     Kind kind;
     private SourceLocation location;
     private SourceSection destination;
+    private BreakpointInfo info;
 
     DebuggerCommand(Kind kind) {
         this.kind = kind;
@@ -50,5 +52,13 @@ class DebuggerCommand {
 
     public SourceLocation getSourceLocation() {
         return location;
+    }
+
+    public void setBreakpointInfo(BreakpointInfo info) {
+        this.info = info;
+    }
+
+    public BreakpointInfo getInfo() {
+        return info;
     }
 }

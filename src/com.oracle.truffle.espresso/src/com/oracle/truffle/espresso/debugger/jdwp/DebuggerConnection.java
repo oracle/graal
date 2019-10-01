@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
+import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.SourceLocation;
 import com.oracle.truffle.espresso.debugger.SuspendStrategy;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -32,7 +33,7 @@ import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class DebuggerConnection {
+public class DebuggerConnection implements JDWPCommands {
 
     private final JDWPDebuggerController controller;
     private final SocketConnection connection;
@@ -55,20 +56,36 @@ public class DebuggerConnection {
         jdwpTransport.start();
     }
 
+    @Override
+    public void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT);
+        Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashClassName);
+        debuggerCommand.setSourceLocation(new SourceLocation(type, line, controller.getContext()));
+        debuggerCommand.setBreakpointInfo(info);
+        queue.add(debuggerCommand);
+    }
+    @Override
+    public void createStepIntoSpecificCommand(String slashClassName, int line, byte suspendPolicy) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO_SPECIFIC);
+        Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashClassName);
+        debuggerCommand.setSourceLocation(new SourceLocation(type, line, controller.getContext()));
+        queue.add(debuggerCommand);
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
                 DebuggerCommand debuggerCommand = awaitNextCommand(); // blocking
-                System.out.println("got a " + debuggerCommand.kind + " command from debugger");
+                //System.out.println("got a " + debuggerCommand.kind + " command from debugger");
 
                 if (debuggerCommand != null) {
                     switch (debuggerCommand.kind) {
                         case STEP_INTO: controller.stepInto(); break;
                         case STEP_OVER: controller.stepOver(); break;
                         case STEP_OUT: controller.stepOut(); break;
-                        case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand.getSourceLocation()); break;
+                        case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand); break;
                         case STEP_INTO_SPECIFIC: controller.stepIntoSpecific(debuggerCommand.getSourceLocation()); break;
                         case RESUME: controller.resume(); break;
                     }
@@ -98,12 +115,12 @@ public class DebuggerConnection {
             VMInitializedListeners.getDefault().register(new VMInitializedListener() {
                 @Override
                 public void fire() {
-                    PacketStream stream = new PacketStream().commandPacket(64, 100);
-                    stream.writeByte((byte) SuspendStrategy.NONE);
+                    PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+                    stream.writeByte(SuspendStrategy.NONE);
                     stream.writeInt(1);
                     stream.writeByte(RequestedJDWPEvents.VM_START);
                     stream.writeInt(0);
-                    stream.writeByteArray(ObjectIds.getID(Thread.currentThread()));
+                    stream.writeByteArray(Ids.getId(Thread.currentThread()));
                     //connection.queuePacket(stream);
                 }
             });
@@ -136,14 +153,46 @@ public class DebuggerConnection {
                             case JDWP.VirtualMachine.VERSION.ID:
                                 reply = JDWP.VirtualMachine.VERSION.createReply(packet);
                                 break;
+                            case JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.ID:
+                                reply = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, controller);
+                                break;
                             case JDWP.VirtualMachine.ALL_THREADS.ID:
                                 reply = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, controller);
                                 break;
-                            case JDWP.VirtualMachine.IDSIZES.ID: {
+                            case JDWP.VirtualMachine.IDSIZES.ID:
                                 reply = JDWP.VirtualMachine.IDSIZES.createReply(packet);
                                 break;
-                            }
+                            case JDWP.VirtualMachine.RESUME.ID:
+                                reply = JDWP.VirtualMachine.RESUME.createReply(packet);
+                                break;
+                            case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
+                                reply = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
+                                break;
                             default:
+                                break;
+                        }
+                        break;
+                    }
+                    case JDWP.ReferenceType.ID: {
+                        switch (packet.cmd) {
+                            case JDWP.ReferenceType.METHODS_WITH_GENERIC.ID:
+                                reply = JDWP.ReferenceType.METHODS_WITH_GENERIC.createReply(packet);
+                                break;
+                        }
+                     break;
+                    }
+                    case JDWP.METHOD.ID: {
+                        switch (packet.cmd) {
+                            case JDWP.METHOD.LINE_TABLE.ID:
+                                reply = JDWP.METHOD.LINE_TABLE.createReply(packet);
+                                break;
+                        }
+                        break;
+                    }
+                    case JDWP.ObjectReference.ID: {
+                        switch (packet.cmd) {
+                            case JDWP.ObjectReference.REFERENCE_TYPE.ID:
+                                reply = JDWP.ObjectReference.REFERENCE_TYPE.createReply(packet);
                                 break;
                         }
                         break;
@@ -151,7 +200,7 @@ public class DebuggerConnection {
                     case JDWP.EventRequest.ID: {
                         switch (packet.cmd) {
                             case JDWP.EventRequest.SET.ID: {
-                                reply = requestedJDWPEvents.registerEvent(packet);
+                                reply = requestedJDWPEvents.registerEvent(packet, DebuggerConnection.this);
                                 break;
                             }
                             default:
@@ -167,20 +216,6 @@ public class DebuggerConnection {
                 //System.out.println("replying to command(" + packet.cmdSet + "." + packet.cmd + ")");
                 connection.queuePacket(reply);
             }
-        }
-
-        private DebuggerCommand createLineBreakpointCommand(String slashClassName, int line) {
-            DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT);
-            Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashClassName);
-            debuggerCommand.setSourceLocation(new SourceLocation(type, line, controller.getContext()));
-            return debuggerCommand;
-        }
-
-        private DebuggerCommand createStepIntoSpecificCommand(String slashClassName, int line) {
-            DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO_SPECIFIC);
-            Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashClassName);
-            debuggerCommand.setSourceLocation(new SourceLocation(type, line, controller.getContext()));
-            return debuggerCommand;
         }
     }
 }

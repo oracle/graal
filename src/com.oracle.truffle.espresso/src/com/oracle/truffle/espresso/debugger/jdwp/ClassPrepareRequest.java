@@ -20,22 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.debugger.jdwp.ClassPrepareRequest;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import java.util.regex.Pattern;
 
-public interface VMEventListener {
-    void classPrepared(ObjectKlass klass);
-    void classUnloaded(ObjectKlass klass);
-    void threadStarted(Thread thread);
-    void threadDied(Thread thread);
-    void breakpointHIt(BreakpointInfo info);
+public class ClassPrepareRequest {
 
-    void addClassUnloadRequestId(int id);
-    void addThreadStartedRequestId(int id);
-    void addThreadDiedRequestId(int id);
+    private final Pattern pattern;
+    private final int requestId;
 
-    void addClassPrepareRequest(ClassPrepareRequest request);
+    ClassPrepareRequest(Pattern pattern, int requestId) {
+        this.pattern = pattern;
+        this.requestId = requestId;
+    }
+
+    public Pattern getPattern() {
+        return pattern;
+    }
+
+    public int getRequestId() {
+        return requestId;
+    }
 }

@@ -22,10 +22,27 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+
 public class ClassStatusConstants {
 
     public static final int VERIFIED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 4;
     public static final int ERROR = 8;
+
+    public static int fromEspressoStatus(int status) {
+        switch (status) {
+            case ObjectKlass.LOADED:
+                return VERIFIED;
+            case ObjectKlass.PREPARED:
+            case ObjectKlass.LINKED:
+                return PREPARED;
+            case ObjectKlass.INITIALIZED:
+                return INITIALIZED;
+            case ObjectKlass.ERRONEOUS:
+            default:
+                return ERROR;
+        }
+    }
 }

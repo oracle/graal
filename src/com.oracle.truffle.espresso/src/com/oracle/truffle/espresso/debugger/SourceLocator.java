@@ -44,13 +44,13 @@ public class SourceLocator {
 
         // Check if class is loaded. Don't ever load classes here since
         // this will break original class initialization order.
-        Klass klass = context.getRegistries().findLoadedClassAny(type);
+        Klass[] klass = context.getRegistries().findLoadedClassAny(type);
         if (klass == null) {
             throw new ClassNotLoadedException();
         }
 
         // the class was already loaded, so look for the source line
-        for (Method method : klass.getDeclaredMethods()) {
+        for (Method method : klass[0].getDeclaredMethods()) {
             // check if line number is in method
             if (checkLine(method, lineNumber)) {
                 return method.getSource();

@@ -22,33 +22,11 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-public class ObjectIds {
+import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 
-    // TODO(Gregersen) - is this good enough as unique ID?
-    // What would be a good alternative?
-    // System.identityHashcode will probably have collisions
-    public static byte[] getID(Object object) {
-        return calculateId(System.identityHashCode(object));
-    }
+public interface JDWPCommands {
 
-    private static byte[] calculateId(int identity) {
-        byte[] b = new byte[8];
-        long l = identity;
-        b[7] = (byte) (l);
-        l >>>= 8;
-        b[6] = (byte) (l);
-        l >>>= 8;
-        b[5] = (byte) (l);
-        l >>>= 8;
-        b[4] = (byte) (l);
-        l >>>= 8;
-        b[3] = (byte) (l);
-        l >>>= 8;
-        b[2] = (byte) (l);
-        l >>>= 8;
-        b[1] = (byte) (l);
-        l >>>= 8;
-        b[0] = (byte) (l);
-        return b;
-    }
+    void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
+
+    void createStepIntoSpecificCommand(String slashClassName, int line, byte suspendPolicy);
 }

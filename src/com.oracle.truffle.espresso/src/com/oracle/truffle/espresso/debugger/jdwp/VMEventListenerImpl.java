@@ -22,39 +22,83 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.VMEventListener;
+import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.SuspendStrategy;
+import com.oracle.truffle.espresso.debugger.VMEventListener;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.regex.Matcher;
 
 public class VMEventListenerImpl implements VMEventListener {
 
     private final SocketConnection connection;
-    private int classPrepareRequestId;
     private int classUnloadRequestId;
     private int threadStartRequestId;
     private int threadDiedRequestId;
+
+    private HashSet<ClassPrepareRequest> classPrepareRequests = new HashSet<>();
 
     public VMEventListenerImpl(SocketConnection connection) {
         this.connection = connection;
     }
 
     @Override
+    public void addClassPrepareRequest(ClassPrepareRequest request) {
+        classPrepareRequests.add(request);
+    }
+
+    @Override
     public void classPrepared(ObjectKlass klass) {
         // prepare the event and ship
-        PacketStream stream = new PacketStream().commandPacket(64, 100);
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        if (klass.getName().toString().contains("DebuggerStep")) {
-            stream.writeByte((byte) SuspendStrategy.NONE);
+        // check if event should be reported based on the current patterns
+        String dotName = klass.getName().toString().replace('/', '.');
+        boolean send = false;
+        Iterator<ClassPrepareRequest> it = classPrepareRequests.iterator();
+        ClassPrepareRequest request = null;
+
+        while (!send && it.hasNext()) {
+            ClassPrepareRequest next = it.next();
+            Matcher matcher = next.getPattern().matcher(dotName);
+            send = matcher.matches();
+            request = next;
+        }
+
+        if (send) {
+            stream.writeByte(SuspendStrategy.NONE);
             stream.writeInt(1);
             stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
-            stream.writeInt(classPrepareRequestId);
-            stream.writeByteArray(ObjectIds.getID(Thread.currentThread()));
+            stream.writeInt(request.getRequestId());
+            stream.writeByteArray(Ids.getId(Thread.currentThread()));
             stream.writeByte(TypeTag.CLASS);
-            stream.writeByteArray(ObjectIds.getID(klass));
+            stream.writeByteArray(Ids.getId(klass));
             stream.writeString(klass.getType().toString());
-            stream.writeInt(ClassStatusConstants.PREPARED); // status
+            stream.writeInt(klass.getState()); // class status
             connection.queuePacket(stream);
         }
+    }
+
+    @Override
+    public void breakpointHIt(BreakpointInfo info) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+        stream.writeByte(SuspendStrategy.EVENT_THREAD); // TODO(Gregersen) - implemented suspend policies
+        stream.writeInt(1);
+
+        stream.writeByte(RequestedJDWPEvents.BREAKPOINT);
+        stream.writeInt(info.getRequestId());
+        stream.writeLong(Ids.getIdAsLong(Thread.currentThread()));
+
+        // location
+        stream.writeByte(info.getTypeTag());
+        stream.writeLong(info.getClassId());
+        stream.writeLong(info.getMethodId());
+        stream.writeLong(info.getBci());
+        //System.out.println("sending BP hit event");
+        connection.queuePacket(stream);
     }
 
     @Override
@@ -70,11 +114,6 @@ public class VMEventListenerImpl implements VMEventListener {
     @Override
     public void threadDied(Thread thread) {
         // TODO(Gregersen) - not implemented yet
-    }
-
-    @Override
-    public void addClassPrepareRequestId(int id) {
-        classPrepareRequestId = id;
     }
 
     @Override

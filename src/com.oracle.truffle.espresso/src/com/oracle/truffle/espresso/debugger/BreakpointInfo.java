@@ -22,20 +22,39 @@
  */
 package com.oracle.truffle.espresso.debugger;
 
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.debugger.jdwp.ClassPrepareRequest;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+public class BreakpointInfo {
 
-public interface VMEventListener {
-    void classPrepared(ObjectKlass klass);
-    void classUnloaded(ObjectKlass klass);
-    void threadStarted(Thread thread);
-    void threadDied(Thread thread);
-    void breakpointHIt(BreakpointInfo info);
+    private final int requestId;
+    private final byte typeTag;
+    private final long classId;
+    private final long methodId;
+    private final long bci;
 
-    void addClassUnloadRequestId(int id);
-    void addThreadStartedRequestId(int id);
-    void addThreadDiedRequestId(int id);
+    public BreakpointInfo(int requestId, byte tag, long classId, long methodId, long bci) {
+        this.requestId = requestId;
+        this.typeTag = tag;
+        this.classId = classId;
+        this.methodId = methodId;
+        this.bci = bci;
+    }
 
-    void addClassPrepareRequest(ClassPrepareRequest request);
+    public int getRequestId() {
+        return requestId;
+    }
+
+    public long getClassId() {
+        return classId;
+    }
+
+    public long getMethodId() {
+        return methodId;
+    }
+
+    public byte getTypeTag() {
+        return typeTag;
+    }
+
+    public long getBci() {
+        return bci;
+    }
 }

@@ -20,22 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.debugger.jdwp.ClassPrepareRequest;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+public class ClassNameUtils {
 
-public interface VMEventListener {
-    void classPrepared(ObjectKlass klass);
-    void classUnloaded(ObjectKlass klass);
-    void threadStarted(Thread thread);
-    void threadDied(Thread thread);
-    void breakpointHIt(BreakpointInfo info);
-
-    void addClassUnloadRequestId(int id);
-    void addThreadStartedRequestId(int id);
-    void addThreadDiedRequestId(int id);
-
-    void addClassPrepareRequest(ClassPrepareRequest request);
+    public static String fromInternalObjectNametoSlashName(String internalObjectName) {
+        // TODO(Gregersen) - handle array and primitive types
+        String temp = internalObjectName.substring(1, internalObjectName.length() - 1);
+        return temp;
+    }
 }

@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -77,7 +78,8 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass findLoadedClassAny(Symbol<Type> type) {
+    public Klass[] findLoadedClassAny(Symbol<Type> type) {
+        ArrayList<Klass> klasses = new ArrayList<>();
         for (StaticObject classLoader : classLoaders) {
             if (StaticObject.isNull(classLoader)) {
                 continue;
@@ -85,10 +87,10 @@ public final class ClassRegistries {
             ClassRegistry registry = registries.get(classLoader);
 
             if (registry!= null && registry.classes != null && registry.classes.containsKey(type)) {
-                return registry.classes.get(type);
+                klasses.add(registry.classes.get(type));
             }
         }
-        return null;
+        return klasses.toArray(new Klass[0]);
     }
 
     @TruffleBoundary

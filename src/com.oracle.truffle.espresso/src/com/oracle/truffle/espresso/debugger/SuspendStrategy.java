@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.debugger;
 
 public class SuspendStrategy {
-    public static final int NONE = 0;
-    public static final int EVENT_THREAD = 1;
-    public static final int ALL = 2;
+    public static final byte NONE = 0;
+    public static final byte EVENT_THREAD = 1;
+    public static final byte ALL = 2;
 }

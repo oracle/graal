@@ -108,11 +108,11 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     boolean needsRecursiveInit = false;
 
-    private static final int LOADED = 0;
-    private static final int LINKED = 1;
-    private static final int PREPARED = 2;
-    private static final int INITIALIZED = 3;
-    private static final int ERRONEOUS = 99;
+    public static final int LOADED = 0;
+    public static final int LINKED = 1;
+    public static final int PREPARED = 2;
+    public static final int INITIALIZED = 3;
+    public static final int ERRONEOUS = 99;
 
     public final Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
@@ -202,6 +202,10 @@ public final class ObjectKlass extends Klass {
     @Override
     public boolean isInitialized() {
         return initState == INITIALIZED;
+    }
+
+    public int getState() {
+        return initState;
     }
 
     private boolean isPrepared() {

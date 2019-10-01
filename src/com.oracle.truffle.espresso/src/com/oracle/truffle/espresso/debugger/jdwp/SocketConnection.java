@@ -72,7 +72,6 @@ public class SocketConnection implements Runnable {
             try {
                 PacketStream take = queue.take();
                 byte[] shipment = take.prepareForShipment();
-                //take.dumpPacket();
                 writePacket(shipment);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
