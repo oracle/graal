@@ -94,8 +94,10 @@ class LCOVPrinter {
         for (RootCoverage root : sourceCoverage.getRoots()) {
             final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
             addCoverageCounts(linesToCount, sectionCoverage);
-            if (strictLines) {
-                removeIncidentalCoverage(linesToCount, sectionCoverage);
+        }
+        if (strictLines) {
+            for (RootCoverage root : sourceCoverage.getRoots()) {
+                removeIncidentalCoverage(linesToCount, root.getSectionCoverage());
             }
         }
         return linesToCount;
