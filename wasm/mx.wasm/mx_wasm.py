@@ -135,7 +135,6 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             result_output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
             shutil.copyfile(result_path, result_output_path)
             subdirProgramNames[subdir].append(remove_extension(filename))
-        print subdirProgramNames
         for subdir in subdirProgramNames:
             with open(os.path.join(output_dir, subdir, "wasm_test_index"), "w") as f:
                 for name in subdirProgramNames[subdir]:
