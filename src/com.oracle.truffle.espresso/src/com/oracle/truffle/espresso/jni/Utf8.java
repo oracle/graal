@@ -217,7 +217,7 @@ public final class Utf8 {
 
         while (count < length) {
             c = bytearr[count + offset] & 0xff;
-            if (c > 127)
+            if (c == 0 || c > 127)
                 break;
             count++;
         }
@@ -226,6 +226,17 @@ public final class Utf8 {
             c = bytearr[count + offset] & 0xff;
             switch (c >> 4) {
                 case 0:
+                    if (c == 0) {
+                        count += 2;
+                        if (count > length) {
+                            return false;
+                        }
+                        char2 = bytearr[count - 1 + offset];
+                        if (char2 != 0) {
+                            return false;
+                        }
+                        break;
+                    }
                 case 1:
                 case 2:
                 case 3:

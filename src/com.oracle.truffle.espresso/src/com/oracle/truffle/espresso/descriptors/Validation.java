@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.descriptors;
 
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.jni.Utf8;
 
 public final class Validation {
     private Validation() {
@@ -222,4 +223,7 @@ public final class Validation {
         return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
     }
 
+    public static boolean validModifiedUTF8(ByteSequence bytes) {
+        return Utf8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
+    }
 }

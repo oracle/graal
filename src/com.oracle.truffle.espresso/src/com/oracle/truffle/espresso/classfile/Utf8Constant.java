@@ -26,6 +26,8 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Validation;
 
+import java.util.Arrays;
+
 public final class Utf8Constant implements PoolConstant {
 
     private static final int VALID_CLASS_NAME = 0x01;
@@ -61,8 +63,9 @@ public final class Utf8Constant implements PoolConstant {
 
     public void validateUTF8() {
         if ((validationCache & VALID_UTF8) == 0) {
-            // TODO(peterssen): Validate well-formed modified UTF8 constant, throws guest ClassFormatError otherwise.
-
+            if (!Validation.validModifiedUTF8(value())) {
+                throw ConstantPool.classFormatError("Ill-formed modified-UTF8 entry");
+            }
             validationCache |= VALID_UTF8;
         }
     }
