@@ -81,14 +81,14 @@ public interface NameAndTypeConstant extends PoolConstant {
 
         @Override
         public void validateMethod(ConstantPool pool) {
-            pool.utf8At(nameIndex).validateFieldName();
+            pool.utf8At(nameIndex).validateMethodName();
             pool.utf8At(typeIndex).validateSignature();
         }
 
         @Override
         public void validateField(ConstantPool pool) {
-            pool.utf8At(nameIndex).validateMethodName();
-            pool.utf8At(typeIndex).validateType();
+            pool.utf8At(nameIndex).validateFieldName();
+            pool.utf8At(typeIndex).validateType(false);
         }
     }
 }

@@ -439,8 +439,8 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int signatureIndex = stream.readU2();
 
-        final Symbol<Name> name = pool.symbolAt(nameIndex, "field name");
-        verifyMethodName(name, true);
+        pool.utf8At(nameIndex).validateMethodName();
+        final Symbol<Name> name = pool.symbolAt(nameIndex, "method name");
 
         int extraFlags = methodFlags;
         boolean isClinit = false;
@@ -463,6 +463,7 @@ public final class ClassfileParser {
 
         verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
 
+        pool.utf8At(signatureIndex).validateSignature();
         final Symbol<Signature> signature = Signatures.check(pool.symbolAt(signatureIndex, "method descriptor"));
 
         if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
@@ -1063,12 +1064,13 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int typeIndex = stream.readU2();
 
+        pool.utf8At(nameIndex).validateFieldName();
         final Symbol<Name> name = pool.symbolAt(nameIndex, "field name");
-        verifyFieldName(name);
         verifyFieldFlags(name, fieldFlags, isInterface);
 
         final boolean isStatic = Modifier.isStatic(fieldFlags);
 
+        pool.utf8At(typeIndex).validateType(false);
         Symbol<ModifiedUTF8> rawDescriptor = pool.symbolAt(typeIndex, "field descriptor");
         final Symbol<Type> descriptor = Types.fromSymbol(rawDescriptor);
         if (descriptor == null) {

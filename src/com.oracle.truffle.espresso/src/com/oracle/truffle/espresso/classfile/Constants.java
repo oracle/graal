@@ -104,6 +104,8 @@ public final class Constants {
     public static final int APPEND_FRAME_BOUND = 255;
     public static final int FULL_FRAME = 255;
 
+    public static final int MAX_ARRAY_DIMENSIONS = 255;
+
     //@formatter:off
 
     /**

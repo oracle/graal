@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.descriptors;
 
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public final class Validation {
@@ -67,15 +68,31 @@ public final class Validation {
             return false;
         }
         int prev = 0;
-        for (int i = 0; i < bytes.length(); i = prev + 1) {
+        for (int i = 0; i < bytes.length(); ++i) {
             while (i < bytes.length() && bytes.byteAt(i) != '/') {
                 ++i;
             }
             if (!validUnqualifiedName(bytes.subSequence(prev, i - prev))) {
                 return false;
             }
+            prev = i + 1;
         }
-        return validUnqualifiedName(bytes.subSequence(prev, bytes.length() - prev));
+        return true;
+    }
+
+    /**
+     * Because arrays are objects, the opcodes anewarray and multianewarray can reference array
+     * "classes" via CONSTANT_Class_info structures in the constant_pool table. For such array
+     * classes, the name of the class is the descriptor of the array type.
+     */
+    public static boolean validClassNameEntry(ByteSequence bytes) {
+        if (bytes.length() == 0) {
+            return false;
+        }
+        if (bytes.byteAt(0) == '[') {
+            return validTypeDescriptor(bytes, false);
+        }
+        return validBinaryName(bytes);
     }
 
     public static boolean validFieldDescriptor(ByteSequence bytes) {
@@ -119,7 +136,7 @@ public final class Validation {
             while (dimensions < bytes.length() && bytes.byteAt(dimensions) == '[') {
                 ++dimensions;
             }
-            if (dimensions > 255) {
+            if (dimensions > Constants.MAX_ARRAY_DIMENSIONS) {
                 return false;
             }
             // Arrays of void (V) are never allowed.
@@ -130,7 +147,7 @@ public final class Validation {
             if (last != ';') {
                 return false;
             }
-            return validUnqualifiedName(bytes.subSequence(1, bytes.length() - 2));
+            return validBinaryName(bytes.subSequence(1, bytes.length() - 2));
         }
         return false;
     }
@@ -157,6 +174,10 @@ public final class Validation {
             // skip array
             while (index < bytes.length() && bytes.byteAt(index) == '[') {
                 ++index;
+            }
+            int dimensions = index - prev;
+            if (dimensions > Constants.MAX_ARRAY_DIMENSIONS) {
+                return false;
             }
             if (index >= bytes.length()) {
                 return false;
@@ -195,7 +216,7 @@ public final class Validation {
         }
         assert bytes.byteAt(index) == ')';
         // Validate return type.
-        return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index), true);
+        return validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true);
     }
 
 }
