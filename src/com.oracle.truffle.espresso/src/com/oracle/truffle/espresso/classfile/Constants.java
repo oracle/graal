@@ -51,6 +51,7 @@ public final class Constants {
 
     // Not part of the spec, used internally by the VM.
     public static final int ACC_FINALIZER = 0x00010000;
+    public static final int ACC_INNER_CLASS = 0x00020000;
 
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
@@ -60,6 +61,9 @@ public final class Constants {
                     ACC_ANNOTATION |
                     ACC_ENUM |
                     ACC_SYNTHETIC;
+
+    // Inner classes can be static, private or protected (classic VM does this)
+    public static final int RECOGNIZED_INNER_CLASS_MODIFIERS = (JVM_RECOGNIZED_CLASS_MODIFIERS | ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
 
     public static final int JVM_RECOGNIZED_FIELD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |

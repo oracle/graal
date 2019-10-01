@@ -797,15 +797,71 @@ public final class ClassfileParser {
     }
 
     private InnerClassesAttribute parseInnerClasses(Symbol<Name> name) {
-        if (classInnerClasses != null) {
-            throw classFormatError("Duplicate InnerClass attribute");
-        }
-        int entryCount = stream.readU2();
-        InnerClassesAttribute.Entry[] entries = new InnerClassesAttribute.Entry[entryCount];
+        assert Name.InnerClasses.equals(name);
+        final int entryCount = stream.readU2();
+        final InnerClassesAttribute.Entry[] innerClassInfos = new InnerClassesAttribute.Entry[entryCount];
+        final Symbol<Type>[] innerClasses = new Symbol[innerClassInfos.length];
+        int nextInnerClass = 0;
         for (int i = 0; i < entryCount; ++i) {
-            entries[i] = parseInnerClassEntry();
+            final InnerClassesAttribute.Entry innerClassInfo = parseInnerClassEntry();
+            final int innerClassIndex = innerClassInfo.innerClassIndex;
+            final int outerClassIndex = innerClassInfo.outerClassIndex;
+            innerClassInfos[i] = innerClassInfo;
+
+            // The JVM specification allows a null inner class but don't ask me what it means!
+            if (innerClassIndex == 0) {
+                continue;
+            }
+
+            // If no outer class is specified, then this entry denotes a local or anonymous class
+            // that will have an EnclosingMethod attribute instead. That is, these classes are
+            // not *immediately* enclosed by another class
+            if (outerClassIndex == 0) {
+                continue;
+            }
+
+            // If this entry refers to the current class, then the current class must be an inner
+            // class:
+            // it's enclosing class is recorded and it's flags are updated.
+            final Symbol<Type> innerClassType = context.getTypes().fromName(pool.classAt(innerClassIndex, "inner class descriptor").getName(pool));
+            if (innerClassType.equals(classType)) {
+                if (classOuterClassType != null) {
+                    throw classFormatError("Duplicate outer class");
+                }
+                classFlags |= ACC_INNER_CLASS;
+                classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
+                classFlags |= (innerClassInfo.innerClassAccessFlags & RECOGNIZED_INNER_CLASS_MODIFIERS);
+            }
+
+            final Symbol<Type> outerClassType = context.getTypes().fromName(pool.classAt(outerClassIndex, "outer class descriptor").getName(pool));
+            if (outerClassType.equals(classType)) {
+                // The inner class is enclosed by the current class
+                innerClasses[nextInnerClass++] = context.getTypes().fromName(pool.classAt(innerClassIndex).getName(pool));
+            } else {
+                // The inner class is enclosed by some class other than current class: ignore it
+            }
+
+            for (int j = 0; j < i; ++j) {
+                final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
+                if (otherInnerClassInfo != null) {
+                    if (innerClassIndex == otherInnerClassInfo.innerClassIndex && outerClassIndex == otherInnerClassInfo.outerClassIndex) {
+                        throw classFormatError("Duplicate entry in InnerClasses attribute");
+                    }
+                }
+            }
+            innerClassInfos[i] = innerClassInfo;
         }
-        return new InnerClassesAttribute(name, entries);
+        if (nextInnerClass != 0) {
+            if (nextInnerClass == innerClasses.length) {
+                classInnerClasses = innerClasses;
+            } else {
+                classInnerClasses = new Symbol[nextInnerClass];
+                System.arraycopy(innerClasses, 0, classInnerClasses, 0, nextInnerClass);
+            }
+        } else {
+            classInnerClasses = Symbol.EMPTY_ARRAY;
+        }
+        return new InnerClassesAttribute(name, innerClassInfos);
     }
 
     private InnerClassesAttribute.Entry parseInnerClassEntry() {
@@ -813,6 +869,15 @@ public final class ClassfileParser {
         int outerClassIndex = stream.readU2();
         int innerNameIndex = stream.readU2();
         int innerClassAccessFlags = stream.readU2();
+        if (innerClassIndex != 0) {
+            pool.classAt(innerClassIndex).validate(pool);
+        }
+        if (outerClassIndex != 0) {
+            pool.classAt(outerClassIndex).validate(pool);
+        }
+        if (innerNameIndex != 0) {
+            pool.utf8At(innerNameIndex).validateClassName();
+        }
         return new InnerClassesAttribute.Entry(innerClassIndex, outerClassIndex, innerNameIndex, innerClassAccessFlags);
     }
 
