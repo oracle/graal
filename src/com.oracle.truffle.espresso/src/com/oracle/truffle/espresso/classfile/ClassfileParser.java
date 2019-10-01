@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
@@ -49,6 +50,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+import static com.oracle.truffle.espresso.classfile.Constants.RECOGNIZED_INNER_CLASS_MODIFIERS;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
@@ -124,6 +126,7 @@ public final class ClassfileParser {
     private final StaticObject[] constantPoolPatches;
 
     private Symbol<Type> classType;
+    private Symbol<Type> classOuterClassType;
 
     private int minorVersion;
     private int majorVersion;
@@ -197,9 +200,6 @@ public final class ClassfileParser {
             return parseClassImpl();
         } catch (EspressoException e) {
             throw e;
-        } catch (ClassFormatError e) {
-            // These exceptions are expected.
-            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } catch (Throwable e) {
             // Warn that some unexpected host-guest exception conversion happened.
             System.err.println("Unexpected host exception " + e + " thrown during class parsing, re-throwing as guest exception.");
@@ -450,12 +450,10 @@ public final class ClassfileParser {
             // implicitly by the Java virtual machine; the value of their
             // access_flags item is ignored except for the settings of the
             // ACC_STRICT flag.
-            methodFlags &= ACC_STRICT;
-            methodFlags |= ACC_STATIC;
+            methodFlags &= (ACC_STRICT | ACC_STATIC);
             // extraFlags = INITIALIZER | methodFlags;
             isClinit = true;
         } else if (name.equals(Name.INIT)) {
-            // extraFlags |= INITIALIZER;
             isInit = true;
         }
 
@@ -898,7 +896,7 @@ public final class ClassfileParser {
         }
         if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             // [128, 246] is reserved and still unused
-            throw new ClassFormatError("Encountered reserved StackMapFrame tag: " + frameType);
+            throw classFormatError("Encountered reserved StackMapFrame tag: " + frameType);
         }
         if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             int offsetDelta = stream.readU2();
@@ -936,7 +934,7 @@ public final class ClassfileParser {
             }
             return new FullFrame(frameType, offsetDelta, locals, stack);
         }
-        throw new ClassFormatError("Unrecognized StackMapFrame tag: " + frameType);
+        throw classFormatError("Unrecognized StackMapFrame tag: " + frameType);
     }
 
     private VerificationTypeInfo parseVerificationTypeInfo() {
@@ -952,7 +950,7 @@ public final class ClassfileParser {
             case ITEM_NewObject:
                 return new UninitializedVariable(tag, stream.readU2());
             default:
-                throw new ClassFormatError("Unrecognized verification type info tag: " + tag);
+                throw classFormatError("Unrecognized verification type info tag: " + tag);
         }
     }
 
