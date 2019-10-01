@@ -1228,4 +1228,8 @@ public final class ClassfileParser {
         }
         return interfaces;
     }
+
+    public int getMajorVersion() {
+        return majorVersion;
+    }
 }

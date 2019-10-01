@@ -119,6 +119,8 @@ public abstract class ConstantPool {
         public final static List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
+    public abstract int getMajorVersion();
+
     public abstract int length();
 
     public abstract PoolConstant at(int index, String description);
@@ -520,7 +522,7 @@ public abstract class ConstantPool {
             i++;
         }
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries);
+        final ConstantPool constantPool = new ConstantPoolImpl(entries, parser.getMajorVersion());
 
         // Validation
         for (int j = 1; j < constantPool.length(); ++j) {
