@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -322,35 +321,35 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         protected ForeignToLLVM createToI1() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I1);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1);
         }
 
         protected ForeignToLLVM createToI8() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I8);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8);
         }
 
         protected ForeignToLLVM createToI16() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I16);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16);
         }
 
         protected ForeignToLLVM createToI32() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I32);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32);
         }
 
         protected ForeignToLLVM createToI64() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I64);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
         }
 
         protected ForeignToLLVM createToFloat() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.FLOAT);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT);
         }
 
         protected ForeignToLLVM createToDouble() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.DOUBLE);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
         }
 
         protected ForeignToLLVM createToPointer() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.POINTER);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
         }
     }
 }

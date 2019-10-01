@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
@@ -109,7 +108,7 @@ public abstract class ToComparableValue extends LLVMNode {
         }
 
         protected ForeignToLLVM createForeignToI64() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I64);
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
         }
     }
 }

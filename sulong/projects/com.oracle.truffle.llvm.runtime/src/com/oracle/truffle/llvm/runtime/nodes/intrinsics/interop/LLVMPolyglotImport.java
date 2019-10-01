@@ -39,7 +39,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -74,6 +73,6 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
     }
 
     ForeignToLLVM createToLLVM() {
-        return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.POINTER);
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }
 }

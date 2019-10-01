@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -57,6 +56,6 @@ public abstract class LLVMPolyglotJavaType extends LLVMIntrinsic {
     }
 
     protected ForeignToLLVM createForeignToLLVM() {
-        return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.POINTER);
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }
 }

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Intrinsic;
@@ -319,7 +318,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         }
 
         protected ForeignToLLVM createToLLVMNode() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
+            return getNodeFactory().createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
         }
 
         @TruffleBoundary

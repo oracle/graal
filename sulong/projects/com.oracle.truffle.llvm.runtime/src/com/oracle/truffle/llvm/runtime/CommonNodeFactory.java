@@ -10,8 +10,6 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToAnyLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI16NodeGen;
@@ -20,7 +18,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToI32NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI64NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI8NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
@@ -95,56 +92,6 @@ public class CommonNodeFactory {
         }
     }
 
-    public static ForeignToLLVM createForeignToLLVM(Value type) {
-        switch (type.getKind()) {
-            case I1:
-                return ToI1NodeGen.create();
-            case I8:
-                return ToI8NodeGen.create();
-            case I16:
-                return ToI16NodeGen.create();
-            case I32:
-                return ToI32NodeGen.create();
-            case I64:
-                return ToI64NodeGen.create();
-            case FLOAT:
-                return ToFloatNodeGen.create();
-            case DOUBLE:
-                return ToDoubleNodeGen.create();
-            case POINTER:
-                return ToPointer.create(type.getBaseType());
-            default:
-                throw new IllegalStateException("unexpected interop kind " + type.getKind());
-        }
-    }
-
-    public static ForeignToLLVM createForeignToLLVM(ForeignToLLVMType type) {
-        switch (type) {
-            case VOID:
-                return ToVoidLLVMNodeGen.create();
-            case ANY:
-                return ToAnyLLVMNodeGen.create();
-            case I1:
-                return ToI1NodeGen.create();
-            case I8:
-                return ToI8NodeGen.create();
-            case I16:
-                return ToI16NodeGen.create();
-            case I32:
-                return ToI32NodeGen.create();
-            case I64:
-                return ToI64NodeGen.create();
-            case FLOAT:
-                return ToFloatNodeGen.create();
-            case DOUBLE:
-                return ToDoubleNodeGen.create();
-            case POINTER:
-                return ToPointer.create();
-            default:
-                throw new IllegalStateException(type.toString());
-        }
-    }
-
     public static TruffleObject toGenericDebuggerValue(Object llvmType, Object value, DataLayout dataLayout) {
         final TruffleObject complexObject = asDebuggerIRValue(llvmType, value, dataLayout);
         if (complexObject != null) {
@@ -193,6 +140,4 @@ public class CommonNodeFactory {
     public static LLVMDebugValue.Builder createDebugValueBuilder() {
         return LLVMToDebugValueNodeGen.create();
     }
-
-
 }

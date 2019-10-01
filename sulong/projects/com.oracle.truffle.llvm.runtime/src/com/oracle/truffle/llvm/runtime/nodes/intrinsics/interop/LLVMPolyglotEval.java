@@ -42,7 +42,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -89,7 +88,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     }
 
     protected ForeignToLLVM createForeignToLLVM() {
-        return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.POINTER);
+        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }
 
     abstract static class GetSourceNode extends LLVMNode {
