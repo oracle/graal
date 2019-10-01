@@ -90,7 +90,7 @@ suite = {
     "com.oracle.truffle.wasm.source.test" : {
       "subDir" : "src",
       "dependencies" : [],
-      "class" : "GraalWasmSourceProject",
+      "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
       "workingSets" : "Truffle,WebAssembly",
       "testProject" : True,

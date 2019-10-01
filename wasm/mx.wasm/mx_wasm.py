@@ -63,13 +63,13 @@ def remove_extension(filename):
     else:
         mx.abort("Unknown extension: " + filename)
 
-class GraalWasmSourceProject(mx.Project):
+class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
         self.suite = suite
         self.name = name
         # _results =
         # _output = output or os.path.join(mx.get_mxbuild_dir(self), self.name)
-        mx.Project.__init__(self, suite, name, subDir, [], deps, workingSets, suite.dir, theLicense, **args)
+        mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
 
     # def getOutput(self, replaceVar=mx_subst.results_substitutions):
     #       return ""
@@ -77,15 +77,7 @@ class GraalWasmSourceProject(mx.Project):
     # def getResults(self, replaceVar=mx_subst.results_substitutions):
     #     if self.results is None:
     #         self.results = glob.glob1(self.getOutput(), '*.wasm')
-    #     return super(GraalWasmSourceProject, self).getResults(replaceVar=replaceVar)
-
-    def isArchivableProject(self):
-        return True
-
-    def getArchivableResults(self, use_relpath=True, single=False):
-        for r in self.getResults():
-            mx.log(r)
-            yield r
+    #     return super(GraalWasmSourceFileProject, self).getResults(replaceVar=replaceVar)
 
     def getSourceDir(self):
         return os.path.join(self.dir, "src", self.name, self.subDir)
@@ -104,11 +96,22 @@ class GraalWasmSourceProject(mx.Project):
         for root, filename in self.getSources():
             yield os.path.join(output_dir, remove_extension(filename) + ".wasm")
 
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for r in self.getResults():
+            mx.log(r)
+            yield r
+
+    def output_dir(self):
+        return self.getOutputDir()
+
+    def archive_prefix(self):
+        return ""
+
     def getBuildTask(self, args):
         output_base = self.get_output_base()
-        return GraalWasmSourceTask(self, args, output_base)
+        return GraalWasmSourceFileTask(self, args, output_base)
 
-class GraalWasmSourceTask(mx.ProjectBuildTask):
+class GraalWasmSourceFileTask(mx.ProjectBuildTask):
     def __init__(self, project, args, output_base):
         self.output_base = output_base
         self.project = project
