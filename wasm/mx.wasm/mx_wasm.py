@@ -39,9 +39,11 @@
 # SOFTWARE.
 #
 import mx
+import mx_subst
 import mx_wasm_benchmark  # pylint: disable=unused-import
 
 import errno
+import glob
 import os
 
 _suite = mx.suite('wasm')
@@ -56,11 +58,16 @@ def mkdir_p(path):
             raise
 
 class GraalWasmSourceProject(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results, output, **args):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         self.suite = suite
         self.name = name
-        mx.log(str(args))
-        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, suite.dir, **args)
+        _output = output or os.path.join(mx.get_mxbuild_dir(self), self.name)
+        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, _output, suite.dir, **args)
+
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        if self.results is None:
+            self.results = glob.glob1(self.getOutput(), '*.wasm')
+        return super(GraalWasmSourceProject, self).getResults(replaceVar=replaceVar)
 
     def getBuildTask(self, args):
         output_base = self.get_output_base()
@@ -81,8 +88,7 @@ class GraalWasmSourceTask(mx.NativeBuildTask):
         mkdir_p(output_dir)
         emcc_dir = mx.get_env("EMCC_DIR", None)
         if not emcc_dir:
-            mx.warn("No EMCC_DIR specified - the source programs will not be compiled to .wat and .wasm.")
-            return
+            mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wat and .wasm.")
         mx.log("Building files from the source dir: " + source_dir)
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         flags = ["-Os"]

@@ -92,13 +92,9 @@ suite = {
       "dependencies" : [],
       "class" : "GraalWasmSourceProject",
       "checkstyle" : "com.oracle.truffle.wasm",
-      "javaCompliance" : "1.8",
       "workingSets" : "Truffle,WebAssembly",
       "testProject" : True,
-      "results" : [
-        "mxbuild/<os>-<arch>/com.oracle.truffle.wasm.source.test/*.wasm",
-      ],
-      "output" : ".",
+      "defaultBuild" : False,
     },
 
     "com.oracle.truffle.wasm.benchmark" : {
@@ -152,9 +148,11 @@ suite = {
       "description" : "Tests compiled from source code.",
       "layout" : {
         "./" : [
-            "dependency:com.oracle.truffle.wasm.source.test/*",
+          "dependency:com.oracle.truffle.wasm.source.test/*",
         ],
       },
+      "defaultBuild" : False,
+      "maven" : False,
     },
 
     "WASM_BENCHMARKS" : {
