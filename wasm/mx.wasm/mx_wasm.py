@@ -57,34 +57,69 @@ def mkdir_p(path):
         else:
             raise
 
-class GraalWasmSourceProject(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+def remove_extension(filename):
+    if filename.endswith(".c"):
+        return filename[:-2]
+    else:
+        mx.abort("Unknown extension: " + filename)
+
+class GraalWasmSourceProject(mx.Project):
+    def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
         self.suite = suite
         self.name = name
-        _output = output or os.path.join(mx.get_mxbuild_dir(self), self.name)
-        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, _output, suite.dir, **args)
+        # _results =
+        # _output = output or os.path.join(mx.get_mxbuild_dir(self), self.name)
+        mx.Project.__init__(self, suite, name, subDir, [], deps, workingSets, suite.dir, theLicense, **args)
 
-    def getResults(self, replaceVar=mx_subst.results_substitutions):
-        if self.results is None:
-            self.results = glob.glob1(self.getOutput(), '*.wasm')
-        return super(GraalWasmSourceProject, self).getResults(replaceVar=replaceVar)
+    # def getOutput(self, replaceVar=mx_subst.results_substitutions):
+    #       return ""
+
+    # def getResults(self, replaceVar=mx_subst.results_substitutions):
+    #     if self.results is None:
+    #         self.results = glob.glob1(self.getOutput(), '*.wasm')
+    #     return super(GraalWasmSourceProject, self).getResults(replaceVar=replaceVar)
+
+    def isArchivableProject(self):
+        return True
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for r in self.getResults():
+            mx.log(r)
+            yield r
+
+    def getSourceDir(self):
+        return os.path.join(self.dir, "src", self.name, self.subDir)
+
+    def getOutputDir(self):
+        return os.path.join(self.get_output_base(), self.name)
+
+    def getSources(self):
+        for root, dirs, files in os.walk(self.getSourceDir()):
+            for filename in files:
+                if filename.endswith(".c"):
+                    yield (root, filename)
+
+    def getResults(self):
+        output_dir = self.getOutputDir()
+        for root, filename in self.getSources():
+            yield os.path.join(output_dir, remove_extension(filename) + ".wasm")
 
     def getBuildTask(self, args):
         output_base = self.get_output_base()
         return GraalWasmSourceTask(self, args, output_base)
 
-class GraalWasmSourceTask(mx.NativeBuildTask):
+class GraalWasmSourceTask(mx.ProjectBuildTask):
     def __init__(self, project, args, output_base):
         self.output_base = output_base
         self.project = project
-        mx.NativeBuildTask.__init__(self, args, project)
+        mx.ProjectBuildTask.__init__(self, args, 1, project)
 
     def __str__(self):
         return 'Building {} with Emscripten'.format(self.subject.name)
 
     def build(self):
-        source_dir = os.path.join(self.project.dir, "src", self.project.name, self.project.subDir)
-        output_dir = os.path.join(self.output_base, self.project.name)
+        source_dir = self.subject.getSourceDir()
+        output_dir = self.subject.getOutputDir()
         mkdir_p(output_dir)
         emcc_dir = mx.get_env("EMCC_DIR", None)
         if not emcc_dir:
@@ -92,17 +127,10 @@ class GraalWasmSourceTask(mx.NativeBuildTask):
         mx.log("Building files from the source dir: " + source_dir)
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         flags = ["-Os"]
-        for root, dirs, files in os.walk(source_dir):
-            for filename in files:
-                path = os.path.join(root, filename)
-                output_path = os.path.join(output_dir, self._remove_extension(filename) + ".js")
-                mx.run([emcc_cmd] + flags + [path, "-o", output_path])
-
-    def _remove_extension(self, filename):
-        if filename.endswith(".c"):
-            return filename[:-2]
-        else:
-            mx.abort("Unknown extension: " + filename)
+        for root, filename in self.subject.getSources():
+            path = os.path.join(root, filename)
+            output_path = os.path.join(output_dir, remove_extension(filename) + ".js")
+            mx.run([emcc_cmd] + flags + [path, "-o", output_path])
 
     def needsBuild(self, newestInput):
         return (True, None)
