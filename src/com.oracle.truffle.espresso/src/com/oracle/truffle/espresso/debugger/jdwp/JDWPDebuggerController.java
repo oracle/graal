@@ -60,6 +60,8 @@ public class JDWPDebuggerController implements GuestClassLoadingSubscriber {
     private final JDWPInstrument instrument;
     private Object suspendLock = new Object();
     private SuspendedInfo suspendedInfo;
+
+    // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
 
     public JDWPDebuggerController(JDWPInstrument instrument) {
