@@ -55,7 +55,7 @@ def mkdir_p(path):
         else:
             raise
 
-class GraalWasmEmccProject(mx.NativeProject):
+class GraalWasmSourceProject(mx.NativeProject):
     def __init__(self, suite, name, deps, workingSets, subDir, results, output, **args):
         self.suite = suite
         self.name = name
@@ -64,9 +64,9 @@ class GraalWasmEmccProject(mx.NativeProject):
 
     def getBuildTask(self, args):
         output_base = self.get_output_base()
-        return GraalWasmEmccTask(self, args, output_base)
+        return GraalWasmSourceTask(self, args, output_base)
 
-class GraalWasmEmccTask(mx.NativeBuildTask):
+class GraalWasmSourceTask(mx.NativeBuildTask):
     def __init__(self, project, args, output_base):
         self.output_base = output_base
         self.project = project

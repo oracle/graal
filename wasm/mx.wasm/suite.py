@@ -87,15 +87,17 @@ suite = {
       "testProject" : True,
     },
 
-    "com.oracle.truffle.wasm.emcc.test" : {
+    "com.oracle.truffle.wasm.source.test" : {
       "subDir" : "src",
       "dependencies" : [],
-      "class" : "GraalWasmEmccProject",
+      "class" : "GraalWasmSourceProject",
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,WebAssembly",
       "testProject" : True,
-      "results" : [],
+      "results" : [
+        "mxbuild/<os>-<arch>/com.oracle.truffle.wasm.source.test/*.wasm",
+      ],
       "output" : ".",
     },
 
@@ -131,7 +133,7 @@ suite = {
     "WASM_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
-        "com.oracle.truffle.wasm.emcc.test",
+        # "com.oracle.truffle.wasm.emcc.test",
         "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
@@ -143,6 +145,16 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+    },
+
+    "WASM_SOURCE_TESTS" : {
+      "platformDependent" : True,
+      "description" : "Tests compiled from source code.",
+      "layout" : {
+        "./" : [
+            "dependency:com.oracle.truffle.wasm.source.test/*",
+        ],
+      },
     },
 
     "WASM_BENCHMARKS" : {
