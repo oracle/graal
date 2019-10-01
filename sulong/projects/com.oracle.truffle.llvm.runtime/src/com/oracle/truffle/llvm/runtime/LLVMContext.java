@@ -81,8 +81,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.FreeReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -391,8 +389,8 @@ public final class LLVMContext {
         if (freeGlobalBlocks == null) {
             freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-                @Child LLVMMemoryOpNode freeRo = createFreeGlobalsBlock(true);
-                @Child LLVMMemoryOpNode freeRw = createFreeGlobalsBlock(false);
+                @Child LLVMMemoryOpNode freeRo = language.getNodeFactory().createFreeGlobalsBlock(true);
+                @Child LLVMMemoryOpNode freeRw = language.getNodeFactory().createFreeGlobalsBlock(false);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -410,14 +408,6 @@ public final class LLVMContext {
                     return null;
                 }
             });
-        }
-    }
-
-    public LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly) {
-        if (readOnly) {
-            return new FreeReadOnlyGlobalsBlockNode(this);
-        } else {
-            return LLVMFreeNodeGen.create(null);
         }
     }
 
