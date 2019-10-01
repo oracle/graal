@@ -957,6 +957,13 @@ public final class MethodVerifier implements ContextAccess {
             if (endBCI < 0) {
                 throw new ClassFormatError("negative branch target: " + endBCI);
             }
+            if (handler.catchTypeCPI() != 0) {
+                Klass catchType = pool.resolvedKlassAt(thisKlass, handler.catchTypeCPI());
+                if (!getMeta().Throwable.isAssignableFrom(catchType)) {
+                    throw new VerifyError("Illegal exception handler catch type: " + catchType);
+                }
+            }
+
             if (endBCI != code.endBCI()) {
                 if (BCIstates[endBCI] == UNREACHABLE) {
                     throw new ClassFormatError("Jump to the middle of an instruction: " + endBCI);
