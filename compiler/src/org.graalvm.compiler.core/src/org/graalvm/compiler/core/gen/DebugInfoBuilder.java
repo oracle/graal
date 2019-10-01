@@ -145,9 +145,9 @@ public class DebugInfoBuilder {
                                  * Let Illegals pass through to help knowing the number of bytes to
                                  * write. For example, writing a short to index 2 of a byte array of
                                  * size 6 would look like, in debug info:
-                                 * 
+                                 *
                                  * {b0, b1, INT(...), ILLEGAL, b4, b5}
-                                 * 
+                                 *
                                  * Thus, from the VM, we can simply count the number of illegals to
                                  * restore the byte count.
                                  */

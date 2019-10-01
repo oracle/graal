@@ -34,7 +34,7 @@ public interface PlatformConfigurationProvider {
 
     /**
      * Returns whether the underlying VM can recover from virtualizing large primitive unsafe writes
-     * in a byte array
+     * in a byte array.
      */
     boolean canVirtualizeLargeByteArrayAccess();
 }

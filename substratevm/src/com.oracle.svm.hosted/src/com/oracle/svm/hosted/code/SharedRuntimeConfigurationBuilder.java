@@ -106,7 +106,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, null);
         Replacements replacements = createReplacements(p, snippetReflection);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, null);
-        PlatformConfigurationProvider platformConfigurationProvider = new SVMPlatformConfigurationProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
+        PlatformConfigurationProvider platformConfigurationProvider = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(Heap.class).getBarrierSet());
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfigurationProvider);
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
