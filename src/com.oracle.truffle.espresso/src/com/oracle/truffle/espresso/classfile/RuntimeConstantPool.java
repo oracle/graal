@@ -122,4 +122,9 @@ public final class RuntimeConstantPool extends ConstantPool {
     public void setKlassAt(int index, ObjectKlass klass) {
         constants[index] = new ClassConstant.Resolved(klass);
     }
+
+    @Override
+    public int getMajorVersion() {
+        return pool.getMajorVersion();
+    }
 }

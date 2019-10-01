@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -121,7 +122,7 @@ public final class Signatures {
     }
 
     @SuppressWarnings("unchecked")
-    public static Symbol<Signature> check(Symbol<? extends Symbol.Descriptor> descriptor) {
+    public static Symbol<Signature> check(Symbol<? extends Descriptor> descriptor) {
         assert isValid((Symbol<Signature>) descriptor);
         return (Symbol<Signature>) descriptor;
     }
