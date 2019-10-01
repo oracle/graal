@@ -45,6 +45,9 @@ import mx_wasm_benchmark  # pylint: disable=unused-import
 import errno
 import glob
 import os
+import shutil
+
+from collections import defaultdict
 
 _suite = mx.suite('wasm')
 
@@ -71,7 +74,7 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
 
     def getSourceDir(self):
-        return os.path.join(self.dir, "src", self.name, self.subDir)
+        return os.path.join(self.dir, "src", self.name, self.subDir, "src")
 
     def getOutputDir(self):
         return os.path.join(self.get_output_base(), self.name)
@@ -84,8 +87,14 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
 
     def getResults(self):
         output_dir = self.getOutputDir()
+        subdirs = set()
         for root, filename in self.getSources():
-            yield os.path.join(output_dir, remove_extension(filename) + ".wasm")
+            subdir = os.path.relpath(root, self.getSourceDir())
+            subdirs.add(subdir)
+            yield os.path.join(output_dir, subdir, remove_extension(filename) + ".wasm")
+            yield os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+        for subdir in subdirs:
+            yield os.path.join(output_dir, subdir, "wasm_test_index")
 
     def output_dir(self):
         return self.getOutputDir()
@@ -109,17 +118,28 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
-        mkdir_p(output_dir)
         emcc_dir = mx.get_env("EMCC_DIR", None)
         if not emcc_dir:
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wat and .wasm.")
         mx.log("Building files from the source dir: " + source_dir)
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         flags = ["-Os"]
+        subdirProgramNames = defaultdict(lambda: [])
         for root, filename in self.subject.getSources():
-            path = os.path.join(root, filename)
-            output_path = os.path.join(output_dir, remove_extension(filename) + ".js")
-            mx.run([emcc_cmd] + flags + [path, "-o", output_path])
+            subdir = os.path.relpath(root, self.subject.getSourceDir())
+            mkdir_p(os.path.join(output_dir, subdir))
+            source_path = os.path.join(root, filename)
+            output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".js")
+            mx.run([emcc_cmd] + flags + [source_path, "-o", output_path])
+            result_path = os.path.join(root, remove_extension(filename) + ".result")
+            result_output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+            shutil.copyfile(result_path, result_output_path)
+            subdirProgramNames[subdir].append(remove_extension(filename))
+        print subdirProgramNames
+        for subdir in subdirProgramNames:
+            with open(os.path.join(output_dir, subdir, "wasm_test_index"), "w") as f:
+                for name in subdirProgramNames[subdir]:
+                    f.write(name)
 
     def needsBuild(self, newestInput):
         return (True, None)
