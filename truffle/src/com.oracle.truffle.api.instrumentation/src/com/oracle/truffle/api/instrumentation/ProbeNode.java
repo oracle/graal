@@ -642,10 +642,9 @@ public final class ProbeNode extends Node {
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
-        Class<?> instrumentClass = instrumenter.getInstrumentClass();
 
         String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //
-                        eventName, instrumentClass.getName(), b.getElement());
+                        eventName, instrumenter.getInstrumentClassName(), b.getElement());
 
         Exception exception = new Exception(message, t);
         PrintStream stream = new PrintStream(instrumenter.getEnv().err());

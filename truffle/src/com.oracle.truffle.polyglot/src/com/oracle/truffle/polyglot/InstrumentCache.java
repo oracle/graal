@@ -60,6 +60,7 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.util.Objects;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -69,14 +70,13 @@ final class InstrumentCache {
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
     private static Map<ClassLoader, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
 
-    private Class<? extends TruffleInstrument> instrumentClass;
     private final String className;
     private final String id;
     private final String name;
     private final String version;
     private final boolean internal;
-    private final ClassLoader loader;
     private final Set<String> services;
+    private final InstrumentReflection instrumentReflection;
 
     /**
      * Initializes state for native image generation.
@@ -101,14 +101,9 @@ final class InstrumentCache {
         runtimeCaches.clear();
     }
 
-    private InstrumentCache(String prefix, Properties info, ClassLoader loader) {
-        this.loader = loader;
-        this.className = info.getProperty(prefix + "className");
-        this.name = info.getProperty(prefix + "name");
-        this.version = info.getProperty(prefix + "version");
-        this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
-        String loadedId = info.getProperty(prefix + "id");
-        if (loadedId.equals("")) {
+    private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services, InstrumentReflection instrumentReflection) {
+        this.instrumentReflection = instrumentReflection;
+        if (id.equals("")) {
             /* use class name default id */
             int lastIndex = className.lastIndexOf('$');
             if (lastIndex == -1) {
@@ -116,20 +111,16 @@ final class InstrumentCache {
             }
             this.id = className.substring(lastIndex + 1, className.length());
         } else {
-            this.id = loadedId;
+            this.id = id;
         }
-        int servicesCounter = 0;
-        this.services = new TreeSet<>();
-        for (;;) {
-            String nth = prefix + "service" + servicesCounter++;
-            String serviceName = info.getProperty(nth);
-            if (serviceName == null) {
-                break;
-            }
-            this.services.add(serviceName);
-        }
+        this.name = name;
+        this.version = version;
+        this.className = className;
+        this.internal = internal;
+        this.services = services;
+
         if (TruffleOptions.AOT) {
-            initializeInstrumentClass();
+            instrumentReflection.aotInitializeAtBuildTime();
         }
     }
 
@@ -155,60 +146,21 @@ final class InstrumentCache {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         for (ClassLoader loader : loaders) {
-            loadForOne(loader, list, classNamesUsed);
+            Loader.load(loader, list, classNamesUsed);
         }
         if (additionalLoader != null) {
-            loadForOne(additionalLoader, list, classNamesUsed);
+            Loader.load(additionalLoader, list, classNamesUsed);
         }
         if (!JDK8OrEarlier) {
-            loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
-        }
-        return list;
-    }
-
-    private static void loadForOne(ClassLoader loader, List<InstrumentCache> list, Set<String> classNamesUsed) {
-        if (loader == null) {
-            return;
-        }
-        Enumeration<URL> en;
-        try {
-            en = loader.getResources("META-INF/truffle/instrument");
-        } catch (IOException ex) {
-            throw new IllegalStateException("Cannot read list of Truffle instruments", ex);
-        }
-        while (en.hasMoreElements()) {
-            URL u = en.nextElement();
-            Properties p;
-            try {
-                p = new Properties();
-                try (InputStream is = u.openStream()) {
-                    p.load(is);
-                }
-            } catch (IOException ex) {
-                PrintStream out = System.err;
-                out.println("Cannot process " + u + " as language definition");
-                ex.printStackTrace();
-                continue;
-            }
-            for (int cnt = 1;; cnt++) {
-                String prefix = "instrument" + cnt + ".";
-                String className = p.getProperty(prefix + "className");
-                if (className == null) {
-                    break;
-                }
-                // we don't want multiple instruments with the same class name
-                if (!classNamesUsed.contains(className)) {
-                    classNamesUsed.add(className);
-                    list.add(new InstrumentCache(prefix, p, loader));
-                }
-            }
+            Loader.load(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
         Collections.sort(list, new Comparator<InstrumentCache>() {
-            @Override
-            public int compare(InstrumentCache o1, InstrumentCache o2) {
-                return o1.getId().compareTo(o2.getId());
-            }
-        });
+                @Override
+                public int compare(InstrumentCache o1, InstrumentCache o2) {
+                    return o1.getId().compareTo(o2.getId());
+                }
+            });
+        return list;
     }
 
     String getId() {
@@ -227,11 +179,8 @@ final class InstrumentCache {
         return version;
     }
 
-    Class<?> getInstrumentationClass() {
-        if (!TruffleOptions.AOT && instrumentClass == null) {
-            initializeInstrumentClass();
-        }
-        return instrumentClass;
+    TruffleInstrument loadInstrument() {
+        return instrumentReflection.newInstance();
     }
 
     boolean supportsService(Class<?> clazz) {
@@ -242,8 +191,13 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
-    private void initializeInstrumentClass() {
-        try {
+    private abstract static class InstrumentReflection {
+
+        abstract TruffleInstrument newInstance();
+
+        abstract Class<? extends TruffleInstrument> aotInitializeAtBuildTime();
+
+        final void exportTruffle(ClassLoader loader) {
             if (!TruffleOptions.AOT) {
                 // In JDK 9+, the Truffle API packages must be dynamically exported to
                 // a Truffle instrument since the Truffle API module descriptor only
@@ -251,9 +205,144 @@ final class InstrumentCache {
                 // Graal module).
                 TruffleJDKServices.exportTo(loader, null);
             }
-            instrumentClass = Class.forName(className, true, loader).asSubclass(TruffleInstrument.class);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);
+        }
+    }
+
+    private static abstract class Loader {
+
+        private static final Loader[] INSTANCES = new Loader[] {
+            new LegacyLoader(),
+            new ServicesLoader()
+        };
+
+        static void load (ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+            if (loader == null) {
+                return;
+            }
+            for (Loader instance : INSTANCES) {
+                instance.loadImpl(loader, list, classNamesUsed);
+            }
+        }
+
+        abstract void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed);
+    }
+
+    private static final class LegacyLoader extends Loader {
+
+        @Override
+        void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+            Enumeration<URL> en;
+            try {
+                en = loader.getResources("META-INF/truffle/instrument");
+            } catch (IOException ex) {
+                throw new IllegalStateException("Cannot read list of Truffle instruments", ex);
+            }
+            while (en.hasMoreElements()) {
+                URL u = en.nextElement();
+                Properties p;
+                try {
+                    p = new Properties();
+                    try (InputStream is = u.openStream()) {
+                        p.load(is);
+                    }
+                } catch (IOException ex) {
+                    PrintStream out = System.err;
+                    out.println("Cannot process " + u + " as language definition");
+                    ex.printStackTrace();
+                    continue;
+                }
+                for (int cnt = 1;; cnt++) {
+                    String prefix = "instrument" + cnt + ".";
+                    String className = p.getProperty(prefix + "className");
+                    if (className == null) {
+                        break;
+                    }
+                    // we don't want multiple instruments with the same class name
+                    if (!classNamesUsed.contains(className)) {
+                        classNamesUsed.add(className);
+                        list.add(createInstrumentCache(prefix, p, loader));
+                    }
+                }
+            }
+        }
+
+        private InstrumentCache createInstrumentCache(String prefix, Properties info, ClassLoader loader) {
+            String className = info.getProperty(prefix + "className");
+            String name = info.getProperty(prefix + "name");
+            String version = info.getProperty(prefix + "version");
+            boolean internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
+            String id = info.getProperty(prefix + "id");
+            int servicesCounter = 0;
+            Set<String> services = new TreeSet<>();
+            for (;;) {
+                String nth = prefix + "service" + servicesCounter++;
+                String serviceName = info.getProperty(nth);
+                if (serviceName == null) {
+                    break;
+                }
+                services.add(serviceName);
+            }
+            InstrumentReflection reflection = new LegacyInstrumentReflection(name, loader, className);
+            return new InstrumentCache(id, name, version, className, internal, services, reflection);
+        }
+
+        private static final class LegacyInstrumentReflection extends InstrumentReflection {
+
+            private final String name;
+            private final ClassLoader loader;
+            private final String className;
+            private volatile Class<? extends TruffleInstrument> instrumentClass;
+
+            LegacyInstrumentReflection(String name, ClassLoader loader, String className) {
+                Objects.requireNonNull(name, "Name must be non null.");
+                Objects.requireNonNull(loader, "Loader must be non null.");
+                Objects.requireNonNull(className, "ClassName must be non null.");
+                this.name = name;
+                this.loader = loader;
+                this.className = className;
+            }
+
+            @Override
+            TruffleInstrument newInstance() {
+                try {
+                    return getInstrumentationClass().getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
+                }
+            }
+
+            @Override
+            Class<? extends TruffleInstrument> aotInitializeAtBuildTime() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            private Class<? extends TruffleInstrument> getInstrumentationClass() {
+                if (!TruffleOptions.AOT) {
+                    initializeInstrumentClass();
+                }
+                return instrumentClass;
+            }
+
+            private void initializeInstrumentClass() {
+                if (instrumentClass == null) {
+                    synchronized (this) {
+                        if (instrumentClass == null) {
+                            try {
+                                exportTruffle(loader);
+                                instrumentClass = Class.forName(className, true, loader).asSubclass(TruffleInstrument.class);
+                            } catch (Exception ex) {
+                                throw new IllegalStateException("Cannot initialize " + name + " instrument with implementation " + className, ex);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static final class ServicesLoader extends Loader {
+        @Override
+        void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
         }
     }
 

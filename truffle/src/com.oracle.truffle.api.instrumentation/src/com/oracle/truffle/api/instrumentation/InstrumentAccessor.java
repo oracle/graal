@@ -57,6 +57,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 
 import java.io.InputStream;
 import java.util.Set;
+import java.util.function.Supplier;
 
 final class InstrumentAccessor extends Accessor {
 
@@ -93,8 +94,8 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass) {
-            ((InstrumentationHandler) instrumentationHandler).initializeInstrument(key, instrumentClass);
+        public void initializeInstrument(Object instrumentationHandler, Object key, String instrumentClassName, Supplier<? extends Object> instrumentSupplier) {
+            ((InstrumentationHandler) instrumentationHandler).initializeInstrument(key, instrumentClassName, instrumentSupplier);
         }
 
         @Override

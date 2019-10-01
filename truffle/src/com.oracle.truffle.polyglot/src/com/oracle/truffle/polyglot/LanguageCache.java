@@ -669,13 +669,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
                 @Override
                 TruffleLanguage<?> newInstance() {
-                    TruffleLanguage<?> instance;
                     try {
-                        instance = getLanguageClass().getDeclaredConstructor().newInstance();
+                        return getLanguageClass().getDeclaredConstructor().newInstance();
                     } catch (Exception e) {
                         throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
                     }
-                    return instance;
                 }
 
                 @Override
