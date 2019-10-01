@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.jdk;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -51,12 +52,13 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         rerunClassInit(a, "java.nio.file.FileSystems$DefaultFileSystemHolder");
         rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
         if (isPosix()) {
-            rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher");
+            rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux()) {
                 rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
-            rerunClassInit(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp");
+            rerunClassInit(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
+                            "sun.nio.ch.WindowsAsynchronousServerSocketChannelImpl", "sun.nio.ch.WindowsAsynchronousSocketChannelImpl");
         }
     }
 
@@ -70,7 +72,12 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
             JNIRuntimeAccess.register(constructor(a, "sun.nio.fs.WindowsException", int.class));
         }
 
-        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.ServerSocketChannelImpl", "initIDs"));
+        /* Use the same lambda for registration to ensure it is called only once. */
+        Consumer<DuringAnalysisAccess> registerServerSocketChannelImplInitIDs = JNIRegistrationJavaNio::registerServerSocketChannelImplInitIDs;
+        a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.ServerSocketChannelImpl", "initIDs"));
+        if (isPosix()) {
+            a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl", "initIDs"));
+        }
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerDatagramChannelImplInitIDs, method(a, "sun.nio.ch.DatagramChannelImpl", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileChannelImplInitIDs, method(a, "sun.nio.ch.FileChannelImpl", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
