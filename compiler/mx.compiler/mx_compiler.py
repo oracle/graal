@@ -1331,7 +1331,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['Truffle'],
     jar_distributions=[  # Dev jars (annotation processors)
         'compiler:GRAAL_PROCESSOR_COMMON',
         'compiler:GRAAL_OPTIONS_PROCESSOR',
