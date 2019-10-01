@@ -907,7 +907,7 @@ public final class ClassfileParser {
         final int codeLength = stream.readS4();
         if (codeLength <= 0) {
             throw classFormatError("code_length must be > than 0");
-        } else if (codeLength >= 0xFFFF) {
+        } else if (codeLength > 0xFFFF) {
             throw classFormatError("code_length > than 64 KB");
         }
 
