@@ -95,20 +95,6 @@ public interface NameAndTypeConstant extends PoolConstant {
         public void validateMethod(ConstantPool pool) {
             pool.utf8At(nameIndex).validateMethodName();
             pool.utf8At(typeIndex).validateSignature();
-            // If the name of the method of a CONSTANT_Methodref_info structure begins with a '<'
-            // ('\u003c'), then the name must be the special name <init>, representing an instance
-            // initialization method (§2.9). The return type of such a method must be void.
-            Symbol<Name> methodName = pool.symbolAt(nameIndex);
-            if (methodName.byteAt(0) == '<') {
-                if (!Name.INIT.equals(methodName)) {
-                    throw ConstantPool.classFormatError("Invalid method name: " + methodName);
-                }
-                Symbol<Signature> signature = pool.symbolAt(typeIndex);
-                // endsWith(")V")
-                if (signature.byteAt(signature.length() - 1) != 'V' || signature.byteAt(signature.length() - 2) != ')') {
-                    throw ConstantPool.classFormatError("Invalid <init> method signature : " + signature);
-                }
-            }
         }
 
         @Override

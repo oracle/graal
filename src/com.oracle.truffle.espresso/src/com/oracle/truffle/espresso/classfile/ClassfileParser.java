@@ -715,6 +715,9 @@ public final class ClassfileParser {
             if (pool.tagAt(bootstrapMethodRef) != Tag.METHODHANDLE) {
                 throw classFormatError("Invalid bootstrapMethodRefIndex: not a CONSTANT_MethodHandle_info structure.");
             }
+            if (maxBootstrapMethodAttrIndex >= entryCount) {
+                throw classFormatError("bootstrap_method_attr_index is greater than maximum valid index in the BootstrapMethods attribute.");
+            }
             int numBootstrapArguments = stream.readU2();
             char[] bootstrapArguments = new char[numBootstrapArguments];
             for (int j = 0; j < numBootstrapArguments; ++j) {
