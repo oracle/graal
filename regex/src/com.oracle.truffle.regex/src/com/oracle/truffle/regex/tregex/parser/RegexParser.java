@@ -676,14 +676,11 @@ public final class RegexParser {
         }
         assert curTerm == curSequence.getLastTerm();
         if (quantifier.getMin() == -1) {
-            deleteVisitor.run(curSequence.getLastTerm());
-            curSequence.removeLastTerm();
-            addTerm(createCharClass(CharSet.getEmpty(), null));
+            replaceCurTermWithDeadNode();
             return;
         }
         if (quantifier.getMax() == 0 || (quantifier.getMin() == 0 && (curTerm instanceof LookAroundAssertion || (curTerm instanceof CharacterClass && ((CharacterClass) curTerm).isDead())))) {
-            deleteVisitor.run(curSequence.getLastTerm());
-            curSequence.removeLastTerm();
+            removeCurTerm();
             return;
         }
         ast.addSourceSection(curTerm, quantifier);
@@ -701,15 +698,32 @@ public final class RegexParser {
         if (curSequence.size() > 1) {
             Term prev = curSequence.getTerms().get(curSequence.size() - 2);
             if (prev.hasQuantifier() && curTerm.equalsSemantic(prev, true)) {
-                setQuantifier(prev, new Token.Quantifier(
-                                prev.getQuantifier().getMin() + quantifier.getMin(),
-                                prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : prev.getQuantifier().getMax() + quantifier.getMax(),
-                                prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
-                deleteVisitor.run(curSequence.getLastTerm());
-                curSequence.removeLastTerm();
-                curTerm = prev;
+                removeCurTerm();
+                long min = (long) prev.getQuantifier().getMin() + quantifier.getMin();
+                long max = prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : (long) prev.getQuantifier().getMax() + quantifier.getMax();
+                if (min > Integer.MAX_VALUE) {
+                    replaceCurTermWithDeadNode();
+                    return;
+                }
+                if (max > Integer.MAX_VALUE) {
+                    max = -1;
+                }
+                setQuantifier(prev, new Token.Quantifier((int) min, (int) max, prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
             }
         }
+    }
+
+    private void removeCurTerm() {
+        deleteVisitor.run(curSequence.getLastTerm());
+        curSequence.removeLastTerm();
+        if (!curSequence.isEmpty()) {
+            curTerm = curSequence.getLastTerm();
+        }
+    }
+
+    private void replaceCurTermWithDeadNode() {
+        removeCurTerm();
+        addTerm(createCharClass(CharSet.getEmpty(), null));
     }
 
     private void setQuantifier(Term term, Token.Quantifier quantifier) {
