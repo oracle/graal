@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
@@ -76,7 +75,7 @@ public class LLVMForeignCallNode extends RootNode {
                 for (int i = 0; i < parameterTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
-                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
+                        toLLVM[i] = nodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
                     } else {
                         // interop only supported for value types
                         toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
