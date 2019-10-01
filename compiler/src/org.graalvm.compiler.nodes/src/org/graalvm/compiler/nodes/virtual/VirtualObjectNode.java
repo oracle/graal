@@ -145,14 +145,14 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
      * access kind
      */
     public boolean canVirtualizeLargeByteArrayUnsafeRead(ValueNode entry, int index, JavaKind accessKind, VirtualizerTool tool) {
-        return tool.canVirtualizeLargeByteArrayUnsafeAccess() &&
+        return (tool.canVirtualizeLargeByteArrayUnsafeAccess() || accessKind == JavaKind.Byte) &&
                         !entry.isIllegalConstant() && entry.getStackKind() == accessKind.getStackKind() &&
-                        isLargeVirtualByteArrayAccess(accessKind) &&
+                        isVirtualByteArrayAccess(accessKind) &&
                         accessKind.getByteCount() == ((VirtualArrayNode) this).byteArrayEntryByteCount(index, tool);
     }
 
-    public boolean isLargeVirtualByteArrayAccess(JavaKind accessKind) {
-        return accessKind != JavaKind.Byte && accessKind.isPrimitive() && isVirtualByteArray();
+    public boolean isVirtualByteArrayAccess(JavaKind accessKind) {
+        return accessKind.isPrimitive() && isVirtualByteArray();
     }
 
     public boolean isVirtualByteArray() {

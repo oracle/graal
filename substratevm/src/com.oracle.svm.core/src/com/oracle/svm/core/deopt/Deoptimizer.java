@@ -34,10 +34,6 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;

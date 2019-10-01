@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.code;
+package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -44,4 +44,5 @@ public class SubstratePlatformConfigurationProvider implements PlatformConfigura
     public boolean canVirtualizeLargeByteArrayAccess() {
         return true;
     }
+
 }

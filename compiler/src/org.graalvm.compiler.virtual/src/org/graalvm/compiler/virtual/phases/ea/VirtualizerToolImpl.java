@@ -224,7 +224,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     }
 
     private boolean canVirtualizeLargeByteArrayUnsafeWrite(VirtualObjectNode virtual, JavaKind accessKind) {
-        return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isLargeVirtualByteArrayAccess(accessKind);
+        return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isVirtualByteArrayAccess(accessKind);
     }
 
     private boolean isEntryDefaults(VirtualArrayNode virtual, JavaKind accessKind, int index) {
