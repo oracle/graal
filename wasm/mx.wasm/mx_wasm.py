@@ -67,17 +67,8 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
         self.suite = suite
         self.name = name
-        # _results =
-        # _output = output or os.path.join(mx.get_mxbuild_dir(self), self.name)
+        self.subDir = subDir
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
-
-    # def getOutput(self, replaceVar=mx_subst.results_substitutions):
-    #       return ""
-
-    # def getResults(self, replaceVar=mx_subst.results_substitutions):
-    #     if self.results is None:
-    #         self.results = glob.glob1(self.getOutput(), '*.wasm')
-    #     return super(GraalWasmSourceFileProject, self).getResults(replaceVar=replaceVar)
 
     def getSourceDir(self):
         return os.path.join(self.dir, "src", self.name, self.subDir)
@@ -95,11 +86,6 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         output_dir = self.getOutputDir()
         for root, filename in self.getSources():
             yield os.path.join(output_dir, remove_extension(filename) + ".wasm")
-
-    def getArchivableResults(self, use_relpath=True, single=False):
-        for r in self.getResults():
-            mx.log(r)
-            yield r
 
     def output_dir(self):
         return self.getOutputDir()
