@@ -31,18 +31,15 @@
 package com.oracle.truffle.wasm.test.suites.control;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.junit.Test;
 
 import com.oracle.truffle.wasm.test.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public class IfThenElseSuite extends WasmSuiteBase {
     @Override
-    protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "if-then-else");
+    protected String testResource() {
+        return "if-then-else";
     }
 
     @Test
