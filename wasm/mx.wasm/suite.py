@@ -87,11 +87,24 @@ suite = {
       "testProject" : True,
     },
 
-    "com.oracle.truffle.wasm.source.test" : {
+    "com.oracle.truffle.wasm.source" : {
       "subDir" : "src",
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
+      "workingSets" : "Truffle,WebAssembly",
+      "testProject" : False,
+      "defaultBuild" : False,
+    },
+
+    "com.oracle.truffle.wasm.source.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
       "workingSets" : "Truffle,WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
@@ -147,7 +160,11 @@ suite = {
       "platformDependent" : True,
       "description" : "Tests compiled from source code.",
       "dependencies" : [
+        "com.oracle.truffle.wasm.source",
         "com.oracle.truffle.wasm.source.test",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
       ],
       "distDependencies" : [
         "WASM_TESTS",
