@@ -43,7 +43,6 @@ public final class Target_java_lang_System {
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(self));
     }
 
-
     @Substitution
     public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         arraycopyCount.inc();

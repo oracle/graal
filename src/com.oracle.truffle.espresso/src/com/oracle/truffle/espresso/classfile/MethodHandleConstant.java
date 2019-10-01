@@ -190,7 +190,7 @@ public interface MethodHandleConstant extends PoolConstant {
                     // CONSTANT_InterfaceMethodref_info structure (§4.4.2) representing a class's or
                     // interface's method for which a method handle is to be created.
                     valid = (tag == Tag.METHOD_REF) ||
-                            (pool.getMajorVersion() >= ClassfileParser.JAVA_8_VERSION && tag == Tag.INTERFACE_METHOD_REF);
+                                    (pool.getMajorVersion() >= ClassfileParser.JAVA_8_VERSION && tag == Tag.INTERFACE_METHOD_REF);
                     break;
 
                 case INVOKEINTERFACE:
