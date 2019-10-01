@@ -253,6 +253,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.FieldRefConstant;
@@ -1228,12 +1229,12 @@ public final class MethodVerifier implements ContextAccess {
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodHandleConstant in classfile version < 51");
                 }
                 return MethodHandle;
             case METHODTYPE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return MethodType;
@@ -2043,7 +2044,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(BCI);
 
         // Checks versioning
-        if (majorVersion <= 51 && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (majorVersion <= ClassfileParser.JAVA_7_VERSION && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
