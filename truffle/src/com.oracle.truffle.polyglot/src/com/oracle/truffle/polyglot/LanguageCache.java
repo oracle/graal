@@ -802,13 +802,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
                         continue;
                     }
-
+                    String className = provider.getLanguageClassName();
                     String name = reg.name();
                     String id = reg.id();
-                    if (id == null) {
-                        id = defaultId(name, provider.getLanguageClassName());
+                    if (id == null || id.isEmpty()) {
+                        id = defaultId(name, className);
                     }
-                    String className = provider.getLanguageClassName();
                     String languageHome = System.getProperty(id + ".home");
                     if (languageHome == null) {
                         URL url = provider.getClass().getClassLoader().getResource(className.replace('.', '/') + ".class");
