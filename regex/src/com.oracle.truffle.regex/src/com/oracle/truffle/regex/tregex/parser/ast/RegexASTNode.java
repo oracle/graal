@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
@@ -68,7 +67,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     private short flags;
     private short minPath = 0;
     private short maxPath = 0;
-    private SourceSection sourceSection;
 
     protected RegexASTNode() {
     }
@@ -77,7 +75,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         flags = copy.flags;
         minPath = copy.minPath;
         maxPath = copy.maxPath;
-        sourceSection = copy.sourceSection;
     }
 
     /**
@@ -257,14 +254,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     public void incMaxPath(int n) {
         maxPath += n;
-    }
-
-    public void setSourceSection(SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
-    }
-
-    public SourceSection getSourceSection() {
-        return sourceSection;
     }
 
     /**

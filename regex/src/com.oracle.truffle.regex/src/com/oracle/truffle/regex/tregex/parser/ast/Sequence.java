@@ -40,15 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * A Sequence is a concatenation of {@link Term}s.
@@ -229,19 +227,6 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             return terms.get(terms.size() - (++visitorIterationIndex));
         }
         return terms.get(visitorIterationIndex++);
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        SourceSection src = super.getSourceSection();
-        if (src != null && !isEmpty()) {
-            int endIndex = getLastTerm().getSourceSection().getCharEndIndex();
-            if (endIndex != src.getCharEndIndex()) {
-                int startIndex = src.getCharIndex();
-                super.setSourceSection(src.getSource().createSection(startIndex, endIndex - startIndex));
-            }
-        }
-        return super.getSourceSection();
     }
 
     @Override

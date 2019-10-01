@@ -40,17 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Provides information about a transition from one NFAState to another state.
@@ -105,9 +104,10 @@ public class NFAStateTransition implements JsonConvertible {
         if (!groupBoundaries.hasIndexUpdates()) {
             return Json.array();
         }
+        RegexAST ast = source.getStateSet().getAst();
         return Json.array(groupBoundaries.getUpdateIndices().stream().mapToObj(x -> {
             Group group = source.getStateSet().getAst().getGroupByBoundaryIndex(x);
-            SourceSection sourceSection = (x & 1) == 0 ? group.getSourceSectionBegin() : group.getSourceSectionEnd();
+            SourceSection sourceSection = ast.getSourceSections(group).get(x & 1);
             return Json.obj(Json.prop("start", sourceSection.getCharIndex()),
                             Json.prop("end", sourceSection.getCharEndIndex()));
         }));
