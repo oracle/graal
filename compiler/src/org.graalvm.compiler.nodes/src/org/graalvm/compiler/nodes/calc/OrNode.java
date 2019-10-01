@@ -53,6 +53,18 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
         super(TYPE, getArithmeticOpTable(x).getOr(), x, y);
     }
 
+    private OrNode(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        super(TYPE, forcedStamp, x, y);
+    }
+
+    /**
+     * Create a new XorNode with a forced stamp, without eager folding. This should only be used in
+     * snippet code, where native-image may assign wrong stamps during graph generation.
+     */
+    public static ValueNode createForSnippet(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        return new OrNode(x, y, forcedStamp);
+    }
+
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
         BinaryOp<Or> op = ArithmeticOpTable.forStamp(x.stamp(view)).getOr();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
