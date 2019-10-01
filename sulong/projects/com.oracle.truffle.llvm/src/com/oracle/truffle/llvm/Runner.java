@@ -743,7 +743,9 @@ final class Runner {
     }
 
     private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider) {
-        if (intrinsicProvider.isIntrinsified(function.getName())) {
+        if (function.getName().startsWith("llvm.")) {
+            // llvm intrinsic
+        } else if (intrinsicProvider.isIntrinsified(function.getName())) {
             function.define(intrinsicProvider);
         } else if (nfiContextExtension != null) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getName());

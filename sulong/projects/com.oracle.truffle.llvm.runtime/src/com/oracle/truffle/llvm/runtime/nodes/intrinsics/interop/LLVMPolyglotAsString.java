@@ -51,6 +51,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsSt
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
 import java.nio.ByteBuffer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
@@ -115,12 +117,12 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
         @Specialization(guards = "srcBuffer.getClass() == srcBufferClass")
-        long doWrite(ByteBuffer srcBuffer, Object target, long targetLen, int zeroTerminatorLen,
+        long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass) {
             ByteBuffer source = CompilerDirectives.castExact(srcBuffer, srcBufferClass);
 
             long bytesWritten = 0;
-            Object ptr = target;
+            LLVMPointer ptr = target;
             while (source.hasRemaining() && bytesWritten < targetLen) {
                 write.executeWithTarget(ptr, source.get());
                 ptr = inc.executeWithTarget(ptr, Byte.BYTES);

@@ -1358,7 +1358,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createTypedElementPointer(LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength, Type targetType) {
-        return LLVMGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength);
+        return LLVMGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength, targetType);
     }
 
     @Override
