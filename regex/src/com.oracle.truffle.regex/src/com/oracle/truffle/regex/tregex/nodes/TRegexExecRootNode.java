@@ -78,7 +78,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     private final TRegexCompiler tRegexCompiler;
     private LazyCaptureGroupRegexSearchNode lazyDFANode;
-    private LazyCaptureGroupRegexSearchNode regressTestNoSimpleCGlazyDFANode;
+    private LazyCaptureGroupRegexSearchNode regressTestNoSimpleCGLazyDFANode;
     private EagerCaptureGroupRegexSearchNode eagerDFANode;
     private NFARegexSearchNode nfaNode;
     private RegexProfile regexProfile;
@@ -141,12 +141,12 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
     }
 
     private boolean noSimpleCGLazyDFAProducesSameResult(Object input, int fromIndex, RegexResult result) {
-        if (lazyDFANode == LAZY_DFA_BAILED_OUT || regressTestNoSimpleCGlazyDFANode == null) {
+        if (lazyDFANode == LAZY_DFA_BAILED_OUT || !lazyDFANode.isSimpleCG() || regressTestNoSimpleCGLazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
-        assert lazyDFANode.isSimpleCG() && !regressTestNoSimpleCGlazyDFANode.isSimpleCG();
-        RegexResult noSimpleCGResult = regressTestNoSimpleCGlazyDFANode.run(input, fromIndex, inputLength(input));
-        if (resultsEqual(result, noSimpleCGResult, regressTestNoSimpleCGlazyDFANode.getForwardExecutor().getNumberOfCaptureGroups())) {
+        assert !regressTestNoSimpleCGLazyDFANode.isSimpleCG();
+        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, inputLength(input));
+        if (resultsEqual(result, noSimpleCGResult, regressTestNoSimpleCGLazyDFANode.getForwardExecutor().getNumberOfCaptureGroups())) {
             return true;
         }
         LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nLazyDFA Result:    %s\nSimplCGDFA Result: %s", getSource(), input, fromIndex, noSimpleCGResult, result));
@@ -216,15 +216,19 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     private void compileLazyDFA() {
         if (lazyDFANode == null) {
-            try {
-                lazyDFANode = tRegexCompiler.compileLazyDFAExecutor(nfaNode.getExecutor().getNFA(), this, true);
-                if (regressionTestMode && lazyDFANode.isSimpleCG()) {
-                    regressTestNoSimpleCGlazyDFANode = tRegexCompiler.compileLazyDFAExecutor(nfaNode.getExecutor().getNFA(), this, false);
-                }
-            } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
-                lazyDFANode = LAZY_DFA_BAILED_OUT;
-            }
+            lazyDFANode = compileLazyDFA(true);
+        }
+        if (regressionTestMode && lazyDFANode != LAZY_DFA_BAILED_OUT && lazyDFANode.isSimpleCG()) {
+            regressTestNoSimpleCGLazyDFANode = compileLazyDFA(false);
+        }
+    }
+
+    private LazyCaptureGroupRegexSearchNode compileLazyDFA(boolean allowSimpleCG) {
+        try {
+            return tRegexCompiler.compileLazyDFAExecutor(nfaNode.getExecutor().getNFA(), this, allowSimpleCG);
+        } catch (UnsupportedRegexException e) {
+            LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
+            return LAZY_DFA_BAILED_OUT;
         }
     }
 

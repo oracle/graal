@@ -49,7 +49,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
 
     LookAroundAssertion(boolean negated) {
-        setFlag(FLAG_LOOK_AROUND_NEGATED, negated);
+        setNegated(negated);
     }
 
     LookAroundAssertion(LookAroundAssertion copy, RegexAST ast, boolean recursive) {
@@ -66,6 +66,10 @@ public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
      */
     public boolean isNegated() {
         return isFlagSet(FLAG_LOOK_AROUND_NEGATED);
+    }
+
+    public void setNegated(boolean negated) {
+        setFlag(FLAG_LOOK_AROUND_NEGATED, negated);
     }
 
     boolean groupEqualsSemantic(LookAroundAssertion o) {

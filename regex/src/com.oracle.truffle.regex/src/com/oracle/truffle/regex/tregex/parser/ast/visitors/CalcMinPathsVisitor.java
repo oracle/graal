@@ -264,7 +264,8 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
         characterClass.setMinPath(characterClass.getParent().getMinPath());
         characterClass.setMaxPath(characterClass.getParent().getMaxPath());
-        if (characterClass.isDead()) {
+        if (characterClass.getCharSet().matchesNothing()) {
+            characterClass.markAsDead();
             characterClass.getParent().markAsDead();
         }
     }

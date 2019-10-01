@@ -94,7 +94,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     public boolean isEmpty() {
-        assert this != EMPTY_INSTANCE || (updateIndices.isEmpty() && clearIndices.isEmpty());
+        assert !(updateIndices.isEmpty() && clearIndices.isEmpty()) || this == EMPTY_INSTANCE;
         return this == EMPTY_INSTANCE;
     }
 

@@ -95,6 +95,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private ASTNodeSet<RegexASTNode> hardPrefixNodes;
     private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
+    private int negativeLookaheads = 0;
+    private int negativeLookbehinds = 0;
+
     private final EconomicMap<RegexASTNode, List<SourceSection>> sourceSections;
 
     public RegexAST(RegexSource source, RegexFlags flags, RegexOptions options) {
@@ -309,6 +312,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         nodeCount.inc();
         properties.setLookAheadAssertions();
         if (lookAheadAssertion.isNegated()) {
+            negativeLookaheads++;
             properties.setNegativeLookAheadAssertions();
         }
         return lookAheadAssertion;
@@ -318,10 +322,27 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         nodeCount.inc();
         properties.setLookBehindAssertions();
         if (lookBehindAssertion.isNegated()) {
+            negativeLookbehinds++;
             properties.setNegativeLookBehindAssertions();
         }
         lookBehinds.add(lookBehindAssertion);
         return lookBehindAssertion;
+    }
+
+    public void invertNegativeLookAround(LookAroundAssertion assertion) {
+        assert assertion.isNegated();
+        assertion.setNegated(false);
+        if (assertion instanceof LookAheadAssertion) {
+            assert negativeLookaheads > 0;
+            if (--negativeLookaheads == 0) {
+                properties.setNegativeLookAheadAssertions(false);
+            }
+        } else {
+            assert negativeLookbehinds > 0;
+            if (--negativeLookbehinds == 0) {
+                properties.setNegativeLookBehindAssertions(false);
+            }
+        }
     }
 
     public PositionAssertion register(PositionAssertion positionAssertion) {

@@ -133,6 +133,10 @@ public class RegexProperties implements JsonConvertible {
         negativeLookAheadAssertions = true;
     }
 
+    public void setNegativeLookAheadAssertions(boolean negativeLookAheadAssertions) {
+        this.negativeLookAheadAssertions = negativeLookAheadAssertions;
+    }
+
     public boolean hasLookBehindAssertions() {
         return lookBehindAssertions;
     }
@@ -163,6 +167,10 @@ public class RegexProperties implements JsonConvertible {
 
     public void setNegativeLookBehindAssertions() {
         negativeLookBehindAssertions = true;
+    }
+
+    public void setNegativeLookBehindAssertions(boolean negativeLookBehindAssertions) {
+        this.negativeLookBehindAssertions = negativeLookBehindAssertions;
     }
 
     public boolean hasLargeCountedRepetitions() {
