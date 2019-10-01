@@ -35,6 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -42,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 @NodeField(name = "vectorLength", type = int.class)
@@ -1189,6 +1192,20 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
                 vector[i] = Double.doubleToRawLongBits(from.getValue(i));
             }
             return LLVMI64Vector.create(vector);
+        }
+    }
+
+    public abstract static class LLVMBitcastToPointerVectorNode extends LLVMToVectorNode {
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMPointerVector doI64Vector(LLVMI64Vector from) {
+            assert from.getLength() == getVectorLength();
+            LLVMPointer[] vector = new LLVMPointer[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                vector[i] = LLVMNativePointer.create(from.getValue(i));
+            }
+            return LLVMPointerVector.create(vector);
         }
     }
 
