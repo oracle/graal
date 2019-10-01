@@ -27,8 +27,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
-
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
  */

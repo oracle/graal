@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import java.nio.file.Path;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -33,8 +35,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.EspressoError;
-
-import java.nio.file.Path;
 
 public class NativeLibrary {
 

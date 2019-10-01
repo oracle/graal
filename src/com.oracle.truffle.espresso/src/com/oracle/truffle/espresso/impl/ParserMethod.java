@@ -63,9 +63,9 @@ public final class ParserMethod {
         return signature;
     }
 
-    public Attribute getAttribute(Symbol<Name> name) {
+    public Attribute getAttribute(Symbol<Name> attributeName) {
         for (Attribute attribute : attributes) {
-            if (name.equals(attribute.getName())) {
+            if (attributeName.equals(attribute.getName())) {
                 return attribute;
             }
         }

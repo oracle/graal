@@ -23,15 +23,16 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import sun.misc.Unsafe;
 
-import java.util.Arrays;
+import sun.misc.Unsafe;
 
 @EspressoSubstitutions
 public class Target_com_oracle_truffle_espresso_InternalUtils {

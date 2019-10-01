@@ -22,15 +22,15 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
+
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
     private int tag;

@@ -68,7 +68,6 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -456,7 +455,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
             for (int i = 0; i < entries.length; ++i) {
                 // TODO(peterssen): Resolve and cache CP entries.
-                tmpchecked[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
+                tmpchecked[i] = (ObjectKlass) (getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
             }
             checkedExceptions = tmpchecked;
         }

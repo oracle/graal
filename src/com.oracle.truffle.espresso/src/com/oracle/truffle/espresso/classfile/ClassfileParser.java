@@ -100,8 +100,8 @@ public final class ClassfileParser {
     public static final int JAVA_13_VERSION = 57;
     public static final int JAVA_14_VERSION = 58;
 
-    private static final int MAJOR_VERSION_JAVA_MIN = 0;
-    private static final int MAJOR_VERSION_JAVA_MAX = JAVA_14_VERSION;
+    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MIN = 0;
+    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MAX = JAVA_14_VERSION;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
@@ -112,8 +112,6 @@ public final class ClassfileParser {
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
     public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_8_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
-
-    private final boolean verify = false;
 
     private final ClasspathFile classfile;
 
@@ -131,8 +129,6 @@ public final class ClassfileParser {
     private int minorVersion;
     private int majorVersion;
     private int classFlags;
-
-    private Symbol<Type>[] classInnerClasses;
 
     private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
@@ -478,14 +474,14 @@ public final class ClassfileParser {
         Attribute[] methodAttributes = new Attribute[attributeCount];
 
         {
-            SignatureAttribute genericSignature = null;
+            @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
             CodeAttribute codeAttribute = null;
             Attribute checkedExceptions = null;
             Attribute runtimeVisibleAnnotations = null;
             Attribute runtimeVisibleTypeAnnotations = null;
             Attribute runtimeInvisibleTypeAnnotations = null;
-            Attribute runtimeVisibleParameterAnnotations = null;
-            Attribute annotationDefault = null;
+            @SuppressWarnings("unused") Attribute runtimeVisibleParameterAnnotations = null;
+            @SuppressWarnings("unused") Attribute annotationDefault = null;
             MethodParametersAttribute methodParameters = null;
 
             for (int i = 0; i < attributeCount; ++i) {
@@ -571,8 +567,8 @@ public final class ClassfileParser {
         }
 
         SourceFileAttribute sourceFileName = null;
-        SignatureAttribute genericSignature = null;
-        Attribute runtimeVisibleAnnotations = null;
+        @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
+        @SuppressWarnings("unused") Attribute runtimeVisibleAnnotations = null;
         Attribute runtimeVisibleTypeAnnotations = null;
         Attribute runtimeInvisibleTypeAnnotations = null;
         EnclosingMethodAttribute enclosingMethod = null;
@@ -644,59 +640,6 @@ public final class ClassfileParser {
         return classAttributes;
     }
 
-    private Attribute[] parseAttributes() {
-        int attributeCount = stream.readU2();
-        if (attributeCount == 0) {
-            return Attribute.EMPTY_ARRAY;
-        }
-        Attribute[] attrs = new Attribute[attributeCount];
-        for (int i = 0; i < attributeCount; i++) {
-            attrs[i] = parseAttribute();
-        }
-        return attrs;
-    }
-
-    private Attribute parseAttribute() {
-        int nameIndex = stream.readU2();
-        Symbol<Name> name = pool.symbolAt(nameIndex);
-        int length = stream.readS4();
-        if (CodeAttribute.NAME.equals(name)) {
-            return parseCodeAttribute(name);
-        }
-        if (EnclosingMethodAttribute.NAME.equals(name)) {
-            return parseEnclosingMethodAttribute(name);
-        }
-        if (InnerClassesAttribute.NAME.equals(name)) {
-            return parseInnerClasses(name);
-        }
-        if (ExceptionsAttribute.NAME.equals(name)) {
-            return parseExceptions(name);
-        }
-        if (BootstrapMethodsAttribute.NAME.equals(name)) {
-            return parseBootstrapMethods(name);
-        }
-        if (ConstantValueAttribute.NAME.equals(name)) {
-            return parseConstantValue(name);
-        }
-        if (MethodParametersAttribute.NAME.equals(name)) {
-            return parseMethodParameters(name);
-        }
-        if (SignatureAttribute.NAME.equals(name)) {
-            return parseSignatureAttribute(name);
-        }
-        if (LineNumberTable.NAME.equals(name)) {
-            return parseLineNumberTable(name);
-        }
-        if (SourceFileAttribute.NAME.equals(name)) {
-            return parseSourceFileAttribute(name);
-        }
-        if (StackMapTableAttribute.NAME.equals(name)) {
-            return parseStackMapTableAttribute(name);
-        }
-        byte[] data = stream.readByteArray(length);
-        return new Attribute(name, data);
-    }
-
     private SourceFileAttribute parseSourceFileAttribute(Symbol<Name> name) {
         assert Name.SourceFile.equals(name);
         int sourceFileIndex = stream.readU2();
@@ -724,12 +667,6 @@ public final class ClassfileParser {
         return new SignatureAttribute(name, signatureIndex);
     }
 
-    private SourceFileAttribute parseSourceFileNameAttribute(Symbol<Name> name) {
-        assert Name.Signature.equals(name);
-        int sourceFileNameIndex = stream.readU2();
-        return new SourceFileAttribute(name, sourceFileNameIndex);
-    }
-
     private MethodParametersAttribute parseMethodParameters(Symbol<Name> name) {
         int entryCount = stream.readU1();
         if (entryCount == 0) {
@@ -742,12 +679,6 @@ public final class ClassfileParser {
             entries[i] = new MethodParametersAttribute.Entry(nameIndex, accessFlags);
         }
         return new MethodParametersAttribute(name, entries);
-    }
-
-    private Attribute parseConstantValue(Symbol<Name> name) {
-        assert Name.ConstantValue.equals(name);
-        int constantValueIndex = stream.readU2();
-        return new ConstantValueAttribute(constantValueIndex);
     }
 
     private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
@@ -798,8 +729,6 @@ public final class ClassfileParser {
         assert Name.InnerClasses.equals(name);
         final int entryCount = stream.readU2();
         final InnerClassesAttribute.Entry[] innerClassInfos = new InnerClassesAttribute.Entry[entryCount];
-        final Symbol<Type>[] innerClasses = new Symbol[innerClassInfos.length];
-        int nextInnerClass = 0;
         for (int i = 0; i < entryCount; ++i) {
             final InnerClassesAttribute.Entry innerClassInfo = parseInnerClassEntry();
             final int innerClassIndex = innerClassInfo.innerClassIndex;
@@ -830,15 +759,6 @@ public final class ClassfileParser {
                 classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
                 classFlags |= (innerClassInfo.innerClassAccessFlags & RECOGNIZED_INNER_CLASS_MODIFIERS);
             }
-
-            final Symbol<Type> outerClassType = context.getTypes().fromName(pool.classAt(outerClassIndex, "outer class descriptor").getName(pool));
-            if (outerClassType.equals(classType)) {
-                // The inner class is enclosed by the current class
-                innerClasses[nextInnerClass++] = context.getTypes().fromName(pool.classAt(innerClassIndex).getName(pool));
-            } else {
-                // The inner class is enclosed by some class other than current class: ignore it
-            }
-
             for (int j = 0; j < i; ++j) {
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
                 if (otherInnerClassInfo != null) {
@@ -847,17 +767,6 @@ public final class ClassfileParser {
                     }
                 }
             }
-            innerClassInfos[i] = innerClassInfo;
-        }
-        if (nextInnerClass != 0) {
-            if (nextInnerClass == innerClasses.length) {
-                classInnerClasses = innerClasses;
-            } else {
-                classInnerClasses = new Symbol[nextInnerClass];
-                System.arraycopy(innerClasses, 0, classInnerClasses, 0, nextInnerClass);
-            }
-        } else {
-            classInnerClasses = Symbol.EMPTY_ARRAY;
         }
         return new InnerClassesAttribute(name, innerClassInfos);
     }
@@ -1039,57 +948,6 @@ public final class ClassfileParser {
     }
 
     /**
-     * Parses an Unqualified Name as defined in $4.2.2 of the JVM spec 8 at a given offset of a
-     * string.
-     *
-     * @param string the string to test
-     * @param offset the offset at which a legal field or type identifier should occur
-     * @return the first character after the legal unqualified name or -1 if there is no legal
-     *         unqualified name at {@code offset}
-     */
-    private static int parseUnqualifiedName(String string, int offset, boolean isMethod) {
-        boolean isFirstChar = true;
-        char ch;
-        int i;
-        for (i = offset; i != string.length(); i++, isFirstChar = false) {
-            ch = string.charAt(i);
-            if (ch == '.' || ch == ';' ||
-                            ch == '[' || ch == '/' ||
-                            (isMethod && (ch == '<' || ch == '>'))) {
-                break;
-            }
-        }
-        return isFirstChar ? -1 : i;
-    }
-
-    private static void verifyFieldName(Symbol<Name> name) {
-        if (!isValidFieldName(name)) {
-            throw classFormatError("Invalid field name: " + name);
-        }
-    }
-
-    private static boolean isValidMethodName(Symbol<Name> name, boolean allowClinit) {
-        if (name.equals(Name.INIT)) {
-            return true;
-        }
-        if (allowClinit && name.equals(Name.CLINIT)) {
-            return true;
-        }
-        return parseUnqualifiedName(name.toString(), 0, true) == name.toString().length();
-    }
-
-    private static void verifyMethodName(Symbol<Name> name, boolean allowClinit) {
-        if (!isValidMethodName(name, allowClinit)) {
-            throw classFormatError("Invalid method name: " + name);
-        }
-    }
-
-    private static boolean isValidFieldName(Symbol<Name> name) {
-
-        return name.isValid() && parseUnqualifiedName(name.toString(), 0, false) == name.toString().length();
-    }
-
-    /**
      * Verifies that the flags for a field are valid.
      *
      * @param name the name of the field
@@ -1144,8 +1002,8 @@ public final class ClassfileParser {
         final Attribute[] fieldAttributes = new Attribute[attributeCount];
 
         ConstantValueAttribute constantValue = null;
-        SignatureAttribute genericSignature = null;
-        Attribute runtimeVisibleAnnotations = null;
+        @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
+        @SuppressWarnings("unused") Attribute runtimeVisibleAnnotations = null;
         Attribute runtimeVisibleTypeAnnotations = null;
         Attribute runtimeInvisibleTypeAnnotations = null;
 
@@ -1292,7 +1150,8 @@ public final class ClassfileParser {
         return interfaces;
     }
 
-    public int getMajorVersion() {
+    int getMajorVersion() {
+        assert majorVersion != 0;
         return majorVersion;
     }
 }

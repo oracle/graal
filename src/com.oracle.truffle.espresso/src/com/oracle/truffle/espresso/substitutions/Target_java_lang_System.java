@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.MetaUtil;
