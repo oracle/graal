@@ -48,13 +48,12 @@ public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
     private final Object value;
 
     LLVMDebugSimpleObjectBuilder(LLVMDebugValue.Builder builder, Object value) {
-        assert value != null;
         this.builder = builder;
         this.value = value;
     }
 
     private LLVMDebugValue getProvider() {
-        return builder != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
+        return builder != null && value != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
     }
 
     @Override
