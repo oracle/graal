@@ -474,14 +474,17 @@ public final class ClassfileParser {
         Attribute[] methodAttributes = new Attribute[attributeCount];
 
         {
-            @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
+            @SuppressWarnings("unused")
+            SignatureAttribute genericSignature = null;
             CodeAttribute codeAttribute = null;
             Attribute checkedExceptions = null;
             Attribute runtimeVisibleAnnotations = null;
             Attribute runtimeVisibleTypeAnnotations = null;
             Attribute runtimeInvisibleTypeAnnotations = null;
-            @SuppressWarnings("unused") Attribute runtimeVisibleParameterAnnotations = null;
-            @SuppressWarnings("unused") Attribute annotationDefault = null;
+            @SuppressWarnings("unused")
+            Attribute runtimeVisibleParameterAnnotations = null;
+            @SuppressWarnings("unused")
+            Attribute annotationDefault = null;
             MethodParametersAttribute methodParameters = null;
 
             for (int i = 0; i < attributeCount; ++i) {
@@ -567,8 +570,10 @@ public final class ClassfileParser {
         }
 
         SourceFileAttribute sourceFileName = null;
-        @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
-        @SuppressWarnings("unused") Attribute runtimeVisibleAnnotations = null;
+        @SuppressWarnings("unused")
+        SignatureAttribute genericSignature = null;
+        @SuppressWarnings("unused")
+        Attribute runtimeVisibleAnnotations = null;
         Attribute runtimeVisibleTypeAnnotations = null;
         Attribute runtimeInvisibleTypeAnnotations = null;
         EnclosingMethodAttribute enclosingMethod = null;
@@ -1005,8 +1010,10 @@ public final class ClassfileParser {
         final Attribute[] fieldAttributes = new Attribute[attributeCount];
 
         ConstantValueAttribute constantValue = null;
-        @SuppressWarnings("unused") SignatureAttribute genericSignature = null;
-        @SuppressWarnings("unused") Attribute runtimeVisibleAnnotations = null;
+        @SuppressWarnings("unused")
+        SignatureAttribute genericSignature = null;
+        @SuppressWarnings("unused")
+        Attribute runtimeVisibleAnnotations = null;
         Attribute runtimeVisibleTypeAnnotations = null;
         Attribute runtimeInvisibleTypeAnnotations = null;
 
