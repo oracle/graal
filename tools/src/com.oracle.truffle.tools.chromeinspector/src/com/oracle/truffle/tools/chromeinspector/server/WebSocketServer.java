@@ -229,19 +229,33 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 pbInputStream.unread(buf);
             }
             if (!"GET".equals(text)) {
-                try (OutputStream outputStream = finalAccept.getOutputStream()) {
-                    ContentType contentType = new ContentType(NanoHTTPD.MIME_PLAINTEXT);
-                    PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, contentType.getEncoding())), false);
-                    pw.append("HTTP/1.1 ").append(Status.BAD_REQUEST.getDescription()).append(" \r\n");
-                    String mimeType = contentType.getContentTypeHeader();
-                    if (mimeType != null) {
-                        pw.append("Content-Type: ").append(mimeType).append("\r\n");
+                return new ClientHandler(this, pbInputStream, finalAccept) {
+                    @Override
+                    public void run() {
+                        try (OutputStream outputStream = finalAccept.getOutputStream()) {
+                            ContentType contentType = new ContentType(NanoHTTPD.MIME_PLAINTEXT);
+                            PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, contentType.getEncoding())), false);
+                            pw.append("HTTP/1.1 ").append(Status.BAD_REQUEST.getDescription()).append(" \r\n");
+                            String mimeType = contentType.getContentTypeHeader();
+                            if (mimeType != null) {
+                                pw.append("Content-Type: ").append(mimeType).append("\r\n");
+                            }
+                            pw.append("\r\n");
+                            pw.append("WebSockets request was expected");
+                            pw.flush();
+                        } catch (IOException ex) {
+                            // The handler is not associated with any particular session,
+                            // log to some of the sessions:
+                            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
+                            if (sessionIterator.hasNext()) {
+                                sessionIterator.next().context.logException(ex);
+                            }
+                        } finally {
+                            NanoHTTPD.safeClose(pbInputStream);
+                            NanoHTTPD.safeClose(finalAccept);
+                        }
                     }
-                    pw.append("\r\n");
-                    pw.append("WebSockets request was expected");
-                    pw.flush();
-                }
-                return null;
+                };
             }
         } catch (IOException ex) {
         }
