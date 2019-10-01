@@ -146,11 +146,12 @@ suite = {
     "WASM_SOURCE_TESTS" : {
       "platformDependent" : True,
       "description" : "Tests compiled from source code.",
-      "layout" : {
-        "./" : [
-          "dependency:com.oracle.truffle.wasm.source.test/*",
-        ],
-      },
+      "dependencies" : [
+        "com.oracle.truffle.wasm.source.test",
+      ],
+      "distDependencies" : [
+        "WASM_TESTS",
+      ],
       "defaultBuild" : False,
       "maven" : False,
     },
