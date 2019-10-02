@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * <b>Security note:</b> These substitutions effectively <b>DISABLE</b> access control checks
  * defeating the AccessController purpose.
  */
-@EspressoSubstitutions
+// @EspressoSubstitutions
 public final class Target_java_security_AccessController {
 
     @Substitution

@@ -240,13 +240,14 @@ public final class Meta implements ContextAccess {
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        Thread_inheritedAccessControlContext = Thread.lookupDeclaredField(Name.inheritedAccessControlContext, Type.AccessControlContext);
         Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
         Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
-        toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
+        VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
 
         sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
         constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.Object);
@@ -254,19 +255,31 @@ public final class Meta implements ContextAccess {
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
+        System_securityManager = System.lookupDeclaredField(Name.security, Type.SecurityManager);
+
+        ProtectionDomain = knownKlass(Type.ProtectionDomain);
+        ProtectionDomain_impliesCreateAccessControlContext = ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
+        ProtectionDomain_init_CodeSource_PermissionCollection = ProtectionDomain.lookupDeclaredMethod(Name.INIT, Signature.CodeSource_PermissionCollection);
+
+        AccessControlContext = knownKlass(Type.AccessControlContext);
+        AccessControlContext_isAuthorized = AccessControlContext.lookupDeclaredMethod(Name.isAuthorized, Signature._boolean);
+        ACC_context = AccessControlContext.lookupDeclaredField(Name.context, Type.ProtectionDomain_array);
+        ACC_privilegedContext = AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.AccessControlContext);
+        ACC_isPrivileged = AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
+        ACC_isAuthorized = AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
 
         MethodType = knownKlass(Type.MethodType);
-        toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        MethodType_toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        MethodType_fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
 
         MemberName = knownKlass(Type.MemberName);
         HIDDEN_VMINDEX = MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
         HIDDEN_VMTARGET = MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
-        getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
-        MNclazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
-        MNname = MemberName.lookupDeclaredField(Name.name, Type.String);
-        MNtype = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
-        MNflags = MemberName.lookupDeclaredField(Name.flags, Type._int);
+        MemberName_getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
+        MemberName_clazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
+        MemberName_name = MemberName.lookupDeclaredField(Name.name, Type.String);
+        MemberName_type = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
+        MemberName_flags = MemberName.lookupDeclaredField(Name.flags, Type._int);
 
         MethodHandle = knownKlass(Type.MethodHandle);
         invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
@@ -277,25 +290,25 @@ public final class Meta implements ContextAccess {
         linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
         linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
         linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
-        MHtype = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
-        form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
+        MethodHandle_type = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
+        MethodHandle_form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
 
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
 
         CallSite = knownKlass(Type.CallSite);
-        CStarget = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
+        CallSite_target = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
 
         LambdaForm = knownKlass(Type.LambdaForm);
-        vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
-        isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
-        compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
+        LambdaForm_vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
+        LambdaForm_isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
+        LambdaForm_compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
-        linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
-        linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
-        linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
-        findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
+        MethodHandleNatives_linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
+        MethodHandleNatives_linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
+        MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
 
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
         AssertionStatusDirectives_classes = AssertionStatusDirectives.lookupField(Name.classes, Type.String_array);
@@ -484,28 +497,41 @@ public final class Meta implements ContextAccess {
     public final Field Thread_priority;
     public final Field Thread_blockerLock;
     public final Field Thread_daemon;
+    public final Field Thread_inheritedAccessControlContext;
     public final Field Thread_state;
 
     public final ObjectKlass sun_misc_VM;
-    public final Method toThreadState;
+    public final Method VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
     public final Method System_exit;
+    public final Field System_securityManager;
+
+    public final ObjectKlass ProtectionDomain;
+    public final Method ProtectionDomain_impliesCreateAccessControlContext;
+    public final Method ProtectionDomain_init_CodeSource_PermissionCollection;
+
+    public final ObjectKlass AccessControlContext;
+    public final Method AccessControlContext_isAuthorized;
+    public final Field ACC_context;
+    public final Field ACC_privilegedContext;
+    public final Field ACC_isPrivileged;
+    public final Field ACC_isAuthorized;
 
     public final ObjectKlass MethodType;
-    public final Method toMethodDescriptorString;
+    public final Method MethodType_toMethodDescriptorString;
 
     public final ObjectKlass MemberName;
-    public final Method getSignature;
-    public final Method fromMethodDescriptorString;
+    public final Method MemberName_getSignature;
+    public final Method MethodType_fromMethodDescriptorString;
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;
-    public final Field MNclazz;
-    public final Field MNname;
-    public final Field MNtype;
-    public final Field MNflags;
+    public final Field MemberName_clazz;
+    public final Field MemberName_name;
+    public final Field MemberName_type;
+    public final Field MemberName_flags;
 
     public final ObjectKlass MethodHandle;
     public final Method invoke;
@@ -516,25 +542,25 @@ public final class Meta implements ContextAccess {
     public final Method linkToSpecial;
     public final Method linkToStatic;
     public final Method linkToVirtual;
-    public final Field MHtype;
-    public final Field form;
+    public final Field MethodHandle_type;
+    public final Field MethodHandle_form;
 
     public final ObjectKlass MethodHandles;
     public final Method lookup;
 
     public final ObjectKlass CallSite;
-    public final Field CStarget;
+    public final Field CallSite_target;
 
     public final ObjectKlass LambdaForm;
-    public final Field vmentry;
-    public final Field isCompiled;
-    public final Method compileToBytecode;
+    public final Field LambdaForm_vmentry;
+    public final Field LambdaForm_isCompiled;
+    public final Method LambdaForm_compileToBytecode;
 
     public final ObjectKlass MethodHandleNatives;
-    public final Method linkMethod;
-    public final Method linkMethodHandleConstant;
-    public final Method findMethodHandleType;
-    public final Method linkCallSite;
+    public final Method MethodHandleNatives_linkMethod;
+    public final Method MethodHandleNatives_linkMethodHandleConstant;
+    public final Method MethodHandleNatives_findMethodHandleType;
+    public final Method MethodHandleNatives_linkCallSite;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

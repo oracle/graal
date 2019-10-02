@@ -113,12 +113,12 @@ public interface MethodHandleConstant extends PoolConstant {
                 i++;
             }
             StaticObject rtype = payload.resolveReturnKlass().mirror();
-            StaticObject mtype = (StaticObject) meta.findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
                             null,
                             rtype, StaticObject.createArray(meta.Class_Array, ptypes));
 
             Klass mklass = payload.getDeclaringKlass();
-            return new Resolved((StaticObject) meta.linkMethodHandleConstant.invokeDirect(
+            return new Resolved((StaticObject) meta.MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
                             null,
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));

@@ -1612,7 +1612,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
 
-        StaticObject memberName = (StaticObject) meta.linkCallSite.invokeDirect(
+        StaticObject memberName = (StaticObject) meta.MethodHandleNatives_linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bootstrapmethodMethodHandle,
@@ -1654,7 +1654,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         } catch (Throwable e) {
             throw meta.throwEx(BootstrapMethodError.class);
         }
-        return (StaticObject) meta.findMethodHandleType.invokeDirect(
+        return (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
                         rtype, StaticObject.createArray(meta.Class_Array, ptypes));
     }
@@ -2036,10 +2036,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i + start] = peekInt(frame, argAt);    break;
-                case Byte    : args[i + start] = peekInt(frame, argAt);    break;
-                case Short   : args[i + start] = peekInt(frame, argAt);    break;
-                case Char    : args[i + start] = peekInt(frame, argAt);    break;
+                case Boolean : // Fall through
+                case Byte    : // Fall through
+                case Short   : // Fall through
+                case Char    : // Fall through
                 case Int     : args[i + start] = peekInt(frame, argAt);    break;
                 case Float   : args[i + start] = peekFloat(frame, argAt);  break;
                 case Long    : args[i + start] = peekLong(frame, argAt);   break;
