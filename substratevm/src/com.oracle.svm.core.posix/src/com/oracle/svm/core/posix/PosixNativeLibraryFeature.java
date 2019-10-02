@@ -57,15 +57,19 @@ class PosixNativeLibraryFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();
     }
-}
 
-class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PosixNativeLibrarySupport() {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
         }
+    }
+}
+
+final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private PosixNativeLibrarySupport() {
     }
 
     static void initialize() {
