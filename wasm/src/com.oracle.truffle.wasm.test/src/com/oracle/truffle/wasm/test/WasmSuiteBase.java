@@ -266,11 +266,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             return collectedCases;
         }
 
-        // Open the index file of the test bundle. The index file contains the available tests for that bundle.
-        InputStream index = getClass().getResourceAsStream(String.format("/tests/%s/index", testBundle));
+        // Open the wasm_test_index file of the test bundle. The wasm_test_index file contains the available tests for that bundle.
+        InputStream index = getClass().getResourceAsStream(String.format("/test/%s/wasm_test_index", testBundle));
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 
-        // Iterate through the available tests of the bundle.
+        // Iterate through the available test of the bundle.
         while (indexReader.ready()) {
             String testName = indexReader.readLine().trim();
 
@@ -279,8 +279,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 continue;
             }
 
-            String mainWatContent = getResourceContents(String.format("/tests/%s/%s.wat", testBundle, testName));
-            String resultContent = getResourceContents(String.format("/tests/%s/%s.result", testBundle, testName));
+            String mainWatContent = getResourceContents(String.format("/test/%s/%s.wat", testBundle, testName));
+            String resultContent = getResourceContents(String.format("/test/%s/%s.result", testBundle, testName));
 
             String[] resultTypeValue = resultContent.split("\\s+");
             String resultType = resultTypeValue[0];
