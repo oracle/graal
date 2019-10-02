@@ -143,7 +143,7 @@ sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-
     timelimit: "1:00:00"
 }
 
-sulong-openjdk11-only: ${openjdk11} {
+sulong-labsjdk11-only: ${labsjdk11} {
     downloads: {
         "EXTRA_JAVA_HOMES": {"pathlist": []}
     }
@@ -178,8 +178,8 @@ builds += [
 
   ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
-  ${sulong-gateTestLLVMorg-linux} ${sulong-openjdk11-only} ${linux-aarch64} { name: gate-sulong-build_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build"]] }
-  ${sulong-gateTestLLVMorg-linux} ${sulong-openjdk11-only} { name: gate-sulong-build_bundled-llvm-linux-amd64-jdk11, run: [
+  ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk11-only} ${linux-aarch64} { name: gate-sulong-build_bundled-llvm-linux-aarch64, run: [[mx, gate, --tags, "build"]] }
+  ${sulong-gateTestLLVMorg-linux} ${sulong-labsjdk11-only} { name: gate-sulong-build_bundled-llvm-linux-amd64-jdk11, run: [
     [mx, gate, --tags, "build"]
   ] ${sulong-test-toolchain} }
 
