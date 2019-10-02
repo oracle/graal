@@ -102,6 +102,12 @@ public class AArch64HotSpotRegisterAllocationConfig extends RegisterAllocationCo
     /**
      * Excluding r27 is a temporary solution until we exclude r27 unconditionally at
      * {@link jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig}.
+     *
+     * The underlying reason is that HotSpot does not intend to support r27 as an allocatable
+     * register. This register is excluded from callee-saved register at
+     * cpu/aarch64/sharedRuntime_aarch64.cpp:RegisterSaver::save_live_registers, and may lead to
+     * dereferencing unknown value from the stack at
+     * share/runtime/stackValue.cpp:StackValue::create_stack_value during deoptimization.
      */
     // @formatter:off
     static final Register[] registerAllocationOrder = {
