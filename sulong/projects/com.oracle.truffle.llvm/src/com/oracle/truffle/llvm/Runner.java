@@ -686,7 +686,7 @@ final class Runner {
             LLVMScope fileScope = new LLVMScope();
             LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory);
             LLVMParser parser = new LLVMParser(source, runtime);
-            LLVMParserResult parserResult = parser.parse(module, targetDataLayout, nodeFactory);
+            LLVMParserResult parserResult = parser.parse(module, targetDataLayout);
             parserResults.add(parserResult);
             return parserResult;
         } else if (!library.isNative()) {

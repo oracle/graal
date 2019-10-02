@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -50,7 +51,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
@@ -72,7 +72,7 @@ public final class LLVMParser {
         this.library = runtime.getLibrary();
     }
 
-    public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout, NodeFactory nodeFactory) {
+    public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout) {
         List<GlobalVariable> externalGlobals = new ArrayList<>();
         List<GlobalVariable> definedGlobals = new ArrayList<>();
         List<FunctionSymbol> externalFunctions = new ArrayList<>();
@@ -83,7 +83,7 @@ public final class LLVMParser {
         defineAliases(module.getAliases(), importedSymbols);
 
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, StackManager.createRootFrame(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout);
-        createDebugInfo(module, symbolResolver, nodeFactory);
+        createDebugInfo(module, symbolResolver);
         return new LLVMParserResult(runtime, externalFunctions, definedGlobals, externalGlobals, importedSymbols, targetDataLayout);
     }
 
@@ -221,19 +221,19 @@ public final class LLVMParser {
         }
     }
 
-    private void createDebugInfo(ModelModule model, LLVMSymbolReadResolver symbolResolver, NodeFactory nodeFactory) {
+    private void createDebugInfo(ModelModule model, LLVMSymbolReadResolver symbolResolver) {
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             final LLVMSourceContext sourceContext = context.getSourceContext();
 
             model.getSourceGlobals().forEach((symbol, irValue) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-                final LLVMDebugObjectBuilder value = nodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
                 sourceContext.registerStatic(symbol, value);
             });
 
             model.getSourceStaticMembers().forEach(((type, symbol) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-                final LLVMDebugObjectBuilder value = nodeFactory.createDebugStaticValue(node, symbol instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, symbol instanceof GlobalVariable);
                 type.setValue(value);
             }));
         }

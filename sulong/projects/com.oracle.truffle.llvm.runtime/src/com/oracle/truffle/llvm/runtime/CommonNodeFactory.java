@@ -1,15 +1,27 @@
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugManagedValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
@@ -27,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
@@ -125,6 +138,61 @@ public class CommonNodeFactory {
         }
 
         return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
+    }
+
+    public static LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId,
+                                                  String blockName, LLVMContext context) {
+        return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
+    }
+
+    public static LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
+        final LLVMDebugValue.Builder builder = getDebugDynamicValueBuilder(isDeclaration).createBuilder();
+        return new LLVMFrameValueAccessImpl(slot, builder);
+    }
+
+    // these have no internal state but are used often, so we cache and reuse them
+    private static LLVMDebugBuilder debugDeclarationBuilder = null;
+    private static LLVMDebugBuilder debugValueBuilder = null;
+
+    private static LLVMDebugBuilder getDebugDynamicValueBuilder(boolean isDeclaration) {
+        if (isDeclaration) {
+            if (debugDeclarationBuilder == null) {
+                debugDeclarationBuilder = CommonNodeFactory::createDebugDeclarationBuilder;
+            }
+            return debugDeclarationBuilder;
+        } else {
+            if (debugValueBuilder == null) {
+                debugValueBuilder = CommonNodeFactory::createDebugValueBuilder;
+            }
+            return debugValueBuilder;
+        }
+    }
+
+    public static LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
+        LLVMDebugValue.Builder toDebugNode = createDebugValueBuilder();
+
+        Object value = null;
+        if (isGlobal) {
+            assert valueNode instanceof LLVMAccessGlobalVariableStorageNode;
+            LLVMAccessGlobalVariableStorageNode node = (LLVMAccessGlobalVariableStorageNode) valueNode;
+            value = new LLVMDebugGlobalVariable(node.getDescriptor());
+        } else {
+            try {
+                value = valueNode.executeGeneric(null);
+            } catch (Throwable ignored) {
+                // constant values should not need frame access
+            }
+        }
+
+        if (value != null) {
+            return LLVMDebugSimpleObjectBuilder.create(toDebugNode, value);
+        } else {
+            return LLVMDebugObjectBuilder.UNAVAILABLE;
+        }
+    }
+
+    public static LLVMDebugValue.Builder createDebugDeclarationBuilder() {
+        return LLVMToDebugDeclarationNodeGen.create();
     }
 
     public static LLVMDebugValue.Builder createDebugValueBuilder() {

@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -111,7 +112,7 @@ public final class LLVMRuntimeDebugInformation {
         private void visitFrameValue(String name) {
             final FrameSlot slot = frame.findFrameSlot(name);
             assert slot != null;
-            final LLVMFrameValueAccess valueAccess = context.getLanguage().getNodeFactory().createDebugFrameValue(slot, isDeclaration);
+            final LLVMFrameValueAccess valueAccess = CommonNodeFactory.createDebugFrameValue(slot, isDeclaration);
             context.getSourceContext().registerFrameValue(symbol, valueAccess);
             notNullableSlots.add(slot);
             variable.addStaticValue();
@@ -120,7 +121,7 @@ public final class LLVMRuntimeDebugInformation {
         private void visitSimpleConstant(SymbolImpl constant) {
             final LLVMExpressionNode node = symbols.resolve(constant);
             assert node != null;
-            final LLVMDebugObjectBuilder value = context.getLanguage().getNodeFactory().createDebugStaticValue(node, false);
+            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, false);
             context.getSourceContext().registerStatic(symbol, value);
             variable.addStaticValue();
         }
@@ -204,7 +205,7 @@ public final class LLVMRuntimeDebugInformation {
                 }
 
                 final LLVMSourceSymbol symbol = local.getSymbol();
-                final LLVMFrameValueAccess alloc = context.getLanguage().getNodeFactory().createDebugFrameValue(frameSlot, true);
+                final LLVMFrameValueAccess alloc = CommonNodeFactory.createDebugFrameValue(frameSlot, true);
                 notNullableSlots.add(frameSlot);
                 context.getSourceContext().registerFrameValue(symbol, alloc);
                 local.addStaticValue();

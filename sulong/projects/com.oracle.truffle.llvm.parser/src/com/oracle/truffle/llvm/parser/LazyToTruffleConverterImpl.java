@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -80,6 +81,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LazyFunctionParser parser;
     private final DebugInfoFunctionProcessor diProcessor;
     private final DataLayout dataLayout;
+    private final NodeFactory nodeFactory;
 
     private RootCallTarget resolved;
 
@@ -92,6 +94,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.diProcessor = diProcessor;
         this.resolved = null;
         this.dataLayout = dataLayout;
+        this.nodeFactory = runtime.getNodeFactory();
     }
 
     @Override
@@ -132,7 +135,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         dbgInfoHandler.registerStaticDebugSymbols(method);
 
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime.getContext(), runtime.getLibrary(), frame, uniquesRegion, phis, method.getParameters().size(), symbols, method,
-                        liveness, notNullable, dbgInfoHandler, dataLayout);
+                        liveness, notNullable, dbgInfoHandler, dataLayout, nodeFactory);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableBeforeBlock(), notNullable);
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableAfterBlock(), notNullable);

@@ -59,15 +59,11 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -223,10 +219,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
@@ -1678,12 +1672,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId,
-                    String blockName) {
-        return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
-    }
-
-    @Override
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
                     FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
@@ -2230,41 +2218,11 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
-        final LLVMDebugValue.Builder builder = getDebugDynamicValueBuilder(isDeclaration).createBuilder();
-        return new LLVMFrameValueAccessImpl(slot, builder);
-    }
-
-    @Override
     public LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths) {
         if (offsets == null || lengths == null) {
             return null;
         } else {
             return LLVMDebugInitNodeFactory.AggregateInitNodeGen.create(targetSlot, offsets, lengths);
-        }
-    }
-
-    @Override
-    public LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
-        LLVMDebugValue.Builder toDebugNode = createDebugValueBuilder();
-
-        Object value = null;
-        if (isGlobal) {
-            assert valueNode instanceof LLVMAccessGlobalVariableStorageNode;
-            LLVMAccessGlobalVariableStorageNode node = (LLVMAccessGlobalVariableStorageNode) valueNode;
-            value = new LLVMDebugGlobalVariable(node.getDescriptor());
-        } else {
-            try {
-                value = valueNode.executeGeneric(null);
-            } catch (Throwable ignored) {
-                // constant values should not need frame access
-            }
-        }
-
-        if (value != null) {
-            return LLVMDebugSimpleObjectBuilder.create(toDebugNode, value);
-        } else {
-            return LLVMDebugObjectBuilder.UNAVAILABLE;
         }
     }
 
@@ -2380,30 +2338,6 @@ public class BasicNodeFactory implements NodeFactory {
         return addressZeroInits;
     }
 
-    @Override
-    public LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
-        switch (kind) {
-            case I1:
-                return LLVMI1LoadNodeGen.create(null);
-            case I8:
-                return LLVMI8LoadNodeGen.create(null);
-            case I16:
-                return LLVMI16LoadNodeGen.create(null);
-            case I32:
-                return LLVMI32LoadNodeGen.create(null);
-            case I64:
-                return LLVMI64LoadNodeGen.create(null);
-            case FLOAT:
-                return LLVMFloatLoadNodeGen.create(null);
-            case DOUBLE:
-                return LLVMDoubleLoadNodeGen.create(null);
-            case POINTER:
-                return LLVMPointerDirectLoadNodeGen.create(null);
-            default:
-                throw new IllegalStateException("unexpected interop kind " + kind);
-        }
-    }
-
     private static LLVMLoadNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
@@ -2434,30 +2368,6 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMPointerDirectLoadNodeGen.create(loadTarget);
         } else {
             throw new AssertionError(resultType);
-        }
-    }
-
-    @Override
-    public LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
-        switch (kind) {
-            case I1:
-                return LLVMI1StoreNodeGen.create(null, null);
-            case I8:
-                return LLVMI8StoreNodeGen.create(null, null);
-            case I16:
-                return LLVMI16StoreNodeGen.create(null, null);
-            case I32:
-                return LLVMI32StoreNodeGen.create(null, null);
-            case I64:
-                return LLVMI64StoreNodeGen.create(null, null);
-            case FLOAT:
-                return LLVMFloatStoreNodeGen.create(null, null);
-            case DOUBLE:
-                return LLVMDoubleStoreNodeGen.create(null, null);
-            case POINTER:
-                return LLVMPointerStoreNodeGen.create(null, null);
-            default:
-                throw new IllegalStateException("unexpected interop kind " + kind);
         }
     }
 
