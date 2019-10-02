@@ -321,6 +321,6 @@ public final class LLVMRuntimeDebugInformation {
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
         final LLVMExpressionNode containerRead = CommonNodeFactory.createFrameRead(MetaType.DEBUG, targetSlot);
-        return context.getLanguage().getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        return CommonNodeFactory.createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 }
