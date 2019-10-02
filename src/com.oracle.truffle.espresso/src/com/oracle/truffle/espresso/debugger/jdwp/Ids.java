@@ -26,13 +26,13 @@ import java.lang.ref.WeakReference;
 
 public class Ids {
 
-    private static volatile long uniqueID;
-    private static WeakReference[] objects = new WeakReference[0];
-    public static Object RECLAIMED = new Object();
+    private static volatile long uniqueID = 1;
+    private static WeakReference[] objects = new WeakReference[1];
+    public static Object UNKNOWN = new Object();
 
     public static long getIdAsLong(Object object) {
         // lookup in cache
-        for (int i = 0; i < objects.length; i++) {
+        for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
             Object obj = objects[i].get();
             if (obj == object) {
@@ -51,7 +51,7 @@ public class Ids {
         WeakReference ref = objects[id];
         Object o = ref.get();
         if (o == null) {
-            return RECLAIMED;
+            return UNKNOWN;
         } else {
             return o;
         }
@@ -62,10 +62,9 @@ public class Ids {
         assert objects.length == id - 1;
 
         WeakReference[] expandedArray = new WeakReference[objects.length + 1];
-        System.arraycopy(objects, 0, expandedArray, 0, objects.length);
+        System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-
         return id;
     }
 

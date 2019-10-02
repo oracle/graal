@@ -24,10 +24,7 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.SourceLocation;
-import com.oracle.truffle.espresso.debugger.SuspendStrategy;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.runtime.VMInitializedListener;
-import com.oracle.truffle.espresso.runtime.VMInitializedListeners;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -110,21 +107,6 @@ public class DebuggerConnection implements JDWPCommands {
 
         @Override
         public void run() {
-
-            // first send the VM_START event to signal that we're ready to process commands
-            VMInitializedListeners.getDefault().register(new VMInitializedListener() {
-                @Override
-                public void fire() {
-                    PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-                    stream.writeByte(SuspendStrategy.NONE);
-                    stream.writeInt(1);
-                    stream.writeByte(RequestedJDWPEvents.VM_START);
-                    stream.writeInt(0);
-                    stream.writeByteArray(Ids.getId(Thread.currentThread()));
-                    //connection.queuePacket(stream);
-                }
-            });
-
             while(!Thread.currentThread().isInterrupted()) {
                 try {
                     // blocking call
@@ -143,7 +125,7 @@ public class DebuggerConnection implements JDWPCommands {
 
             if (packet.flags == Packet.Reply) {
                 // reply packet from debugger
-                //System.out.println("Reply packet from debugger");
+                System.out.println("Reply packet from debugger");
             } else {
                 // process a command packet from debugger
                 //System.out.println("received command(" + packet.cmdSet + "." + packet.cmd + ")");
@@ -175,6 +157,9 @@ public class DebuggerConnection implements JDWPCommands {
                     }
                     case JDWP.ReferenceType.ID: {
                         switch (packet.cmd) {
+                            case JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.ID:
+                                reply = JDWP.ReferenceType.SIGNATURE_WITH_GENERIC.createReply(packet);
+                                break;
                             case JDWP.ReferenceType.METHODS_WITH_GENERIC.ID:
                                 reply = JDWP.ReferenceType.METHODS_WITH_GENERIC.createReply(packet);
                                 break;
@@ -197,6 +182,37 @@ public class DebuggerConnection implements JDWPCommands {
                         }
                         break;
                     }
+                    case JDWP.THREAD_REFERENCE.ID:
+                        switch (packet.cmd) {
+                            case JDWP.THREAD_REFERENCE.NAME.ID:
+                                reply = JDWP.THREAD_REFERENCE.NAME.createReply(packet, controller.getContext());
+                                break;
+                            case JDWP.THREAD_REFERENCE.RESUME.ID:
+                                reply = JDWP.THREAD_REFERENCE.RESUME.createReply(packet, controller.getContext());
+                                break;
+                            case JDWP.THREAD_REFERENCE.STATUS.ID:
+                                reply = JDWP.THREAD_REFERENCE.STATUS.createReply(packet, controller.getContext());
+                                break;
+                            case JDWP.THREAD_REFERENCE.THREAD_GROUP.ID:
+                                reply = JDWP.THREAD_REFERENCE.THREAD_GROUP.createReply(packet, controller.getContext());
+                                break;
+                            case JDWP.THREAD_REFERENCE.FRAMES.ID:
+                                reply = JDWP.THREAD_REFERENCE.FRAMES.createReply(packet, controller);
+                                break;
+                            case JDWP.THREAD_REFERENCE.FRAME_COUNT.ID:
+                                reply = JDWP.THREAD_REFERENCE.FRAME_COUNT.createReply(packet, controller);
+                                break;
+                            case JDWP.THREAD_REFERENCE.SUSPEND_COUNT.ID:
+                                reply = JDWP.THREAD_REFERENCE.SUSPEND_COUNT.createReply(packet);
+                                break;
+                        }
+                        break;
+                    case JDWP.THREAD_GROUP_REFERENCE.ID:
+                        switch (packet.cmd) {
+                            case JDWP.THREAD_GROUP_REFERENCE.NAME.ID:
+                                reply = JDWP.THREAD_GROUP_REFERENCE.NAME.createReply(packet, controller.getContext());
+                        }
+                        break;
                     case JDWP.EventRequest.ID: {
                         switch (packet.cmd) {
                             case JDWP.EventRequest.SET.ID: {
@@ -215,6 +231,8 @@ public class DebuggerConnection implements JDWPCommands {
             if (reply != null) {
                 //System.out.println("replying to command(" + packet.cmdSet + "." + packet.cmd + ")");
                 connection.queuePacket(reply);
+            } else {
+                System.out.println("no reply for command(" + packet.cmdSet + "." + packet.cmd + ")");
             }
         }
     }

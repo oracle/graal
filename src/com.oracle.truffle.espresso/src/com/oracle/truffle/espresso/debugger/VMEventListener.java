@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.debugger;
 
-import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.debugger.jdwp.ClassPrepareRequest;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface VMEventListener {
-    void classPrepared(ObjectKlass klass);
+    void classPrepared(ObjectKlass klass, StaticObject currentThread);
     void classUnloaded(ObjectKlass klass);
-    void threadStarted(Thread thread);
-    void threadDied(Thread thread);
-    void breakpointHIt(BreakpointInfo info);
+    void threadStarted(StaticObject thread);
+    void threadDied(StaticObject thread);
+    void breakpointHIt(BreakpointInfo info, StaticObject currentThread);
 
     void addClassUnloadRequestId(int id);
     void addThreadStartedRequestId(int id);

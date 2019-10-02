@@ -27,6 +27,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 class JDWP {
 
@@ -37,7 +39,7 @@ class JDWP {
             public static final int ID = 1;
 
             static PacketStream createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeString(EspressoVirtualMachine.VM_Description);
                 reply.writeInt(1);
                 reply.writeInt(6);
@@ -57,7 +59,7 @@ class JDWP {
                 String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(signature);
                 Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashName);
                 Klass[] loaded = controller.getContext().getRegistries().findLoadedClassAny(type);
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(loaded.length);
                 for (Klass klass : loaded) {
                     reply.writeByte(TypeTag.getKind(klass));
@@ -79,10 +81,10 @@ class JDWP {
             public static final int ID = 4;
 
             static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
-                Thread[] allThreads = controller.getContext().getAllActiveTrheads();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject[] allThreads = controller.getContext().getAllGuestThreads();
                 reply.writeInt(allThreads.length);
-                for (Thread t : allThreads) {
+                for (StaticObject t : allThreads) {
                     reply.writeByteArray(Ids.getId(t));
                 }
                 return reply;
@@ -93,7 +95,7 @@ class JDWP {
             public static final int ID = 7;
 
             static PacketStream createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(EspressoVirtualMachine.sizeofFieldRef);
                 reply.writeInt(EspressoVirtualMachine.sizeofMethodRef);
                 reply.writeInt(EspressoVirtualMachine.sizeofObjectRef);
@@ -107,7 +109,7 @@ class JDWP {
             public static final int ID = 9;
 
             static PacketStream createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 return reply;
             }
         }
@@ -116,7 +118,9 @@ class JDWP {
             public static final int ID = 17;
 
             static PacketStream createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                // TODO(Gregersen) - figure out what capabilities we want to expose
                 reply.writeBoolean(true);
                 reply.writeBoolean(true);
                 reply.writeBoolean(false);
@@ -159,6 +163,26 @@ class JDWP {
 
         static class SIGNATURE_WITH_GENERIC {
             public static final int ID = 13;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long refTypeId = input.readLong();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                Object object = Ids.fromId((int) refTypeId);
+                Klass refType = null;
+                if (object instanceof Klass) {
+                    refType = (Klass) object;
+                } else if (object instanceof StaticObject) {
+                    StaticObject staticObject = (StaticObject) object;
+                    refType = staticObject.getKlass();
+                } else {
+                    throw new RuntimeException("not implemented yet");
+                }
+                reply.writeString(refType.getType().toString());
+                reply.writeString(""); // TODO(Gregersen) - generic signature
+                return reply;
+            }
         }
         static class METHODS_WITH_GENERIC {
             public static final int ID = 15;
@@ -168,7 +192,7 @@ class JDWP {
                 long refTypeId = input.readLong();
                 Klass refType = (Klass) Ids.fromId((int) refTypeId);
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Method[] declaredMethods = refType.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
@@ -201,7 +225,7 @@ class JDWP {
             }
 
             static PacketStream createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
@@ -254,10 +278,174 @@ class JDWP {
             static PacketStream createReply(Packet packet) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
-                Object obj = Ids.fromId((int)objectId);
-                reply.writeByte(TypeTag.CLASS); // TODO(Gregersen) - determine actual type
-                reply.writeByteArray(Ids.toByteArray((int)objectId)); // TODO(Gregersen) - determine actual referenceType ID
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                Klass klass = object.getKlass();
+                reply.writeByte(TypeTag.getKind(klass));
+                reply.writeByteArray(Ids.getId(klass));
+                return reply;
+            }
+        }
+    }
+
+    static class THREAD_REFERENCE {
+        public static final int ID = 11;
+
+        static class NAME {
+            public static final int ID = 1;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                String threadName = ((StaticObject) context.getMeta().Thread_name.get(thread)).toString();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeString(threadName);
+                return reply;
+            }
+        }
+
+        static class RESUME {
+            public static final int ID = 3;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                String threadName = ((StaticObject) context.getMeta().Thread_name.get(thread)).toString();
+                // TODO(Gregersen) - implement resume call here
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                return reply;
+            }
+        }
+
+        static class STATUS {
+            public static final int ID = 4;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                int espressoThreadState = (int) context.getMeta().Thread_state.get(thread);
+                int threadStatus = getThreadStatus(espressoThreadState);
+                //System.out.println("thread state for thread " + thread + " is: " + threadStatus);
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeInt(threadStatus);
+                //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread));
+                reply.writeInt(ThreadSuspension.isSuspended(thread));
+                return reply;
+            }
+
+            private static int getThreadStatus(int espressoThreadState) {
+                switch (espressoThreadState) {
+                    case 0:
+                    case 4:
+                        return ThreadStatusConstants.RUNNING;
+                    case 16:
+                    case 32:
+                        return ThreadStatusConstants.WAIT;
+                    case 1024:
+                        return ThreadStatusConstants.MONITOR;
+                    case 2:
+                        return ThreadStatusConstants.ZOMBIE;
+                    default: return ThreadStatusConstants.ZOMBIE;
+                }
+            }
+        }
+
+        static class THREAD_GROUP {
+            public static final int ID = 5;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject threadGroup = (StaticObject) context.getMeta().Thread_group.get(thread);
+                reply.writeLong(Ids.getIdAsLong(threadGroup));
+                return reply;
+            }
+        }
+
+        static class FRAMES {
+            public static final int ID = 6;
+
+            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                int startFrame = input.readInt();
+                int length = input.readInt();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                JDWPCallFrame[] frames = controller.getSuspendedInfo().getStackFrames();
+                reply.writeInt(length);
+
+                for (int i = startFrame; i < startFrame + length; i++) {
+                    JDWPCallFrame frame = frames[i];
+                    reply.writeLong(Ids.getIdAsLong(frame));
+                    reply.writeByte(frame.getTypeTag());
+                    reply.writeLong(frame.getClassId());
+                    reply.writeLong(frame.getMethodId());
+                    reply.writeLong(frame.getCodeIndex());
+                }
+                return reply;
+            }
+        }
+
+        static class FRAME_COUNT {
+            public static final int ID = 7;
+
+            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                // verify that we're replying for the currently suspended thread
+                if (Ids.fromId((int) threadId) == Ids.UNKNOWN) {
+                    reply.errorCode(20); // TODO(Gregersen) - setup and use error code constant
+                    return reply;
+                }
+                if (controller.getSuspendedInfo().getThread() != Ids.fromId((int) threadId)) {
+                    reply.errorCode(10); // TODO(Gregersen) - setup and use error code constant
+                    return reply;
+                }
+
+                reply.writeInt(controller.getSuspendedInfo().getStackFrames().length);
+                return reply;
+            }
+        }
+
+        static class SUSPEND_COUNT {
+            public static final int ID = 12;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeInt(ThreadSuspension.getSuspensionCount(thread));
+                return reply;
+            }
+        }
+    }
+
+    static class THREAD_GROUP_REFERENCE {
+        public static final int ID = 12;
+
+        static class NAME {
+            public static final int ID = 1;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long threadGroupId = input.readLong();
+                StaticObject threadGroup = (StaticObject) Ids.fromId((int)threadGroupId);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeString("threadGroup-1"); // TODO(Gregersen) - implement retrieving threadgroup name
                 return reply;
             }
         }

@@ -57,6 +57,7 @@ public class PacketStream {
 
     PacketStream replyPacket() {
         packet.flags = Packet.Reply;
+        packet.errorCode = Packet.ReplyNoError;
         return this;
     }
 
@@ -65,8 +66,8 @@ public class PacketStream {
         return this;
     }
 
-    PacketStream errorCode(short errorCode) {
-        packet.errorCode = errorCode;
+    PacketStream errorCode(int errorCode) {
+        packet.errorCode = (short) errorCode;
         return this;
     }
 

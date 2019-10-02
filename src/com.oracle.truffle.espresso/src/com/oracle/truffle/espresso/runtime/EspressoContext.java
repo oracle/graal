@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.espresso.debugger.VMEventListeners;
 import com.oracle.truffle.espresso.debugger.jdwp.JDWPDebuggerController;
 import com.oracle.truffle.espresso.debugger.jdwp.JDWPInstrument;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -286,7 +287,8 @@ public final class EspressoContext {
         meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
         meta.Thread_priority.set(mainThread, 5);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        host2guest.put(Thread.currentThread(), mainThread);
+        mainThread.setIntField(meta.Thread_state, Target_java_lang_Thread.State.RUNNABLE.value);
+        putHost2Guest(Thread.currentThread(), mainThread);
         activeThreads.add(Thread.currentThread());
         // Lock object used by NIO.
         meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
@@ -398,6 +400,7 @@ public final class EspressoContext {
 
     public void putHost2Guest(Thread hostThread, StaticObject guest) {
         host2guest.put(hostThread, guest);
+        VMEventListeners.getDefault().threadStarted(guest);
     }
 
     public StaticObject getHost2Guest(Thread hostThread) {
@@ -406,16 +409,19 @@ public final class EspressoContext {
 
     public void registerThread(Thread thread) {
         activeThreads.add(thread);
-        VMEventListeners.getDefault().threadStarted(thread);
+
     }
 
     public void unregisterThread(Thread thread) {
         activeThreads.remove(thread);
-        VMEventListeners.getDefault().threadDied(thread);
+        StaticObject staticObject = host2guest.get(thread);
+        if (staticObject != null) {
+            VMEventListeners.getDefault().threadDied(staticObject);
+        }
     }
 
-    public Thread[] getAllActiveTrheads() {
-        return activeThreads.toArray(new Thread[0]);
+    public StaticObject[] getAllGuestThreads() {
+        return host2guest.values().toArray(new StaticObject[0]);
     }
 
     // region Options

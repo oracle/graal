@@ -235,7 +235,7 @@ public final class ObjectKlass extends Klass {
                      */
                     prepare();
                     initState = PREPARED;
-                    VMEventListeners.getDefault().classPrepared(this);
+                    VMEventListeners.getDefault().classPrepared(this, getContext().getHost2Guest(Thread.currentThread()));
 
                     if (getSuperKlass() != null) {
                         getSuperKlass().initialize();

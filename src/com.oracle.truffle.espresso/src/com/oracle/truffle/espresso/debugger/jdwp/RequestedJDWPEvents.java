@@ -99,6 +99,7 @@ public class RequestedJDWPEvents {
                 reply = toReply(packet);
                 break;
             default:
+                System.out.println("unhandled event kind " + eventKind);
                 break;
         }
 
@@ -107,7 +108,7 @@ public class RequestedJDWPEvents {
 
     private PacketStream toReply(Packet packet) {
         PacketStream reply;
-        reply = new PacketStream().replyPacket().id(packet.id).errorCode(Packet.ReplyNoError);
+        reply = new PacketStream().replyPacket().id(packet.id);
         reply.writeInt(packet.id);
         return reply;
     }
@@ -139,7 +140,6 @@ public class RequestedJDWPEvents {
                 String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(klass.getType().toString());
                 Method method = (Method) Ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
-
                 callback.createLineBreakpointCommand(slashName, line, suspendPolicy, info);
                 break;
             case 8:

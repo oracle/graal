@@ -60,6 +60,15 @@ public final class LineNumberTable extends Attribute {
         return entries[entries.length - 1].lineNumber;
     }
 
+    public long getBCI(int line) {
+        for (Entry entry : entries) {
+            if (entry.getLineNumber() == line) {
+                return entry.getBCI();
+            }
+        }
+        return -1;
+    }
+
     public static final class Entry {
 
         public static final Entry[] EMPTY_ARRAY = new Entry[0];

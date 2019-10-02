@@ -57,4 +57,9 @@ public class BreakpointInfo {
     public long getBci() {
         return bci;
     }
+
+    @Override
+    public String toString() {
+        return "typeTag: " + typeTag + ", classId: " + classId + ", methodId: " + methodId + ", bci: " + bci;
+    }
 }

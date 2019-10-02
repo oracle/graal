@@ -22,37 +22,33 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.api.debug.DebugStackFrame;
-import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+public class JDWPCallFrame {
 
-public class SuspendedInfo {
+    private final byte typeTag;
+    private final long classId;
+    private final long methodId;
+    private final long codeIndex;
 
-    private SuspendedEvent event;
-    private int suspendStrategy;
-    private JDWPCallFrame[] stackFrames;
-    private StaticObject thread;
-
-    SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, StaticObject thread) {
-        this.event = event;
-        this.suspendStrategy = strategy;
-        this.stackFrames = stackFrames;
-        this.thread = thread;
+    JDWPCallFrame(byte typeTag, long classId, long methodId, long codeIndex) {
+        this.typeTag = typeTag;
+        this.classId = classId;
+        this.methodId = methodId;
+        this.codeIndex = codeIndex;
     }
 
-    public SuspendedEvent getEvent() {
-        return event;
+    public byte getTypeTag() {
+        return typeTag;
     }
 
-    public int getSuspendStrategy() {
-        return suspendStrategy;
+    public long getClassId() {
+        return classId;
     }
 
-    public JDWPCallFrame[] getStackFrames() {
-        return stackFrames;
+    public long getMethodId() {
+        return methodId;
     }
 
-    public StaticObject getThread() {
-        return thread;
+    public long getCodeIndex() {
+        return codeIndex;
     }
 }

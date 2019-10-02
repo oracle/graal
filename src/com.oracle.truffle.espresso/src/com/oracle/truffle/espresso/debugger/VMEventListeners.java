@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.debugger;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 
 public class VMEventListeners {
@@ -31,7 +32,7 @@ public class VMEventListeners {
     private static final VMEventListeners DEFAULT = new VMEventListeners();
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private VMEventListener[] listeners = new VMEventListener[1];
+    private final VMEventListener[] listeners = new VMEventListener[1];
 
     VMEventListeners() {
 
@@ -46,23 +47,33 @@ public class VMEventListeners {
         listeners[0] = listener;
     }
 
-    public void classPrepared(ObjectKlass klass) {
-        listeners[0].classPrepared(klass);
+    public void classPrepared(ObjectKlass klass, StaticObject currentThread) {
+        if (listeners[0] != null) {
+            listeners[0].classPrepared(klass, currentThread);
+        }
     }
 
     public void classUnloaded(ObjectKlass klass) {
-        listeners[0].classUnloaded(klass);
+        if (listeners[0] != null) {
+            listeners[0].classUnloaded(klass);
+        }
     }
 
-    public void threadStarted(Thread thread) {
-        listeners[0].threadStarted(thread);
+    public void threadStarted(StaticObject thread) {
+        if (listeners[0] != null) {
+            listeners[0].threadStarted(thread);
+        }
     }
 
-    public void threadDied(Thread thread) {
-        listeners[0].threadDied(thread);
+    public void threadDied(StaticObject thread) {
+        if (listeners[0] != null) {
+            listeners[0].threadDied(thread);
+        }
     }
 
-    public void breakpointHit(BreakpointInfo info) {
-        listeners[0].breakpointHIt(info);
+    public void breakpointHit(BreakpointInfo info, StaticObject currentThread) {
+        if (listeners[0] != null) {
+            listeners[0].breakpointHIt(info, currentThread);
+        }
     }
 }
