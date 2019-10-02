@@ -818,6 +818,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             boolean stillRunning = false;
             if (!cancelIfExecuting) {
                 for (PolyglotContextImpl context : localContexts) {
+                    assert !Thread.holdsLock(context);
                     synchronized (context) {
                         if (context.hasActiveOtherThread(false) && context.closingThread == null) {
                             if (!ignoreCloseFailure) {
@@ -831,6 +832,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 }
             }
             for (PolyglotContextImpl context : localContexts) {
+                assert !Thread.holdsLock(context);
                 try {
                     boolean closeCompleted = context.closeImpl(cancelIfExecuting, cancelIfExecuting);
                     if (!closeCompleted && !cancelIfExecuting) {
@@ -1377,9 +1379,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     @SuppressWarnings("static-method")
     boolean needsEnter(PolyglotContextImpl context) {
-        if (PolyglotContextImpl.singleContextState.singleContextAssumption.isValid()) {
+        if (PolyglotContextImpl.getSingleContextState().getSingleContextAssumption().isValid()) {
             // if its a single context we know which one to enter
-            return !PolyglotContextImpl.singleContextState.contextThreadLocal.isSet();
+            return !PolyglotContextImpl.singleContextState.getContextThreadLocal().isSet();
         } else {
             return PolyglotContextImpl.currentNotEntered() != context;
         }
@@ -1404,7 +1406,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         PolyglotThreadInfo info = getCachedThreadInfo(context);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // fast-path -> same thread
-            prev = PolyglotContextImpl.singleContextState.contextThreadLocal.setReturnParent(context);
+            prev = PolyglotContextImpl.getSingleContextState().getContextThreadLocal().setReturnParent(context);
             info.enter(this);
         } else {
             // slow path -> changed thread
@@ -1429,7 +1431,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             polyglotContext.leaveThreadChanged();
         }
-        PolyglotContextImpl.singleContextState.contextThreadLocal.set(prev);
+        PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
     }
 
     PolyglotThreadInfo getCachedThreadInfo(PolyglotContextImpl context) {

@@ -89,8 +89,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * simplifies resetting state in AOT mode during native image generation.
      */
     static final class SingleContextState {
-        final ContextThreadLocal contextThreadLocal = new ContextThreadLocal();
-        final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Single Context");
+        private final ContextThreadLocal contextThreadLocal = new ContextThreadLocal();
+        private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Single Context");
         @CompilationFinal private volatile PolyglotContextImpl singleContext;
 
         /** Copy constructor that keeps the previous state. */
@@ -102,6 +102,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         SingleContextState(PolyglotContextImpl context) {
             this.singleContext = context;
         }
+
+        ContextThreadLocal getContextThreadLocal() {
+            return contextThreadLocal;
+        }
+
+        Assumption getSingleContextAssumption() {
+            return singleContextAssumption;
+        }
+
     }
 
     @CompilationFinal static SingleContextState singleContextState = new SingleContextState(null);
@@ -114,6 +123,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         SingleContextState prev = singleContextState;
         singleContextState = new SingleContextState(reuse ? prev.singleContext : null);
         return prev;
+    }
+
+    static SingleContextState getSingleContextState() {
+        return singleContextState;
     }
 
     /*
