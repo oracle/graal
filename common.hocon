@@ -11,7 +11,7 @@ jdks: {
   oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.3-b03-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk11:       {name : labsjdk,   version : "ce-11-20190917-093434", platformspecific: true}
+  labsjdk11:       {name : labsjdk,   version : "ee-11.0.5-jvmci-19.3-b03-dev", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
@@ -28,9 +28,9 @@ download-hsdis : {
   ]
 }
 
-oraclejdk8 :        { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8 :        { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk11} ]} }}
 oraclejdk8Only :    { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
-oraclejdk8Debug :   { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8Debug :   { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk11} ]} }}
 
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
