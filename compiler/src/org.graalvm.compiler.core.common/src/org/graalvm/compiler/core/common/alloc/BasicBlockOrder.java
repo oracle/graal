@@ -32,10 +32,12 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.options.OptionValues;
 
 /**
- * Computes an ordering of the block that can be used by the linear scan register allocator and the
+ * Computes an ordering of the blocks that can be used by the linear scan register allocator and the
  * machine code generator. The machine code generation order will start with the first block and
  * produce a straight sequence always following the most likely successor. Then it will continue
  * with the most likely path that was left out during this process. The process iteratively
@@ -54,12 +56,12 @@ import org.graalvm.compiler.core.common.cfg.Loop;
  * algorithm sets the linear scan order number of the block that corresponds to its index in the
  * linear scan order.
  */
-public final class ComputeBlockOrder {
+public class BasicBlockOrder implements ComputeBlockOrder {
 
     /**
      * The initial capacities of the worklists used for iteratively finding the block order.
      */
-    private static final int INITIAL_WORKLIST_CAPACITY = 10;
+    protected static final int INITIAL_WORKLIST_CAPACITY = 10;
 
     /**
      * Divisor used for degrading the probability of the current path versus unscheduled paths at a
@@ -73,7 +75,8 @@ public final class ComputeBlockOrder {
      *
      * @return sorted list of blocks
      */
-    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int blockCount, T startBlock) {
+    @Override
+    public <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int blockCount, T startBlock) {
         List<T> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
@@ -87,7 +90,8 @@ public final class ComputeBlockOrder {
      *
      * @return sorted list of blocks
      */
-    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeCodeEmittingOrder(int blockCount, T startBlock) {
+    @Override
+    public <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeCodeEmittingOrder(int blockCount, T startBlock, OptionValues options) {
         List<T> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
@@ -246,14 +250,14 @@ public final class ComputeBlockOrder {
      * Skip the loop header block if the loop consists of more than one block and it has only a
      * single loop end block.
      */
-    private static <T extends AbstractBlockBase<T>> boolean skipLoopHeader(AbstractBlockBase<T> block) {
+    protected static <T extends AbstractBlockBase<T>> boolean skipLoopHeader(AbstractBlockBase<T> block) {
         return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().numBackedges() == 1);
     }
 
     /**
      * Checks that the ordering contains the expected number of blocks.
      */
-    private static boolean checkOrder(List<? extends AbstractBlockBase<?>> order, int expectedBlockCount) {
+    protected static boolean checkOrder(List<? extends AbstractBlockBase<?>> order, int expectedBlockCount) {
         assert order.size() == expectedBlockCount : String.format("Number of blocks in ordering (%d) does not match expected block count (%d)", order.size(), expectedBlockCount);
         return true;
     }
@@ -261,7 +265,7 @@ public final class ComputeBlockOrder {
     /**
      * Comparator for sorting blocks based on loop depth and probability.
      */
-    private static class BlockOrderComparator<T extends AbstractBlockBase<T>> implements Comparator<T> {
+    public static class BlockOrderComparator<T extends AbstractBlockBase<T>> implements Comparator<T> {
         private static final double EPSILON = 1E-6;
 
         @Override

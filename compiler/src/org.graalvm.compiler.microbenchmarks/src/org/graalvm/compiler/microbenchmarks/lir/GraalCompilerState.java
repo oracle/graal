@@ -44,9 +44,9 @@ import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
@@ -373,8 +373,9 @@ public abstract class GraalCompilerState {
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-        linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+        ComputeBlockOrder blockOrder = request.backend.newBlockOrder();
+        codeEmittingOrder = blockOrder.computeCodeEmittingOrder(blocks.length, startBlock, getGraphOptions());
+        linearScanOrder = blockOrder.computeLinearScanOrder(blocks.length, startBlock);
 
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
