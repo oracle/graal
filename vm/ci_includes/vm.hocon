@@ -18,7 +18,7 @@ vm_setup: {
 
 maven_base: ${linux-deploy} {
   downloads: {
-    JAVA_HOME: ${jdks.openjdk11},
+    JAVA_HOME: ${jdks.labsjdk11},
     EXTRA_JAVA_HOMES: ${jdks.openjdk8}
   }
   mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js"]
