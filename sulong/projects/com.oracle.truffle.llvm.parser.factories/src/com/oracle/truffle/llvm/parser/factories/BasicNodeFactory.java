@@ -368,24 +368,6 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI32VectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI64VectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI8VectorSelectNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMFloatReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI16ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI8ReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMIReadVarBitNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMDoubleVectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMFloatVectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI16VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI1VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI32VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI64VectorReadNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadVectorNodeFactory.LLVMI8VectorReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite80BitFloatingNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
@@ -433,7 +415,6 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public class BasicNodeFactory implements NodeFactory {
@@ -850,63 +831,6 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type) {
         LLVMExpressionNode callNode = new LLVMCallNode(type, functionNode, argNodes, true);
         return LLVMValueProfilingNode.create(callNode, type.getReturnType());
-    }
-
-    @Override
-    public LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot) {
-        if (llvmType instanceof PrimitiveType) {
-            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
-                case I1:
-                    return LLVMI1ReadNodeGen.create(frameSlot);
-                case I8:
-                    return LLVMI8ReadNodeGen.create(frameSlot);
-                case I16:
-                    return LLVMI16ReadNodeGen.create(frameSlot);
-                case I32:
-                    return LLVMI32ReadNodeGen.create(frameSlot);
-                case I64:
-                    return LLVMI64ReadNodeGen.create(frameSlot);
-                case FLOAT:
-                    return LLVMFloatReadNodeGen.create(frameSlot);
-                case DOUBLE:
-                    return LLVMDoubleReadNodeGen.create(frameSlot);
-                case X86_FP80:
-                    return LLVM80BitFloatReadNodeGen.create(frameSlot);
-            }
-        } else if (llvmType instanceof VectorType) {
-            Type elemType = ((VectorType) llvmType).getElementType();
-            if (elemType instanceof PrimitiveType) {
-                switch (((PrimitiveType) elemType).getPrimitiveKind()) {
-                    case I1:
-                        return LLVMI1VectorReadNodeGen.create(frameSlot);
-                    case I8:
-                        return LLVMI8VectorReadNodeGen.create(frameSlot);
-                    case I16:
-                        return LLVMI16VectorReadNodeGen.create(frameSlot);
-                    case I32:
-                        return LLVMI32VectorReadNodeGen.create(frameSlot);
-                    case I64:
-                        return LLVMI64VectorReadNodeGen.create(frameSlot);
-                    case FLOAT:
-                        return LLVMFloatVectorReadNodeGen.create(frameSlot);
-                    case DOUBLE:
-                        return LLVMDoubleVectorReadNodeGen.create(frameSlot);
-                }
-            } else if (elemType instanceof PointerType || elemType instanceof FunctionType) {
-                return LLVMI64VectorReadNodeGen.create(frameSlot);
-            }
-        } else if (llvmType instanceof VariableBitWidthType) {
-            return LLVMIReadVarBitNodeGen.create(frameSlot);
-        } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
-            return LLVMAddressReadNodeGen.create(frameSlot);
-        } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
-            return LLVMAddressReadNodeGen.create(frameSlot);
-        } else if (llvmType instanceof VoidType) {
-            return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
-        } else if (llvmType == MetaType.DEBUG) {
-            return LLVMReadNodeFactory.LLVMDebugReadNodeGen.create(frameSlot);
-        }
-        throw new AssertionError(llvmType + " for " + frameSlot.getIdentifier());
     }
 
     @Override

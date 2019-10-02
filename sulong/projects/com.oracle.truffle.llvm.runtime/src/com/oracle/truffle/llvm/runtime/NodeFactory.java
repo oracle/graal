@@ -118,8 +118,6 @@ public interface NodeFactory extends InteropNodeFactory {
                     int unwindIndex, LLVMStatementNode normalPhiWriteNodes,
                     LLVMStatementNode unwindPhiWriteNodes);
 
-    LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot);
-
     LLVMStatementNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot);
 
     LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);

@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -415,13 +416,13 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionParameter param) {
             final FrameSlot slot = frame.findFrameSlot(param.getName());
-            resolvedNode = nodeFactory.createFrameRead(param.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(param.getType(), slot);
         }
 
         @Override
         public void visitValueInstruction(ValueInstruction value) {
             final FrameSlot slot = frame.findFrameSlot(value.getName());
-            resolvedNode = nodeFactory.createFrameRead(value.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
         }
     }
 

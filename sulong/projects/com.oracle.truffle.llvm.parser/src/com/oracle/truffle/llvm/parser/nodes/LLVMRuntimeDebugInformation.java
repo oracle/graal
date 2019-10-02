@@ -320,7 +320,7 @@ public final class LLVMRuntimeDebugInformation {
         final boolean mustDereference = isDeclaration || mustDereferenceValue(expression, variable.getSourceType(), value);
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final LLVMExpressionNode containerRead = context.getLanguage().getNodeFactory().createFrameRead(MetaType.DEBUG, targetSlot);
+        final LLVMExpressionNode containerRead = CommonNodeFactory.createFrameRead(MetaType.DEBUG, targetSlot);
         return context.getLanguage().getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 }
