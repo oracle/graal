@@ -73,8 +73,8 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final NodeFactory nodeFactory;
 
     LLVMBitcodeFunctionVisitor(LLVMContext context, ExternalLibrary library, FrameDescriptor frame, UniquesRegion uniquesRegion, Map<InstructionBlock, List<Phi>> phis, int argCount,
-                               LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition, LLVMLivenessAnalysisResult liveness, List<FrameSlot> notNullable,
-                               LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout, NodeFactory nodeFactory) {
+                    LLVMSymbolReadResolver symbols, FunctionDefinition functionDefinition, LLVMLivenessAnalysisResult liveness, List<FrameSlot> notNullable,
+                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout, NodeFactory nodeFactory) {
         this.context = context;
         this.library = library;
         this.frame = frame;

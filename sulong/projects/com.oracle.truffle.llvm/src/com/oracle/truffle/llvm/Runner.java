@@ -362,7 +362,7 @@ final class Runner {
 
         final LLVMScope fileScope;
 
-        InitializeSymbolsNode(LLVMParserResult res,  NodeFactory nodeFactory) {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
 
             // allocate all non-pointer types as two structs
@@ -965,7 +965,8 @@ final class Runner {
         return LLVMStatementNode.NO_STATEMENTS;
     }
 
-    private static LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout, NodeFactory nodeFactory) {
+    private static LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout,
+                    NodeFactory nodeFactory) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMStatementNode.NO_STATEMENTS;

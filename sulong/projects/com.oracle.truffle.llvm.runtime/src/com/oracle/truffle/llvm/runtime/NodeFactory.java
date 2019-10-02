@@ -208,8 +208,6 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMStatementNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
 
-    LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
-
     LLVMDebugValue.Builder createDebugDeclarationBuilder();
 
     LLVMDebugValue.Builder createDebugValueBuilder();
