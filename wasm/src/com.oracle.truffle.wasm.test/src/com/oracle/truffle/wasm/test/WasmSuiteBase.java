@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.wasm.test;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -234,12 +234,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println();
     }
 
-    protected Path testDirectory() {
+    protected String testResource() {
         return null;
     }
 
     protected Collection<? extends WasmTestCase> collectTestCases() throws IOException {
-        return Stream.concat(collectStringTestCases().stream(), collectFileTestCases(testDirectory()).stream()).collect(Collectors.toList());
+        return Stream.concat(collectStringTestCases().stream(), collectFileTestCases(testResource()).stream()).collect(Collectors.toList());
     }
 
     protected Collection<? extends WasmTestCase> collectStringTestCases() {
@@ -250,42 +250,63 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return testCases.stream().filter((WasmTestCase x) -> filterTestName().test(x.name)).collect(Collectors.toList());
     }
 
-    protected Collection<WasmTestCase> collectFileTestCases(Path path) throws IOException {
+    protected String getResourceContents(String resourceName) throws IOException {
+        InputStream stream = getClass().getResourceAsStream(resourceName);
+        if (stream == null) {
+            Assert.fail(String.format("Could not find resource: %s", resourceName));
+        }
+        byte[] contents = new byte[stream.available()];
+        new DataInputStream(stream).readFully(contents);
+        return new String(contents);
+    }
+
+    protected Collection<WasmTestCase> collectFileTestCases(String testBundle) throws IOException {
         Collection<WasmTestCase> collectedCases = new ArrayList<>();
-        if (path == null) {
+        if (testBundle == null) {
             return collectedCases;
         }
-        try (Stream<Path> walk = Files.list(path)) {
-            List<Path> testFiles = walk.filter(isWatFile).collect(Collectors.toList());
-            for (Path f : testFiles) {
-                String baseFileName = f.toAbsolutePath().toString().split("\\.(?=[^.]+$)")[0];
-                String testName = Paths.get(baseFileName).getFileName().toString();
-                Path resultPath = Paths.get(baseFileName + ".result");
-                String resultSpec = Files.lines(resultPath).limit(1).collect(Collectors.joining());
-                String[] resultTypeValue = resultSpec.split("\\s+");
-                String resultType = resultTypeValue[0];
-                String resultValue = resultTypeValue[1];
-                switch (resultType) {
-                    case "int":
-                        collectedCases.add(testCase(testName, expected(Integer.parseInt(resultValue)), f.toFile()));
-                        break;
-                    case "long":
-                        collectedCases.add(testCase(testName, expected(Long.parseLong(resultValue)), f.toFile()));
-                        break;
-                    case "float":
-                        collectedCases.add(testCase(testName, expectedFloat(Float.parseFloat(resultValue), 0.0001f), f.toFile()));
-                        break;
-                    case "double":
-                        collectedCases.add(testCase(testName, expectedDouble(Double.parseDouble(resultValue), 0.0001f), f.toFile()));
-                        break;
-                    default:
-                        // TODO: We should throw an exception here if the result type is not known,
-                        //  and have an explicit type for exception throws.
-                        collectedCases.add(testCase(testName, expectedThrows(resultValue), f.toFile()));
-                        break;
-                }
+
+        // Open the index file of the test bundle. The index file contains the available tests for that bundle.
+        InputStream index = getClass().getResourceAsStream(String.format("/tests/%s/index", testBundle));
+        BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
+
+        // Iterate through the available tests of the bundle.
+        while (indexReader.ready()) {
+            String testName = indexReader.readLine().trim();
+
+            if (testName.equals("") || testName.startsWith("#")) {
+                // Skip empty lines or lines starting with a hash (treat as a comment).
+                continue;
+            }
+
+            String mainWatContent = getResourceContents(String.format("/tests/%s/%s.wat", testBundle, testName));
+            String resultContent = getResourceContents(String.format("/tests/%s/%s.result", testBundle, testName));
+
+            String[] resultTypeValue = resultContent.split("\\s+");
+            String resultType = resultTypeValue[0];
+            String resultValue = resultTypeValue[1];
+
+            switch (resultType) {
+                case "int":
+                    collectedCases.add(testCase(testName, expected(Integer.parseInt(resultValue)), mainWatContent));
+                    break;
+                case "long":
+                    collectedCases.add(testCase(testName, expected(Long.parseLong(resultValue)), mainWatContent));
+                    break;
+                case "float":
+                    collectedCases.add(testCase(testName, expected(Float.parseFloat(resultValue)), mainWatContent));
+                    break;
+                case "double":
+                    collectedCases.add(testCase(testName, expected(Double.parseDouble(resultValue)), mainWatContent));
+                    break;
+                case "exception":
+                    collectedCases.add(testCase(testName, expectedThrows(resultValue), mainWatContent));
+                    break;
+                default:
+                    Assert.fail(String.format("Unknown type in result specification: %s", resultType));
             }
         }
+
         return collectedCases;
     }
 
