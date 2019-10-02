@@ -29,10 +29,15 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 
 public class DarwinClangLike extends ClangLike {
 
@@ -49,12 +54,53 @@ public class DarwinClangLike extends ClangLike {
     }
 
     @Override
-    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
-        return DarwinLinker.setupRedirectsInternal(pb);
+    public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit) {
+        Path tempDirWithPrefix = null;
+        try {
+            if (needLinkerFlags && !earlyexit) {
+                try {
+                    tempDirWithPrefix = Files.createTempDirectory("graalvm-clang-wrapper");
+                    String newOutput = tempDirWithPrefix.resolve("temp.out").toString();
+                    List<String> newUserArgs = newUserArgs(userArgs, newOutput);
+                    super.runDriverReturn(sulongArgs, newUserArgs, verb, hlp, earlyexit);
+                    String bcFile = newOutput + ".lto.opt.bc";
+                    sulongArgs.add("-Wl,-sectcreate,__LLVM,__bundle," + bcFile);
+                } catch (Exception e) {
+                    // something went wrong -- let the normal driver run fail
+                    if (verb) {
+                        System.err.println("Running clang with `-save-temps` failed: " + e);
+                    }
+                }
+            }
+            super.runDriver(sulongArgs, userArgs, verb, hlp, earlyexit);
+        } finally {
+            if (tempDirWithPrefix != null) {
+                try {
+                    Files.walk(tempDirWithPrefix).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+                } catch (IOException e) {
+                    if (verb) {
+                        System.err.println("Deleting the temporary directory (" + tempDirWithPrefix + ") failed: " + e);
+                    }
+                }
+            }
+        }
     }
 
-    @Override
-    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
-        DarwinLinker.processIO(errorStream);
+    private List<String> newUserArgs(List<String> userArgs, String newOutput) {
+        List<String> newUserArgs = new ArrayList<>(userArgs.size() + 2);
+        if (outputFlagPos == -1) {
+            newUserArgs.addAll(userArgs);
+        } else {
+            for (int i = 0; i < outputFlagPos; i++) {
+                newUserArgs.add(userArgs.get(i));
+            }
+            for (int i = outputFlagPos + 2; i < userArgs.size(); i++) {
+                newUserArgs.add(userArgs.get(i));
+            }
+        }
+        newUserArgs.add("-o");
+        newUserArgs.add(newOutput);
+        newUserArgs.add("-Wl,-save-temps");
+        return newUserArgs;
     }
 }
