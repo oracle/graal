@@ -26,8 +26,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Validation;
 
-import java.util.Arrays;
-
 public final class Utf8Constant implements PoolConstant {
 
     private static final int VALID_CLASS_NAME = 0x01;
