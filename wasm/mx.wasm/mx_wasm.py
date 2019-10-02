@@ -92,7 +92,9 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             subdir = os.path.relpath(root, self.getSourceDir())
             subdirs.add(subdir)
             yield os.path.join(output_dir, subdir, remove_extension(filename) + ".wasm")
-            yield os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+            result_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+            if os.path.isfile(result_path):
+              yield result_path
         for subdir in subdirs:
             yield os.path.join(output_dir, subdir, "wasm_test_index")
 
@@ -132,8 +134,9 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".js")
             mx.run([emcc_cmd] + flags + [source_path, "-o", output_path])
             result_path = os.path.join(root, remove_extension(filename) + ".result")
-            result_output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
-            shutil.copyfile(result_path, result_output_path)
+            if os.path.isfile(result_path):
+              result_output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+              shutil.copyfile(result_path, result_output_path)
             subdirProgramNames[subdir].append(remove_extension(filename))
         for subdir in subdirProgramNames:
             with open(os.path.join(output_dir, subdir, "wasm_test_index"), "w") as f:

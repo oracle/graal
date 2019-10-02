@@ -110,6 +110,16 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "com.oracle.truffle.wasm.benchcases" : {
+      "subDir" : "src",
+      "dependencies" : [],
+      "class" : "GraalWasmSourceFileProject",
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "workingSets" : "Truffle,WebAssembly",
+      "testProject" : False,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.wasm.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -157,7 +167,7 @@ suite = {
 
     "WASM_TESTCASES" : {
       "platformDependent" : True,
-      "description" : "Tests compiled from source code.",
+      "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "com.oracle.truffle.wasm.testcases",
         "com.oracle.truffle.wasm.testcases.test",
@@ -178,6 +188,19 @@ suite = {
         "com.oracle.truffle.wasm.benchmark",
         "mx:JMH_1_21",
       ],
+    },
+
+    "WASM_BENCHCASES" : {
+      "platformDependent" : True,
+      "description" : "Benchmarks compiled from the source code.",
+      "dependencies" : [
+        "com.oracle.truffle.wasm.benchcases",
+      ],
+      "distDependencies" : [
+        "WASM_BENCHMARKS",
+      ],
+      "defaultBuild" : False,
+      "maven" : False,
     },
   }
 }
