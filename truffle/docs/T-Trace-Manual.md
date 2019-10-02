@@ -13,18 +13,15 @@ Let's get started with an obligatory Hello World example.
 Create a simple `source-tracing.js` script with following content:
 
 ```js
-ttrace.on('source', function(ev) {
+agent.on('source', function(ev) {
     print(`Loading ${ev.characters.length} characters from ${ev.name}`);
-}, {
-    internal: true,
-    languages: ['js']
 });
 ```
-launch your GraalVM's `bin/node` launcher with the `--ttrace` instrument and
+launch your GraalVM's `bin/node` launcher with the `--agentscript` instrument and
 observe what scripts are being loaded and evaluated:
 
 ```bash
-$ node --ttrace=source-tracing.js -e "print('The result: ' + 6 * 7)"
+$ node --agentscript=source-tracing.js -e "print('The result: ' + 6 * 7)"
 Loading 26 characters from polyglotEngineWrapper
 Loading 1236 characters from unknown source
 Loading 13732 characters from internal/bootstrap/loaders.js

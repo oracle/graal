@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.agentscript;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -35,7 +34,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -74,7 +72,6 @@ public final class AgentScriptInstrument extends TruffleInstrument {
 
                 @Override
                 public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                    onLanguageContextInitialized(context, language);
                 }
 
                 @Override
@@ -90,17 +87,10 @@ public final class AgentScriptInstrument extends TruffleInstrument {
                             }
                         }
                         Source script = Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
-//                        InstrumentObject instrumenterWrapper = new InstrumentObject(instrumenter, null, language);
-                        CallTarget target = env.parse(script, "instrumenter");
-                        target.call(); // instrumenterWrapper);
-                        final Source realScript;
-                        if (target instanceof RootCallTarget) {
-                            final SourceSection section = ((RootCallTarget) target).getRootNode().getSourceSection();
-                            realScript = section == null ? script : section.getSource();
-                        } else {
-                            realScript = script;
-                        }
-//                instrumenterWrapper.assignScript(realScript);
+                        AgentObject agent = new AgentObject(instrumenter, null, language);
+                        CallTarget target = env.parse(script, "agent");
+                        target.call(agent);
+                        agent.initializationFinished();
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     } finally {
