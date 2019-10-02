@@ -422,7 +422,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 # Temporary workaround until GR-16855 an SVM module provides the .a files
                 _add(layout, self.jdk_base + '/lib/', {
                     'source_type': 'file',
-                    'path': _src_jdk_dir + '/lib/*.a',
+                    'path': _src_jdk_dir + (('/' + _src_jdk_base) if _src_jdk_base != '.' else '') + '/lib/*.a',
                 })
 
             # Add vm.properties
