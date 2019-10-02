@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.api.TruffleFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -79,6 +78,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                                     "engine", "log", "image-build-time"));
 
     @SuppressWarnings("deprecation")
+    @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror, Annotation registration) {
         if (!annotatedElement.getModifiers().contains(Modifier.PUBLIC)) {
             emitError("Registered language class must be public", annotatedElement);
@@ -214,29 +214,23 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 DeclaredType languageType = (DeclaredType) annotatedElement.asType();
                 List<? extends TypeParameterElement> typeParams = annotatedElement.getTypeParameters();
                 if (!typeParams.isEmpty()) {
-                    TypeMirror[] actualTypeParams = new TypeMirror[typeParams.size()];
-                    for (int i = 0; i < actualTypeParams.length; i++) {
-                        actualTypeParams[i] = typeParams.get(i).getBounds().get(0);
-                    }
-                    languageType = context.getEnvironment().getTypeUtils().getDeclaredType(annotatedElement, actualTypeParams);
+                    builder.startReturn().string("new " + annotatedElement.getQualifiedName() + "<>()").end();
+                } else {
+                    builder.startReturn().startNew(languageType).end(2);
                 }
-                builder.startReturn().startNew(languageType).end().end();
                 break;
-
             case "createFileTypeDetectors":
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(TruffleLanguage.Registration.class));
                 List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors");
                 if (detectors.isEmpty()) {
                     builder.startReturn().startStaticCall(context.getType(Collections.class), "emptyList").end().end();
                 } else {
-                    String varName = "result";
-                    DeclaredType listOfDetectors = context.getEnvironment().getTypeUtils().getDeclaredType(context.getTypeElement(ArrayList.class),
-                                    context.getType(TruffleFile.FileTypeDetector.class));
-                    builder.declaration(listOfDetectors, varName, builder.create().startNew(listOfDetectors).end());
+                    builder.startReturn();
+                    builder.startStaticCall(context.getType(Arrays.class), "asList");
                     for (TypeMirror detector : detectors) {
-                        builder.startStatement().startCall(varName, "add").startNew(detector).end(3);
+                        builder.startGroup().startNew(detector).end(2);
                     }
-                    builder.startReturn().string(varName).end();
+                    builder.end(2);
                 }
                 break;
             case "getLanguageClassName":

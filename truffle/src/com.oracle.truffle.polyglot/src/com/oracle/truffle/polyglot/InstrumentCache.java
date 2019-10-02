@@ -191,7 +191,7 @@ final class InstrumentCache {
 
         abstract Class<? extends TruffleInstrument> aotInitializeAtBuildTime();
 
-        final void exportTruffle(ClassLoader loader) {
+        static void exportTruffle(ClassLoader loader) {
             if (!TruffleOptions.AOT) {
                 // In JDK 9+, the Truffle API packages must be dynamically exported to
                 // a Truffle instrument since the Truffle API module descriptor only
@@ -277,7 +277,7 @@ final class InstrumentCache {
             }
         }
 
-        private InstrumentCache createInstrumentCache(String prefix, Properties info, ClassLoader loader) {
+        private static InstrumentCache createInstrumentCache(String prefix, Properties info, ClassLoader loader) {
             String className = info.getProperty(prefix + "className");
             String name = info.getProperty(prefix + "name");
             String version = info.getProperty(prefix + "version");
