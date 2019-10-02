@@ -45,6 +45,7 @@ import mx_wasm_benchmark  # pylint: disable=unused-import
 import errno
 import glob
 import os
+import re
 import shutil
 
 from collections import defaultdict
@@ -91,7 +92,9 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         for root, filename in self.getSources():
             subdir = os.path.relpath(root, self.getSourceDir())
             subdirs.add(subdir)
-            yield os.path.join(output_dir, subdir, remove_extension(filename) + ".wasm")
+            build_output_name = lambda ext: os.path.join(output_dir, subdir, remove_extension(filename) + ext)
+            yield build_output_name(".wasm")
+            yield build_output_name(".init")
             result_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
             if os.path.isfile(result_path):
               yield result_path
@@ -125,23 +128,84 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wat and .wasm.")
         mx.log("Building files from the source dir: " + source_dir)
         emcc_cmd = os.path.join(emcc_dir, "emcc")
-        flags = ["-Os"]
-        subdirProgramNames = defaultdict(lambda: [])
+        flags = ["-O3", "--js-opts", "0", "--minify", "0"]
+        subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
             mkdir_p(os.path.join(output_dir, subdir))
+
+            # Step 1: compile with the JS file.
             source_path = os.path.join(root, filename)
-            output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".js")
-            mx.run([emcc_cmd] + flags + [source_path, "-o", output_path])
+            output_js_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".js")
+            mx.run([emcc_cmd] + flags + [source_path, "-o", output_js_path])
+
+            # Step 2: extract the relevant information out of the JS file, and record it into an initialization file.
+            init_info = self.extractInitialization(output_js_path)
+            with open(os.path.join(output_dir, subdir, remove_extension(filename) + ".init"), "w") as f:
+                f.write(init_info)
+
+            # Step 3: compile to just a .wasm file, to avoid name mangling.
+            mx.run([emcc_cmd] + flags + [source_path, "-o", os.path.join(output_dir, subdir, remove_extension(filename) + ".wasm")])
+
+            # Step 4: copy the result file if it exists.
             result_path = os.path.join(root, remove_extension(filename) + ".result")
             if os.path.isfile(result_path):
               result_output_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
               shutil.copyfile(result_path, result_output_path)
-            subdirProgramNames[subdir].append(remove_extension(filename))
-        for subdir in subdirProgramNames:
+
+            # Remember the source name.
+            subdir_program_names[subdir].append(remove_extension(filename))
+        for subdir in subdir_program_names:
             with open(os.path.join(output_dir, subdir, "wasm_test_index"), "w") as f:
-                for name in subdirProgramNames[subdir]:
+                for name in subdir_program_names[subdir]:
                     f.write(name)
+
+    def extractInitialization(self, output_js_path):
+        globals = {}
+        stores = []
+        with open(output_js_path, "r") as f:
+            while True:
+                # Extract some globals.
+                line = f.readline()
+                match = re.match(r"var DYNAMIC_BASE = (.*), DYNAMICTOP_PTR = (.*).*;\n", line)
+                if match:
+                    globals["DYNAMIC_BASE"] = int(match.group(1))
+                    globals["DYNAMICTOP_PTR"] = int(match.group(2))
+                    break
+                if not line:
+                    break
+
+            while True:
+                # Extract heap assignments.
+                line = f.readline()
+                match = re.match(r"HEAP32\[(.*) >> 2\] = (.*);\n", line)
+                if match:
+                    address = match.group(1)
+                    value = match.group(2)
+                    stores.append((address, value))
+                if not line or re.match(r"\s*env\[.*", line):
+                    break
+
+            while True:
+                match = re.match(r"\s*env\[\"(.*)\"\] = (.*);\n", line)
+                if match:
+                    name = match.group(1)
+                    value = match.group(2)
+                    if name != "memory":
+                        numeric_value = int(value)
+                        globals[name] = numeric_value
+                if not line:
+                    break
+                line = f.readline()
+
+        init_info = ""
+        for name in globals:
+            value = globals[name];
+            init_info += name + "=" + str(value) + "\n"
+        for address, value in stores:
+            init_info += "[" + str(globals[address]) + "]=" + str(globals[value])
+
+        return init_info
 
     def needsBuild(self, newestInput):
         return (True, None)
