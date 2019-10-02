@@ -67,6 +67,20 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.agentscript" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.profiler" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -189,6 +203,25 @@ suite = {
             "description" : "Truffle Chrome Inspector support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
+            },
+        },
+        "AGENTSCRIPT": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.agentscript",
+            "dependencies": ["com.oracle.truffle.tools.agentscript"],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "agentscript",
+            },
+            "description" : "Script driven tracing and instrumentation Agent",
+        },
+        "AGENTSCRIPT_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Script driven tracing and instrumentation Agentfor the GraalVM",
+            "layout" : {
             },
         },
         "TRUFFLE_PROFILER": {
