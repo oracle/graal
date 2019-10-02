@@ -101,6 +101,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.wasm.test",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",

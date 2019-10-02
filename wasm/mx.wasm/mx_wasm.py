@@ -200,7 +200,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
 
         init_info = ""
         for name in globals:
-            value = globals[name];
+            value = globals[name]
             init_info += name + "=" + str(value) + "\n"
         for address, value in stores:
             init_info += "[" + str(globals[address]) + "]=" + str(globals[value])
