@@ -952,26 +952,86 @@ char *JVM_NativePath(char *pathname) {
   return pathname;
 }
 
-jint JVM_Open(const char *path, jint oflag, jint mode) {
-  NATIVE(JVM_OPEN);
-  FD fd;
-  RESTARTABLE(open(path, oflag, mode), fd);
-  if (fd != -1) {
-    struct stat buf64;
-    int result;
-    RESTARTABLE(fstat(fd, &buf64), result);
-    if (result != -1) {
-      if (S_ISDIR(buf64.st_mode)) {
-        close(fd);
+int __open(const char *path, int oflag, int mode) {
+    if (strlen(path) > MAX_PATH - 1) {
+    errno = ENAMETOOLONG;
+    return -1;
+  }
+  int fd;
+  int o_delete = (oflag & O_DELETE);
+  oflag = oflag & ~O_DELETE;
+
+  fd = open(path, oflag, mode);
+  if (fd == -1) return -1;
+
+  //If the open succeeded, the file might still be a directory
+  {
+    struct stat buf;
+    int ret = fstat(fd, &buf);
+    int st_mode = buf.st_mode;
+
+    if (ret != -1) {
+      if ((st_mode & S_IFMT) == S_IFDIR) {
         errno = EISDIR;
-        fd = -1;
-        }
-      } else {
+        close(fd);
+        return -1;
+      }
+    } else {
       close(fd);
-      fd = -1;
+      return -1;
     }
   }
+
+    /*
+     * All file descriptors that are opened in the JVM and not
+     * specifically destined for a subprocess should have the
+     * close-on-exec flag set.  If we don't set it, then careless 3rd
+     * party native code might fork and exec without closing all
+     * appropriate file descriptors (e.g. as we do in closeDescriptors in
+     * UNIXProcess.c), and this in turn might:
+     *
+     * - cause end-of-file to fail to be detected on some file
+     *   descriptors, resulting in mysterious hangs, or
+     *
+     * - might cause an fopen in the subprocess to fail on a system
+     *   suffering from bug 1085341.
+     *
+     * (Yes, the default setting of the close-on-exec flag is a Unix
+     * design flaw)
+     *
+     * See:
+     * 1085341: 32-bit stdio routines should support file descriptors >255
+     * 4843136: (process) pipe file descriptor from Runtime.exec not being closed
+     * 6339493: (process) Runtime.exec does not close all file descriptors on Solaris 9
+     */
+#ifdef FD_CLOEXEC
+    {
+        int flags = fcntl(fd, F_GETFD);
+        if (flags != -1)
+            fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+#endif
+
+  if (o_delete != 0) {
+    unlink(path);
+  }
+
   return fd;
+}
+
+jint JVM_Open(const char *fname, jint flags, jint mode) {
+  NATIVE(JVM_OPEN);
+  int result = __open(fname, flags, mode);
+  if (result >= 0) {
+    return result;
+  } else {
+    switch(errno) {
+      case EEXIST:
+        return JVM_EEXIST;
+      default:
+        return -1;
+    }
+  }
 }
 
 jint JVM_Close(jint fd) {
