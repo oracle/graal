@@ -34,23 +34,19 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -67,24 +63,6 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.VMError;
-
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@AutomaticFeature
-class PosixJavaLangSubstituteFeature implements Feature {
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
-        } else {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.ProcessImpl"), "required for substitutions");
-            Class<?> processHandleImplClass = access.findClassByName("java.lang.ProcessHandleImpl");
-            VMError.guarantee(processHandleImplClass != null);
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(processHandleImplClass, "for substitutions");
-        }
-    }
-}
 
 @TargetClass(className = "java.lang.ProcessEnvironment")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -415,20 +393,5 @@ final class Target_java_lang_Runtime {
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
-public final class PosixJavaLangSubstitutions {
-
-    /** Private constructor: No instances. */
-    private PosixJavaLangSubstitutions() {
-    }
-
-    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-    public static boolean initIDs() {
-        // The JDK uses posix_spawn on the Mac to launch executables.
-        // This requires a separate process "jspawnhelper" which we
-        // don't want to have to rely on. Force the use of FORK on
-        // Linux and Mac.
-        System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
-        return true;
-    }
+final class PosixJavaLangSubstitutions {
 }

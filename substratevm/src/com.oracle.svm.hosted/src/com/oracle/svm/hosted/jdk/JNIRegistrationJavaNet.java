@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.hosted.jdk;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -30,7 +30,6 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -42,7 +41,6 @@ import com.oracle.svm.core.jni.JNIRuntimeAccess;
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
-@CLibrary(value = "net", requireStatic = true)
 @AutomaticFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
