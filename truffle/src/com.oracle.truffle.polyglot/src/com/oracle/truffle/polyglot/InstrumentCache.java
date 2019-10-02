@@ -213,6 +213,14 @@ final class InstrumentCache {
             if (loader == null) {
                 return;
             }
+            try {
+                Class<?> truffleInstrumentClassAsSeenByLoader = Class.forName(TruffleInstrument.class.getName(), true, loader);
+                if (truffleInstrumentClassAsSeenByLoader != TruffleInstrument.class) {
+                    return;
+                }
+            } catch (ClassNotFoundException ex) {
+                return;
+            }
             for (Loader instance : INSTANCES) {
                 instance.loadImpl(loader, list, classNamesUsed);
             }
