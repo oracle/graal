@@ -142,8 +142,6 @@ public class ResourceLimitsTest {
                         cpuTimeLimit(Duration.ofMillis(30), Duration.ofMillis(10)).//
                         build();
 
-        System.gc(); // force gc before running this test
-        System.gc();
         Engine engine = Engine.create();
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         List<Future<?>> futures = new ArrayList<>();
