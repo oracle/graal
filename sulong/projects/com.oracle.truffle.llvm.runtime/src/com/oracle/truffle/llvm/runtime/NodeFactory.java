@@ -76,8 +76,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createShuffleVector(Type llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask);
 
-    LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget);
-
     LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
     LLVMExpressionNode createRMWXchg(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);

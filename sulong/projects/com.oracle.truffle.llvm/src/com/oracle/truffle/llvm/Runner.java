@@ -362,9 +362,11 @@ final class Runner {
         @Children final AllocGlobalNode[] allocGlobals;
 
         final LLVMScope fileScope;
+        private NodeFactory nodeFactory;
 
         InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
+            this.nodeFactory = nodeFactory;
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -400,10 +402,10 @@ final class Runner {
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
-                ctx.registerReadOnlyGlobals(roBase);
+                ctx.registerReadOnlyGlobals(roBase, nodeFactory);
             }
             if (allocRwSection != null) {
-                ctx.registerGlobals(rwBase);
+                ctx.registerGlobals(rwBase, nodeFactory);
             }
 
             bindUnresolvedSymbols(ctx);
@@ -991,11 +993,11 @@ final class Runner {
             final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
             final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
             final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
-            final LLVMExpressionNode loadedStruct = nodeFactory.createLoad(elementType, structPointer);
+            final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
 
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
-            final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(functionType, functionLoadTarget);
+            final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
             final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));

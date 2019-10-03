@@ -38,6 +38,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
@@ -66,7 +67,7 @@ public final class LLDBSupport {
 
         LoadRootNode(LLDBSupport dbSupport, Type loadType) {
             super(dbSupport.language);
-            loadNode = dbSupport.getNodeFactory().createLoad(loadType, null);
+            loadNode = CommonNodeFactory.createLoad(loadType, null);
         }
 
         @Override

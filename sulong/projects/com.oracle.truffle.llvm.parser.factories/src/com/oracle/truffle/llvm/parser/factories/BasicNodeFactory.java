@@ -513,44 +513,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
-        if (resolvedResultType instanceof VectorType) {
-            return createLoadVector((VectorType) resolvedResultType, loadTarget, ((VectorType) resolvedResultType).getNumberOfElements());
-        } else {
-            int bits = resolvedResultType instanceof VariableBitWidthType ? resolvedResultType.getBitSize() : 0;
-            return createLoad(resolvedResultType, loadTarget, bits);
-        }
-    }
-
-    private static LLVMLoadNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
-        Type elemType = resultType.getElementType();
-        if (elemType instanceof PrimitiveType) {
-            switch (((PrimitiveType) elemType).getPrimitiveKind()) {
-                case I1:
-                    return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
-                case I8:
-                    return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
-                case I16:
-                    return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
-                case I32:
-                    return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
-                case I64:
-                    return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
-                case FLOAT:
-                    return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
-                case DOUBLE:
-                    return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
-                default:
-                    throw new AssertionError(elemType + " vectors not supported");
-            }
-        } else if (elemType instanceof PointerType || elemType instanceof FunctionType) {
-            return LLVMLoadPointerVectorNodeGen.create(loadTarget, size);
-        } else {
-            throw new AssertionError(elemType + " vectors not supported");
-        }
-    }
-
-    @Override
     public LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
         return createStore(pointerNode, valueNode, type, getByteSize(type));
     }
@@ -2220,39 +2182,6 @@ public class BasicNodeFactory implements NodeFactory {
             addressZeroInits[i] = new LLVMNativePointerLiteralNode(LLVMNativePointer.createNull());
         }
         return addressZeroInits;
-    }
-
-    private static LLVMLoadNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
-        if (resultType instanceof PrimitiveType) {
-            switch (((PrimitiveType) resultType).getPrimitiveKind()) {
-                case I1:
-                    return LLVMI1LoadNodeGen.create(loadTarget);
-                case I8:
-                    return LLVMI8LoadNodeGen.create(loadTarget);
-                case I16:
-                    return LLVMI16LoadNodeGen.create(loadTarget);
-                case I32:
-                    return LLVMI32LoadNodeGen.create(loadTarget);
-                case I64:
-                    return LLVMI64LoadNodeGen.create(loadTarget);
-                case FLOAT:
-                    return LLVMFloatLoadNodeGen.create(loadTarget);
-                case DOUBLE:
-                    return LLVMDoubleLoadNodeGen.create(loadTarget);
-                case X86_FP80:
-                    return LLVM80BitFloatDirectLoadNodeGen.create(loadTarget);
-                default:
-                    throw new AssertionError(resultType);
-            }
-        } else if (resultType instanceof VariableBitWidthType) {
-            return LLVMIVarBitDirectLoadNodeGen.create(loadTarget, bits);
-        } else if (resultType instanceof StructureType || resultType instanceof ArrayType) {
-            return LLVMStructDirectLoadNodeGen.create(loadTarget);
-        } else if (resultType instanceof PointerType || resultType instanceof FunctionType) {
-            return LLVMPointerDirectLoadNodeGen.create(loadTarget);
-        } else {
-            throw new AssertionError(resultType);
-        }
     }
 
     private LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size) {
