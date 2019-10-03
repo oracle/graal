@@ -449,13 +449,12 @@ public final class RegexParser {
 
     private void createOptionalBranch(Term term, boolean greedy, boolean copy, int recurse) throws RegexSyntaxException {
         addTerm(copy ? copyVisitor.copy(term) : term);
-        // When translating a quantified expression that allows zero occurrences into a
-        // disjunction of the form (curTerm|), we must make sure that curTerm cannot match the
-        // empty string, as is specified in step 2a of RepeatMatcher from ECMAScript draft 2018,
-        // chapter 21.2.2.5.1.
-        curTerm.setEmptyGuard(true);
         if (curTerm instanceof Group) {
-            ((Group) curTerm).setExpandedQuantifier(true);
+            // When translating a quantified expression that allows zero occurrences into a
+            // disjunction of the form (curTerm|), we must make sure that curTerm cannot match the
+            // empty string, as is specified in step 2a of RepeatMatcher from ECMAScript draft 2018,
+            // chapter 21.2.2.5.1.
+            curTerm.setEmptyGuard(true);
         }
         createOptional(term, greedy, true, recurse - 1);
     }
@@ -466,6 +465,7 @@ public final class RegexParser {
         }
         properties.setAlternations();
         createGroup(null);
+        curGroup.setExpandedQuantifier(true);
         if (term instanceof Group) {
             curGroup.setEnclosedCaptureGroupsLow(((Group) term).getEnclosedCaptureGroupsLow());
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
@@ -478,11 +478,6 @@ public final class RegexParser {
             createOptionalBranch(term, greedy, copy, recurse);
         }
         popGroup(null);
-    }
-
-    private void setLoop() {
-        assert curTerm instanceof Group;
-        ((Group) curTerm).setLoop(true);
     }
 
     private void expandQuantifier(Term toExpand) {
@@ -511,11 +506,9 @@ public final class RegexParser {
                 ((Group) curTerm).setExpandedQuantifier(true);
             }
         }
+        createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
         if (quantifier.isInfiniteLoop()) {
-            createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, 0);
-            setLoop();
-        } else {
-            createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, (quantifier.getMax() - quantifier.getMin()) - 1);
+            ((Group) curTerm).setLoop(true);
         }
         for (int i = buf.length() - 1; i >= 0; i--) {
             curSequence.add((Term) buf.get(i));
@@ -800,9 +793,9 @@ public final class RegexParser {
      * Simplify redundant alternation prefixes, e.g. {@code /ab|ac/ -> /a(?:b|c)/}. This method
      * should be called when {@code curGroup} is about to be closed.
      */
-    private boolean mergeCommonPrefixes(Group group) {
+    private void mergeCommonPrefixes(Group group) {
         if (group.size() < 2) {
-            return false;
+            return;
         }
         ArrayList<Sequence> newAlternatives = null;
         int lastEnd = 0;
@@ -890,7 +883,6 @@ public final class RegexParser {
             }
             group.setAlternatives(newAlternatives);
         }
-        return newAlternatives != null;
     }
 
     /**

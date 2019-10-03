@@ -49,8 +49,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 
-import java.util.ArrayList;
-
 /**
  * For all lookbehind assertions, mark all states where the assertion may begin. If an assertion may
  * begin before the root of the AST, the AST is wrapped into a non-capturing group and prepended
@@ -137,14 +135,13 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     }
 
     @Override
-    protected void visit(ArrayList<PathElement> path) {
-        final RegexASTNode lastNode = path.get(path.size() - 1).getNode();
-        if (lastNode instanceof CharacterClass) {
-            CharacterClass cc = (CharacterClass) lastNode;
+    protected void visit(RegexASTNode target) {
+        if (target instanceof CharacterClass) {
+            CharacterClass cc = (CharacterClass) target;
             newEntriesFound.add(cc);
         } else {
-            assert lastNode instanceof MatchFound;
-            MatchFound mf = (MatchFound) lastNode;
+            assert target instanceof MatchFound;
+            MatchFound mf = (MatchFound) target;
             if (!(mf.getSubTreeParent() instanceof RegexASTRootNode)) {
                 assert mf.getSubTreeParent() instanceof LookAheadAssertion : "this visitor does not support nested look-behind assertions!";
                 newLookAheadBoundariesHit.add((LookAheadAssertion) mf.getSubTreeParent());

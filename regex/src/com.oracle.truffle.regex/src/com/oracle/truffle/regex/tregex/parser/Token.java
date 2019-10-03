@@ -218,6 +218,11 @@ public class Token implements JsonConvertible {
         @TruffleBoundary
         @Override
         public String toString() {
+            String ret = minMaxToString();
+            return isGreedy() ? ret : ret + "?";
+        }
+
+        private String minMaxToString() {
             if (min == 0 && max == 1) {
                 return "?";
             }

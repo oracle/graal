@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
-import java.util.Iterator;
 
 /**
- * This class is designed as a "scratchpad" for generating many Object arrays of unknown size. It
- * will never shrink its internal buffer, so it should be disposed as soon as it is no longer
- * needed.
+ * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
+ * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
  * <p>
  * Usage Example:
  * </p>
  *
  * <pre>
- * SomeClass[] typedArray = new SomeClass[0];
- * ObjectArrayBuffer buf = new ObjectArrayBuffer();
- * List<SomeClass[]> results = new ArrayList<>();
+ * IntArrayBuffer buf = new LongArrayBuffer();
+ * List<int[]> results = new ArrayList<>();
  * for (Object obj : listOfThingsToProcess) {
- *     for (Object x : obj.thingsThatShouldBecomeSomeClass()) {
+ *     for (Object x : obj.thingsThatShouldBecomeLongs()) {
  *         buf.add(someCalculation(x));
  *     }
- *     results.add(buf.toArray(typedArray));
+ *     results.add(buf.toArray());
  *     buf.clear();
  * }
  * </pre>
  */
-public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iterable<Object> {
+public class LongArrayBuffer extends AbstractArrayBuffer {
 
-    private Object[] buf;
+    protected long[] buf;
 
-    public ObjectArrayBuffer() {
-        this(16);
-    }
-
-    public ObjectArrayBuffer(int initialSize) {
-        buf = new Object[initialSize];
+    public LongArrayBuffer(int initialSize) {
+        buf = new long[initialSize];
     }
 
     @Override
@@ -87,74 +79,26 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         buf = Arrays.copyOf(buf, newSize);
     }
 
-    public Object get(int i) {
+    public long get(int i) {
         return buf[i];
     }
 
-    public Object getLast() {
-        return buf[length() - 1];
-    }
-
-    public void add(Object o) {
+    public void add(long v) {
         if (length == buf.length) {
             grow(length * 2);
         }
-        buf[length] = o;
-        length++;
+        buf[length++] = v;
     }
 
-    public void addAll(ObjectArrayBuffer other) {
-        addAll(other.buf, 0, other.length);
-    }
-
-    public void addAll(Object[] arr, int fromIndex, int toIndex) {
-        int len = toIndex - fromIndex;
-        ensureCapacity(length + len);
-        System.arraycopy(arr, fromIndex, buf, length, len);
-        length += len;
-    }
-
-    public Object pop() {
+    public long pop() {
         return buf[--length];
     }
 
-    public Object peek() {
+    public long peek() {
         return buf[length - 1];
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T[] toArray(T[] a) {
-        if (a.length < length) {
-            return (T[]) Arrays.copyOf(buf, length, a.getClass());
-        }
-        System.arraycopy(buf, 0, a, 0, length);
-        return a;
-    }
-
-    @Override
-    public Iterator<Object> iterator() {
-        return new ObjectBufferIterator(buf, length);
-    }
-
-    private static final class ObjectBufferIterator implements Iterator<Object> {
-
-        private final Object[] buf;
-        private final int size;
-        private int i = 0;
-
-        private ObjectBufferIterator(Object[] buf, int size) {
-            this.buf = buf;
-            this.size = size;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return i < size;
-        }
-
-        @Override
-        public Object next() {
-            return buf[i++];
-        }
+    public long[] toArray() {
+        return Arrays.copyOf(buf, length);
     }
 }

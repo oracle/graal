@@ -138,9 +138,12 @@ public final class TRegexCompilationRequest {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
         RegexProperties properties = ast.getProperties();
         checkFeatureSupport(properties);
@@ -244,9 +247,12 @@ public final class TRegexCompilationRequest {
     private void createAST() {
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
     }
 
@@ -265,8 +271,11 @@ public final class TRegexCompilationRequest {
 
     private void createNFA() {
         phaseStart("NFA");
-        nfa = NFAGenerator.createNFA(ast, compilationBuffer);
-        phaseEnd("NFA");
+        try {
+            nfa = NFAGenerator.createNFA(ast, compilationBuffer);
+        } finally {
+            phaseEnd("NFA");
+        }
         debugNFA();
     }
 
@@ -278,9 +287,13 @@ public final class TRegexCompilationRequest {
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
         DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
         phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
-        dfa.calcDFA();
-        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
-        phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        TRegexDFAExecutorNode executorNode;
+        try {
+            dfa.calcDFA();
+            executorNode = dfa.createDFAExecutor();
+        } finally {
+            phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        }
         debugDFA(dfa, debugDumpName);
         return executorNode;
     }

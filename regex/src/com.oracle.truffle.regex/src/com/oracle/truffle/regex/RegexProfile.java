@@ -117,8 +117,8 @@ public final class RegexProfile {
     }
 
     /**
-     * Decides whether the regular was executed often enough to warrant the costly generation of a
-     * fully expanded DFA.
+     * Decides whether the regular expression was executed often enough to warrant the costly
+     * generation of a fully expanded DFA.
      */
     public boolean shouldGenerateDFA() {
         return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThreshold;
