@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.wasm.test;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import org.graalvm.polyglot.Value;
 
 class WasmTestCaseData {
-    Consumer<Value> resultValidator;
+    BiConsumer<Value, String> resultValidator;
     String expectedErrorMessage;
 
-    WasmTestCaseData(Consumer<Value> resultValidator) {
+    WasmTestCaseData(BiConsumer<Value, String> resultValidator) {
         this.resultValidator = resultValidator;
         this.expectedErrorMessage = null;
     }
