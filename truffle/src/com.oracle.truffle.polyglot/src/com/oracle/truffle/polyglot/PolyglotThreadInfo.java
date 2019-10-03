@@ -61,7 +61,7 @@ final class PolyglotThreadInfo {
     private volatile long lastEntered;
     private volatile long timeExecuted;
 
-    private static final ThreadMXBean THREAD_BEAN = ManagementFactory.getThreadMXBean();
+    private static volatile ThreadMXBean threadBean;
 
     PolyglotThreadInfo(Thread thread) {
         this.thread = new WeakReference<>(thread);
@@ -105,7 +105,15 @@ final class PolyglotThreadInfo {
         if (t == null) {
             return timeExecuted;
         }
-        long time = THREAD_BEAN.getThreadCpuTime(t.getId());
+        ThreadMXBean bean = threadBean;
+        if (bean == null) {
+            /*
+             * getThreadMXBean is synchronized so better cache in a local volatile field to avoid
+             * contention.
+             */
+            threadBean = bean = ManagementFactory.getThreadMXBean();
+        }
+        long time = bean.getThreadCpuTime(t.getId());
         if (time == -1) {
             return TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), TimeUnit.NANOSECONDS);
         }
