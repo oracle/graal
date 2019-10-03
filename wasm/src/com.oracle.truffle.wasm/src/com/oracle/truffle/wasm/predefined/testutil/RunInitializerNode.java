@@ -29,22 +29,37 @@
  */
 package com.oracle.truffle.wasm.predefined.testutil;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.predefined.PredefinedModule;
+import com.oracle.truffle.wasm.binary.WasmVoidResult;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class TestutilModule extends PredefinedModule {
-    public static class Names {
-        public static final String RESET_GLOBALS = "__testutil_reset_globals";
-        public static final String RUN_INITIALIZER = "__testutil_run_initializer";
+import java.util.function.Consumer;
+
+public class RunInitializerNode extends WasmPredefinedRootNode {
+    public RunInitializerNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+        super(language, codeEntry, memory);
     }
 
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        WasmModule module = new WasmModule(name, null);
-        defineFunction(module, Names.RESET_GLOBALS, types(), types(), new ResetGlobalsNode(language, null, null));
-        defineFunction(module, Names.RUN_INITIALIZER, types(), types(), new RunInitializerNode(language, null, null));
-        return module;
+    public Object execute(VirtualFrame frame) {
+        runInitializer(frame.getArguments()[0]);
+        return WasmVoidResult.getInstance();
+    }
+
+    @Override
+    public String name() {
+        return TestutilModule.Names.RUN_INITIALIZER;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void runInitializer(Object initializer) {
+        Consumer<WasmContext> contextInitializer = (Consumer<WasmContext>) initializer;
+        contextInitializer.accept(contextReference().get());
     }
 }
