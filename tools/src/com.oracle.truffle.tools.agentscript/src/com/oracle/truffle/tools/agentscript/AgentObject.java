@@ -99,7 +99,7 @@ final class AgentObject implements TruffleObject {
                                 try {
                                     interop.execute(args[1], new SourceEventObject(event.getSource()));
                                 } catch (InteropException ex) {
-                                    ex.printStackTrace();
+                                    throw raise(RuntimeException.class, ex);
                                 }
                             }
                         }, true);
@@ -137,7 +137,7 @@ final class AgentObject implements TruffleObject {
                                         try {
                                             dispatch.execute(args[1], ctx);
                                         } catch (InteropException ex) {
-                                            raise(RuntimeException.class, ex);
+                                            throw raise(RuntimeException.class, ex);
                                         }
                                     }
                                 };
@@ -166,7 +166,7 @@ final class AgentObject implements TruffleObject {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Exception> T raise(Class<T> type, Exception ex) throws T {
+    static <T extends Exception> T raise(Class<T> type, Exception ex) throws T {
         throw (T) ex;
     }
 }

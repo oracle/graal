@@ -81,6 +81,19 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.agentscript.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.agentscript",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.profiler" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -217,6 +230,18 @@ suite = {
               "artifactId" : "agentscript",
             },
             "description" : "Script driven tracing and instrumentation Agent",
+        },
+        "AGENTSCRIPT_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.agentscript.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "TRUFFLE_PROFILER",
+            ],
+            "description" : "Tests for the script driven tracing and instrumentation Agent.",
+            "maven" : False,
         },
         "AGENTSCRIPT_GRAALVM_SUPPORT" : {
             "native" : True,
