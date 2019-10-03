@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 
 @FunctionalInterface

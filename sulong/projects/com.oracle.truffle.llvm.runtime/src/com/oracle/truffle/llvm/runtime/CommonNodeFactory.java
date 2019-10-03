@@ -297,7 +297,8 @@ public class CommonNodeFactory {
         throw new AssertionError(llvmType + " for " + frameSlot.getIdentifier());
     }
 
-    public static LLVMStatementNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode containerRead, int partIndex, int[] clearParts) {
+    public static LLVMStatementNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode containerRead, int partIndex,
+                    int[] clearParts) {
         final LLVMDebugBuilder builder = getDebugDynamicValueBuilder(isDeclaration);
         if (partIndex < 0 || clearParts == null) {
             return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, targetSlot, valueRead);
