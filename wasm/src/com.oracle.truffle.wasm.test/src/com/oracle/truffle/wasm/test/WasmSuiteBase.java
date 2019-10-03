@@ -129,7 +129,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             Context context;
 
-            // Create a /dev/null stream, as well as surrogate output streams for stdout.
+            // Create a /dev/null stream, as well as a surrogate output stream for stdout.
             // For all the runs except the first and the last ones, suppress the test output.
             OutputStream devNull = new OutputStream() {
                 @Override
