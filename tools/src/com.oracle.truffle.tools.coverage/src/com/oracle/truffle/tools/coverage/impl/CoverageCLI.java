@@ -103,7 +103,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             printLine();
             printSummaryHeader();
-            final LineCoverage lineCoverage = LineCoverage.detailed(sourceCoverage, strictLines);
+            final LineCoverage lineCoverage = new LineCoverage(sourceCoverage);
             out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
             out.println();
             printLinesOfSource(sourceCoverage.getSource(), lineCoverage);
@@ -114,8 +114,7 @@ final class CoverageCLI {
     private void printLinesOfSource(Source source, LineCoverage lineCoverage) {
         for (int i = 1; i <= source.getLineCount(); i++) {
             char covered = lineCoverage.getStatementCoverageCharacter(i);
-            char rootCovered = lineCoverage.getRootCoverageCharacter(i);
-            out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
+            out.println(String.format("%s %s", covered, source.getCharacters(i)));
         }
     }
 
@@ -141,7 +140,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             final String line = String.format(format, path,
                             statementCoverage(sourceCoverage),
-                            lineCoverage(LineCoverage.basic(sourceCoverage, strictLines)),
+                            lineCoverage(new LineCoverage(sourceCoverage)),
                             rootCoverage(sourceCoverage));
             out.println(line);
         }
