@@ -34,10 +34,10 @@ import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -46,6 +46,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @ExportLibrary(InteropLibrary.class)
@@ -108,21 +110,24 @@ final class AgentObject implements TruffleObject {
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
                         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false);
-                        final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-                        Object tags = iop.readMember(args[2], "tags");
-                        if (iop.hasArrayElements(tags)) {
-                            long tagsCount = (int) iop.getArraySize(tags);
-                            for (long i = 0; i < tagsCount; i++) {
-                                Object ith = null;
-                                try {
-                                    ith = iop.readArrayElement(tags, i);
-                                } catch (InvalidArrayIndexException ex) {
-                                    ex.printStackTrace();
-                                }
-                                Class<? extends Tag> tagClass = Tag.findProvidedTag(obj.language, (String) ith);
-                                builder.tagIs(tagClass);
+                        List<Class<? extends Tag>> allTags = new ArrayList<>();
+                        if (args.length > 2) {
+                            final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+                            if (isSet(iop, args[2], "expressions")) {
+                                allTags.add(StandardTags.ExpressionTag.class);
+                            }
+                            if (isSet(iop, args[2], "statements")) {
+                                allTags.add(StandardTags.StatementTag.class);
+                            }
+                            if (isSet(iop, args[2], "roots")) {
+                                allTags.add(StandardTags.RootTag.class);
                             }
                         }
+                        if (allTags.isEmpty()) {
+                            throw new IllegalArgumentException(
+                                            "No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
+                        }
+                        builder.tagIs(allTags.toArray(new Class<?>[0]));
 
                         final SourceSectionFilter filter = builder.build();
                         obj.instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
@@ -163,6 +168,17 @@ final class AgentObject implements TruffleObject {
 
     void initializationFinished() {
         this.initializationFinished.set(true);
+    }
+
+    private static boolean isSet(InteropLibrary iop, Object obj, String property) {
+        try {
+            Object value = iop.readMember(obj, property);
+            return Boolean.TRUE.equals(value);
+        } catch (UnknownIdentifierException ex) {
+            return false;
+        } catch (InteropException ex) {
+            throw raise(RuntimeException.class, ex);
+        }
     }
 
     @SuppressWarnings("unchecked")

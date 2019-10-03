@@ -131,7 +131,7 @@ ttrace.on('enter', function(ev) {
     }
     map.set(ev.name, cnt);
 }, {
-    tags: ['ROOT']
+    roots: true
 });
 
 ttrace.on('close', dumpHistogram);
@@ -195,7 +195,7 @@ ttrace.on('enter', function(ev) {
         next *= 2;
     }
 }, {
-    tags: ['ROOT']
+    roots: true
 });
 ```
 
@@ -392,7 +392,7 @@ function dumpCount() {
 ttrace.on('enter', function(ev) {
     count++;
 }, {
-    tags: ['ROOT']
+    roots: true
 });
 
 ttrace.on('close', dumpCount);
@@ -685,7 +685,7 @@ ttrace.on('enter', function(ev) {
         }
     }
 }, {
-    tags: ['ROOT']
+    roots: true
 });
 
 ttrace.on('close', function() {
