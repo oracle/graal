@@ -120,4 +120,62 @@ public class AgentObjectTest {
             assertEquals("Function foo has been called", "foo", functionName[0]);
         }
     }
+
+    @Test
+    public void onStatementCallback() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            API agentAPI = agent.as(API.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            int[] statementCounter = {0};
+            agentAPI.on("enter", (ev) -> {
+                statementCounter[0]++;
+            }, new API.OnConfig(false, true, false));
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            assertEquals("10 statements", 10, statementCounter[0]);
+        }
+    }
+
+    @Test
+    public void onExpressionCallback() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            API agentAPI = agent.as(API.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            int[] expressionCounter = {0};
+            agentAPI.on("enter", (ev) -> {
+                expressionCounter[0]++;
+            }, new API.OnConfig(true, false, false));
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            assertEquals("10x2 expressions", 20, expressionCounter[0]);
+        }
+    }
 }
