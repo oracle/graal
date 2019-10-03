@@ -24,5 +24,8 @@
  */
 package com.oracle.truffle.tools.agentscript;
 
-public interface AgentScript  {
+import com.oracle.truffle.api.source.Source;
+
+public interface AgentScript {
+    void registerAgentScript(Source file);
 }

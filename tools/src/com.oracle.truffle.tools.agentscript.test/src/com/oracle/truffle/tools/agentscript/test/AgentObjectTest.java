@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.tools.agentscript.test;
 
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class AgentObjectTest {
@@ -45,10 +48,21 @@ public class AgentObjectTest {
     }
 
     @Test
-    public void checkAgentObject() {
-        Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
-        Value agent = AgentObjectFactory.createAgentObject(c);
-        API agentAPI = agent.as(API.class);
-        Assert.assertNotNull("Agent API obtained", agentAPI);
+    public void onSourceCallback() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            API agentAPI = agent.as(API.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] loadedScript = {null};
+            agentAPI.on("source", (ev) -> {
+                loadedScript[0] = ev.name();
+            });
+
+            Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").build();
+            c.eval(sampleScript);
+
+            assertEquals(sampleScript.getName(), loadedScript[0]);
+        }
     }
 }

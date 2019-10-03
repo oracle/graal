@@ -60,6 +60,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
     private EventBinding<?> rootsBinding = null;
+    private Env env;
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -68,60 +69,70 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
     @Override
     protected void onCreate(Env env) {
+        this.env = env;
         env.registerService(this);
         final String path = env.getOptions().get(SCRIPT);
         if (path != null && path.length() > 0) {
-            final Instrumenter instrumenter = env.getInstrumenter();
-            final AtomicReference<EventBinding<?>> ctxListenerBinding = new AtomicReference<>();
-            ctxListenerBinding.set(instrumenter.attachContextsListener(new ContextsListener() {
-                @Override
-                public void onContextCreated(TruffleContext context) {
-                }
-
-                @Override
-                public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                }
-
-                @Override
-                public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                    try {
-                        final TruffleFile file = env.getTruffleFile(path);
-                        String mimeType = file.getMimeType();
-                        String lang = null;
-                        for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
-                            if (e.getValue().getMimeTypes().contains(mimeType)) {
-                                lang = e.getKey();
-                                break;
-                            }
-                        }
-                        Source script = Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
-                        AgentObject agent = new AgentObject(instrumenter, null, language);
-                        CallTarget target = env.parse(script, "agent");
-                        target.call(agent);
-                        agent.initializationFinished();
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    } finally {
-                        final EventBinding<?> onceIsEnough = ctxListenerBinding.getAndSet(null);
-                        if (onceIsEnough != null) {
-                            onceIsEnough.dispose();
-                        }
+            try {
+                TruffleFile file = env.getTruffleFile(path);
+                String mimeType = file.getMimeType();
+                String lang = null;
+                for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
+                    if (e.getValue().getMimeTypes().contains(mimeType)) {
+                        lang = e.getKey();
+                        break;
                     }
                 }
-
-                @Override
-                public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                }
-
-                @Override
-                public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-                }
-
-                @Override
-                public void onContextClosed(TruffleContext context) {
-                }
-            }, true));
+                Source script = Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
+                registerAgentScript(script);
+            } catch (IOException ex) {
+                throw AgentObject.raise(RuntimeException.class, ex);
+            }
         }
+    }
+
+    @Override
+    public void registerAgentScript(final Source script) {
+        final Instrumenter instrumenter = env.getInstrumenter();
+        final AtomicReference<EventBinding<?>> ctxListenerBinding = new AtomicReference<>();
+        ctxListenerBinding.set(instrumenter.attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext context) {
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                try {
+                    AgentObject agent = new AgentObject(instrumenter, null, language);
+                    CallTarget target = env.parse(script, "agent");
+                    target.call(agent);
+                    agent.initializationFinished();
+                } catch (IOException ex) {
+                    throw AgentObject.raise(RuntimeException.class, ex);
+                } finally {
+                    final EventBinding<?> onceIsEnough = ctxListenerBinding.getAndSet(null);
+                    if (onceIsEnough != null) {
+                        onceIsEnough.dispose();
+                    }
+                }
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+            }
+        }, true));
     }
 
     @Override
