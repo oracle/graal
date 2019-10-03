@@ -37,7 +37,10 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScriptInstrument;
 import java.lang.reflect.Constructor;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
+import static org.junit.Assert.assertNotNull;
+import com.oracle.truffle.tools.agentscript.AgentScript;
 
 final class AgentObjectFactory extends ProxyLanguage {
 
@@ -65,6 +68,9 @@ final class AgentObjectFactory extends ProxyLanguage {
 
     public static Value createAgentObject(Context c) {
         ProxyLanguage.setDelegate(new AgentObjectFactory());
+        Instrument instrument = c.getEngine().getInstruments().get(AgentScriptInstrument.ID);
+        AgentScript access = instrument.lookup(AgentScript.class);
+        assertNotNull("Accessor found", access);
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.create(ProxyLanguage.ID, "");
         return c.eval(source);
     }

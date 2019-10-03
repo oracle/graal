@@ -42,8 +42,15 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
-@TruffleInstrument.Registration(id = AgentScriptInstrument.ID, name = AgentScriptInstrument.NAME, version = AgentScriptInstrument.VERSION)
-public final class AgentScriptInstrument extends TruffleInstrument {
+// @formatter:off
+@TruffleInstrument.Registration(
+    id = AgentScriptInstrument.ID,
+    name = AgentScriptInstrument.NAME,
+    version = AgentScriptInstrument.VERSION,
+    services = AgentScript.class
+)
+// @formatter:on
+public final class AgentScriptInstrument extends TruffleInstrument implements AgentScript {
 
     public static final String ID = "agentscript";
     static final String NAME = "Agent Script";
@@ -61,6 +68,7 @@ public final class AgentScriptInstrument extends TruffleInstrument {
 
     @Override
     protected void onCreate(Env env) {
+        env.registerService(this);
         final String path = env.getOptions().get(SCRIPT);
         if (path != null && path.length() > 0) {
             final Instrumenter instrumenter = env.getInstrumenter();
