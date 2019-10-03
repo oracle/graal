@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.test;
+package com.oracle.truffle.regex.jmh;
 
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
-public class JsTests extends RegexTestBase {
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
-    @Override
-    String getEngineOptions() {
-        return "";
+import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
+
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+public class URLBenchmark extends BenchmarkBase {
+
+    @State(Scope.Benchmark)
+    public static class BenchState {
+        String reURL = "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?";
+        String input = "https://lafo.ssw.uni-linz.ac.at/?computer=15";
+        Pattern javaPattern = Pattern.compile(reURL);
+        Context context;
+        Value tregexPattern;
+
+        public BenchState() {
+            context = Context.newBuilder().build();
+            context.enter();
+            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, "").execute("").execute(reURL, "");
+        }
+
+        @TearDown
+        public void tearDown() {
+            context.leave();
+            context.close();
+        }
     }
 
-    @Test
-    public void lookbehindInLookahead() {
-        test("\\s*(?=(?<=\\W))", "", "paragraph block*", 1, true, 9, 10);
-        test("\\s*(?=\\b)", "", "paragraph block*", 1, true, 9, 10);
-        test("\\s*(?=\\b|\\W|$)", "", "paragraph block*", 1, true, 9, 10);
+    @Benchmark
+    public boolean javaPattern(BenchState state) {
+        return state.javaPattern.matcher(state.input).find();
     }
 
-    @Test
-    public void nestedQuantifiers() {
-        test("(x??)?", "", "x", 0, true, 0, 1, 0, 1);
-        test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);
-        test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
-        test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
+    @Benchmark
+    public boolean tregex(BenchState state) {
+        return state.tregexPattern.invokeMember("exec", state.input, 0).getMember("isMatch").asBoolean();
     }
 }

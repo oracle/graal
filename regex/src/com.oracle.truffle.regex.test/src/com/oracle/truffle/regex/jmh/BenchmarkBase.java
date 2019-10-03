@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.test;
+package com.oracle.truffle.regex.jmh;
 
-import org.junit.Test;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
-public class JsTests extends RegexTestBase {
+@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS)
+@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS)
+@Fork(BenchmarkBase.Defaults.FORKS)
+public class BenchmarkBase {
 
-    @Override
-    String getEngineOptions() {
-        return "";
-    }
-
-    @Test
-    public void lookbehindInLookahead() {
-        test("\\s*(?=(?<=\\W))", "", "paragraph block*", 1, true, 9, 10);
-        test("\\s*(?=\\b)", "", "paragraph block*", 1, true, 9, 10);
-        test("\\s*(?=\\b|\\W|$)", "", "paragraph block*", 1, true, 9, 10);
-    }
-
-    @Test
-    public void nestedQuantifiers() {
-        test("(x??)?", "", "x", 0, true, 0, 1, 0, 1);
-        test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);
-        test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
-        test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
+    public static class Defaults {
+        public static final int MEASUREMENT_ITERATIONS = 5;
+        public static final int WARMUP_ITERATIONS = 5;
+        public static final int FORKS = 1;
     }
 }
