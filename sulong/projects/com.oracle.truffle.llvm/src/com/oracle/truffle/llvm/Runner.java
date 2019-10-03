@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -683,6 +684,7 @@ final class Runner {
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
+            LibraryLocator.traceDelegateNative(context, library);
             return null;
         }
     }

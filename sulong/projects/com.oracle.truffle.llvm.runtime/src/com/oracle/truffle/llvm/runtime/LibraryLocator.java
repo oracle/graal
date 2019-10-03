@@ -69,6 +69,12 @@ public abstract class LibraryLocator {
         }
     }
 
+    public static void traceLoadNative(LLVMContext context, Object file) {
+        if (context != null && context.ldDebugEnabled()) {
+            traceLoader(context, "load library natively=%s\n", file);
+        }
+    }
+
     public static void traceSearchPath(LLVMContext context, List<?> paths) {
         if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, " search path=%s\n", paths);
