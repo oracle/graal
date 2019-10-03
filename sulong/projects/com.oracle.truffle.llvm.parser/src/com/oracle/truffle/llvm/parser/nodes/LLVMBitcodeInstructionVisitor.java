@@ -344,7 +344,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(DebugTrapInstruction inst) {
-        final LLVMStatementNode debugTrap = nodeFactory.createDebugTrap();
+        final LLVMStatementNode debugTrap = CommonNodeFactory.createDebugTrap();
         assignSourceLocation(debugTrap, inst, SourceInstrumentationStrategy.FORCED);
         addInstruction(debugTrap);
     }

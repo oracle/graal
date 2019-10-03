@@ -22,6 +22,7 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDeclarationNodeGen;
@@ -198,12 +199,12 @@ public class CommonNodeFactory {
     private static LLVMDebugBuilder getDebugDynamicValueBuilder(boolean isDeclaration) {
         if (isDeclaration) {
             if (debugDeclarationBuilder == null) {
-                debugDeclarationBuilder = CommonNodeFactory::createDebugDeclarationBuilder;
+                debugDeclarationBuilder = LLVMDebugBuilder.createDeclaration();
             }
             return debugDeclarationBuilder;
         } else {
             if (debugValueBuilder == null) {
-                debugValueBuilder = CommonNodeFactory::createDebugValueBuilder;
+                debugValueBuilder = LLVMDebugBuilder.createValue();
             }
             return debugValueBuilder;
         }
@@ -373,6 +374,10 @@ public class CommonNodeFactory {
         } else {
             throw new AssertionError(resultType);
         }
+    }
+
+    public static LLVMStatementNode createDebugTrap() {
+        return new LLVMDebugTrapNode();
     }
 
     public static LLVMDebugValue.Builder createDebugDeclarationBuilder() {

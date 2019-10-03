@@ -133,14 +133,14 @@ public final class LLDBSupport {
 
     public LLVMDebugValue.Builder createDebugValueBuilder() {
         if (cachedDebugValueBuilder == null) {
-            cachedDebugValueBuilder = new WrappedBuilder(getNodeFactory().createDebugValueBuilder(), language);
+            cachedDebugValueBuilder = new WrappedBuilder(CommonNodeFactory.createDebugValueBuilder(), language);
         }
         return cachedDebugValueBuilder;
     }
 
     public LLVMDebugValue.Builder createDebugDeclarationBuilder() {
         if (cachedDebugDeclarationBuilder == null) {
-            cachedDebugDeclarationBuilder = new WrappedBuilder(getNodeFactory().createDebugDeclarationBuilder(), language);
+            cachedDebugDeclarationBuilder = new WrappedBuilder(CommonNodeFactory.createDebugDeclarationBuilder(), language);
         }
         return cachedDebugDeclarationBuilder;
     }
