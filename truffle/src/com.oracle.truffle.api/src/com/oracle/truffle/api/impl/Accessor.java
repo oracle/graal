@@ -193,6 +193,8 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
+        public abstract boolean isExecutableObject(Object value);
+
         public abstract Object createDefaultNodeObject(Node node);
 
         public abstract boolean isValidNodeObject(Object obj);

@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -253,6 +254,110 @@ public class SLDebugTest {
             });
 
             assertEquals("120", expectDone());
+        }
+    }
+
+    @Test
+    public void testGuestFunctionBreakpoints() throws Throwable {
+        final Source functions = slCode("function main() {\n" +
+                        "  a = fac;\n" +
+                        "  return fac(5);\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + // break
+                        "  }\n" +
+                        "  return n * facMin1(n);\n" +
+                        "}\n" +
+                        "function facMin1(n) {\n" +
+                        "  m = n - 1;\n" +
+                        "  return fac(m);\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(functions);
+            Breakpoint[] functionBreakpoint = new Breakpoint[]{null};
+
+            expectSuspended((SuspendedEvent event) -> {
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugValue fac = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                // Breakpoint in "fac" will not suspend in "facMin1".
+                Breakpoint breakpoint = Breakpoint.newBuilder(fac.getSourceLocation()).sourceElements(SourceElement.ROOT).rootInstance(fac).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(5, event.getSourceSection().getStartLine());
+                Assert.assertEquals(5, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(5, event.getSourceSection().getStartLine());
+                Assert.assertEquals(4, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                functionBreakpoint[0].dispose();
+                event.prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testBuiltInFunctionBreakpoints() throws Throwable {
+        final Source functions = slCode("function main() {\n" +
+                        "  a = isNull;\n" +
+                        "  b = nanoTime;\n" +
+                        "  isNull(a);\n" +
+                        "  isExecutable(a);\n" +
+                        "  isNull(b);\n" +
+                        "  nanoTime();\n" +
+                        "  isNull(a);\n" +
+                        "  nanoTime();\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(functions);
+            Breakpoint[] functionBreakpoint = new Breakpoint[]{null};
+
+            expectSuspended((SuspendedEvent event) -> {
+                event.prepareStepOver(2);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugValue isNull = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                Breakpoint breakpoint = Breakpoint.newBuilder((URI) null).sourceElements(SourceElement.ROOT).rootInstance(isNull).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertFalse(event.getSourceSection().isAvailable());
+                Assert.assertEquals("isNull", event.getTopStackFrame().getName());
+                Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
+                frames.next(); // Skip the top one
+                DebugStackFrame mainFrame = frames.next();
+                Assert.assertEquals(4, mainFrame.getSourceSection().getStartLine());
+                // Dispose the breakpoint on isNull() and create one on nanoTime() instead:
+                functionBreakpoint[0].dispose();
+                DebugValue nanoTime = mainFrame.getScope().getDeclaredValue("b");
+                // Breakpoint in "fac" will not suspend in "facMin1".
+                Breakpoint breakpoint = Breakpoint.newBuilder(nanoTime.getSourceLocation()).sourceElements(SourceElement.ROOT).rootInstance(nanoTime).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertFalse(event.getSourceSection().isAvailable());
+                Assert.assertEquals("nanoTime", event.getTopStackFrame().getName());
+                Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
+                frames.next(); // Skip the top one
+                DebugStackFrame mainFrame = frames.next();
+                Assert.assertEquals(7, mainFrame.getSourceSection().getStartLine());
+                functionBreakpoint[0].dispose();
+                event.prepareContinue();
+            });
+            expectDone();
         }
     }
 

@@ -1824,31 +1824,35 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected Iterable<Scope> findLocalScopes(InstrumentContext context, Node node, Frame frame) {
         Iterable<Scope> scopes = super.findLocalScopes(context, node, frame);
+        // arguments[0] contains 'this'. Add it to the default scope:
         Object[] arguments;
-        if (frame == null || (arguments = frame.getArguments()) == null || arguments.length == 0 || !(arguments[0] instanceof ThisArg)) {
-            return scopes;
+        Object thisObject;
+        if (frame != null && (arguments = frame.getArguments()) != null && arguments.length > 0 && arguments[0] instanceof ThisArg) {
+            thisObject = ((ThisArg) arguments[0]).thisElement;
         } else {
-            // arguments[0] contains 'this'. Add it to the default scope:
-            Object thisObject = ((ThisArg) arguments[0]).thisElement;
-            return new Iterable<Scope>() {
-                @Override
-                public Iterator<Scope> iterator() {
-                    Iterator<Scope> iterator = scopes.iterator();
-                    return new Iterator<Scope>() {
-                        @Override
-                        public boolean hasNext() {
-                            return iterator.hasNext();
-                        }
-
-                        @Override
-                        public Scope next() {
-                            Scope scope = iterator.next();
-                            return Scope.newBuilder(scope.getName(), scope.getVariables()).node(scope.getNode()).receiver("THIS", thisObject).build();
-                        }
-                    };
-                }
-            };
+            thisObject = null;
         }
+        // Find the current root instance - function.
+        Object function = context.callFunctions.findFunction(node.getRootNode().getName());
+        return new Iterable<Scope>() {
+            @Override
+            public Iterator<Scope> iterator() {
+                Iterator<Scope> iterator = scopes.iterator();
+                return new Iterator<Scope>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public Scope next() {
+                        Scope scope = iterator.next();
+                        return Scope.newBuilder(scope.getName(), scope.getVariables()).node(scope.getNode()).arguments(scope.getArguments()).receiver("THIS", thisObject).rootInstance(
+                                        function).build();
+                    }
+                };
+            }
+        };
     }
 
     @Override

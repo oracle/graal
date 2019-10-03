@@ -67,6 +67,11 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
+        public boolean isExecutableObject(Object value) {
+            return InteropLibrary.getFactory().getUncached().isExecutable(value);
+        }
+
+        @Override
         public Object createDefaultNodeObject(Node node) {
             return EmptyTruffleObject.INSTANCE;
         }

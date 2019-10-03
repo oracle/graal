@@ -68,6 +68,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract Params setBreakpoint(Location location, String condition) throws CommandProcessException;
 
+    public abstract Params setBreakpointOnFunctionCall(String functionObjectId, String condition) throws CommandProcessException;
+
     public abstract void removeBreakpoint(String id) throws CommandProcessException;
 
     public abstract void continueToLocation(Location location, CommandPostProcessor postProcessor) throws CommandProcessException;

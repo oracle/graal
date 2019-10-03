@@ -219,6 +219,29 @@ public final class DebugScope {
     }
 
     /**
+     * Get value that represents root instance of this scope. The value is an instance of guest
+     * language representation of the root node of this scope, e.g. a guest language function.
+     *
+     * @return the root instance value, or <code>null</code> when no such value exists.
+     * @since 19.3.0
+     */
+    public DebugValue getRootInstance() {
+        verifyValidState();
+        DebugValue functionValue = null;
+        try {
+            Object function = scope.getRootInstance();
+            if (function != null) {
+                functionValue = new DebugValue.HeapValue(session, getLanguage(), root.getName(), function);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(session, ex, language, null, true, null);
+        }
+        return functionValue;
+    }
+
+    /**
      * Get local variables declared in this scope, valid at the current suspension point. Call this
      * method on {@link #getParent() parent}, to get values of variables declared in parent scope,
      * if any.

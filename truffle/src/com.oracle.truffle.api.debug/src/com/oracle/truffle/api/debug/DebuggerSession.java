@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -639,6 +640,14 @@ public final class DebuggerSession implements Closeable {
         return Collections.unmodifiableList(b);
     }
 
+    void visitBreakpoints(Consumer<Breakpoint> consumer) {
+        synchronized (this.breakpoints) {
+            for (Breakpoint b : this.breakpoints) {
+                consumer.accept(b);
+            }
+        }
+    }
+
     /**
      * Set whether breakpoints are active in this session. This has no effect on breakpoints
      * enabled/disabled state. Breakpoints need to be active to actually break the execution. The
@@ -860,7 +869,7 @@ public final class DebuggerSession implements Closeable {
     }
 
     @TruffleBoundary
-    Object notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
+    Object notifyCallback(EventContext context, DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     BreakpointConditionFailure conditionFailure) {
         ThreadSuspension suspensionDisabled = threadSuspensions.get();
@@ -929,7 +938,7 @@ public final class DebuggerSession implements Closeable {
             breakpointFailures.put(fb, conditionFailure.getConditionFailure());
         }
 
-        Object newReturnValue = processBreakpointsAndStep(nodes, s, source, frame, suspendAnchor,
+        Object newReturnValue = processBreakpointsAndStep(context, nodes, s, source, frame, suspendAnchor,
                         inputValuesProvider, returnValue, exception, breakpointFailures,
                         new Supplier<SuspendedContext>() {
                             @Override
@@ -1000,7 +1009,7 @@ public final class DebuggerSession implements Closeable {
         doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
-    private Object notifyCallerReturn(SteppingStrategy s, DebuggerNode source, SuspendAnchor suspendAnchor, Object returnValue) {
+    private Object notifyCallerReturn(EventContext context, SteppingStrategy s, DebuggerNode source, SuspendAnchor suspendAnchor, Object returnValue) {
         // SuspensionFilter:
         if (source.isStepNode()) {
             if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
@@ -1057,7 +1066,7 @@ public final class DebuggerSession implements Closeable {
         for (DebuggerNode node : nodes) {
             node.markAsDuplicate(this);
         }
-        Object newReturnValue = processBreakpointsAndStep(nodes, s, source, caller.frame, suspendAnchor, null, returnValue, null, null, new Supplier<SuspendedContext>() {
+        Object newReturnValue = processBreakpointsAndStep(context, nodes, s, source, caller.frame, suspendAnchor, null, returnValue, null, null, new Supplier<SuspendedContext>() {
             @Override
             public SuspendedContext get() {
                 return SuspendedContext.create(caller.node, null);
@@ -1067,7 +1076,7 @@ public final class DebuggerSession implements Closeable {
     }
 
     @SuppressWarnings("all") // The parameter breakpointFailures should not be assigned
-    private Object processBreakpointsAndStep(List<DebuggerNode> nodes, SteppingStrategy s, DebuggerNode source, MaterializedFrame frame,
+    private Object processBreakpointsAndStep(EventContext context, List<DebuggerNode> nodes, SteppingStrategy s, DebuggerNode source, MaterializedFrame frame,
                     SuspendAnchor suspendAnchor, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     Map<Breakpoint, Throwable> breakpointFailures, Supplier<SuspendedContext> contextSupplier) {
         List<Breakpoint> breaks = null;
@@ -1079,7 +1088,7 @@ public final class DebuggerSession implements Closeable {
             boolean hit = true;
             BreakpointConditionFailure failure = null;
             try {
-                hit = breakpoint.notifyIndirectHit(source, node, frame, exception);
+                hit = breakpoint.notifyIndirectHit(context, source, node, frame, exception);
             } catch (BreakpointConditionFailure e) {
                 failure = e;
             }
@@ -1368,7 +1377,7 @@ public final class DebuggerSession implements Closeable {
             SuspendAnchor anchor = SuspendAnchor.BEFORE;
             SteppingStrategy steppingStrategy;
             if (suspendNext || suspendAll || (steppingStrategy = getSteppingStrategy(Thread.currentThread())) != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
-                notifyCallback(this, frame, anchor, null, null, null, null);
+                notifyCallback(context, this, frame, anchor, null, null, null, null);
             }
         }
 
@@ -1377,7 +1386,7 @@ public final class DebuggerSession implements Closeable {
             SuspendAnchor anchor = SuspendAnchor.AFTER;
             SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
             if (steppingStrategy != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
-                return notifyCallback(this, frame, anchor, this, result, null, null);
+                return notifyCallback(context, this, frame, anchor, this, result, null, null);
             }
             return result;
         }
@@ -1483,7 +1492,7 @@ public final class DebuggerSession implements Closeable {
                 }
             }
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                Object newResult = notifyCallerReturn(steppingStrategy, this, SuspendAnchor.AFTER, result);
+                Object newResult = notifyCallerReturn(context, steppingStrategy, this, SuspendAnchor.AFTER, result);
                 if (newResult != result) {
                     throw getContext().createUnwind(new ChangedReturnInfo(newResult));
                 }
