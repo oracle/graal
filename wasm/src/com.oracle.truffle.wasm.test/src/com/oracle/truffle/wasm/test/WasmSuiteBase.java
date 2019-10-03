@@ -137,7 +137,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     // emulate write to /dev/null - i.e. do nothing
                 }
             };
-            ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
+            final ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
 
             // Capture output for the first run.
             System.setOut(new PrintStream(capturedStdout));
