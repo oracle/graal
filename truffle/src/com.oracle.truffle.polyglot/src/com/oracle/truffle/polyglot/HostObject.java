@@ -933,6 +933,19 @@ final class HostObject implements TruffleObject {
         throw UnsupportedMessageException.create();
     }
 
+    @ExportMessage
+    boolean isException() {
+        return obj instanceof Throwable;
+    }
+
+    @ExportMessage
+    RuntimeException throwException() throws UnsupportedMessageException {
+        if (isException()) {
+            throw new HostException((Throwable) obj);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
     boolean isStaticClass() {
         return staticClass;
     }
