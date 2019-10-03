@@ -684,6 +684,8 @@ final class Runner {
             TargetDataLayout layout = module.getTargetDataLayout();
             DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
             NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
+            //This needs to be removed once the nodefactory is taken out of the language.
+            context.getLanguage().setNodeFactory(nodeFactory);
             LLVMScope fileScope = new LLVMScope();
             LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory);
             LLVMParser parser = new LLVMParser(source, runtime);
