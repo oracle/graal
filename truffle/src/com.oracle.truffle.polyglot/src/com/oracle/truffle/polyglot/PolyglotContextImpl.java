@@ -58,7 +58,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicSet;
@@ -190,12 +190,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
 
-    volatile long volatileStatementCounter;
+    final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
     long elapsedTime;
     final long statementLimit;
-
-    static final AtomicLongFieldUpdater<PolyglotContextImpl> STATEMENT_COUNTER_UPDATER = AtomicLongFieldUpdater.newUpdater(PolyglotContextImpl.class, "volatileStatementCounter");
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -234,7 +232,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.subProcesses = new HashSet<>();
         this.statementLimit = config.limits != null ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
-        this.volatileStatementCounter = statementLimit;
+        this.volatileStatementCounter.set(statementLimit);
         notifyContextCreated();
         PolyglotContextImpl.initializeStaticContext(this);
     }
@@ -576,7 +574,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         if (engine.singleThreadPerContext.isValid()) {
             count = this.statementCounter;
         } else {
-            count = this.volatileStatementCounter;
+            count = this.volatileStatementCounter.get();
         }
         return statementLimit - count;
     }
@@ -594,7 +592,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         singleThreaded.invalidate();
 
         long statementsExecuted = statementLimit - statementCounter;
-        STATEMENT_COUNTER_UPDATER.getAndAdd(this, -statementsExecuted);
+        volatileStatementCounter.getAndAdd(-statementsExecuted);
     }
 
     private PolyglotThreadInfo createThreadInfo(Thread current) {

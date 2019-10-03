@@ -107,7 +107,7 @@ final class PolyglotLimits {
                 context.resetTiming();
             }
             context.statementCounter = context.statementLimit;
-            context.volatileStatementCounter = context.statementLimit;
+            context.volatileStatementCounter.set(context.statementLimit);
         }
     }
 
@@ -166,7 +166,7 @@ final class PolyglotLimits {
             if (engine.singleThreadPerContext.isValid()) {
                 count = --currentContext.statementCounter;
             } else {
-                count = PolyglotContextImpl.STATEMENT_COUNTER_UPDATER.decrementAndGet(currentContext);
+                count = currentContext.volatileStatementCounter.decrementAndGet();
             }
             if (count < 0) { // overflowed
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -200,8 +200,8 @@ final class PolyglotLimits {
                         limitReached = true;
                     }
                 } else {
-                    if (context.volatileStatementCounter < 0) {
-                        context.volatileStatementCounter = limit;
+                    if (context.volatileStatementCounter.get() < 0) {
+                        context.volatileStatementCounter.set(limit);
                         limitReached = true;
                     }
                 }

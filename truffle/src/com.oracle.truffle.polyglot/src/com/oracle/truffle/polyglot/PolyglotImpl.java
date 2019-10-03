@@ -56,6 +56,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -69,7 +70,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
-import org.graalvm.home.HomeFinder;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
