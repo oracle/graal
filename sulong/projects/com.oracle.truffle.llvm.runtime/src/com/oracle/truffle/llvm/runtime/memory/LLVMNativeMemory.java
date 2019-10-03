@@ -536,7 +536,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
      * A fast check if the provided address is within the handle space.
      */
     public static boolean isHandleMemory(long address) {
-        return (address & HANDLE_SPACE_START) == HANDLE_SPACE_START;
+        return (address & HANDLE_SPACE_START) != 0;
     }
 
     /**
