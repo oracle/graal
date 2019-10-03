@@ -1128,6 +1128,7 @@ suite = {
           "file:patches/*"
         ],
       },
+      "platformDependent" : True,
       "maven": False,
       "license" : "NCSA",
     },
