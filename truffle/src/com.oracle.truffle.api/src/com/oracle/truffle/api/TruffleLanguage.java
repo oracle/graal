@@ -485,6 +485,13 @@ public abstract class TruffleLanguage<C> {
          * @since 19.3.0
          */
         List<FileTypeDetector> createFileTypeDetectors();
+
+        /**
+         * Returns the class names of provided services.
+         *
+         * @since 19.3.0
+         */
+        Collection<String> getServicesClassNames();
     }
 
     /**

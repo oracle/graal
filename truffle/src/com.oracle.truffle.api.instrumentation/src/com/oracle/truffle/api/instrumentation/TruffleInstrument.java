@@ -50,6 +50,7 @@ import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -857,6 +858,13 @@ public abstract class TruffleInstrument {
          * @since 19.3.0
          */
         TruffleInstrument create();
+
+        /**
+         * Returns the class names of provided services.
+         *
+         * @since 19.3.0
+         */
+        Collection<String> getServicesClassNames();
     }
 
     static {

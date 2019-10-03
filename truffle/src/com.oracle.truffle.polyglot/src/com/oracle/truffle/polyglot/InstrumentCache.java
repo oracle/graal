@@ -63,7 +63,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -204,11 +203,6 @@ final class InstrumentCache {
 
     private abstract static class Loader {
 
-        private static final Loader[] INSTANCES = new Loader[]{
-                        new LegacyLoader(),
-                        new ServicesLoader()
-        };
-
         static void load(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
             if (loader == null) {
                 return;
@@ -221,9 +215,8 @@ final class InstrumentCache {
             } catch (ClassNotFoundException ex) {
                 return;
             }
-            for (Loader instance : INSTANCES) {
-                instance.loadImpl(loader, list, classNamesUsed);
-            }
+            LegacyLoader.INSTANCE.loadImpl(loader, list, classNamesUsed);
+            ServicesLoader.INSTANCE.loadImpl(loader, list, classNamesUsed);
         }
 
         abstract void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed);
@@ -239,6 +232,11 @@ final class InstrumentCache {
     }
 
     private static final class LegacyLoader extends Loader {
+
+        static final Loader INSTANCE = new LegacyLoader();
+
+        private LegacyLoader() {
+        }
 
         @Override
         void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
@@ -359,7 +357,9 @@ final class InstrumentCache {
 
     private static final class ServicesLoader extends Loader {
 
-        ServicesLoader() {
+        static final Loader INSTANCE = new ServicesLoader();
+
+        private ServicesLoader() {
         }
 
         @Override
@@ -380,8 +380,8 @@ final class InstrumentCache {
                 String version = reg.version();
                 boolean internal = reg.internal();
                 Set<String> servicesClassNames = new TreeSet<>();
-                for (Class<?> service : reg.services()) {
-                    servicesClassNames.add(service.getCanonicalName());
+                for (String service : provider.getServicesClassNames()) {
+                    servicesClassNames.add(service);
                 }
                 // we don't want multiple instruments with the same class name
                 if (!classNamesUsed.contains(className)) {
@@ -395,18 +395,15 @@ final class InstrumentCache {
         private static final class ServiceLoaderInstrumentReflection extends InstrumentReflection {
 
             private final TruffleInstrument.Provider provider;
-            private final AtomicBoolean exported = new AtomicBoolean();
 
             ServiceLoaderInstrumentReflection(TruffleInstrument.Provider provider) {
                 assert provider != null;
                 this.provider = provider;
+                exportTruffle(provider.getClass().getClassLoader());
             }
 
             @Override
             TruffleInstrument newInstance() {
-                if (exported.compareAndSet(false, true)) {
-                    exportTruffle(provider.getClass().getClassLoader());
-                }
                 return provider.create();
             }
 

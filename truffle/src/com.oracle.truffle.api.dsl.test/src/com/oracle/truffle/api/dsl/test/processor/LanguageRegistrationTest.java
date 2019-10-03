@@ -49,7 +49,6 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.dsl.processor.GenerateLegacyRegistration;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import org.graalvm.polyglot.Engine;
@@ -177,6 +176,9 @@ public class LanguageRegistrationTest {
             public Detector(String name) {
             }
         }
+    }
+
+    @interface GenerateLegacyRegistration {
     }
 
     @GenerateLegacyRegistration

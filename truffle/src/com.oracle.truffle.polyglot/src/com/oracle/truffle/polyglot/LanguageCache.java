@@ -75,7 +75,6 @@ import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -473,11 +472,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private abstract static class Loader {
 
-        private static final Loader[] LOADERS = {
-                        new LegacyLoader(),
-                        new ServicesLoader()
-        };
-
         static void load(ClassLoader loader, Collection<? super LanguageCache> into) {
             if (loader == null) {
                 return;
@@ -490,9 +484,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
             } catch (ClassNotFoundException ex) {
                 return;
             }
-            for (Loader loaderImpl : LOADERS) {
-                loaderImpl.loadImpl(loader, into);
-            }
+            LegacyLoader.INSTANCE.loadImpl(loader, into);
+            ServicesLoader.INSTANCE.loadImpl(loader, into);
         }
 
         abstract void loadImpl(ClassLoader loader, Collection<? super LanguageCache> into);
@@ -549,7 +542,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         private static final class LegacyLoader extends Loader {
 
-            LegacyLoader() {
+            static final Loader INSTANCE = new LegacyLoader();
+
+            private LegacyLoader() {
             }
 
             @Override
@@ -790,7 +785,9 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         private static final class ServicesLoader extends Loader {
 
-            ServicesLoader() {
+            static final Loader INSTANCE = new ServicesLoader();
+
+            private ServicesLoader() {
             }
 
             @Override
@@ -836,8 +833,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     boolean interactive = reg.interactive();
                     boolean internal = reg.internal();
                     Set<String> servicesClassNames = new TreeSet<>();
-                    for (Class<?> service : reg.services()) {
-                        servicesClassNames.add(service.getCanonicalName());
+                    for (String service : provider.getServicesClassNames()) {
+                        servicesClassNames.add(service);
                     }
                     LanguageReflection reflection = new ServiceLoaderLanguageReflection(provider, reg.contextPolicy());
                     into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
@@ -855,7 +852,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
                 private final TruffleLanguage.Provider provider;
                 private final ContextPolicy contextPolicy;
-                private final AtomicBoolean exported = new AtomicBoolean();
                 private volatile Set<Class<? extends Tag>> providedTags;
                 private volatile List<FileTypeDetector> fileTypeDetectors;
 
@@ -864,11 +860,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     assert contextPolicy != null;
                     this.provider = provider;
                     this.contextPolicy = contextPolicy;
+                    exportTruffle(provider.getClass().getClassLoader());
                 }
 
                 @Override
                 TruffleLanguage<?> newInstance() {
-                    exportTruffleIfNeeded();
                     return provider.create();
                 }
 
@@ -876,7 +872,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 List<? extends FileTypeDetector> getFileTypeDetectors() {
                     List<FileTypeDetector> result = fileTypeDetectors;
                     if (result == null) {
-                        exportTruffleIfNeeded();
                         result = provider.createFileTypeDetectors();
                         fileTypeDetectors = result;
                     }
@@ -923,12 +918,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 URL getCodeSource() {
                     CodeSource source = provider.getClass().getProtectionDomain().getCodeSource();
                     return source != null ? source.getLocation() : null;
-                }
-
-                private void exportTruffleIfNeeded() {
-                    if (exported.compareAndSet(false, true)) {
-                        exportTruffle(provider.getClass().getClassLoader());
-                    }
                 }
             }
         }

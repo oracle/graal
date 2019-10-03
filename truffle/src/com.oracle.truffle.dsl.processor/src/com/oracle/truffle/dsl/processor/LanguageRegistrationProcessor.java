@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,6 +61,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -67,7 +69,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import java.lang.annotation.Annotation;
+import java.util.function.Predicate;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractRegistrationProcessor {
@@ -197,7 +199,15 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     @Override
     Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement) {
         List<AnnotationMirror> result = new ArrayList<>(2);
-        result.add(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(TruffleLanguage.Registration.class)));
+        DeclaredType registrationType = (DeclaredType) ProcessorContext.getInstance().getType(TruffleLanguage.Registration.class);
+        AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
+                        new Predicate<ExecutableElement>() {
+                            @Override
+                            public boolean test(ExecutableElement t) {
+                                return !"services".contentEquals(t.getSimpleName()) && !"fileTypeDetectors".contentEquals(t.getSimpleName());
+                            }
+                        });
+        result.add(registration);
         AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(ProvidedTags.class));
         if (providedTags != null) {
             result.add(providedTags);
@@ -219,7 +229,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     builder.startReturn().startNew(languageType).end(2);
                 }
                 break;
-            case "createFileTypeDetectors":
+            case "createFileTypeDetectors": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(TruffleLanguage.Registration.class));
                 List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors");
                 if (detectors.isEmpty()) {
@@ -233,10 +243,29 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     builder.end(2);
                 }
                 break;
-            case "getLanguageClassName":
+            }
+            case "getLanguageClassName": {
                 Elements elements = context.getEnvironment().getElementUtils();
                 builder.startReturn().doubleQuote(elements.getBinaryName(annotatedElement).toString()).end();
                 break;
+            }
+            case "getServicesClassNames": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(TruffleLanguage.Registration.class));
+                List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
+                if (services.isEmpty()) {
+                    builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
+                } else {
+                    builder.startReturn();
+                    builder.startStaticCall(context.getType(Arrays.class), "asList");
+                    for (TypeMirror service : services) {
+                        Elements elements = context.getEnvironment().getElementUtils();
+                        Types types = context.getEnvironment().getTypeUtils();
+                        builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement()).toString()).end();
+                    }
+                    builder.end(2);
+                }
+                break;
+            }
             default:
                 throw new IllegalStateException("Unsupported method: " + methodToImplement.getSimpleName());
         }

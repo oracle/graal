@@ -756,6 +756,8 @@ suite = {
           "com.oracle.truffle.api.TruffleRuntimeAccess",
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
+          "com.oracle.truffle.api.TruffleLanguage.Provider",
+          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider"
         ],
       },
       "moduleInfo:open" : {

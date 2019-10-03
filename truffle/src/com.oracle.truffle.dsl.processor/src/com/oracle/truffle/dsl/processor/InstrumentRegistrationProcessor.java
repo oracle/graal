@@ -41,6 +41,8 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -53,8 +55,10 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
@@ -64,7 +68,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import java.lang.annotation.Annotation;
-import java.util.Collections;
+import java.util.function.Predicate;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration")
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
@@ -103,7 +107,15 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
 
     @Override
     Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement) {
-        return Collections.singleton(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(TruffleInstrument.Registration.class)));
+        DeclaredType registrationType = (DeclaredType) ProcessorContext.getInstance().getType(TruffleInstrument.Registration.class);
+        AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
+                        new Predicate<ExecutableElement>() {
+                            @Override
+                            public boolean test(ExecutableElement t) {
+                                return !"services".contentEquals(t.getSimpleName());
+                            }
+                        });
+        return Collections.singleton(registration);
     }
 
     @Override
@@ -113,11 +125,31 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             case "create":
                 builder.startReturn().startNew(annotatedElement.asType()).end().end();
                 break;
-            case "getInstrumentClassName":
+            case "getInstrumentClassName": {
                 ProcessorContext context = ProcessorContext.getInstance();
                 Elements elements = context.getEnvironment().getElementUtils();
                 builder.startReturn().doubleQuote(elements.getBinaryName(annotatedElement).toString()).end();
                 break;
+            }
+            case "getServicesClassNames": {
+                ProcessorContext context = ProcessorContext.getInstance();
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                ProcessorContext.getInstance().getType(TruffleInstrument.Registration.class));
+                List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
+                if (services.isEmpty()) {
+                    builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
+                } else {
+                    builder.startReturn();
+                    builder.startStaticCall(context.getType(Arrays.class), "asList");
+                    for (TypeMirror service : services) {
+                        Elements elements = context.getEnvironment().getElementUtils();
+                        Types types = context.getEnvironment().getTypeUtils();
+                        builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement()).toString()).end();
+                    }
+                    builder.end(2);
+                }
+                break;
+            }
             default:
                 throw new IllegalStateException("Unsupported method: " + methodToImplement.getSimpleName());
         }

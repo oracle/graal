@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
@@ -63,6 +64,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -184,8 +186,26 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
     }
 
+    static AnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
+        CodeAnnotationMirror res = new CodeAnnotationMirror(mirror.getAnnotationType());
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet()) {
+            ExecutableElement executable = e.getKey();
+            AnnotationValue value = e.getValue();
+            if (filter.test(executable)) {
+                res.setElementValue(executable, value);
+            }
+        }
+        return res;
+    }
+
     private static boolean requiresLegacyRegistration(TypeElement annotatedElement) {
-        return annotatedElement.getAnnotation(GenerateLegacyRegistration.class) != null;
+        for (AnnotationMirror mirror : annotatedElement.getAnnotationMirrors()) {
+            Element annotationType = mirror.getAnnotationType().asElement();
+            if ("GenerateLegacyRegistration".contentEquals(annotationType.getSimpleName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String generateProvider(TypeElement annotatedElement) {
