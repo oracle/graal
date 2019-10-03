@@ -1866,6 +1866,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
             return Source.newBuilder(ID, "source infinity", "double").build().createSection(1);
         }
+        if (obj instanceof Function) {
+            return ((RootCallTarget) ((Function) obj).ct).getRootNode().getSourceSection();
+        }
         return null;
     }
 

@@ -971,68 +971,19 @@ public final class DebuggerSession implements Closeable {
         // Clear the frame that is to be re-entered
         clearFrame(((Node) insertableNode).getRootNode(), frame);
         // Fake the caller context
-        class Caller {
-            final Node node;
-            final MaterializedFrame frame;
-
-            Caller(FrameInstance frameInstance) {
-                this.node = frameInstance.getCallNode();
-                this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
-            }
-        }
-        Caller[] nearestCaller = new Caller[1];
-        Caller caller = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Caller>() {
-            private int depth = 0;
-
-            @Override
-            public Caller visitFrame(FrameInstance frameInstance) {
-                // we stop at eval root stack frames
-                if (!SuspendedEvent.isEvalRootStackFrame(DebuggerSession.this, frameInstance) && (depth++ == 0)) {
-                    return null;
-                }
-                Node callNode = frameInstance.getCallNode();
-                // Prefer call node with a source section
-                if (callNode != null && callNode.getEncapsulatingSourceSection() != null) {
-                    return new Caller(frameInstance);
-                } else {
-                    if (nearestCaller[0] == null) {
-                        nearestCaller[0] = new Caller(frameInstance);
-                    }
-                    return null;
-                }
-            }
-        });
-        if (caller == null) {
-            caller = nearestCaller[0];
-        }
+        Caller caller = findCurrentCaller(this, includeInternal);
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
         doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
-    private Object notifyCallerReturn(EventContext context, SteppingStrategy s, DebuggerNode source, SuspendAnchor suspendAnchor, Object returnValue) {
-        // SuspensionFilter:
-        if (source.isStepNode()) {
-            if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
-                return returnValue;
-            }
-        }
-        // Fake the caller context
-        class Caller {
-            final Node node;
-            final MaterializedFrame frame;
-
-            Caller(FrameInstance frameInstance, Node callNode) {
-                this.node = callNode;
-                this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
-            }
-        }
-        Caller caller = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Caller>() {
+    static Caller findCurrentCaller(DebuggerSession session, boolean includeInternal) {
+        return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Caller>() {
             private int depth = 0;
 
             @Override
             public Caller visitFrame(FrameInstance frameInstance) {
                 // we stop at eval root stack frames
-                if (!SuspendedEvent.isEvalRootStackFrame(DebuggerSession.this, frameInstance) && (depth++ == 0)) {
+                if (!SuspendedEvent.isEvalRootStackFrame(session, frameInstance) && (depth++ == 0)) {
                     return null;
                 }
                 Node callNode = frameInstance.getCallNode();
@@ -1049,10 +1000,41 @@ public final class DebuggerSession implements Closeable {
                 return new Caller(frameInstance, callNode);
             }
         });
+    }
+
+    private Object notifyCallerReturn(EventContext context, SteppingStrategy s, DebuggerNode source, SuspendAnchor suspendAnchor, Object returnValue) {
+        // SuspensionFilter:
+        if (source.isStepNode()) {
+            if (ignoreLanguageContextInitialization.get() && !source.getContext().isLanguageContextInitialized()) {
+                return returnValue;
+            }
+        }
+        // Fake the caller context
+        Caller caller = findCurrentCaller(this, includeInternal);
         if (caller == null) {
             // We did not find a caller node
             return returnValue;
         }
+        return notifyAtCaller(context, caller, s, source, suspendAnchor, returnValue, null, null);
+    }
+
+    Object notifyAtCaller(EventContext context, Caller caller, SteppingStrategy s, DebuggerNode source, SuspendAnchor suspendAnchor, Object returnValue, DebugException exception,
+                    BreakpointConditionFailure conditionFailure) {
+        ThreadSuspension suspensionDisabled = threadSuspensions.get();
+        if (suspensionDisabled != null && !suspensionDisabled.enabled) {
+            return returnValue;
+        }
+
+        Thread currentThread = Thread.currentThread();
+        SuspendedEvent event = currentSuspendedEventMap.get(currentThread);
+        if (event != null) {
+            if (Debugger.TRACE) {
+                trace("ignored suspended reason: recursive from source:%s context:%s location:%s", source, source.getContext(), source.getSuspendAnchors());
+            }
+            // avoid recursive suspensions in non legacy mode.
+            return returnValue;
+        }
+
         List<DebuggerNode> nodes = collectDebuggerNodes(caller.node, suspendAnchor);
         for (DebuggerNode node : nodes) {
             Breakpoint breakpoint = node.getBreakpoint();
@@ -1066,12 +1048,34 @@ public final class DebuggerSession implements Closeable {
         for (DebuggerNode node : nodes) {
             node.markAsDuplicate(this);
         }
-        Object newReturnValue = processBreakpointsAndStep(context, nodes, s, source, caller.frame, suspendAnchor, null, returnValue, null, null, new Supplier<SuspendedContext>() {
-            @Override
-            public SuspendedContext get() {
-                return SuspendedContext.create(caller.node, null);
+        nodes.add(source);
+
+        SteppingStrategy strategy = s;
+        if (strategy == null) {
+            strategy = getSteppingStrategy(currentThread);
+            if (strategy == null) {
+                // a new Thread just appeared
+                strategy = notifyNewThread(currentThread);
             }
-        });
+        }
+
+        Map<Breakpoint, Throwable> breakpointFailures = null;
+        if (conditionFailure != null) {
+            breakpointFailures = new HashMap<>();
+            Breakpoint fb = conditionFailure.getBreakpoint();
+            if (fb.isGlobal()) {
+                fb = fb.getROWrapper();
+            }
+            breakpointFailures.put(fb, conditionFailure.getConditionFailure());
+        }
+
+        Object newReturnValue = processBreakpointsAndStep(context, nodes, strategy, source, caller.frame, suspendAnchor, null, returnValue, exception, breakpointFailures,
+                        new Supplier<SuspendedContext>() {
+                            @Override
+                            public SuspendedContext get() {
+                                return SuspendedContext.create(caller.node, null);
+                            }
+                        });
         return newReturnValue;
     }
 
@@ -1307,6 +1311,26 @@ public final class DebuggerSession implements Closeable {
             }
             return Debugger.ACCESSOR.evalInContext(source, node, frame);
         }
+    }
+
+    /**
+     * Information about a caller node.
+     */
+    static final class Caller {
+
+        final Node node;
+        final MaterializedFrame frame;
+
+        Caller(FrameInstance frameInstance) {
+            this.node = frameInstance.getCallNode();
+            this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+        }
+
+        Caller(FrameInstance frameInstance, Node callNode) {
+            this.node = callNode;
+            this.frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+        }
+
     }
 
     static final class ThreadSuspension {

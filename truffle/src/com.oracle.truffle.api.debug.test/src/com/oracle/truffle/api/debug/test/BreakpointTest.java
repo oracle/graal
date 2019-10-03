@@ -63,6 +63,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -1234,6 +1235,93 @@ public class BreakpointTest extends AbstractDebugTest {
             }
             expectDone();
         }
+    }
+
+    @Test
+    public void testFunctionSensitiveBreakpointsInternal() throws Exception {
+        // Test breakpoints hit on functions in internal source
+        Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo0),\n" +
+                        "  CALL(foo1),\n" +
+                        "  CALL(foo2)\n" +
+                        ")\n");
+        Source internalSource = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  DEFINE(foo0,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(foo1,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(foo2,\n" +
+                        "    ROOT(\n" +
+                        "      CALL(foo0),\n" +
+                        "      CALL(foo1))\n" +
+                        "  )\n" +
+                        ")\n", "SLInternal.sl").internal(true).buildLiteral();
+        boolean internalSession = false;
+        do {
+            try (DebuggerSession session = startSession()) {
+                session.setSteppingFilter(SuspensionFilter.newBuilder().includeInternal(internalSession).build());
+                startEval(internalSource);
+                expectDone();
+                session.suspendNextExecution();
+                startEval(source);
+                String[] functions = new String[]{"foo0", "foo1"};
+                final Breakpoint[] breakpoints = new Breakpoint[2];
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 2, true, "STATEMENT");
+                    // Retrieve the function instances
+                    DebugScope functionScope = session.getTopScope(source.getLanguage());
+                    for (int f = 0; f < functions.length; f++) {
+                        DebugValue foo = functionScope.getDeclaredValue(functions[f]);
+                        assertTrue(foo.getSourceLocation().getSource().isInternal());
+                        // Create breakpoint for the function, use the source section, or nothing:
+                        Breakpoint.Builder builder;
+                        if (f == 0) {
+                            builder = Breakpoint.newBuilder(foo.getSourceLocation());
+                        } else {
+                            builder = Breakpoint.newBuilder((URI) null);
+                        }
+                        breakpoints[f] = builder.rootInstance(foo).sourceElements(SourceElement.ROOT).build();
+                        session.install(breakpoints[f]);
+                    }
+                });
+                if (!internalSession) {
+                    // Breakpoints hit in the non-internal source only
+                    for (int f = 0; f < functions.length; f++) {
+                        int ff = f;
+                        int expectedLine = 3 + f;
+                        expectSuspended((SuspendedEvent event) -> {
+                            assertFalse(event.getSourceSection().getSource().isInternal());
+                            assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                            List<Breakpoint> bpHit = event.getBreakpoints();
+                            assertEquals(1, bpHit.size());
+                            assertSame(breakpoints[ff], bpHit.get(0));
+                        });
+                    }
+                } else {
+                    // Only in the internal session
+                    // breakpoints are hit in the internal source in their bodies
+                    for (int f = 0; f < functions.length * 2; f++) {
+                        int ff = f % 2;
+                        int expectedLine = 2 + 5 * ff;
+                        expectSuspended((SuspendedEvent event) -> {
+                            assertTrue(event.getSourceSection().getSource().isInternal());
+                            assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                            List<Breakpoint> bpHit = event.getBreakpoints();
+                            assertEquals(1, bpHit.size());
+                            assertSame(breakpoints[ff], bpHit.get(0));
+                        });
+                    }
+                }
+                expectDone();
+            }
+        } while ((internalSession = !internalSession) == true);
     }
 
     @Test

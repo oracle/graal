@@ -714,14 +714,14 @@ public class Breakpoint {
     }
 
     @TruffleBoundary
-    private Object doBreak(EventContext context, DebuggerNode source, SessionList breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception,
-                    BreakpointConditionFailure failure) {
-        return doBreak(context, source, breakInSessions, frame, onEnter, result, exception, source, false, null, failure);
+    private Object doBreak(EventContext context, DebuggerNode source, SessionList breakInSessions, boolean activeOnNoninternalCalls, MaterializedFrame frame, boolean onEnter, Object result,
+                    Throwable exception, BreakpointConditionFailure failure) {
+        return doBreak(context, source, breakInSessions, activeOnNoninternalCalls, frame, onEnter, result, exception, source, false, null, failure);
     }
 
     @TruffleBoundary
-    private Object doBreak(EventContext context, DebuggerNode source, SessionList breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception,
-                    Node throwLocation, boolean isCatchNodeComputed, DebugException.CatchLocation catchLocation, BreakpointConditionFailure failure) {
+    private Object doBreak(EventContext context, DebuggerNode source, SessionList breakInSessions, boolean activeOnNoninternalCalls, MaterializedFrame frame, boolean onEnter, Object result,
+                    Throwable exception, Node throwLocation, boolean isCatchNodeComputed, DebugException.CatchLocation catchLocation, BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
@@ -737,14 +737,29 @@ public class Breakpoint {
         SessionList current = breakInSessions;
         while (current != null) {
             DebuggerSession session = current.session;
+            // Test if the breakpoint is active and if it is internal compliant:
             if (session.isBreakpointsActive(getKind())) {
-                DebugException de;
-                if (exception != null) {
-                    de = new DebugException(session, exception, null, throwLocation, isCatchNodeComputed, catchLocation);
-                } else {
-                    de = null;
+                boolean internalCompliant = true;
+                DebuggerSession.Caller caller = null;
+                if (activeOnNoninternalCalls && !session.isIncludeInternal()) {
+                    // We're on an internal source in a session that does not include internals,
+                    // but we should suspend on a non-internal caller.
+                    caller = DebuggerSession.findCurrentCaller(session, true);
+                    internalCompliant = caller != null && !caller.node.getRootNode().isInternal();
                 }
-                newResult = session.notifyCallback(context, source, frame, anchor, null, newResult, de, failure);
+                if (internalCompliant) {
+                    DebugException de;
+                    if (exception != null) {
+                        de = new DebugException(session, exception, null, throwLocation, isCatchNodeComputed, catchLocation);
+                    } else {
+                        de = null;
+                    }
+                    if (caller != null) {
+                        newResult = session.notifyAtCaller(context, caller, null, source, anchor, newResult, de, failure);
+                    } else {
+                        newResult = session.notifyCallback(context, source, frame, anchor, null, newResult, de, failure);
+                    }
+                }
             }
             current = current.next;
         }
@@ -1234,7 +1249,8 @@ public class Breakpoint {
         @TruffleBoundary
         void doBreak(MaterializedFrame frame, SessionList debuggerSessions, BreakpointConditionFailure conditionError, Throwable exception, BreakpointExceptionFilter.Match matched) {
             Node throwLocation = getContext().getInstrumentedNode();
-            getBreakpoint().doBreak(getContext(), this, debuggerSessions, frame, false, null, exception, throwLocation, matched.isCatchNodeComputed, matched.catchLocation, conditionError);
+            getBreakpoint().doBreak(getContext(), this, debuggerSessions, activeOnNoninternalCalls, frame, false, null, exception, throwLocation, matched.isCatchNodeComputed, matched.catchLocation,
+                            conditionError);
         }
     }
 
@@ -1255,6 +1271,7 @@ public class Breakpoint {
 
         @Child private ConditionalBreakNode breakCondition;
         @CompilationFinal private Assumption conditionExistsUnchanged;
+        @CompilationFinal protected boolean activeOnNoninternalCalls;
         @CompilationFinal private SessionList sessionList;
         @CompilationFinal private Assumption sessionsUnchanged;
 
@@ -1271,6 +1288,11 @@ public class Breakpoint {
             CompilerAsserts.neverPartOfCompilation();
             synchronized (breakpoint) {
                 boolean inInternalCode = context.getInstrumentedNode().getRootNode().isInternal();
+                if (inInternalCode && (breakpoint.locationKey == null || breakpoint.locationKey.containsRoot()) && context.hasTag(SourceElement.ROOT.getTag())) {
+                    // We're in internal code, but we're on a ROOT. We'll be active when parent call
+                    // is not internal to show the call node to this root.
+                    activeOnNoninternalCalls = true;
+                }
                 SourceSection sourceSection = context.getInstrumentedSourceSection();
                 Source inSource;
                 if (sourceSection != null) {
@@ -1281,9 +1303,10 @@ public class Breakpoint {
                 SessionList listEntry = null;
                 List<DebuggerSession> allSesssions = breakpoint.sessions;
                 // traverse in inverse order to make the linked list in correct order
+                boolean inactiveInInternal = inInternalCode && !activeOnNoninternalCalls;
                 for (int i = allSesssions.size() - 1; i >= 0; i--) {
                     DebuggerSession session = allSesssions.get(i);
-                    if (inInternalCode && !session.isIncludeInternal()) {
+                    if (inactiveInInternal && !session.isIncludeInternal()) {
                         continue;  // filter session
                     }
                     if (inSource != null && session.isSourceFilteredOut(inSource)) {
@@ -1342,7 +1365,7 @@ public class Breakpoint {
                 conditionError = e;
             }
             breakBranch.enter();
-            return breakpoint.doBreak(context, this, sessions, frame.materialize(), onEnter, result, exception, conditionError);
+            return breakpoint.doBreak(context, this, sessions, activeOnNoninternalCalls, frame.materialize(), onEnter, result, exception, conditionError);
         }
 
         @ExplodeLoop
@@ -1618,6 +1641,11 @@ public class Breakpoint {
         @Override
         public int getIgnoreCount() {
             return delegate.getIgnoreCount();
+        }
+
+        @Override
+        public Kind getKind() {
+            return delegate.getKind();
         }
 
         @Override
