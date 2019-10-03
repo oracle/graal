@@ -168,9 +168,9 @@ public final class ResourceLimits {
          * Therefore, new inner contexts cannot be used to exceed the statement limit.
          * <p>
          * Note that attaching a statement limit to a context reduces the throughput of all guest
-         * applications with that use the same engine. The statement counter needs to be updated for
-         * every statement that is executed. It is recommended to benchmark the use of the statement
-         * limit before it is used in production.
+         * applications with that use the same engine. The statement counter needs to be updated
+         * with every statement that is executed. It is recommended to benchmark the use of the
+         * statement limit before it is used in production.
          *
          * @see ResourceLimits Example Usage
          * @since 19.3
@@ -188,7 +188,7 @@ public final class ResourceLimits {
         /**
          * Specifies the maximum {@link ThreadMXBean#getThreadCpuTime(long) CPU time} a context may
          * be active until the onLimit event is notified and the context will be
-         * {@link Context#close() closed}. The lime limit {@link Duration duration} may be specified
+         * {@link Context#close() closed}. The {@link Duration time limit} may be specified
          * alongside an {@link Duration accuracy} with which the time limit is enforced. Both time
          * limit and accuracy must be positive. Both parameters may be set to <code>null</code> to
          * disable the time limit for a builder. By default no time limit is configured. Invoking
@@ -196,11 +196,10 @@ public final class ResourceLimits {
          * limit is exceeded then the {@link #onLimit(Consumer) onLimit} listener is notified. The
          * minimal accuracy is 10 milliseconds, values below that will be rounded up.
          * <p>
-         * The activation CPU time of a context typically does not include time spent waiting for
-         * synchronization or IO. If the guest application is executed on multiple threads at the
-         * same time, or if the guest application creates new threads then the CPU time of those
-         * threads will be accumulated individually in the activation time. E.g. if two threads
-         * execute the same context then the time limit will be exceeded twice as fast.
+         * The used CPU time of a context typically does not include time spent waiting for
+         * synchronization or IO. The CPU time of all threads will be added and checked against the
+         * CPU time limit. This can mean that if two threads execute the same context then the time
+         * limit will be exceeded twice as fast.
          * <p>
          * The time limit is enforced by a separate high-priority thread that will be woken
          * regularly. There is no guarantee that the context will be cancelled within the accuracy
