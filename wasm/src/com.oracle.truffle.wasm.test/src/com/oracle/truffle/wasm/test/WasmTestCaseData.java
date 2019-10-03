@@ -35,15 +35,24 @@ import org.graalvm.polyglot.Value;
 
 class WasmTestCaseData {
     Consumer<Value> resultValidator;
+    Consumer<String> outputValidator;
     String expectedErrorMessage;
 
     WasmTestCaseData(Consumer<Value> resultValidator) {
         this.resultValidator = resultValidator;
+        this.outputValidator = null;
         this.expectedErrorMessage = null;
     }
 
-    public WasmTestCaseData(String expectedErrorMessage) {
+    WasmTestCaseData(Consumer<Value> resultValidator, Consumer<String> outputValidator) {
+        this.resultValidator = resultValidator;
+        this.outputValidator = outputValidator;
+        this.expectedErrorMessage = null;
+    }
+
+    WasmTestCaseData(String expectedErrorMessage) {
         this.resultValidator = null;
+        this.outputValidator = null;
         this.expectedErrorMessage = expectedErrorMessage;
     }
 }

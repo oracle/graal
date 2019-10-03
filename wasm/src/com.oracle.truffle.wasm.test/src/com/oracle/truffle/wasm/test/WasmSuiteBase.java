@@ -31,7 +31,6 @@ package com.oracle.truffle.wasm.test;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -112,7 +111,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmTestCase testCase) {
         try {
-            byte[] binary = testCase.selfCompile();
+            byte[] binary = testCase.createBinary();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
             Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
 
@@ -250,14 +249,43 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return testCases.stream().filter((WasmTestCase x) -> filterTestName().test(x.name)).collect(Collectors.toList());
     }
 
-    protected String getResourceContents(String resourceName) throws IOException {
+    protected String getResourceAsString(String resourceName, boolean fail) throws IOException {
+        byte[] contents = getResourceAsBytes(resourceName, fail);
+        if (contents != null) {
+            return new String(contents);
+        } else {
+            assert !fail;
+            return null;
+        }
+    }
+
+    protected byte[] getResourceAsBytes(String resourceName, boolean fail) throws IOException {
         InputStream stream = getClass().getResourceAsStream(resourceName);
         if (stream == null) {
-            Assert.fail(String.format("Could not find resource: %s", resourceName));
+            if (fail) {
+                Assert.fail(String.format("Could not find resource: %s", resourceName));
+            } else {
+                return null;
+            }
         }
         byte[] contents = new byte[stream.available()];
         new DataInputStream(stream).readFully(contents);
-        return new String(contents);
+        return contents;
+    }
+
+    protected Object getResourceAsTest(String baseName, boolean fail) throws IOException {
+        final String text = getResourceAsString(baseName + ".wat", false);
+        if (text != null) {
+            return text;
+        }
+        final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
+        if (bytes != null) {
+            return bytes;
+        }
+        if (fail) {
+            Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
+        }
+        return null;
     }
 
     protected Collection<WasmTestCase> collectFileTestCases(String testBundle) throws IOException {
@@ -279,31 +307,42 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 continue;
             }
 
-            String mainWatContent = getResourceContents(String.format("/test/%s/%s.wat", testBundle, testName));
-            String resultContent = getResourceContents(String.format("/test/%s/%s.result", testBundle, testName));
+            Object mainContent = getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
+            String resultContent = getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
 
             String[] resultTypeValue = resultContent.split("\\s+");
             String resultType = resultTypeValue[0];
             String resultValue = resultTypeValue[1];
 
+            WasmTestCaseData testData = null;
             switch (resultType) {
                 case "int":
-                    collectedCases.add(testCase(testName, expected(Integer.parseInt(resultValue)), mainWatContent));
+                    testData = expected(Integer.parseInt(resultValue));
                     break;
                 case "long":
-                    collectedCases.add(testCase(testName, expected(Long.parseLong(resultValue)), mainWatContent));
+                    testData = expected(Long.parseLong(resultValue));
                     break;
                 case "float":
-                    collectedCases.add(testCase(testName, expected(Float.parseFloat(resultValue)), mainWatContent));
+                    testData = expected(Float.parseFloat(resultValue));
                     break;
                 case "double":
-                    collectedCases.add(testCase(testName, expected(Double.parseDouble(resultValue)), mainWatContent));
+                    testData = expected(Double.parseDouble(resultValue));
                     break;
                 case "exception":
-                    collectedCases.add(testCase(testName, expectedThrows(resultValue), mainWatContent));
+                    testData = expectedThrows(resultValue);
+                    break;
+                case "stdout":
+                    testData = expectedStdout(resultValue);
                     break;
                 default:
                     Assert.fail(String.format("Unknown type in result specification: %s", resultType));
+            }
+            if (mainContent instanceof String) {
+                collectedCases.add(testCase(testName, testData, (String) mainContent));
+            } else if (mainContent instanceof byte[]) {
+                collectedCases.add(testCase(testName, testData, (byte[]) mainContent));
+            } else {
+                Assert.fail("Unknown content type: " + mainContent.getClass());
             }
         }
 
@@ -318,8 +357,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmStringTestCase(name, data, program);
     }
 
-    protected static WasmFileTestCase testCase(String name, WasmTestCaseData data, File program) {
-        return new WasmFileTestCase(name, data, program);
+    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary) {
+        return new WasmBinaryTestCase(name, data, binary);
     }
 
     protected static WasmTestCaseData expected(Object expectedValue) {
@@ -338,6 +377,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestCaseData(expectedErrorMessage);
     }
 
+    protected static WasmTestCaseData expectedStdout(String expectedOutput) {
+        return new WasmTestCaseData(null, (String output) -> Assert.assertEquals("Incorrect output", expectedOutput, output));
+    }
+
     protected static abstract class WasmTestCase {
         private String name;
         private WasmTestCaseData data;
@@ -347,7 +390,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             this.data = data;
         }
 
-        public abstract byte[] selfCompile() throws IOException, InterruptedException;
+        public abstract byte[] createBinary() throws IOException, InterruptedException;
     }
 
     protected static class WasmStringTestCase extends WasmTestCase {
@@ -359,22 +402,22 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
 
         @Override
-        public byte[] selfCompile() throws IOException, InterruptedException {
+        public byte[] createBinary() throws IOException, InterruptedException {
             return WasmTestToolkit.compileWatString(program);
         }
     }
 
-    protected static class WasmFileTestCase extends WasmTestCase {
-        private File program;
+    protected static class WasmBinaryTestCase extends WasmTestCase {
+        private final byte[] binary;
 
-        public WasmFileTestCase(String name, WasmTestCaseData data, File program) {
+        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary) {
             super(name, data);
-            this.program = program;
+            this.binary = binary;
         }
 
         @Override
-        public byte[] selfCompile() throws IOException, InterruptedException {
-            return WasmTestToolkit.compileWatFile(program);
+        public byte[] createBinary() throws IOException, InterruptedException {
+            return binary;
         }
     }
 }
