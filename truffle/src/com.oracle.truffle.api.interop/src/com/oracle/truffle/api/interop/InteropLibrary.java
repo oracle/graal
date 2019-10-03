@@ -55,6 +55,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -104,6 +105,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <li>{@link #isDate(Object) Date}, {@link #isTime(Object) Time} or {@link #isTimeZone(Object)
  * TimeZone}
  * <li>{@link #isDuration(Object) Duration}
+ * <li>{@link #isException(Object) Exception}
  * </ul>
  * All receiver values may be {@link #isExecutable(Object) executable},
  * {@link #isInstantiable(Object) instantiable}, {@link #isPointer(Object) pointers}, have
@@ -1130,6 +1132,39 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns <code>true</code> if the receiver value represents a throwable
+     * {@linkplain TruffleException#getExceptionObject() exception/error object}. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * <p>
+     * Objects must only return <code>true</code> if they support {@link #throwException} as well.
+     * If this method is implemented then also {@link #throwException(Object)} must be implemented.
+     *
+     * @see #throwException(Object)
+     * @see TruffleException#getExceptionObject()
+     * @since 19.3
+     */
+    @Abstract(ifExported = {"throwException"})
+    public boolean isException(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Throws the receiver object as an exception of the source language, as if it was thrown by the
+     * source language itself. Allows rethrowing exceptions caught by another language.
+     * <p>
+     * If this method is implemented then also {@link #isException(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isException(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isException(Object)
+     * @since 19.3
+     */
+    @Abstract(ifExported = {"isException"})
+    public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns the library factory for the interop library. Short-cut for
      * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}.
      *
@@ -1987,6 +2022,32 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isDuration(receiver);
             assert !result || notOtherType(receiver, Type.DURATION);
             return result;
+        }
+
+        @Override
+        public boolean isException(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isException(receiver);
+            return result;
+        }
+
+        @Override
+        public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean wasException = delegate.isException(receiver);
+            boolean unsupported = false;
+            try {
+                throw delegate.throwException(receiver);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasException : violationInvariant(receiver);
+                unsupported = true;
+                throw e;
+            } finally {
+                if (!unsupported) {
+                    assert wasException : violationInvariant(receiver);
+                }
+            }
         }
 
     }

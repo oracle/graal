@@ -99,6 +99,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsExceptionNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNullNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsTimeNodeGen;
@@ -108,6 +109,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.RemoveArrayElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.RemoveMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.SetArrayElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.ThrowExceptionNodeGen;
 
 abstract class PolyglotValue extends AbstractValueImpl {
 
@@ -783,6 +785,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget asInstant;
         final CallTarget isDuration;
         final CallTarget asDuration;
+        final CallTarget isException;
+        final CallTarget throwException;
 
         final boolean isProxy;
         final boolean isHost;
@@ -833,6 +837,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.asInstant = createTarget(AsInstantNodeGen.create(this));
             this.isDuration = createTarget(IsDurationNodeGen.create(this));
             this.asDuration = createTarget(AsDurationNodeGen.create(this));
+            this.isException = createTarget(IsExceptionNodeGen.create(this));
+            this.throwException = createTarget(ThrowExceptionNodeGen.create(this));
         }
 
         abstract static class IsDateNode extends InteropNode {
@@ -1930,6 +1936,58 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return executeShared(context, receiver, key, ExecuteVoidNoArgsNode.NO_ARGS);
             }
 
+        }
+
+        abstract static class IsExceptionNode extends InteropNode {
+
+            protected IsExceptionNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isException";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isException(receiver);
+            }
+        }
+
+        abstract static class ThrowExceptionNode extends InteropNode {
+
+            protected ThrowExceptionNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "throwException";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    throw objects.throwException(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "throwException()", "isException()");
+                }
+            }
         }
 
     }
