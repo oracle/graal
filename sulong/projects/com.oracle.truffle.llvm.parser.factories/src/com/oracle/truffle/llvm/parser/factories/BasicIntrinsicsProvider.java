@@ -43,6 +43,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRaiseExceptionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSyscall;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsPrimitive;
@@ -384,10 +385,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
 
         add("polyglot_set_array_element", (args, language, types) -> LLVMPolyglotSetArrayElementNodeGen.create(types, args.get(1), args.get(2), args.get(3)));
 
-        add("polyglot_get_member", (args, language) -> LLVMPolyglotGetMemberNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+        add("polyglot_get_member", (args, language) -> LLVMPolyglotGetMemberNodeGen.create(CommonNodeFactory.createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
         add("polyglot_get_array_element",
-                        (args, language) -> LLVMPolyglotGetArrayElementNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+                        (args, language) -> LLVMPolyglotGetArrayElementNodeGen.create(CommonNodeFactory.createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
         add("polyglot_remove_member", (args, language) -> LLVMPolyglotRemoveMemberNodeGen.create(args.get(1), args.get(2)));
 
@@ -407,7 +408,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
                                         args.get(1)));
 
         add("polyglot_invoke",
-                        (args, language, types) -> LLVMPolyglotInvokeNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3),
+                        (args, language, types) -> LLVMPolyglotInvokeNodeGen.create(CommonNodeFactory.createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3),
                                         Arrays.copyOfRange(types, 3, types.length),
                                         args.get(1), args.get(2)));
 

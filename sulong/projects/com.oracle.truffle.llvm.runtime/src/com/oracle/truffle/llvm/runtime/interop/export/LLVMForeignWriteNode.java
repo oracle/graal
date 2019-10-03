@@ -78,6 +78,6 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     }
 
     protected ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type) {
-        return getNodeFactory().createForeignToLLVM(type);
+        return CommonNodeFactory.createForeignToLLVM(type);
     }
 }

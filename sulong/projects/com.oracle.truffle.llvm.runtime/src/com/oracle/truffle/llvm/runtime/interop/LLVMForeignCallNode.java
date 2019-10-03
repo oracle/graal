@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
@@ -67,7 +68,6 @@ public class LLVMForeignCallNode extends RootNode {
         @Children final ForeignToLLVM[] toLLVM;
 
         PackForeignArgumentsNode(Type[] parameterTypes, LLVMInteropType interopType) {
-            NodeFactory nodeFactory = getNodeFactory();
             this.toLLVM = new ForeignToLLVM[parameterTypes.length];
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
@@ -75,16 +75,16 @@ public class LLVMForeignCallNode extends RootNode {
                 for (int i = 0; i < parameterTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
-                        toLLVM[i] = nodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
+                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
                     } else {
                         // interop only supported for value types
-                        toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
                     }
                 }
             } else {
                 // no interop parameter types available
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                    toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
                 }
             }
         }
@@ -104,10 +104,9 @@ public class LLVMForeignCallNode extends RootNode {
         ForeignToLLVM[] createVarargsToLLVM(int argCount) {
             int count = argCount - toLLVM.length;
             if (count > 0) {
-                NodeFactory nodeFactory = LLVMNode.getNodeFactory();
                 ForeignToLLVM[] ret = new ForeignToLLVM[count];
                 for (int i = 0; i < count; i++) {
-                    ret[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
+                    ret[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
                 }
                 return ret;
             } else {
@@ -132,7 +131,7 @@ public class LLVMForeignCallNode extends RootNode {
         }
 
         ForeignToLLVM createVarargsToLLVM() {
-            return LLVMNode.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.ANY);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
         }
 
         @Specialization(guards = "arguments.length >= toLLVM.length", replaces = "packCachedArgCount")

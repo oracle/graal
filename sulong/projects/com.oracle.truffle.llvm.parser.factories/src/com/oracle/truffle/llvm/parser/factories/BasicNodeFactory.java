@@ -2199,58 +2199,6 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    @Override
-    public ForeignToLLVM createForeignToLLVM(ForeignToLLVMType type) {
-        switch (type) {
-            case VOID:
-                return ToVoidLLVMNodeGen.create();
-            case ANY:
-                return ToAnyLLVMNodeGen.create();
-            case I1:
-                return ToI1NodeGen.create();
-            case I8:
-                return ToI8NodeGen.create();
-            case I16:
-                return ToI16NodeGen.create();
-            case I32:
-                return ToI32NodeGen.create();
-            case I64:
-                return ToI64NodeGen.create();
-            case FLOAT:
-                return ToFloatNodeGen.create();
-            case DOUBLE:
-                return ToDoubleNodeGen.create();
-            case POINTER:
-                return ToPointer.create();
-            default:
-                throw new IllegalStateException(type.toString());
-        }
-    }
-
-    @Override
-    public ForeignToLLVM createForeignToLLVM(Value type) {
-        switch (type.getKind()) {
-            case I1:
-                return ToI1NodeGen.create();
-            case I8:
-                return ToI8NodeGen.create();
-            case I16:
-                return ToI16NodeGen.create();
-            case I32:
-                return ToI32NodeGen.create();
-            case I64:
-                return ToI64NodeGen.create();
-            case FLOAT:
-                return ToFloatNodeGen.create();
-            case DOUBLE:
-                return ToDoubleNodeGen.create();
-            case POINTER:
-                return ToPointer.create(type.getBaseType());
-            default:
-                throw new IllegalStateException("unexpected interop kind " + type.getKind());
-        }
-    }
-
     private static AssertionError unsupportedCast(Type targetType) {
         throw new LLVMParserException("Cannot cast to " + targetType);
     }
@@ -2273,9 +2221,5 @@ public class BasicNodeFactory implements NodeFactory {
 
     public long getIndexOffset(long index, AggregateType type) {
         return type.getOffsetOf(index, dataLayout);
-    }
-
-    public DataLayout getDataSpecConverter() {
-        return dataLayout;
     }
 }
