@@ -45,12 +45,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
@@ -908,8 +910,59 @@ public final class VM extends NativeEnv implements ContextAccess {
         return createACC(context, false, StaticObject.NULL);
     }
 
+    static private class PrivilegedStack {
+        public static Supplier<PrivilegedStack> supplier = new Supplier<PrivilegedStack>() {
+            @Override
+            public PrivilegedStack get() {
+                return new PrivilegedStack();
+            }
+        };
+
+        private Element top;
+
+        public void push(FrameInstance frame, StaticObject context) {
+            top = new Element(frame, context, top);
+        }
+
+        public void pop() {
+            assert top != null : "poping empty privileged stack !";
+            top = top.next;
+        }
+
+        public boolean compare(FrameInstance frame) {
+            return top != null && top.compare(frame);
+        }
+
+        public StaticObject peekContext() {
+            assert top != null;
+            return top.context;
+        }
+
+        static private class Element {
+            Frame frame;
+            StaticObject context;
+            Element next;
+
+            public Element(FrameInstance frame, StaticObject context, Element next) {
+                // FIXME: getFrame returns different instances on subsequent calls.
+                this.frame = frame.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                this.context = context;
+                this.next = next;
+            }
+
+            public boolean compare(FrameInstance other) {
+                // FIXME: Find a way to compare frames.
+                assert this.frame != null && other != null;
+                return false;
+            }
+        }
+    }
+
+    private static ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
+
     @VmImpl
     @JniImpl
+    @CompilerDirectives.TruffleBoundary
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_DoPrivileged(@Host(Class.class) StaticObject cls,
                     @Host(typeName = "PrivilegedAction OR PrivilegedActionException") StaticObject action,
@@ -927,7 +980,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (run == null || !run.isPublic() || run.isStatic()) {
             getMeta().throwEx(InternalError.class);
         }
-        // TODO: set privileged stack.
+
+        // Prepare the privileged stack
+        assert Truffle.getRuntime().getCurrentFrame() != null : "No caller ?";
+        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        stack.push(Truffle.getRuntime().getCurrentFrame(), context);
+
+        // Execute the action.
         StaticObject result = StaticObject.NULL;
         try {
             result = (StaticObject) run.invokeDirect(action);
@@ -939,35 +998,43 @@ public final class VM extends NativeEnv implements ContextAccess {
                 throw new EspressoException(wrapper);
             }
         } finally {
-            // TODO: pop privileged stack
+            stack.pop();
         }
         return result;
     }
 
     @VmImpl
     @JniImpl
+    @CompilerDirectives.TruffleBoundary
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetStackAccessControlContext(@Host(Class.class) StaticObject cls) {
-        ArrayList<StaticObject> context = new ArrayList<>();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        ArrayList<StaticObject> domains = new ArrayList<>();
+        final PrivilegedStack stack = privilegedStackThreadLocal.get();
+        final boolean[] isPrivileged = new boolean[]{false};
+
+        StaticObject context = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
             StaticObject prevDomain = null;
 
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 Method m = getMethodFromFrame(frameInstance);
                 if (m != null) {
+                    if (stack.compare(frameInstance)) {
+                        isPrivileged[0] = true;
+                    }
                     StaticObject domain = Target_java_lang_Class.getProtectionDomain0(m.getDeclaringKlass().mirror());
-                    // TODO: stop if we see a privileged stack. Requires getting consistent identity
-                    // of frames.
                     if (domain != prevDomain) {
-                        context.add(domain);
+                        domains.add(domain);
                         prevDomain = domain;
+                    }
+                    if (isPrivileged[0]) {
+                        return stack.peekContext();
                     }
                 }
                 return null;
             }
         });
-        StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), context.toArray(StaticObject.EMPTY_ARRAY));
-        return createACC(guestContext, false, StaticObject.NULL);
+        StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
+        return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
     }
 
     @VmImpl
