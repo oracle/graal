@@ -38,6 +38,7 @@ import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -74,26 +75,31 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
         env.registerService(this);
         final String path = env.getOptions().get(SCRIPT);
         if (path != null && path.length() > 0) {
-            try {
-                TruffleFile file = env.getTruffleFile(path);
-                String mimeType = file.getMimeType();
-                String lang = null;
-                for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
-                    if (e.getValue().getMimeTypes().contains(mimeType)) {
-                        lang = e.getKey();
-                        break;
+            registerAgentScript(() -> {
+                try {
+                    TruffleFile file = env.getTruffleFile(path);
+                    String mimeType = file.getMimeType();
+                    String lang = null;
+                    for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
+                        if (e.getValue().getMimeTypes().contains(mimeType)) {
+                            lang = e.getKey();
+                            break;
+                        }
                     }
+                    return Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
+                } catch (IOException ex) {
+                    throw AgentObject.raise(RuntimeException.class, ex);
                 }
-                Source script = Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
-                registerAgentScript(script);
-            } catch (IOException ex) {
-                throw AgentObject.raise(RuntimeException.class, ex);
-            }
+            });
         }
     }
 
     @Override
     public void registerAgentScript(final Source script) {
+        registerAgentScript(() -> script);
+    }
+
+    private void registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
         final AtomicReference<EventBinding<?>> ctxListenerBinding = new AtomicReference<>();
         ctxListenerBinding.set(instrumenter.attachContextsListener(new ContextsListener() {
@@ -108,6 +114,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
                 try {
+                    Source script = src.get();
                     AgentObject agent = new AgentObject(env, null, language);
                     CallTarget target = env.parse(script, "agent");
                     target.call(agent);
