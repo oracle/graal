@@ -186,21 +186,23 @@ def _check_jvmci_version(jdk):
         d = dists[0]
         assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
         source_timestamp = getmtime(d.sourcesPath)
-        with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
-            source_contents = zf.read(qualified_name.replace('.', '/') + '.java')
+        def source_supplier():
+            with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
+                return zf.read(qualified_name.replace('.', '/') + '.java')
     else:
         source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', qualified_name.replace('.', '/') + '.java')
         source_timestamp = getmtime(source_path)
-        with open(source_path, 'r') as fp:
-            source_contents = fp.read()
+        def source_supplier():
+            with open(source_path, 'r') as fp:
+                return fp.read()
 
     unqualified_class_file = join(binDir, unqualified_name + '.class')
     if not exists(unqualified_class_file) or getmtime(unqualified_class_file) < source_timestamp:
         with SafeDirectoryUpdater(binDir, create=True) as sdu:
-            source_path = join(sdu.directory, unqualified_name + '.java')
-            with open(source_path, 'w') as fp:
-                fp.write(source_contents.replace('package org.graalvm.compiler.hotspot;', ''))
-            mx.run([jdk.javac, '-d', sdu.directory, source_path])
+            unqualified_source_path = join(sdu.directory, unqualified_name + '.java')
+            with open(unqualified_source_path, 'w') as fp:
+                fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
+            mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
     mx.run([jdk.java, '-cp', binDir, unqualified_name])
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
