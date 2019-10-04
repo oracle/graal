@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.agentscript.test;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.Map;
+import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
@@ -66,11 +67,17 @@ public class AgentObjectTest {
             public final boolean expressions;
             public final boolean statements;
             public final boolean roots;
+            public final Predicate<String> rootNameFilter;
 
             OnConfig(boolean expressions, boolean statements, boolean roots) {
+                this(expressions, statements, roots, null);
+            }
+
+            OnConfig(boolean expressions, boolean statements, boolean roots, Predicate<String> rootNameFilter) {
                 this.expressions = expressions;
                 this.statements = statements;
                 this.roots = roots;
+                this.rootNameFilter = rootNameFilter;
             }
         }
     }
@@ -127,6 +134,39 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertTrue("Program started", program[0]);
+            assertEquals("Function foo has been called", "foo", functionName[0]);
+        }
+    }
+
+    @Test
+    public void onEnterCallbackWithFilterOnRootName() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            API agentAPI = agent.as(API.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] functionName = {null};
+            agentAPI.on("enter", (ctx, frame) -> {
+                assertNull("No function entered yet", functionName[0]);
+                functionName[0] = ctx.name();
+            }, new API.OnConfig(false, false, true, (name) -> "foo".equals(name)));
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  DEFINE(bar,\n" +
+                "    CALL(foo)\n" +
+                "  ),\n" +
+                "  CALL(bar)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
             assertEquals("Function foo has been called", "foo", functionName[0]);
         }
     }
