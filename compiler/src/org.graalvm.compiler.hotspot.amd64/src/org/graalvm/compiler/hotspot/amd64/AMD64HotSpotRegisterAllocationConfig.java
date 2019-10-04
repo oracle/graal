@@ -83,11 +83,11 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     };
     // @formatter:on
 
-    private final boolean useBasePointer;
+    private final boolean useStandardFrameProlog;
 
-    AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, boolean useBasePointer) {
+    AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, boolean useStandardFrameProlog) {
         super(registerConfig, allocationRestrictedTo);
-        this.useBasePointer = useBasePointer;
+        this.useStandardFrameProlog = useStandardFrameProlog;
     }
 
     @Override
@@ -96,7 +96,7 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
         for (Register reg : registers) {
             regMap.set(reg.number);
         }
-        if (useBasePointer) {
+        if (useStandardFrameProlog) {
             regMap.clear(rbp.number);
         }
 

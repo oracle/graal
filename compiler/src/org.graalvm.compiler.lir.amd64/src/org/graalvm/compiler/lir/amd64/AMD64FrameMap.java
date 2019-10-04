@@ -78,18 +78,14 @@ import jdk.vm.ci.code.StackSlot;
  */
 public class AMD64FrameMap extends FrameMap {
 
-    private final boolean useBasePointer;
+    private final boolean useStandardFrameProlog;
     private StackSlot rbpSpillSlot;
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
-        this(codeCache, registerConfig, referenceMapFactory, false);
-    }
-
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useBasePointer) {
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        this.useBasePointer = useBasePointer;
-        this.initialSpillSize = returnAddressSize() + (useBasePointer ? getTarget().arch.getWordSize() : 0);
+        this.useStandardFrameProlog = useStandardFrameProlog;
+        this.initialSpillSize = returnAddressSize() + (useStandardFrameProlog ? getTarget().arch.getWordSize() : 0);
         this.spillSize = initialSpillSize;
     }
 
@@ -144,7 +140,7 @@ public class AMD64FrameMap extends FrameMap {
         return allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
     }
 
-    public boolean preserveBasePointer() {
-        return useBasePointer;
+    public boolean useStandardFrameProlog() {
+        return useStandardFrameProlog;
     }
 }

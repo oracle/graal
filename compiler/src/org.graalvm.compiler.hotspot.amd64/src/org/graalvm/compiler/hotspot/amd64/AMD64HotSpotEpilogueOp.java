@@ -60,7 +60,7 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction implements AMD
     static void leaveFrameAndRestoreRbp(AllocatableValue savedRbp, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         if (Value.ILLEGAL.equals(savedRbp)) {
             // RBP will be restored in FrameContext.leave(..). Nothing to do here.
-            assert ((AMD64FrameMap) crb.frameMap).preserveBasePointer() : "savedRbp is not initialized.";
+            assert ((AMD64FrameMap) crb.frameMap).useStandardFrameProlog() : "savedRbp is not initialized.";
         } else if (isStackSlot(savedRbp)) {
             // Restoring RBP from the stack must be done before the frame is removed
             masm.movq(rbp, (AMD64Address) crb.asAddress(savedRbp));

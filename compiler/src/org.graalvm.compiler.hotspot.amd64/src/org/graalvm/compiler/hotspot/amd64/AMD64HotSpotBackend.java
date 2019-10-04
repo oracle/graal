@@ -131,12 +131,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         final boolean isStub;
         final boolean omitFrame;
-        final boolean preserveFramePointer;
+        final boolean useStandardFrameProlog;
 
-        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean preserveFramePointer) {
+        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean useStandardFrameProlog) {
             this.isStub = isStub;
             this.omitFrame = omitFrame;
-            this.preserveFramePointer = preserveFramePointer;
+            this.useStandardFrameProlog = useStandardFrameProlog;
         }
 
         @Override
@@ -160,7 +160,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     // assert asm.position() - verifiedEntryPointOffset >=
                     // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
-                if (preserveFramePointer) {
+                if (useStandardFrameProlog) {
                     // Stack-walking friendly instructions
                     asm.push(rbp);
                     asm.movq(rbp, rsp);
@@ -188,7 +188,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 assert crb.frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
                 int frameSize = crb.frameMap.frameSize();
-                if (preserveFramePointer) {
+                if (useStandardFrameProlog) {
                     asm.movq(rsp, rbp);
                     asm.pop(rbp);
                 } else {
