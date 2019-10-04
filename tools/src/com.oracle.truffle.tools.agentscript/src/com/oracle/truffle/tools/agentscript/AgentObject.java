@@ -25,10 +25,6 @@
 package com.oracle.truffle.tools.agentscript;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
@@ -130,24 +126,7 @@ final class AgentObject implements TruffleObject {
                         builder.tagIs(allTags.toArray(new Class<?>[0]));
 
                         final SourceSectionFilter filter = builder.build();
-                        obj.instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
-                            @Override
-                            public ExecutionEventNode create(EventContext context) {
-                                final EventContextObject ctx = new EventContextObject(context);
-                                return new ExecutionEventNode() {
-                                    @Child private InteropLibrary dispatch = InteropLibrary.getFactory().createDispatched(3);
-
-                                    @Override
-                                    protected void onEnter(VirtualFrame frame) {
-                                        try {
-                                            dispatch.execute(args[1], ctx);
-                                        } catch (InteropException ex) {
-                                            throw raise(RuntimeException.class, ex);
-                                        }
-                                    }
-                                };
-                            }
-                        });
+                        obj.instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(args[1]));
                         break;
                     }
 
