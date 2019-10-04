@@ -245,9 +245,9 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private void assertLookupsInnerContext() {
         /*
-         * We currently have all optimizations disabled with inner contexts.
+         * We currently have some optimizations disabled with inner contexts.
          */
-        assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
         assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
         assertBailout(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
         assertBailout(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
@@ -261,7 +261,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
 
-        assertMagicNumberReads(1, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(0, Exclusive.get(), Exclusive.get());
         assertMagicNumberReads(1, Exclusive.get(), Shared.get());
         assertMagicNumberReads(1, Shared.get(), Exclusive.get());
         assertMagicNumberReads(1, Shared.get(), Shared.get());
