@@ -32,6 +32,7 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,12 +49,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
-    private final Instrumenter instrumenter;
+    private final TruffleInstrument.Env env;
     private final LanguageInfo language;
     private final AtomicBoolean initializationFinished;
 
-    AgentObject(Instrumenter instrumenter, Source script, LanguageInfo language) {
-        this.instrumenter = instrumenter;
+    AgentObject(TruffleInstrument.Env env, Source script, LanguageInfo language) {
+        this.env = env;
         this.language = language;
         this.initializationFinished = new AtomicBoolean(false);
     }
@@ -85,13 +86,14 @@ final class AgentObject implements TruffleObject {
     @ExportMessage
     static Object invokeMember(AgentObject obj, String member, Object[] args,
                     @CachedLibrary(limit = "1") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+        Instrumenter instrumenter = obj.env.getInstrumenter();
         switch (member) {
             case "on":
                 AgentType type = AgentType.find((String) args[0]);
                 switch (type) {
                     case SOURCE: {
                         SourceFilter filter = SourceFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false).build();
-                        obj.instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
+                        instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
                                 try {
@@ -126,7 +128,7 @@ final class AgentObject implements TruffleObject {
                         builder.tagIs(allTags.toArray(new Class<?>[0]));
 
                         final SourceSectionFilter filter = builder.build();
-                        obj.instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(args[1]));
+                        instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, args[1]));
                         break;
                     }
 

@@ -28,16 +28,19 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 final class AgentExecutionNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary dispatch = InteropLibrary.getFactory().createDispatched(3);
+    private final TruffleInstrument.Env env;
     private final Object fn;
     private final EventContextObject ctx;
 
-    AgentExecutionNode(Object fn, EventContextObject ctx) {
+    AgentExecutionNode(TruffleInstrument.Env env, Object fn, EventContextObject ctx) {
+        this.env = env;
         this.fn = fn;
         this.ctx = ctx;
     }
@@ -45,18 +48,18 @@ final class AgentExecutionNode extends ExecutionEventNode {
     @Override
     protected void onEnter(VirtualFrame frame) {
         try {
-            dispatch.execute(fn, ctx);
+            dispatch.execute(fn, ctx, new VariablesObject(env, this, frame));
         } catch (InteropException ex) {
             throw AgentObject.raise(RuntimeException.class, ex);
         }
     }
 
-    static ExecutionEventNodeFactory factory(final Object fn) {
+    static ExecutionEventNodeFactory factory(TruffleInstrument.Env env, final Object fn) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 final EventContextObject ctx = new EventContextObject(context);
-                return new AgentExecutionNode(fn, ctx);
+                return new AgentExecutionNode(env, fn, ctx);
             }
         };
     }

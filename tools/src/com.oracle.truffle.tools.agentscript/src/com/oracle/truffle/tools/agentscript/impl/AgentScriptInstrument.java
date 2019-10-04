@@ -108,7 +108,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
                 try {
-                    AgentObject agent = new AgentObject(instrumenter, null, language);
+                    AgentObject agent = new AgentObject(env, null, language);
                     CallTarget target = env.parse(script, "agent");
                     target.call(agent);
                     agent.initializationFinished();
