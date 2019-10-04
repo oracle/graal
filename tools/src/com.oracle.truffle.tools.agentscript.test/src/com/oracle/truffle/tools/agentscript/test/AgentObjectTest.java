@@ -46,6 +46,11 @@ public class AgentObjectTest {
         }
 
         @FunctionalInterface
+        public interface OnCloseHandler {
+            void eventHasJustHappened();
+        }
+
+        @FunctionalInterface
         public interface OnEventHandler {
             void eventHasJustHappened(Context ctx);
         }
@@ -54,6 +59,8 @@ public class AgentObjectTest {
         public interface OnEventWithFrameHandler {
             void eventHasJustHappened(Context ctx, Map<String, Object> frame);
         }
+
+        void on(String event, OnCloseHandler handler);
 
         void on(String event, OnEventHandler handler);
 
@@ -140,6 +147,7 @@ public class AgentObjectTest {
 
     @Test
     public void onEnterCallbackWithFilterOnRootName() throws Exception {
+        boolean[] finished = {false};
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             API agentAPI = agent.as(API.class);
@@ -150,6 +158,9 @@ public class AgentObjectTest {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
             }, new API.OnConfig(false, false, true, (name) -> "foo".equals(name)));
+            agentAPI.on("close", () -> {
+                finished[0] = true;
+            });
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -168,7 +179,10 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("Function foo has been called", "foo", functionName[0]);
+
+            assertFalse("Not closed yet", finished[0]);
         }
+        assertTrue("Closed now", finished[0]);
     }
 
     @Test

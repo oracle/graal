@@ -103,7 +103,7 @@ following `function-histogram-tracing.js` that counts all method invocations
 and dumps the most frequent ones when the execution of your program is over:
 
 ```js
-print(ttrace);
+print(agent);
 
 var map = new Map();
 
@@ -122,7 +122,7 @@ function dumpHistogram() {
     print("=================");
 }
 
-ttrace.on('enter', function(ev) {
+agent.on('enter', function(ev) {
     var cnt = map.get(ev.name);
     if (cnt) {
         cnt = cnt + 1;
@@ -134,16 +134,16 @@ ttrace.on('enter', function(ev) {
     roots: true
 });
 
-ttrace.on('close', dumpHistogram);
+agent.on('close', dumpHistogram);
 ```
 
 The `map` is a global variable shared inside of the **T-Trace** script that 
-allows the code to share data between the `ttrace.on('enter')` function and the `dumpHistogram`
+allows the code to share data between the `agent.on('enter')` function and the `dumpHistogram`
 function. The latter is executed when the `node` process execution is over (registered via
-`ttrace.on('close', dumpHistogram)`. Invoke as:
+`agent.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
-$ node --ttrace=function-histogram-tracing.js -e "print(6 * 7)"
+$ node --agentscript=function-histogram-tracing.js -e "print(6 * 7)"
 Object
 42
 === Histogram ===

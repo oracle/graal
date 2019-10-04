@@ -26,7 +26,9 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 enum AgentType {
     SOURCE,
-    ENTER;
+    ENTER,
+    // RETURN,
+    CLOSE;
 
     static AgentType find(String str) {
         return valueOf(str.toUpperCase());
