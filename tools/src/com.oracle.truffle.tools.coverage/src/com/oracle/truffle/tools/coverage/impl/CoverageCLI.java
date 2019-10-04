@@ -120,13 +120,12 @@ final class CoverageCLI {
 
     private void printLinesLegend() {
         out.println("Code coverage per line of code and what percent of each element was covered during execution (per source)");
-        out.println("  + indicates the line is part of a statement that was covered during execution");
-        out.println("  - indicates the line is part of a statement that was not covered during execution");
+        out.println("  + indicates the line is covered during execution");
+        out.println("  - indicates the line is not covered during execution");
         if (strictLines) {
-            out.println("  i indicates the line is part of a statement that was incidentally covered during execution");
+            out.println("  p indicates the line is part of a statement that was incidentally covered during execution");
+            out.println("    e.g. a not-taken branch of a covered if statement");
         }
-        out.println("    e.g. a not-taken branch of a covered if statement");
-        out.println("  ! indicates the line is part of a root that was NOT covered during execution");
     }
 
     void printHistogramOutput() {
