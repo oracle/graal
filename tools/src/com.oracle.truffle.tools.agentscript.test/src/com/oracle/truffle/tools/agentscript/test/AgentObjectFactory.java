@@ -32,7 +32,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.tools.agentscript.AgentScriptInstrument;
+import com.oracle.truffle.tools.agentscript.impl.AgentScriptInstrument;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;

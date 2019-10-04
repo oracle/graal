@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript;
+package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;

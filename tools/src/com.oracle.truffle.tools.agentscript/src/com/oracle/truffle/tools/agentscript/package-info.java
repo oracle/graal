@@ -22,13 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+/**
+ * Write instruments in dynamic languages via
+ * {@link com.oracle.truffle.tools.agentscript.AgentScript}.
+ */
 package com.oracle.truffle.tools.agentscript;
-
-enum AgentType {
-    SOURCE,
-    ENTER;
-
-    static AgentType find(String str) {
-        return valueOf(str.toUpperCase());
-    }
-}

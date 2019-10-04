@@ -22,49 +22,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript;
+package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.Source;
 
 @ExportLibrary(InteropLibrary.class)
-final class SourceEventObject implements TruffleObject {
-    private final Source source;
+final class EventContextObject implements TruffleObject {
+    private final EventContext context;
+    @CompilerDirectives.CompilationFinal private String name;
 
-    SourceEventObject(Source source) {
-        this.source = source;
+    EventContextObject(EventContext context) {
+        this.context = context;
     }
 
     @ExportMessage
-    static boolean hasMembers(SourceEventObject obj) {
+    static boolean hasMembers(EventContextObject obj) {
         return true;
     }
 
     @ExportMessage
-    static Object getMembers(SourceEventObject obj, boolean includeInternal) {
+    static Object getMembers(EventContextObject obj, boolean includeInternal) {
         return new Object[0];
     }
 
-    @CompilerDirectives.TruffleBoundary
     @ExportMessage
-    static Object readMember(SourceEventObject obj, String member) throws UnknownIdentifierException {
+    static Object readMember(EventContextObject obj, String member) throws UnknownIdentifierException {
         switch (member) {
-            case "characters":
-                return obj.source.getCharacters().toString();
             case "name":
-                return obj.source.getName();
+                if (obj.name == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    obj.name = obj.context.getInstrumentedNode().getRootNode().getName();
+                }
+                return obj.name;
             default:
                 throw UnknownIdentifierException.create(member);
         }
     }
 
     @ExportMessage
-    static boolean isMemberReadable(SourceEventObject obj, String member) {
+    static boolean isMemberReadable(EventContextObject obj, String member) {
         return true;
     }
 
