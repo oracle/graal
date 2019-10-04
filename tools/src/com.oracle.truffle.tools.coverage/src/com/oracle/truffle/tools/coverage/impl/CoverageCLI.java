@@ -103,7 +103,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             printLine();
             printSummaryHeader();
-            final LineCoverage lineCoverage = new LineCoverage(sourceCoverage);
+            final LineCoverage lineCoverage = new LineCoverage(sourceCoverage, strictLines);
             out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
             out.println();
             printLinesOfSource(sourceCoverage.getSource(), lineCoverage);
@@ -140,7 +140,7 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             final String line = String.format(format, path,
                             statementCoverage(sourceCoverage),
-                            lineCoverage(new LineCoverage(sourceCoverage)),
+                            lineCoverage(new LineCoverage(sourceCoverage, strictLines)),
                             rootCoverage(sourceCoverage));
             out.println(line);
         }

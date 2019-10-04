@@ -42,11 +42,11 @@ final class LineCoverage {
     private static final char STATEMENT_EMPTY = ' ';
     private final Map<Integer, LineState> lines;
 
-    LineCoverage(SourceCoverage coverage) {
-        lines = makeLines(coverage);
+    LineCoverage(SourceCoverage coverage, boolean strictLines) {
+        lines = makeLines(coverage, strictLines);
     }
 
-    private static Map<Integer, LineState> makeLines(SourceCoverage coverage) {
+    private static Map<Integer, LineState> makeLines(SourceCoverage coverage, boolean strictLines) {
         final int lineCount = coverage.getSource().getLineCount();
         final HashMap<Integer, List<SectionCoverage>> lineContent = new HashMap<>(lineCount);
         for (RootCoverage rootCoverage : coverage.getRoots()) {
@@ -60,12 +60,19 @@ final class LineCoverage {
         }
         final HashMap<Integer, LineState> lines = new HashMap<>(lineCount);
         for (Map.Entry<Integer, List<SectionCoverage>> content : lineContent.entrySet()) {
-            lines.put(content.getKey(), state(content.getValue()));
+            lines.put(content.getKey(), strictLines ? strictState(content.getValue()) : lenientState(content.getValue()));
         }
         return lines;
     }
 
-    private static LineState state(List<SectionCoverage> sections) {
+    private static LineState lenientState(List<SectionCoverage> sections) {
+        if (sections.stream().anyMatch(SectionCoverage::isCovered)) {
+            return LineState.Covered;
+        }
+        return LineState.NotCovered;
+    }
+
+    private static LineState strictState(List<SectionCoverage> sections) {
         if (sections.stream().allMatch(SectionCoverage::isCovered)) {
             return LineState.Covered;
         }
