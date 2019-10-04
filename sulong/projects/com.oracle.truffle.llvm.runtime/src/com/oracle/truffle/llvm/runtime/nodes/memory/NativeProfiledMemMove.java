@@ -33,14 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNode.UnitSizeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -49,55 +47,52 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @CompilationFinal private boolean inJava = true;
 
-    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(target.getObject())", "nativeRead.isReadable(source.getObject())", "target.getObject() != source.getObject()"})
+    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()"})
     protected void doManagedNonAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @CachedLibrary("target.getObject()") LLVMManagedWriteLibrary nativeWrite,
-                    @CachedLibrary("source.getObject()") LLVMManagedReadLibrary nativeRead) {
-        for (long i = 0; i < length; i++) {
-            byte value = nativeRead.readI8(source.getObject(), source.getOffset() + i);
-            nativeWrite.writeI8(target.getObject(), target.getOffset() + i, value);
+                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
+                    @Cached UnitSizeNode unitSizeNode) {
+        int unitSize = unitSizeNode.execute(helper, length);
+        for (long i = 0; i < length; i += unitSize) {
+            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
         }
     }
 
-    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(target.getObject())", "nativeRead.isReadable(source.getObject())", "target.getObject() == source.getObject()"})
+    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()"})
     protected void doManagedAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @CachedLibrary("target.getObject()") LLVMManagedWriteLibrary nativeWrite,
-                    @CachedLibrary("source.getObject()") LLVMManagedReadLibrary nativeRead,
+                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
+                    @Cached UnitSizeNode unitSizeNode,
                     @Cached("createCountingProfile()") ConditionProfile canCopyForward) {
+        int unitSize = unitSizeNode.execute(helper, length);
         if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
             // forward
-            for (long i = 0; i < length; i++) {
-                byte value = nativeRead.readI8(source.getObject(), source.getOffset() + i);
-                nativeWrite.writeI8(target.getObject(), target.getOffset() + i, value);
+            for (long i = 0; i < length; i += unitSize) {
+                helper.moveUnit(target.increment(i), source.increment(i), unitSize);
             }
         } else {
             // backward
-            for (long i = length - 1; i >= 0; i--) {
-                byte value = nativeRead.readI8(source.getObject(), source.getOffset() + i);
-                nativeWrite.writeI8(target.getObject(), target.getOffset() + i, value);
+            for (long i = length - unitSize; i >= 0; i -= unitSize) {
+                helper.moveUnit(target.increment(i), source.increment(i), unitSize);
             }
         }
     }
 
-    @Specialization(limit = "3", guards = "nativeWrite.isWritable(target.getObject())")
+    @Specialization(limit = "4", guards = "helper.guard(target, source)")
     protected void doManaged(LLVMManagedPointer target, LLVMNativePointer source, long length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory,
-                    @CachedLibrary("target.getObject()") LLVMManagedWriteLibrary nativeWrite) {
-        long sourceAddress = source.asNative();
-        for (long i = 0; i < length; i++) {
-            byte value = memory.getI8(sourceAddress++);
-            nativeWrite.writeI8(target.getObject(), target.getOffset() + i, value);
+                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
+                    @Cached UnitSizeNode unitSizeNode) {
+        int unitSize = unitSizeNode.execute(helper, length);
+        for (long i = 0; i < length; i += unitSize) {
+            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
         }
     }
 
-    @Specialization(limit = "3", guards = "nativeRead.isReadable(source.getObject())")
+    @Specialization(limit = "4", guards = "helper.guard(target, source)")
     protected void doManaged(LLVMNativePointer target, LLVMManagedPointer source, long length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory,
-                    @CachedLibrary("source.getObject()") LLVMManagedReadLibrary nativeRead) {
-        long targetAddress = target.asNative();
+                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
+                    @Cached UnitSizeNode unitSizeNode) {
+        int unitSize = unitSizeNode.execute(helper, length);
         for (long i = 0; i < length; i++) {
-            byte value = nativeRead.readI8(source.getObject(), source.getOffset() + i);
-            memory.putI8(targetAddress++, value);
+            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
         }
     }
 
