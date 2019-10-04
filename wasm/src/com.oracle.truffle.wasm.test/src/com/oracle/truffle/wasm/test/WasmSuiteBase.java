@@ -46,8 +46,13 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -478,6 +483,25 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         public abstract byte[] createBinary() throws IOException, InterruptedException;
 
         public void initializeModule(WasmContext context) {
+            try {
+                final WasmModule module = context.modules().get(name);
+                final Map<String, Long> globals = initialization.globalValues();
+                for (Map.Entry<String, Long> entry : globals.entrySet()) {
+                    final String name = entry.getKey();
+                    final Long value = entry.getValue();
+                    module.writeMember(name, value);
+                }
+                final WasmMemory memory = (WasmMemory) module.readMember("memory");
+                for (Map.Entry<String, String> entry : initialization.memoryValues().entrySet()) {
+                    final String addressGlobal = entry.getKey();
+                    final String valueGlobal = entry.getValue();
+                    final long address = globals.get(addressGlobal);
+                    final long value = globals.get(valueGlobal);
+                    memory.writeArrayElement(address, value);
+                }
+            } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

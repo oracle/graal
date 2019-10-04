@@ -35,7 +35,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
 import sun.misc.Unsafe;
 
-public class UnsafeWasmMemory implements WasmMemory {
+public class UnsafeWasmMemory extends WasmMemory {
     private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
 
     private final Unsafe unsafe;

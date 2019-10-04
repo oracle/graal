@@ -140,12 +140,12 @@ public class SymbolTable {
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
      */
-    @CompilationFinal private final HashMap<Integer, ImportDescriptor> importedGlobals;
+    @CompilationFinal private final LinkedHashMap<Integer, ImportDescriptor> importedGlobals;
 
     /**
      * A mapping between the names and the indices of the exported globals.
      */
-    @CompilationFinal private final Map<String, Integer> exportedGlobals;
+    @CompilationFinal private final LinkedHashMap<String, Integer> exportedGlobals;
 
     /**
      * The greatest index of a global in the module.
@@ -202,7 +202,7 @@ public class SymbolTable {
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.globalTypes = new int[INITIAL_GLOBALS_SIZE];
         this.unresolvedGlobals = new LongArrayList();
-        this.importedGlobals = new HashMap<>();
+        this.importedGlobals = new LinkedHashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
         this.maxGlobalIndex = -1;
         this.tableIndex = UNINITIALIZED_TABLE_BIT;

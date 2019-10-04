@@ -57,6 +57,7 @@ public class RunInitializerNode extends WasmPredefinedRootNode {
         return TestutilModule.Names.RUN_INITIALIZER;
     }
 
+    @SuppressWarnings("unchecked")
     @CompilerDirectives.TruffleBoundary
     private void runInitializer(Object initializer) {
         Consumer<WasmContext> contextInitializer = (Consumer<WasmContext>) initializer;
