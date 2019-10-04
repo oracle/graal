@@ -456,6 +456,8 @@ suite = {
       "results" : [
         "bin/<lib:sulong>",
         "bin/<lib:polyglot-mock>",
+        # workaround for GR-18676
+        "lib",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
@@ -468,6 +470,9 @@ suite = {
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
+        # workaround for GR-18676
+        "LIBCXX_PATTERN": "<lib:c++*>*",
+        "LIBCXX_SRC" : "<path:SULONG_LLVM_ORG>",
       },
       "license" : "BSD-new",
     },
@@ -959,8 +964,13 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "extracted-dependency:LLVM_ORG/./lib/<lib:c++>*",
-          "extracted-dependency:LLVM_ORG/./lib/<lib:c++abi>*",
+          # cannot do this because of GR-18676
+          # "extracted-dependency:LLVM_ORG/./lib/<lib:c++>*",
+          # "extracted-dependency:LLVM_ORG/./lib/<lib:c++abi>*",
+        ],
+        "./native/" : [
+          # workaround for GR-18676
+          "dependency:com.oracle.truffle.llvm.libraries.native/lib",
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"

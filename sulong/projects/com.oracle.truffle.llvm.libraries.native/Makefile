@@ -30,7 +30,8 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/${LIBSULONG} bin/${LIBPOLYGLOT}
+LIBCXX_SRC_FILES=$(wildcard ${LIBCXX_SRC}/lib/${LIBCXX_PATTERN})
+default: bin/${LIBSULONG} bin/${LIBPOLYGLOT} $(LIBCXX_SRC_FILES:${LIBCXX_SRC}/%=%)
 
 CLANG?=clang
 
@@ -54,5 +55,9 @@ bin/${LIBPOLYGLOT}: bin/polyglot-mock.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
-	@mkdir -p bin
+	@mkdir -p $(dir $@)
 	$(QUIETLY) $(CLANG) ${CPPFLAGS} ${CFLAGS} -c $< -o $@
+
+lib/%: ${LIBCXX_SRC}/lib/%
+	@mkdir -p $(dir $@)
+	$(QUIETLY) cp -a $< $@
