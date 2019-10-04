@@ -93,8 +93,8 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final List<String> libraries;
-    private final List<String> staticLibraries;
+    private final ArrayList<String> libraries;
+    private final ArrayList<String> staticLibraries;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
