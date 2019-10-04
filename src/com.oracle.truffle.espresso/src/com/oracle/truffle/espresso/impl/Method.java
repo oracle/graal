@@ -113,6 +113,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private final Method proxy;
 
+    public Method identity() {
+        return proxy == null ? this : proxy;
+    }
+
     // Multiple maximally-specific interface methods. Fail on call.
     @CompilationFinal private boolean poisonPill = false;
 

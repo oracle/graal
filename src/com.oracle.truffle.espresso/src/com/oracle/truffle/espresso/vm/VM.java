@@ -57,7 +57,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
@@ -819,7 +818,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
-    private static FrameInstance getCurrentEspressoFrame() {
+    private static FrameInstance getCallerFrame(int depth) {
         // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
         // Non-Espresso frames (e.g TruffleNFI) are ignored.
         // The call stack should look like this:
@@ -830,18 +829,24 @@ public final class VM extends NativeEnv implements ContextAccess {
         // 0 : the callee.
         //
         // JVM_CALLER_DEPTH => the caller.
+        int callerDepth = (depth == JVM_CALLER_DEPTH) ? 2 : depth + 1;
+
+        final int[] depthCounter = new int[]{callerDepth};
         FrameInstance target = Truffle.getRuntime().iterateFrames(
                         new FrameInstanceVisitor<FrameInstance>() {
                             @Override
                             public FrameInstance visitFrame(FrameInstance frameInstance) {
                                 Method m = getMethodFromFrame(frameInstance);
-                                if (m != null) {
+                                if (m != null && --depthCounter[0] < 0) {
                                     return frameInstance;
                                 }
                                 return null;
                             }
                         });
-        return target;
+        if (target != null) {
+            return target;
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 
     @VmImpl
@@ -981,7 +986,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             public boolean compare(FrameInstance other) {
                 try {
-                    FrameSlot slot = privilegedFrameSlots.get(getMethodFromFrame(other));
+                    FrameSlot slot = privilegedFrameSlots.get(getMethodFromFrame(other).identity());
                     return slot != null && other.getFrame(FrameInstance.FrameAccess.READ_ONLY).getLong(slot) == frameID;
                 } catch (FrameSlotTypeException e) {
                     return false;
@@ -990,13 +995,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             // Dummy.
             private static final Object frameIdSlotIdentifier = new Object();
-            /**
-             * Note: this works because AccessController class is final, so there will be no proxies
-             * for its methods.
-             * <p>
-             * Also, even if that were not the case, we would simply spawn more slots in the
-             * RootNode, and should not impede correct behavior.
-             */
+
             private static final EconomicMap<Method, FrameSlot> privilegedFrameSlots = EconomicMap.create(Equivalence.IDENTITY);
 
             private static long newFrameID = 0L;
@@ -1010,11 +1009,11 @@ public final class VM extends NativeEnv implements ContextAccess {
              */
             private static long initPrivilegedFrame(FrameInstance frame) {
                 Method m = getMethodFromFrame(frame);
-                FrameSlot slot = privilegedFrameSlots.get(m);
+                FrameSlot slot = privilegedFrameSlots.get(m.identity());
                 if (slot == null) {
                     slot = initSlot(frame, m);
                 }
-                assert slot == privilegedFrameSlots.get(m);
+                assert slot == privilegedFrameSlots.get(m.identity());
                 long id = ++newFrameID;
                 frame.getFrame(FrameInstance.FrameAccess.READ_WRITE).setLong(slot, id);
                 return id;
@@ -1026,7 +1025,7 @@ public final class VM extends NativeEnv implements ContextAccess {
              */
             private static FrameSlot initSlot(FrameInstance frame, Method m) {
                 synchronized (privilegedFrameSlots) {
-                    FrameSlot result = privilegedFrameSlots.get(m);
+                    FrameSlot result = privilegedFrameSlots.get(m.identity());
                     if (result != null) {
                         return result;
                     }
@@ -1051,10 +1050,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(action)) {
             getMeta().throwEx(NullPointerException.class);
         }
-        Klass caller = getCallerMethod(0).getDeclaringKlass();
+        FrameInstance callerFrame = getCallerFrame(0);
+        assert callerFrame != null : "No caller ?";
+        Klass caller = getMethodFromFrame(callerFrame).getDeclaringKlass();
         StaticObject acc = context;
-        if (!isAuthorized(context, caller)) {
-            acc = createDummyACC();
+        if (!StaticObject.isNull(context)) {
+            if (!isAuthorized(context, caller)) {
+                acc = createDummyACC();
+            }
         }
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
         if (run == null || !run.isPublic() || run.isStatic()) {
@@ -1062,9 +1065,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         // Prepare the privileged stack
-        assert getCurrentEspressoFrame() != null : "No caller ?";
         PrivilegedStack stack = privilegedStackThreadLocal.get();
-        stack.push(getCurrentEspressoFrame(), context);
+        stack.push(callerFrame, acc);
 
         // Execute the action.
         StaticObject result = StaticObject.NULL;
@@ -1077,6 +1079,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
                 throw new EspressoException(wrapper);
             }
+            throw e;
         } finally {
             stack.pop();
         }
@@ -1093,7 +1096,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         final boolean[] isPrivileged = new boolean[]{false};
 
         StaticObject context = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
-            StaticObject prevDomain = null;
+            StaticObject prevDomain = StaticObject.NULL;
 
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 Method m = getMethodFromFrame(frameInstance);
@@ -1102,7 +1105,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         isPrivileged[0] = true;
                     }
                     StaticObject domain = Target_java_lang_Class.getProtectionDomain0(m.getDeclaringKlass().mirror());
-                    if (domain != prevDomain) {
+                    if (domain != prevDomain && domain != StaticObject.NULL) {
                         domains.add(domain);
                         prevDomain = domain;
                     }
@@ -1113,6 +1116,11 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return null;
             }
         });
+        if (domains.isEmpty()) {
+            if (isPrivileged[0] && StaticObject.isNull(context)) {
+                return StaticObject.NULL;
+            }
+        }
         StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
         return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
     }
