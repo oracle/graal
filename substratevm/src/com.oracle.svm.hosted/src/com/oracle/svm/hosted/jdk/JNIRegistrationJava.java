@@ -156,6 +156,9 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));
+        }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
     }
