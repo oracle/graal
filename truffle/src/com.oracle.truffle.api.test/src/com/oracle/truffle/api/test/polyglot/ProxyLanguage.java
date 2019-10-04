@@ -110,10 +110,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         return getCurrentLanguage(ProxyLanguage.class);
     }
 
-    public static ContextReference<LanguageContext> getCurrentContextReference() {
-        return getCurrentLanguage(ProxyLanguage.class).getContextReference();
-    }
-
     @Override
     protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         if (wrapper) {

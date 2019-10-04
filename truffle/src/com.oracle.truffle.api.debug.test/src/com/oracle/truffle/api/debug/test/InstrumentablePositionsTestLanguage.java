@@ -41,11 +41,17 @@
 package com.oracle.truffle.api.debug.test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -67,10 +73,6 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Collections;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
 
 /**
  * A language for testing instruments on various positions of instrumentable nodes.
@@ -134,7 +136,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     }
 
     public TestNode parse(Source code) {
-        int preMaterialization = getContextReference().get().getPreMaterialization();
+        int preMaterialization = getCurrentContext(InstrumentablePositionsTestLanguage.class).getPreMaterialization();
         return new Parser(this, code, preMaterialization).parse();
     }
 
@@ -292,7 +294,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
                             RootCallTarget taget = Truffle.getRuntime().createCallTarget(new TestRootNode(lang, this));
                             node = new CallNode(taget);
                         } else {
-                            node = new BaseNode(this, lang.getContextReference());
+                            node = new BaseNode(this);
                         }
                     }
                 }
@@ -338,13 +340,12 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     private static final class TestRootNode extends RootNode implements TestNode {
 
         private final NodeDescriptor nodeDescriptor;
-        private final ContextReference<Context> contextRef;
-        private @Children TestNode[] children;
+        @CompilationFinal private ContextReference<Context> contextRef;
+        @Children private TestNode[] children;
 
         TestRootNode(InstrumentablePositionsTestLanguage lang, NodeDescriptor nodeDescriptor) {
             super(lang);
             this.nodeDescriptor = nodeDescriptor;
-            contextRef = lang.getContextReference();
             children = resolveChildren(nodeDescriptor, false);
         }
 
@@ -361,6 +362,10 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
+            if (contextRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.contextRef = lookupContextReference(InstrumentablePositionsTestLanguage.class);
+            }
             Object returnValue = contextRef.get().nul;
             for (TestNode child : children) {
                 if (child != null) {
@@ -398,13 +403,12 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
 
         private final NodeDescriptor nodeDescriptor;
         private final boolean instrumentable;
-        private final ContextReference<Context> contextRef;
         private @Children TestNode[] children;
+        @CompilationFinal private ContextReference<Context> contextRef;
 
-        BaseNode(NodeDescriptor nodeDescriptor, ContextReference<Context> contextRef) {
+        BaseNode(NodeDescriptor nodeDescriptor) {
             this.nodeDescriptor = nodeDescriptor;
             this.instrumentable = nodeDescriptor.isInstrumentable();
-            this.contextRef = contextRef;
         }
 
         BaseNode(BaseNode node) {
@@ -453,6 +457,10 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         @ExplodeLoop
         @Override
         public Object execute(VirtualFrame frame) {
+            if (contextRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.contextRef = lookupContextReference(InstrumentablePositionsTestLanguage.class);
+            }
             assureChildrenResolved(false);
             Object returnValue = contextRef.get().nul;
             for (TestNode child : children) {

@@ -307,7 +307,7 @@ final class PolyglotReferences {
         @Override
         public Object get() {
             Object context;
-            if (validIf0.isValid() && (validIf1 == null || validIf1.isValid())) {
+            if ((validIf0 == null || validIf0.isValid()) && (validIf1 == null || validIf1.isValid())) {
                 context = singleContextReference.get();
             } else {
                 context = fallbackReference.get();

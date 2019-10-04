@@ -794,7 +794,7 @@ public class ContextPolicyTest {
             }
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
+        @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
         ContextReference<Env> getContextReference() {
             Object prev = enterInner();
             try {

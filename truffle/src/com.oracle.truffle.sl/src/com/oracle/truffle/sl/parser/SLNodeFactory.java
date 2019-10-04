@@ -491,7 +491,7 @@ public class SLNodeFactory {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new SLFunctionLiteralNode(language, name);
+            result = new SLFunctionLiteralNode(name);
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();

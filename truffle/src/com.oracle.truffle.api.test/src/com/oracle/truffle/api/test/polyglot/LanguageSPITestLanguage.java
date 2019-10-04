@@ -119,6 +119,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
         context.initialized = true;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void disposeContext(LanguageContext context) {
         if (context.initialized) {
