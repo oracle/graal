@@ -125,11 +125,14 @@ public abstract class WasmMemory implements TruffleObject {
         return index >= 0 && index < getArraySize();
     }
 
-    @ExportMessage final boolean isArrayElementModifiable(long index) {
+    @ExportMessage
+    final boolean isArrayElementModifiable(long index) {
         return isArrayElementReadable(index);
     }
 
-    @ExportMessage final boolean isArrayElementInsertable(long index) {
+    @SuppressWarnings("unused")
+    @ExportMessage
+    final boolean isArrayElementInsertable(long index) {
         return false;
     }
 
