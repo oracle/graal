@@ -189,16 +189,6 @@ final class InstrumentCache {
         abstract TruffleInstrument newInstance();
 
         abstract Class<? extends TruffleInstrument> aotInitializeAtBuildTime();
-
-        static void exportTruffle(ClassLoader loader) {
-            if (!TruffleOptions.AOT) {
-                // In JDK 9+, the Truffle API packages must be dynamically exported to
-                // a Truffle instrument since the Truffle API module descriptor only
-                // exports the packages to modules known at build time (such as the
-                // Graal module).
-                TruffleJDKServices.exportTo(loader, null);
-            }
-        }
     }
 
     private abstract static class Loader {
@@ -217,6 +207,16 @@ final class InstrumentCache {
             }
             LegacyLoader.INSTANCE.loadImpl(loader, list, classNamesUsed);
             ServicesLoader.INSTANCE.loadImpl(loader, list, classNamesUsed);
+        }
+
+        static void exportTruffle(ClassLoader loader) {
+            if (!TruffleOptions.AOT) {
+                // In JDK 9+, the Truffle API packages must be dynamically exported to
+                // a Truffle instrument since the Truffle API module descriptor only
+                // exports the packages to modules known at build time (such as the
+                // Graal module).
+                TruffleJDKServices.exportTo(loader, null);
+            }
         }
 
         abstract void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed);
@@ -364,6 +364,7 @@ final class InstrumentCache {
 
         @Override
         void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+            exportTruffle(loader);
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
                 Registration reg = provider.getClass().getAnnotation(Registration.class);
                 if (reg == null) {
@@ -399,7 +400,6 @@ final class InstrumentCache {
             ServiceLoaderInstrumentReflection(TruffleInstrument.Provider provider) {
                 assert provider != null;
                 this.provider = provider;
-                exportTruffle(provider.getClass().getClassLoader());
             }
 
             @Override

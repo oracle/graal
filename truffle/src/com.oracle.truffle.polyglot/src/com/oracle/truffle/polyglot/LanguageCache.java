@@ -399,17 +399,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         abstract URL getCodeSource();
 
-        static void exportTruffle(ClassLoader loader) {
-            if (!TruffleOptions.AOT) {
-                /*
-                 * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
-                 * language since the Truffle API module descriptor only exports the packages to
-                 * modules known at build time (such as the Graal module).
-                 */
-                TruffleJDKServices.exportTo(loader, null);
-            }
-        }
-
         static LanguageReflection forLanguageInstance(TruffleLanguage<?> language, ContextPolicy contextPolycy, FileTypeDetector... fileTypeDetectors) {
             return new LanguageInstanceReflection(language, contextPolycy, fileTypeDetectors);
         }
@@ -486,6 +475,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
             }
             LegacyLoader.INSTANCE.loadImpl(loader, into);
             ServicesLoader.INSTANCE.loadImpl(loader, into);
+        }
+
+        static void exportTruffle(ClassLoader loader) {
+            if (!TruffleOptions.AOT) {
+                /*
+                 * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
+                 * language since the Truffle API module descriptor only exports the packages to
+                 * modules known at build time (such as the Graal module).
+                 */
+                TruffleJDKServices.exportTo(loader, null);
+            }
         }
 
         abstract void loadImpl(ClassLoader loader, Collection<? super LanguageCache> into);
@@ -792,6 +792,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
             @Override
             public void loadImpl(ClassLoader loader, Collection<? super LanguageCache> into) {
+                exportTruffle(loader);
                 for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
                     Registration reg = provider.getClass().getAnnotation(Registration.class);
                     if (reg == null) {
@@ -860,7 +861,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     assert contextPolicy != null;
                     this.provider = provider;
                     this.contextPolicy = contextPolicy;
-                    exportTruffle(provider.getClass().getClassLoader());
                 }
 
                 @Override
