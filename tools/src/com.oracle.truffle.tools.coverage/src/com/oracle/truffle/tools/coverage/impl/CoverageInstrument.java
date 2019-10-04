@@ -50,7 +50,7 @@ import com.oracle.truffle.tools.coverage.SourceCoverage;
 @Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
 public class CoverageInstrument extends TruffleInstrument {
 
-    public static final String ID = "codecoverage";
+    public static final String ID = "coverage";
     static final String VERSION = "0.1.0";
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
                     new Function<String, Output>() {
