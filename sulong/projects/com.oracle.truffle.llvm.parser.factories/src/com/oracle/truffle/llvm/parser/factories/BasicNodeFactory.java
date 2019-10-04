@@ -63,19 +63,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToAnyLLVMNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToDoubleNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToFloatNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToI16NodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToI1NodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToI32NodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToI64NodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToI8NodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -1675,7 +1662,7 @@ public class BasicNodeFactory implements NodeFactory {
                 // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
                 // call node and extra argument nodes.
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes);
+                return intrinsicProvider.generateIntrinsicNode(name, args, argsTypes, this);
             }
         }
         return null;

@@ -439,7 +439,7 @@ final class Runner {
                         bindGlobal(ctx, global, nfiContextExtension);
                     } else if (symbol instanceof LLVMFunctionDescriptor) {
                         LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider);
+                        bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider, nodeFactory);
                     } else if (symbol instanceof LLVMAlias) {
                         // nothing to do
                     } else {
@@ -756,11 +756,12 @@ final class Runner {
         }
     }
 
-    private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider) {
+    private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider,
+                    NodeFactory nodeFactory) {
         if (function.getName().startsWith("llvm.")) {
             // llvm intrinsic
         } else if (intrinsicProvider.isIntrinsified(function.getName())) {
-            function.define(intrinsicProvider);
+            function.define(intrinsicProvider, nodeFactory);
         } else if (nfiContextExtension != null) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getName());
             if (nativeFunction != null) {
@@ -1089,7 +1090,7 @@ final class Runner {
                         throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
                     } else if (symbol instanceof LLVMFunctionDescriptor) {
                         LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        function.define(intrinsicProvider);
+                        function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
                     } else {
                         throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
                     }
