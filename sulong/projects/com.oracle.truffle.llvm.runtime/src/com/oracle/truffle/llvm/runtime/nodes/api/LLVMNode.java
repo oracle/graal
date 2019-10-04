@@ -69,11 +69,6 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    public static NodeFactory getNodeFactory() {
-        CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLanguage().getNodeFactory();
-    }
-
     public static LLVMMemory getLLVMMemory() {
         CompilerAsserts.neverPartOfCompilation();
         return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
