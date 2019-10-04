@@ -47,6 +47,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -814,6 +819,31 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
+    private static FrameInstance getCurrentEspressoFrame() {
+        // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
+        // Non-Espresso frames (e.g TruffleNFI) are ignored.
+        // The call stack should look like this:
+        // 2 : the @CallerSensitive annotated method.
+        // ... : skipped non-Espresso frames.
+        // 1 : getCallerClass method.
+        // ... :
+        // 0 : the callee.
+        //
+        // JVM_CALLER_DEPTH => the caller.
+        FrameInstance target = Truffle.getRuntime().iterateFrames(
+                        new FrameInstanceVisitor<FrameInstance>() {
+                            @Override
+                            public FrameInstance visitFrame(FrameInstance frameInstance) {
+                                Method m = getMethodFromFrame(frameInstance);
+                                if (m != null) {
+                                    return frameInstance;
+                                }
+                                return null;
+                            }
+                        });
+        return target;
+    }
+
     @VmImpl
     @JniImpl
     public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
@@ -939,26 +969,76 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         static private class Element {
-            Frame frame;
+            long frameID;
             StaticObject context;
             Element next;
 
             public Element(FrameInstance frame, StaticObject context, Element next) {
-                // FIXME: getFrame returns different instances on subsequent calls.
-                this.frame = frame.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                this.frameID = initPrivilegedFrame(frame);
                 this.context = context;
                 this.next = next;
             }
 
             public boolean compare(FrameInstance other) {
-                // FIXME: Find a way to compare frames.
-                assert this.frame != null && other != null;
-                return false;
+                try {
+                    FrameSlot slot = privilegedFrameSlots.get(getMethodFromFrame(other));
+                    return slot != null && other.getFrame(FrameInstance.FrameAccess.READ_ONLY).getLong(slot) == frameID;
+                } catch (FrameSlotTypeException e) {
+                    return false;
+                }
+            }
+
+            // Dummy.
+            private static final Object frameIdSlotIdentifier = new Object();
+            /**
+             * Note: this works because AccessController class is final, so there will be no proxies
+             * for its methods.
+             * <p>
+             * Also, even if that were not the case, we would simply spawn more slots in the
+             * RootNode, and should not impede correct behavior.
+             */
+            private static final EconomicMap<Method, FrameSlot> privilegedFrameSlots = EconomicMap.create(Equivalence.IDENTITY);
+
+            private static long newFrameID = 0L;
+
+            /**
+             * Injects the frame ID in the frame. Spawns a new frame slot in the frame descriptor of
+             * the corresponding RootNode if needed.
+             * 
+             * @param frame the current privileged frame.
+             * @return the frame ID of the frame.
+             */
+            private static long initPrivilegedFrame(FrameInstance frame) {
+                Method m = getMethodFromFrame(frame);
+                FrameSlot slot = privilegedFrameSlots.get(m);
+                if (slot == null) {
+                    slot = initSlot(frame, m);
+                }
+                assert slot == privilegedFrameSlots.get(m);
+                long id = ++newFrameID;
+                frame.getFrame(FrameInstance.FrameAccess.READ_WRITE).setLong(slot, id);
+                return id;
+            }
+
+            /**
+             * Responsible for spawning the frame slot of root nodes that haven't yet been
+             * encountered by JVM_doPrivileged.
+             */
+            private static FrameSlot initSlot(FrameInstance frame, Method m) {
+                synchronized (privilegedFrameSlots) {
+                    FrameSlot result = privilegedFrameSlots.get(m);
+                    if (result != null) {
+                        return result;
+                    }
+                    result = getEspressoRootFromFrame(frame).getFrameDescriptor().addFrameSlot(frameIdSlotIdentifier, FrameSlotKind.Long);
+                    privilegedFrameSlots.put(m, result);
+                    return result;
+                }
             }
         }
     }
 
-    private static ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
+    private static final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
 
     @VmImpl
     @JniImpl
@@ -982,9 +1062,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         // Prepare the privileged stack
-        assert Truffle.getRuntime().getCurrentFrame() != null : "No caller ?";
+        assert getCurrentEspressoFrame() != null : "No caller ?";
         PrivilegedStack stack = privilegedStackThreadLocal.get();
-        stack.push(Truffle.getRuntime().getCurrentFrame(), context);
+        stack.push(getCurrentEspressoFrame(), context);
 
         // Execute the action.
         StaticObject result = StaticObject.NULL;
