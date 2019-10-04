@@ -959,6 +959,8 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "extracted-dependency:LLVM_ORG/./lib/<lib:c++>*",
+          "extracted-dependency:LLVM_ORG/./lib/<lib:c++abi>*",
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
