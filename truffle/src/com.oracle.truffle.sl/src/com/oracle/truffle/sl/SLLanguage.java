@@ -380,10 +380,17 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                         if (!hasNext()) {
                             throw new NoSuchElementException();
                         }
-                        Scope vscope = Scope.newBuilder(nextScope.getName(), nextScope.getVariables(frame)).node(nextScope.getNode()).arguments(nextScope.getArguments(frame)).build();
+                        Object functionObject = findFunctionObject();
+                        Scope vscope = Scope.newBuilder(nextScope.getName(), nextScope.getVariables(frame)).node(nextScope.getNode()).arguments(nextScope.getArguments(frame)).rootInstance(
+                                        functionObject).build();
                         previousScope = nextScope;
                         nextScope = null;
                         return vscope;
+                    }
+
+                    private Object findFunctionObject() {
+                        String name = node.getRootNode().getName();
+                        return context.getFunctionRegistry().getFunction(name);
                     }
                 };
             }

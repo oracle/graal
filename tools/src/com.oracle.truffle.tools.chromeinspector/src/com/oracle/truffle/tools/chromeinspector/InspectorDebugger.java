@@ -368,7 +368,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         for (DebugStackFrame frame : frames) {
             depthAll++;
             SourceSection sourceSection = frame.getSourceSection();
-            if (sourceSection == null) {
+            if (sourceSection == null || !sourceSection.isAvailable()) {
                 continue;
             }
             if (!context.isInspectInternal() && frame.isInternal()) {
@@ -533,6 +533,34 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    public Params setBreakpointOnFunctionCall(String functionObjectId, String condition) throws CommandProcessException {
+        if (functionObjectId == null) {
+            throw new CommandProcessException("Must specify function object ID.");
+        }
+        RemoteObject functionObject = context.getRemoteObjectsHandler().getRemote(functionObjectId);
+        if (functionObject != null) {
+            DebugValue functionValue = functionObject.getDebugValue();
+            try {
+                return context.executeInSuspendThread(new SuspendThreadExecutable<Params>() {
+                    @Override
+                    public Params executeCommand() throws CommandProcessException {
+                        return breakpointsHandler.createFunctionBreakpoint(functionValue, condition);
+                    }
+
+                    @Override
+                    public Params processException(DebugException dex) {
+                        return new Params(new JSONObject());
+                    }
+                });
+            } catch (NoSuspendedThreadException e) {
+                return new Params(new JSONObject());
+            }
+        } else {
+            throw new CommandProcessException("Function with object ID " + functionObjectId + " does not exist.");
+        }
+    }
+
+    @Override
     public void removeBreakpoint(String id) throws CommandProcessException {
         if (!breakpointsHandler.removeBreakpoint(id)) {
             throw new CommandProcessException("No breakpoint with id '" + id + "'");
@@ -553,13 +581,13 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
-    public Params evaluateOnCallFrame(String callFrameId, String expression, String objectGroup,
+    public Params evaluateOnCallFrame(String callFrameId, String expressionOrig, String objectGroup,
                     boolean includeCommandLineAPI, boolean silent, boolean returnByValue,
                     boolean generatePreview, boolean throwOnSideEffect) throws CommandProcessException {
         if (callFrameId == null) {
             throw new CommandProcessException("A callFrameId required.");
         }
-        if (expression == null) {
+        if (expressionOrig == null) {
             throw new CommandProcessException("An expression required.");
         }
         int frameId;
@@ -567,6 +595,18 @@ public final class InspectorDebugger extends DebuggerDomain {
             frameId = Integer.parseInt(callFrameId);
         } catch (NumberFormatException ex) {
             throw new CommandProcessException(ex.getLocalizedMessage());
+        }
+        ConsoleUtilitiesAPI cuAPI;
+        if (includeCommandLineAPI) {
+            cuAPI = ConsoleUtilitiesAPI.parse(expressionOrig);
+        } else {
+            cuAPI = null;
+        }
+        final String expression;
+        if (cuAPI != null) {
+            expression = cuAPI.getExpression();
+        } else {
+            expression = expressionOrig;
         }
         JSONObject jsonResult;
         try {
@@ -578,11 +618,13 @@ public final class InspectorDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
-                    DebugValue value;
-                    try {
-                        value = cf.getFrame().eval(expression);
-                    } catch (IllegalStateException ex) {
-                        value = getVarValue(expression, cf);
+                    DebugValue value = getVarValue(expression, cf);
+                    if (value == null) {
+                        try {
+                            value = cf.getFrame().eval(expression);
+                        } catch (IllegalStateException ex) {
+                            // Not an interactive language
+                        }
                     }
                     if (value == null) {
                         LanguageInfo languageInfo = cf.getFrame().getLanguage();
@@ -597,6 +639,12 @@ public final class InspectorDebugger extends DebuggerDomain {
                         }
                     }
                     if (value != null) {
+                        if (cuAPI != null) {
+                            value = cuAPI.process(value, breakpointsHandler);
+                            if (value == null) {
+                                return json;
+                            }
+                        }
                         RemoteObject ro = new RemoteObject(value, generatePreview, context);
                         context.getRemoteObjectsHandler().register(ro);
                         json.put("result", ro.toJSON());
@@ -899,7 +947,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         // Debugger has been disabled while waiting on locks
                         return;
                     }
-                    if (se.hasSourceElement(SourceElement.ROOT) && !se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE) {
+                    if (se.hasSourceElement(SourceElement.ROOT) && !se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE && se.getBreakpoints().isEmpty()) {
                         // Suspend requested and we're at the begining of a ROOT.
                         debuggerSession.suspendNextExecution();
                         return;
