@@ -24,17 +24,17 @@
  */
 package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSortedArray;
-import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
-import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
+
+import com.oracle.truffle.regex.tregex.automaton.IndexedState;
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSetFactory;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
 
 /**
  * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
@@ -64,7 +64,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
     GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
         this.dfaNode = dfaNode;
         this.successorSet = successorSet;
-        predecessorSet = new StateSet<>(graph, new StateSetBackingSortedArray());
+        predecessorSet = new StateSet<>(graph, StateSetBackingSetFactory.SORTED_ARRAY);
         backEdges = new StateSet<>(graph);
         domChildren = NO_DOM_CHILDREN;
     }

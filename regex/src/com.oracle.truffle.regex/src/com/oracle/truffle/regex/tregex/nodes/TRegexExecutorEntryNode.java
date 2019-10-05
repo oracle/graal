@@ -35,10 +35,10 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import sun.misc.Unsafe;
 
 /**
- * This class wraps {@link TRegexDFAExecutorNode} and specializes on the type of the input strings
+ * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
  * provided to {@link TRegexExecRootNode}.
  */
-public abstract class TRegexDFAExecutorEntryNode extends Node {
+public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final sun.misc.Unsafe UNSAFE;
     private static final Field coderField;
@@ -83,20 +83,20 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
         }
     }
 
-    @Child TRegexDFAExecutorNode executor;
+    @Child TRegexExecutorNode executor;
 
-    public TRegexDFAExecutorEntryNode(TRegexDFAExecutorNode executor) {
+    public TRegexExecutorEntryNode(TRegexExecutorNode executor) {
         this.executor = executor;
     }
 
-    public static TRegexDFAExecutorEntryNode create(TRegexDFAExecutorNode executor) {
+    public static TRegexExecutorEntryNode create(TRegexExecutorNode executor) {
         if (executor == null) {
             return null;
         }
-        return TRegexDFAExecutorEntryNodeGen.create(executor);
+        return TRegexExecutorEntryNodeGen.create(executor);
     }
 
-    public TRegexDFAExecutorNode getExecutor() {
+    public TRegexExecutorNode getExecutor() {
         return executor;
     }
 
@@ -104,12 +104,12 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
 
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData()), true);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), true);
     }
 
     @Specialization(guards = "!isCompactString(input)")
     Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex) {
-        return executor.execute(new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData()), false);
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
     }
 
     @Specialization
@@ -118,15 +118,7 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        return executor.execute(new TRegexDFAExecutorLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex, createCGData()), false);
-    }
-
-    private DFACaptureGroupTrackingData createCGData() {
-        if (executor.getProperties().isTrackCaptureGroups()) {
-            return new DFACaptureGroupTrackingData(executor.getMaxNumberOfNFAStates(), executor.getProperties().getNumberOfCaptureGroups());
-        } else {
-            return null;
-        }
+        return executor.execute(executor.createLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex), false);
     }
 
     static boolean isCompactString(String str) {

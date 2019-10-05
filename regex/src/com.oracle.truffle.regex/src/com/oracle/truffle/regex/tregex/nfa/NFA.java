@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
@@ -43,13 +44,13 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private final RegexAST ast;
     private final NFAState dummyInitialState;
-    private final NFAStateTransition[] anchoredEntry;
-    private final NFAStateTransition[] unAnchoredEntry;
+    @CompilationFinal(dimensions = 1) private final NFAStateTransition[] anchoredEntry;
+    @CompilationFinal(dimensions = 1) private final NFAStateTransition[] unAnchoredEntry;
     private final NFAStateTransition reverseAnchoredEntry;
     private final NFAStateTransition reverseUnAnchoredEntry;
-    private final NFAState[] states;
-    private final NFAStateTransition[] transitions;
-    private final PreCalculatedResultFactory[] preCalculatedResults;
+    @CompilationFinal(dimensions = 1) private final NFAState[] states;
+    @CompilationFinal(dimensions = 1) private final NFAStateTransition[] transitions;
+    @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
     private final NFAStateTransition initialLoopBack;
 
     public NFA(RegexAST ast,
@@ -110,7 +111,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public boolean hasReverseUnAnchoredEntry() {
-        return reverseUnAnchoredEntry != null && !reverseUnAnchoredEntry.getSource().getPrev().isEmpty();
+        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPrev().length > 0;
     }
 
     public RegexAST getAst() {
@@ -207,15 +208,19 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         return states[id];
     }
 
+    public int getNumberOfTransitions() {
+        return transitions.length;
+    }
+
     public boolean isDead() {
         return anchoredEntry != null ? getAnchoredInitialState().isDead(true) : (reverseAnchoredEntry.getSource().isDead(false) && reverseUnAnchoredEntry.getSource().isDead(false));
     }
 
     public void setInitialLoopBack(boolean enable) {
-        if (getUnAnchoredInitialState().getNext().isEmpty()) {
+        if (getUnAnchoredInitialState().getNext().length == 0) {
             return;
         }
-        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext().get(getUnAnchoredInitialState().getNext().size() - 1);
+        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext()[getUnAnchoredInitialState().getNext().length - 1];
         if (enable) {
             if (lastInitTransition != initialLoopBack) {
                 getUnAnchoredInitialState().addLoopBackNext(initialLoopBack);

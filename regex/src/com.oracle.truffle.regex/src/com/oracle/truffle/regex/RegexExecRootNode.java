@@ -59,7 +59,7 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         return fromIndex;
     }
 
-    protected int inputLength(Object input) {
+    public int inputLength(Object input) {
         if (lengthNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lengthNode = insert(InputLengthNode.create());
@@ -67,7 +67,7 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         return lengthNode.execute(input);
     }
 
-    protected char inputCharAt(Object input, int i) {
+    public char inputCharAt(Object input, int i) {
         if (charAtNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             charAtNode = insert(InputCharAtNode.create());

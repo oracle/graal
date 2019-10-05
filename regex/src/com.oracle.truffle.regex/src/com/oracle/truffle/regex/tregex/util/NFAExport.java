@@ -105,8 +105,8 @@ public final class NFAExport {
         writer.newLine();
         for (NFAState state : nfa.getStates()) {
             if (showState(state)) {
-                for (int i = 0; i < state.getNext(forward).size(); i++) {
-                    NFAStateTransition transition = state.getNext(forward).get(i);
+                for (int i = 0; i < state.getNext(forward).length; i++) {
+                    NFAStateTransition transition = state.getNext(forward)[i];
                     DotExport.printConnection(writer,
                                     labelState(transition.getSource(forward), true),
                                     labelState(transition.getTarget(forward), true),
@@ -238,8 +238,8 @@ public final class NFAExport {
             if (s == null) {
                 continue;
             }
-            for (int i = 0; i < s.getNext().size(); i++) {
-                NFAStateTransition t = s.getNext().get(i);
+            for (int i = 0; i < s.getNext().length; i++) {
+                NFAStateTransition t = s.getNext()[i];
                 if (visited.contains(s) && visited.contains(t.getTarget())) {
                     printLaTexTransition(t, i);
                 }
@@ -311,10 +311,10 @@ public final class NFAExport {
             return false;
         }
         if (nfa.isEntry(state, forward)) {
-            return !state.getNext(forward).isEmpty();
+            return state.getNext(forward).length > 0;
         }
         if (state.isFinalState(forward)) {
-            return !state.getPrev(forward).isEmpty();
+            return state.getPrev(forward).length > 0;
         }
         return true;
     }
@@ -374,7 +374,7 @@ public final class NFAExport {
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
         if (!(transition.getTarget(forward).isFinalState(forward))) {
-            sb.append(transition.getTarget(forward).getMatcherBuilder());
+            sb.append(transition.getTarget(forward).getCharSet());
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());

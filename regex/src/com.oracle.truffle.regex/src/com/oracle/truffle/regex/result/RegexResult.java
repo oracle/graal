@@ -75,6 +75,10 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END);
 
+    public abstract int getStart(int groupNumber);
+
+    public abstract int getEnd(int groupNumber);
+
     @Override
     public TruffleReadOnlyKeysArray getKeys() {
         return KEYS;

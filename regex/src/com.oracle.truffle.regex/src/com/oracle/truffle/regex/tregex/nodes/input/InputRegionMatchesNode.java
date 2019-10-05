@@ -36,39 +36,56 @@ public abstract class InputRegionMatchesNode extends Node {
         return InputRegionMatchesNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, int fromIndex, String match, String mask);
+    public abstract boolean execute(Object input, int fromIndex1, Object match, int fromIndex2, int length, String mask);
 
     @Specialization(guards = "mask == null")
-    public boolean regionMatches(String input, int fromIndex, String match, @SuppressWarnings("unused") String mask) {
-        return input.regionMatches(fromIndex, match, 0, match.length());
+    public boolean regionMatches(String input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") String mask) {
+        return input.regionMatches(fromIndex1, match, fromIndex2, length);
     }
 
     @Specialization(guards = "mask != null")
-    public boolean regionMatchesWithMask(String input, int fromIndex, String match, String mask) {
-        return ArrayUtils.regionEqualsWithOrMask(input, fromIndex, match, 0, mask.length(), mask);
+    public boolean regionMatchesWithMask(String input, int fromIndex1, String match, int fromIndex2, int length, String mask) {
+        return ArrayUtils.regionEqualsWithOrMask(input, fromIndex1, match, fromIndex2, length, mask);
     }
 
     @Specialization(guards = "mask == null")
-    public boolean regionMatchesTruffleObjNoMask(TruffleObject input, int fromIndex, String match, String mask,
+    public boolean regionMatchesTruffleObjNoMask(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputCharAtNode charAtNode) {
-        return regionMatchesTruffleObj(input, fromIndex, match, mask, lengthNode, charAtNode);
+        return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
 
     @Specialization(guards = "mask != null")
-    public boolean regionMatchesTruffleObjWithMask(TruffleObject input, int fromIndex, String match, String mask,
+    public boolean regionMatchesTruffleObjWithMask(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputCharAtNode charAtNode) {
         assert match.length() == mask.length();
-        return regionMatchesTruffleObj(input, fromIndex, match, mask, lengthNode, charAtNode);
+        return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
 
-    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex, String match, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
-        if (fromIndex + match.length() > lengthNode.execute(input)) {
+    @Specialization(guards = "mask == null")
+    public boolean regionMatchesTruffleObjTruffleObjNoMask(TruffleObject input, int fromIndex1, TruffleObject match, int fromIndex2, int length, @SuppressWarnings("unused") String mask,
+                    @Cached("create()") InputLengthNode lengthNode1,
+                    @Cached("create()") InputCharAtNode charAtNode1,
+                    @Cached("create()") InputLengthNode lengthNode2,
+                    @Cached("create()") InputCharAtNode charAtNode2) {
+        if (fromIndex1 + length > lengthNode1.execute(input) || fromIndex2 + length > lengthNode2.execute(match)) {
             return false;
         }
-        for (int i = 0; i < match.length(); i++) {
-            if (InputCharAtNode.charAtWithMask(input, fromIndex + i, mask, i, charAtNode) != match.charAt(i)) {
+        for (int i = 0; i < length; i++) {
+            if (charAtNode1.execute(input, fromIndex1 + i) != charAtNode2.execute(match, fromIndex2 + i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
+        if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.length()) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            if (InputCharAtNode.charAtWithMask(input, fromIndex1 + i, mask, i, charAtNode) != match.charAt(fromIndex2 + i)) {
                 return false;
             }
         }

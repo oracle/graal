@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.result;
+package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+public interface StateSetBackingSetFactory {
 
-public final class SingleResult extends RegexResult {
+    StateSetBackingSet create(int stateIndexSize);
 
-    private final int start;
-    private final int end;
+    StateSetBackingSetFactory BIT_SET = new StateSetBackingSetFactory() {
 
-    public SingleResult(int start, int end) {
-        this.start = start;
-        this.end = end;
-    }
+        @Override
+        public StateSetBackingSet create(int stateIndexSize) {
+            return new StateSetBackingBitSet(stateIndexSize);
+        }
+    };
 
-    public int getStart() {
-        return start;
-    }
+    StateSetBackingSetFactory SORTED_ARRAY = new StateSetBackingSetFactory() {
 
-    public int getEnd() {
-        return end;
-    }
-
-    @Override
-    public int getStart(int groupNumber) {
-        return groupNumber == 0 ? start : -1;
-    }
-
-    @Override
-    public int getEnd(int groupNumber) {
-        return groupNumber == 0 ? end : -1;
-    }
-
-    @TruffleBoundary
-    @Override
-    public String toString() {
-        return "[" + start + ", " + end + "]";
-    }
+        @Override
+        public StateSetBackingSet create(int stateIndexSize) {
+            return new StateSetBackingSortedArray();
+        }
+    };
 }

@@ -35,7 +35,7 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.EmptyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
-import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
