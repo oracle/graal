@@ -1,5 +1,5 @@
 vm_java_8: ${openjdk8}
-vm_java_11: ${labsjdk11}
+vm_java_11: ${labsjdk-ce-11}
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
@@ -18,7 +18,7 @@ vm_setup: {
 
 maven_base: ${linux-deploy} {
   downloads: {
-    JAVA_HOME: ${jdks.labsjdk11},
+    JAVA_HOME: ${jdks.labsjdk-ce-11},
     EXTRA_JAVA_HOMES: ${jdks.openjdk8}
   }
   mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js"]
@@ -39,13 +39,13 @@ builds += [
       ${maven_base.build}
       ${maven_base.deploy} [--dry-run, ${binaries-repository}]
     ]
-    name: gate-vm-maven-dry-run-jdk11-linux-amd64
+    name: gate-vm-maven-dry-run-labsjdk-ee-11-linux-amd64
   }
   ${vm_java_11} ${deploy_vm_linux} ${maven_base} {
     run: [
       ${maven_base.build}
       ${maven_base.deploy} [${binaries-repository}]
     ]
-    name: deploy-vm-maven-jdk11-linux-amd64
+    name: deploy-vm-maven-labsjdk-ee-11-linux-amd64
   }
 ]

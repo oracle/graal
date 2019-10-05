@@ -106,29 +106,104 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
+class SafeDirectoryUpdater(object):
+    """
+    Multi-thread safe context manager for creating/updating a directory.
+
+    :Example:
+    # Compiles `sources` into `dst` with javac. If multiple threads/processes are
+    # performing this compilation concurrently, the contents of `dst`
+    # will reflect the complete results of one of the compilations
+    # from the perspective of other threads/processes.
+    with SafeDirectoryUpdater(dst) as sdu:
+        mx.run([jdk.javac, '-d', sdu.directory, sources])
+
+    """
+    def __init__(self, directory, create=False):
+        """
+
+        :param directory: the target directory that will be created/updated within the context.
+                          The working copy of the directory is accessed via `self.directory`
+                          within the context.
+        """
+
+        self.target = directory
+        self.workspace = None
+        self.directory = None
+        self.create = create
+
+    def __enter__(self):
+        parent = dirname(self.target)
+        self.workspace = tempfile.mkdtemp(dir=parent)
+        self.directory = join(self.workspace, basename(self.target))
+        if self.create:
+            mx.ensure_dir_exists(self.directory)
+        self.target_timestamp = mx.TimeStampFile(self.target)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            shutil.rmtree(self.workspace)
+            raise
+
+        # Try delete the target directory if it existed prior to creating
+        # self.workspace and has not been modified in between.
+        if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
+            old_target = join(self.workspace, 'to_deleted_' + basename(self.target))
+            try:
+                os.rename(self.target, old_target)
+            except:
+                # Silently assume another process won the race to rename dst_jdk_dir
+                pass
+
+        # Try atomically move self.directory to self.target
+        try:
+            os.rename(self.directory, self.target)
+        except:
+            if not exists(self.target):
+                raise
+            else:
+                # Silently assume another process won the race to create self.target
+                pass
+
+        shutil.rmtree(self.workspace)
+
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
+
+    This runs a version of org.graalvm.compiler.hotspot.JVMCIVersionCheck that is "moved"
+    to the unnamed package. Without this, on JDK 10+, the class in the jdk.internal.vm.compiler
+    module will be run instead of the version on the class path.
     """
-    simplename = 'JVMCIVersionCheck'
-    name = 'org.graalvm.compiler.hotspot.' + simplename
+    unqualified_name = 'JVMCIVersionCheck'
+    qualified_name = 'org.graalvm.compiler.hotspot.' + unqualified_name
     binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
+
     if isinstance(_suite, mx.BinarySuite):
-        javaSource = join(binDir, simplename + '.java')
-        if not exists(javaSource):
-            dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
-            assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
-            d = dists[0]
-            assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+        dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
+        assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
+        d = dists[0]
+        assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+        source_timestamp = getmtime(d.sourcesPath)
+        def source_supplier():
             with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
-                with open(javaSource, 'w') as fp:
-                    fp.write(zf.read(name.replace('.', '/') + '.java'))
+                return zf.read(qualified_name.replace('.', '/') + '.java')
     else:
-        javaSource = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', name.replace('.', '/') + '.java')
-    javaClass = join(binDir, name.replace('.', '/') + '.class')
-    if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
-        mx.run([jdk.javac, '-d', binDir, javaSource])
-    mx.run([jdk.java, '-cp', binDir, name])
+        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', qualified_name.replace('.', '/') + '.java')
+        source_timestamp = getmtime(source_path)
+        def source_supplier():
+            with open(source_path, 'r') as fp:
+                return fp.read()
+
+    unqualified_class_file = join(binDir, unqualified_name + '.class')
+    if not exists(unqualified_class_file) or getmtime(unqualified_class_file) < source_timestamp:
+        with SafeDirectoryUpdater(binDir, create=True) as sdu:
+            unqualified_source_path = join(sdu.directory, unqualified_name + '.java')
+            with open(unqualified_source_path, 'w') as fp:
+                fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
+            mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
+    mx.run([jdk.java, '-cp', binDir, unqualified_name])
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -256,7 +331,7 @@ def ctw(args, extraVMarguments=None):
 
     if not _get_XX_option_value(vmargs, 'UseJVMCINativeLibrary', False):
         if _get_XX_option_value(vmargs, 'UseJVMCICompiler', False):
-            if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) == None:
+            if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) is None:
                 vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
@@ -1133,13 +1208,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
     mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
 
-    # The GraalJDK is created in a temporary directory since multiple processes
-    # may be racing to do the creation.
-    tmp_dir = tempfile.mkdtemp(prefix=basename(dst_jdk_dir), dir=dirname(dst_jdk_dir))
-    tmp_dst_jdk_dir = join(tmp_dir, 'jdk')
-    dst_jdk_dir_timestamp = mx.TimeStampFile(dst_jdk_dir)
-    try:
-
+    with SafeDirectoryUpdater(dst_jdk_dir) as sdu:
+        tmp_dst_jdk_dir = sdu.directory
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
@@ -1236,31 +1306,6 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             with open(join(tmp_dst_jdk_dir, 'proguard.map'), 'w') as fp:
                 fp.write(unstrip_map)
 
-    except:
-        shutil.rmtree(tmp_dir)
-        raise
-
-    # Try delete the current dst_jdk_dir if it existed prior to creating
-    # tmp_dst_jdk_dir and has not be modified in between.
-    if dst_jdk_dir_timestamp.timestamp is not None and dst_jdk_dir_timestamp.timestamp == mx.TimeStampFile(dst_jdk_dir).timestamp:
-        old_dst_jdk_dir = join(tmp_dir, 'old_jdk')
-        try:
-            os.rename(dst_jdk_dir, old_dst_jdk_dir)
-        except:
-            # Silently assume another process won the race to rename dst_jdk_dir
-            pass
-
-    # Try atomically move tmp_dst_jdk_dir to dst_jdk_dir
-    try:
-        os.rename(tmp_dst_jdk_dir, dst_jdk_dir)
-    except:
-        if not exists(dst_jdk_dir):
-            raise
-        else:
-            # Silently assume another process won the race to create dst_jdk_dir
-            pass
-
-    shutil.rmtree(tmp_dir)
     return dst_jdk_dir, True
 
 __graal_config = None
