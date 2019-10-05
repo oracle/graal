@@ -32,15 +32,39 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 
 public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
+    /**
+     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices).
+     */
     private final int frameSize;
     private final int maxSize;
+    /**
+     * A record of the paths that we are considering for our optimal match. Every path is
+     * represented as a frame which consists of the ID of the last state on the path and the capture
+     * group indices that have been set along the path. The paths in this array is sorted in
+     * priority order, from highest priority to lowest priority.
+     */
     private int[] curStates;
+    /**
+     * A buffer of the paths that we will be considering in the next step. Every path in this array
+     * was created by taking a path from {@link #curStates} and following the transition labelled
+     * with the current character.
+     */
     private int[] nextStates;
     int curStatesLength = 0;
     int nextStatesLength = 0;
     int iCurStates = 0;
     private long[] marks;
+    /**
+     * This array stores the best (highest priority) match found so far. Whenever a match is found,
+     * all lower priority paths through the NFA are discarded. Therefore, any match which would be
+     * found later is guaranteed to be of higher priority and can be used to overwrite this result.
+     */
     private int[] result;
+    /**
+     * Indicates whether a path to a final state has been completed in this step. If true, then no
+     * further paths should be considered, as they would have a lower priority than this completed
+     * path.
+     */
     private boolean resultPushed = false;
 
     public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates) {

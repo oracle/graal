@@ -92,6 +92,14 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         while (true) {
             if (locals.getIndex() < getInputLength(locals)) {
                 findNextStates(locals);
+                // If locals.successorsEmpty() is true, then all of our paths have either been
+                // finished, discarded due to priority or failed to match. If we managed to finish
+                // any path to a final state (i.e. locals.hasResult() is true), we can terminate
+                // the search now.
+                // We can also terminate the search now if we were interested only in matches at
+                // the very start of the string (i.e. searching is false). Such a search would
+                // only have walked through the rest of the string without considering any other
+                // paths.
                 if (locals.successorsEmpty() && (!searching || locals.hasResult())) {
                     return locals.getResult();
                 }
@@ -107,10 +115,18 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         char c = getChar(locals);
         while (locals.hasNext()) {
             expandState(locals, locals.next(), c, false);
+            // If we have found a path to a final state, then we will trim all paths with lower
+            // priority (i.e. the rest of the elements in curStates).
             if (locals.isResultPushed()) {
                 return;
             }
         }
+        // We are supposed to find the first match of the regular expression. A match starting
+        // at a higher index has lower priority and so we give the lowest priority to the loopback
+        // transition.
+        // The loopback priority has to be lower than the priority of any path completed so far.
+        // Therefore, we only follow the loopback if no path has been completed so far
+        // (i.e. !locals.hasResult()).
         if (searching && !locals.hasResult() && locals.getIndex() >= locals.getFromIndex()) {
             expandState(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), c, true);
         }
@@ -118,6 +134,10 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private void expandState(TRegexNFAExecutorLocals locals, int stateId, char c, boolean isLoopBack) {
         NFAState state = nfa.getState(stateId);
+        // If we manage to find a path to the (unanchored) final state, then we will trim all other
+        // paths leading from the current state as they all have lower priority. We do this by
+        // iterating through the transitions in priority order and stopping on the first transition
+        // to a final state.
         for (int i = 0; i < maxTransitionIndex(state); i++) {
             NFAStateTransition t = state.getNext()[i];
             NFAState target = t.getTarget();
