@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -156,12 +157,10 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMetaAccess metaAccess = access.getMetaAccess();
 
         CFunctionPointer unimplementedWithJavaVMArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
-        JNIStructFunctionsInitializer<JNIInvokeInterface> invokesInitializer = buildInvokesInitializer(access, unimplementedWithJavaVMArgument);
+        fillJNIInvocationInterfaceTable(access, JNIFunctionTables.singleton().invokeInterfaceDataPrototype, unimplementedWithJavaVMArgument);
 
         CFunctionPointer unimplementedWithJNIEnvArgument = getStubFunctionPointer(access, (HostedMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class));
-        JNIStructFunctionsInitializer<JNINativeInterface> functionsInitializer = buildFunctionsInitializer(access, unimplementedWithJNIEnvArgument);
-
-        JNIFunctionTables.singleton().initialize(invokesInitializer, functionsInitializer);
+        fillJNIFunctionsTable(access, JNIFunctionTables.singleton().functionTableData, unimplementedWithJNIEnvArgument);
     }
 
     private static CFunctionPointer prepareCallTrampoline(CompilationAccessImpl access, CallVariant variant, boolean nonVirtual) {
@@ -184,42 +183,28 @@ public class JNIFunctionTablesFeature implements Feature {
         return MethodPointer.factory(access.getUniverse().lookup(stub));
     }
 
-    private JNIStructFunctionsInitializer<JNIInvokeInterface> buildInvokesInitializer(CompilationAccessImpl access, CFunctionPointer unimplemented) {
+    private void fillJNIInvocationInterfaceTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
+        initializeFunctionPointerTable(access, table, defaultValue);
+
         HostedType invokes = access.getMetaAccess().lookupJavaType(JNIInvocationInterface.class);
         HostedMethod[] methods = invokes.getDeclaredMethods();
-        int index = 0;
-        int[] offsets = new int[methods.length];
-        CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(invokeInterfaceMetadata, method.getName());
-            offsets[index] = field.getOffsetInfo().getProperty();
-            pointers[index] = getStubFunctionPointer(access, method);
-            index++;
+            int offset = field.getOffsetInfo().getProperty();
+            setFunctionPointerTable(table, offset, getStubFunctionPointer(access, method));
         }
-        VMError.guarantee(index == offsets.length && index == pointers.length);
-        JNIStructFunctionsInitializer<JNIInvokeInterface> initializer = new JNIStructFunctionsInitializer<>(JNIInvokeInterface.class, offsets, pointers, unimplemented);
-        access.registerAsImmutable(pointers);
-        access.registerAsImmutable(initializer);
-        return initializer;
     }
 
-    private JNIStructFunctionsInitializer<JNINativeInterface> buildFunctionsInitializer(CompilationAccessImpl access, CFunctionPointer unimplemented) {
+    private void fillJNIFunctionsTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
+        initializeFunctionPointerTable(access, table, defaultValue);
+
         Class<JNIFunctions> clazz = JNIFunctions.class;
         HostedType functions = access.getMetaAccess().lookupJavaType(clazz);
         HostedMethod[] methods = functions.getDeclaredMethods();
-        int index = 0;
-        int count = methods.length + generatedMethods.length;
-        // Call, CallStatic, CallNonvirtual: for each return value kind: array, va_list, varargs
-        // NewObject: array, va_list, varargs
-        count += (jniKinds.size() * 3 + 1) * 3;
-        int[] offsets = new int[count];
-        CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
-        access.registerAsImmutable(pointers);
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
-            offsets[index] = field.getOffsetInfo().getProperty();
-            pointers[index] = getStubFunctionPointer(access, method);
-            index++;
+            int offset = field.getOffsetInfo().getProperty();
+            setFunctionPointerTable(table, offset, getStubFunctionPointer(access, method));
         }
         for (ResolvedJavaMethod accessor : generatedMethods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, accessor.getName());
@@ -228,9 +213,8 @@ public class JNIFunctionTablesFeature implements Feature {
             AnalysisMethod analysisMethod = analysisUniverse.lookup(accessor);
             HostedMethod hostedMethod = access.getUniverse().lookup(analysisMethod);
 
-            offsets[index] = field.getOffsetInfo().getProperty();
-            pointers[index] = MethodPointer.factory(hostedMethod);
-            index++;
+            int offset = field.getOffsetInfo().getProperty();
+            setFunctionPointerTable(table, offset, MethodPointer.factory(hostedMethod));
         }
         for (CallVariant variant : CallVariant.values()) {
             CFunctionPointer trampoline = prepareCallTrampoline(access, variant, false);
@@ -240,25 +224,17 @@ public class JNIFunctionTablesFeature implements Feature {
                 String[] prefixes = {"Call", "CallStatic"};
                 for (String prefix : prefixes) {
                     StructFieldInfo field = findFieldFor(functionTableMetadata, prefix + kind.name() + "Method" + suffix);
-                    offsets[index] = field.getOffsetInfo().getProperty();
-                    pointers[index] = trampoline;
-                    index++;
+                    int offset = field.getOffsetInfo().getProperty();
+                    setFunctionPointerTable(table, offset, trampoline);
                 }
                 StructFieldInfo field = findFieldFor(functionTableMetadata, "CallNonvirtual" + kind.name() + "Method" + suffix);
-                offsets[index] = field.getOffsetInfo().getProperty();
-                pointers[index] = nonvirtualTrampoline;
-                index++;
+                int offset = field.getOffsetInfo().getProperty();
+                setFunctionPointerTable(table, offset, nonvirtualTrampoline);
             }
             StructFieldInfo field = findFieldFor(functionTableMetadata, "NewObject" + suffix);
-            offsets[index] = field.getOffsetInfo().getProperty();
-            pointers[index] = trampoline;
-            index++;
+            int offset = field.getOffsetInfo().getProperty();
+            setFunctionPointerTable(table, offset, trampoline);
         }
-        VMError.guarantee(index == offsets.length && index == pointers.length);
-        JNIStructFunctionsInitializer<JNINativeInterface> initializer = new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);
-        access.registerAsImmutable(pointers);
-        access.registerAsImmutable(initializer);
-        return initializer;
     }
 
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {
@@ -271,5 +247,22 @@ public class JNIFunctionTablesFeature implements Feature {
             }
         }
         throw VMError.shouldNotReachHere("Cannot find JNI function table field for: " + name);
+    }
+
+    private static void initializeFunctionPointerTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
+        for (int i = 0; i < table.length; i++) {
+            table[i] = defaultValue;
+        }
+        /*
+         * All objects in the image heap that have function pointers, i.e., relocations, must be
+         * immutable at run time.
+         */
+        access.registerAsImmutable(table);
+    }
+
+    private static void setFunctionPointerTable(CFunctionPointer[] table, int offsetInBytes, CFunctionPointer value) {
+        int wordSize = FrameAccess.wordSize();
+        VMError.guarantee(offsetInBytes % wordSize == 0);
+        table[offsetInBytes / wordSize] = value;
     }
 }
