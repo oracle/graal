@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,54 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posix.headers.darwin;
 
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-// Checkstyle: stop
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-/**
- * Definitions manually translated from the C header file sys/resource.h.
- */
+/** Declarations of method from <sys/syslimits.h>. */
+@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
 @CContext(PosixDirectives.class)
-public class Resource {
+public class DarwinSyslimits {
+    // { Allow names with underscores: Checkstyle: stop
 
     @CConstant
-    public static native int RLIMIT_NOFILE();
+    public static native int OPEN_MAX();
 
-    @CStruct(addStructKeyword = true)
-    public interface rlimit extends PointerBase {
-        /** The current (soft) limit. */
-        @CField
-        UnsignedWord rlim_cur();
-
-        @CField
-        void set_rlim_cur(UnsignedWord value);
-
-        /** The hard limit. */
-        @CField
-        UnsignedWord rlim_max();
-
-        @CField
-        void set_rlim_max(UnsignedWord value);
-    }
-
-    @CFunction
-    public static native int getrlimit(int resource, rlimit rlimits);
-
-    @CFunction
-    public static native int setrlimit(int resource, rlimit rlimits);
-
-    @CFunction
-    public static native int getpriority(int which, /* unsigned */ int who);
-
-    @CFunction
-    public static native int setpriority(int which, /* unsigned */ int who, int prio);
-
+    // } Allow names with underscores: Checkstyle: resume
 }

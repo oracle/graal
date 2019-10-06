@@ -508,10 +508,10 @@ public final class PosixJavaNIOSubstitutions {
             if (getrlimit(RLIMIT_NOFILE(), rlp) < 0) {
                 throw PosixUtils.newIOExceptionWithLastError("getrlimit failed");
             }
-            if (rlp.rlim_max() < 0 || rlp.rlim_max() > Integer.MAX_VALUE) {
+            if (rlp.rlim_max().belowThan(0) || rlp.rlim_max().aboveThan(Integer.MAX_VALUE)) {
                 return Integer.MAX_VALUE;
             } else {
-                return (int) rlp.rlim_max();
+                return (int) rlp.rlim_max().rawValue();
             }
         }
     }

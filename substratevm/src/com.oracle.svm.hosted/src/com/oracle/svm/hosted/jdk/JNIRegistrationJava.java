@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.jdk;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -39,7 +40,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -65,7 +65,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 if (libnameNode.isConstant()) {
                     String libname = (String) SubstrateObjectConstant.asObject(libnameNode.asConstant());
-                    if (libname != null && PlatformNativeLibrarySupport.singleton().isBuiltinLibrary(libname) && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
+                    if (libname != null && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname) && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
                         /*
                          * Support for automatic static linking of standard libraries. This works
                          * because all of the JDK uses System.loadLibrary with literal String
