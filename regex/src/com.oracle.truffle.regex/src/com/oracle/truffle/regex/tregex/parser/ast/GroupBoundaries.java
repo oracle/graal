@@ -24,20 +24,20 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
-import java.util.Objects;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Objects of this class represent the capture group boundaries traversed in a single
@@ -61,6 +61,8 @@ public class GroupBoundaries implements JsonConvertible {
     private final CompilationFinalBitSet updateIndices;
     private final CompilationFinalBitSet clearIndices;
     private final int cachedHash;
+    @CompilationFinal(dimensions = 1) private byte[] updateArray;
+    @CompilationFinal(dimensions = 1) private byte[] clearArray;
 
     GroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
         this.updateIndices = updateIndices;
@@ -78,7 +80,7 @@ public class GroupBoundaries implements JsonConvertible {
      * Creates a byte array suitable to be part of the {@code indexUpdates} parameter passed to
      * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
-     * 
+     *
      * @param targetArray the index of the row to be targeted.
      *
      * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
@@ -92,7 +94,7 @@ public class GroupBoundaries implements JsonConvertible {
      * Creates a byte array suitable to be part of the {@code indexClears} parameter passed to
      * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
-     * 
+     *
      * @param targetArray the index of the row to be targeted.
      *
      * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
@@ -106,12 +108,29 @@ public class GroupBoundaries implements JsonConvertible {
         assert !indices.isEmpty() : "should not be called on empty sets";
         final byte[] indexUpdate = new byte[indices.numberOfSetBits() + 1];
         indexUpdate[0] = (byte) targetArray;
-        int i = 1;
+        writeIndicesToArray(indices, indexUpdate, 1);
+        return indexUpdate;
+    }
+
+    private static void writeIndicesToArray(CompilationFinalBitSet indices, final byte[] array, int offset) {
+        int i = offset;
         for (int j : indices) {
             assert j < 256;
-            indexUpdate[i++] = (byte) j;
+            array[i++] = (byte) j;
         }
-        return indexUpdate;
+    }
+
+    public void materializeArrays() {
+        if (this != EMPTY_INSTANCE && updateArray == null) {
+            updateArray = indicesToArray(updateIndices);
+            clearArray = indicesToArray(clearIndices);
+        }
+    }
+
+    private static byte[] indicesToArray(CompilationFinalBitSet indices) {
+        final byte[] array = new byte[indices.numberOfSetBits()];
+        writeIndicesToArray(indices, array, 0);
+        return array;
     }
 
     /**
@@ -121,6 +140,15 @@ public class GroupBoundaries implements JsonConvertible {
      */
     public CompilationFinalBitSet getUpdateIndices() {
         return updateIndices;
+    }
+
+    /**
+     * Directly returns the {@link CompilationFinalBitSet} used to store the indices of all capture
+     * group boundaries that should be cleared when traversed. <br>
+     * CAUTION: Do not alter the returned object!
+     */
+    public CompilationFinalBitSet getClearIndices() {
+        return clearIndices;
     }
 
     public boolean hasIndexUpdates() {
@@ -167,6 +195,18 @@ public class GroupBoundaries implements JsonConvertible {
     public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+    }
+
+    public void apply(int[] array, int offset, int index) {
+        if (this == EMPTY_INSTANCE) {
+            return;
+        }
+        for (byte i : clearArray) {
+            array[offset + Byte.toUnsignedInt(i)] = -1;
+        }
+        for (byte i : updateArray) {
+            array[offset + Byte.toUnsignedInt(i)] = index;
         }
     }
 

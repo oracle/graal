@@ -138,6 +138,7 @@ import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBi
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI32VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI8VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToPointerVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToFloatVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToI16VectorNodeGen;
@@ -1162,6 +1163,8 @@ public class BasicNodeFactory implements NodeFactory {
                     case I64:
                         return LLVMUnsignedCastToI64VectorNodeGen.create(fromNode, vectorLength);
                 }
+            } else if (elemType instanceof PointerType) {
+                return LLVMBitcastToPointerVectorNodeGen.create(fromNode, vectorLength);
             }
         }
 

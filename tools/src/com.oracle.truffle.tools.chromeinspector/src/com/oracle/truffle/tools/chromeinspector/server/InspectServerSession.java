@@ -408,6 +408,12 @@ public final class InspectServerSession implements MessageEndpoint {
                                 Location.create(json.getJSONObject("location")),
                                 json.optString("condition"));
                 break;
+            case "Debugger.setBreakpointOnFunctionCall":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.setBreakpointOnFunctionCall(
+                                json.optString("objectId"),
+                                json.optString("condition"));
+                break;
             case "Debugger.removeBreakpoint":
                 debugger.removeBreakpoint(cmd.getParams().getBreakpointId());
                 break;

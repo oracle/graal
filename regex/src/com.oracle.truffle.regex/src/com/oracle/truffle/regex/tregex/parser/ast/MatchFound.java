@@ -82,6 +82,12 @@ public class MatchFound extends Term {
     }
 
     @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        assert !hasQuantifier();
+        return obj instanceof MatchFound;
+    }
+
+    @Override
     public String toString() {
         return "::";
     }

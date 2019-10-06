@@ -50,9 +50,10 @@ import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -80,6 +81,7 @@ public final class TRegexCompilationRequest {
     private RegexAST ast = null;
     private NFA nfa = null;
     private NFA traceFinderNFA = null;
+    private TRegexExecRootNode root = null;
     private TRegexDFAExecutorNode executorNodeForward = null;
     private TRegexDFAExecutorNode executorNodeBackward = null;
     private TRegexDFAExecutorNode executorNodeCaptureGroups = null;
@@ -88,6 +90,17 @@ public final class TRegexCompilationRequest {
     TRegexCompilationRequest(TRegexCompiler tRegexCompiler, RegexSource source) {
         this.tRegexCompiler = tRegexCompiler;
         this.source = source;
+    }
+
+    TRegexCompilationRequest(TRegexCompiler tRegexCompiler, NFA nfa) {
+        this.tRegexCompiler = tRegexCompiler;
+        this.source = nfa.getAst().getSource();
+        this.ast = nfa.getAst();
+        this.nfa = nfa;
+    }
+
+    public TRegexExecRootNode getRoot() {
+        return root;
     }
 
     @TruffleBoundary
@@ -107,7 +120,12 @@ public final class TRegexCompilationRequest {
     @TruffleBoundary
     private RegexExecRootNode compileInternal() {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
-        createAST();
+        RegexParser regexParser = createParser();
+        phaseStart("Parser");
+        ast = regexParser.parse();
+        regexParser.prepareForDFA();
+        phaseEnd("Parser");
+        debugAST();
         RegexProperties properties = ast.getProperties();
         checkFeatureSupport(properties);
         if (ast.getRoot().isDead()) {
@@ -117,13 +135,23 @@ public final class TRegexCompilationRequest {
         if (literal != null) {
             return literal;
         }
-        PreCalculatedResultFactory[] preCalculatedResults = null;
-        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
-            preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
-        }
         createNFA();
         if (nfa.isDead()) {
             return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+        }
+        return new TRegexExecRootNode(tRegexCompiler.getLanguage(), tRegexCompiler, source, ast.getFlags(), tRegexCompiler.getOptions().isRegressionTestMode(),
+                        new TRegexNFAExecutorNode(nfa, ast.getNumberOfCaptureGroups()));
+    }
+
+    @TruffleBoundary
+    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode) {
+        assert ast != null;
+        assert nfa != null;
+        this.root = rootNode;
+        RegexProperties properties = ast.getProperties();
+        PreCalculatedResultFactory[] preCalculatedResults = null;
+        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
+            preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
@@ -149,16 +177,13 @@ public final class TRegexCompilationRequest {
         } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false);
         }
-        return new TRegexExecRootNode(
-                        tRegexCompiler.getLanguage(),
-                        tRegexCompiler,
-                        source,
-                        ast.getFlags(),
-                        tRegexCompiler.getOptions().isRegressionTestMode(),
-                        preCalculatedResults,
-                        executorNodeForward,
-                        executorNodeBackward,
-                        executorNodeCaptureGroups);
+        logAutomatonSizes(rootNode);
+        return new TRegexExecRootNode.LazyCaptureGroupRegexSearchNode(
+                        tRegexCompiler.getLanguage(), source, ast.getFlags(), preCalculatedResults,
+                        rootNode.createEntryNode(executorNodeForward),
+                        rootNode.createEntryNode(executorNodeBackward),
+                        rootNode.createEntryNode(executorNodeCaptureGroups),
+                        rootNode);
     }
 
     @TruffleBoundary
@@ -200,6 +225,15 @@ public final class TRegexCompilationRequest {
     }
 
     private void createAST() {
+        RegexParser regexParser = createParser();
+        phaseStart("Parser");
+        ast = regexParser.parse();
+        regexParser.prepareForDFA();
+        phaseEnd("Parser");
+        debugAST();
+    }
+
+    private RegexParser createParser() {
         RegexOptions options = tRegexCompiler.getOptions();
         RegexFlavor flavor = options.getFlavor();
         RegexSource ecmascriptSource = source;
@@ -209,10 +243,7 @@ public final class TRegexCompilationRequest {
             ecmascriptSource = flavorProcessor.toECMAScriptRegex();
             phaseEnd("Flavor");
         }
-        phaseStart("Parser");
-        ast = new RegexParser(ecmascriptSource, options, compilationBuffer).parse();
-        phaseEnd("Parser");
-        debugAST();
+        return new RegexParser(ecmascriptSource, options, compilationBuffer);
     }
 
     private void createNFA() {
@@ -222,13 +253,9 @@ public final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, trackCaptureGroups,
                         tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
-    }
-
-    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props) {
-        return createDFAExecutor(nfaArg, props, null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
@@ -308,7 +335,8 @@ public final class TRegexCompilationRequest {
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
                         Json.prop("astNodes", ast == null ? 0 : ast.getNumberOfNodes()),
-                        Json.prop("nfaStates", nfa == null ? 0 : nfa.getStates().length),
+                        Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
+                        Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
                         Json.prop("dfaStatesFwd", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
                         Json.prop("dfaStatesBck", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
                         Json.prop("dfaStatesCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),

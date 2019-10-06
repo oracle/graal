@@ -40,10 +40,10 @@ public class LookAheadAssertion extends LookAroundAssertion {
 
     /**
      * Creates a new lookahead assertion AST node.
-     * 
+     *
      * Note that for this node to be complete, {@link RegexASTSubtreeRootNode#setGroup(Group)} has
      * to be called with the {@link Group} that represents the contents of this lookahead assertion.
-     * 
+     *
      * @param negated whether this lookahead assertion is negative or not
      */
     LookAheadAssertion(boolean negated) {
@@ -62,6 +62,12 @@ public class LookAheadAssertion extends LookAroundAssertion {
     @Override
     public String getPrefix() {
         return isNegated() ? "?!" : "?=";
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        assert !hasQuantifier();
+        return this == obj || (obj instanceof LookAheadAssertion && groupEqualsSemantic((LookAheadAssertion) obj));
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,8 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 
 /**
@@ -34,7 +35,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  * capture groups in a lazy or eager way.
  *
  * @see com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode
- * @see com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode
+ * @see com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode
  */
 public final class RegexProfile {
 
@@ -53,6 +54,10 @@ public final class RegexProfile {
         calls.inc();
     }
 
+    public void resetCalls() {
+        calls.reset();
+    }
+
     /**
      * Increase the number of times a match for the regular expression was found by one.
      */
@@ -66,7 +71,7 @@ public final class RegexProfile {
      * @param matchLength the length of capture group 0 of the match.
      * @param numberOfCharsTraversed the number of characters that were traversed between the
      *            initial index (fromIndex) and the end of the match.
-     * @see com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode
+     * @see com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode
      */
     public void profileCaptureGroupAccess(int matchLength, int numberOfCharsTraversed) {
         captureGroupAccesses.inc();
@@ -77,7 +82,7 @@ public final class RegexProfile {
 
     /**
      * Check if the profiling information gathered so far is sufficient for making a decision.
-     * 
+     *
      * @return {@code true} if the number of times the regular expression was called is divisible by
      *         {@value #EVALUATION_TRIP_POINT}.
      */
@@ -96,22 +101,30 @@ public final class RegexProfile {
     }
 
     /**
+     * Decides whether the regular was executed often enough to warrant the costly generation of a
+     * fully expanded DFA.
+     */
+    public boolean shouldGenerateDFA() {
+        return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThreshold;
+    }
+
+    /**
      * Decides whether the capture groups of the regular expression should be matched in an eager
      * manner.
-     * 
+     *
      * @return {@code true} if:
      *         <ul>
      *         <li>most searches led to a match</li>
      *         <li>the capture groups of most search results were queried</li>
      *         <li>the match often covered a big part of the part of the input string that had to be
-     *         traversed in order to find it, or the match was usually very short</li>
+     *         traversed in order to find it.</li>
      *         </ul>
      */
     public boolean shouldUseEagerMatching() {
-        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && (avgMatchLength < 5 || avgMatchedPortionOfSearchSpace > 0.4);
+        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && avgMatchedPortionOfSearchSpace > 0.4;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Override
     public String toString() {
         return String.format("calls: %d, matches: %d (%.2f%%), cg accesses: %d (%.2f%%), avg matched portion of search space: %.2f%%",
@@ -121,5 +134,4 @@ public final class RegexProfile {
     public interface TracksRegexProfile {
         RegexProfile getRegexProfile();
     }
-
 }

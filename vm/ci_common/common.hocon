@@ -243,7 +243,7 @@ builds += [
     ]
     logs: ${common_vm.logs}
     timelimit: "1:30:00"
-    name: deploy-vm-jdk11-linux-amd64
+    name: deploy-vm-labsjdk-ee-11-linux-amd64
   }
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
@@ -280,7 +280,7 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"
-    name: deploy-vm-base-jdk11-darwin-amd64
+    name: deploy-vm-base-labsjdk-ee-11-darwin-amd64
   }
   ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
     run: [

@@ -264,7 +264,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (regionMatchesNode.execute(input, fromIndex, literal, mask)) {
+            if (regionMatchesNode.execute(input, fromIndex, literal, 0, literal.length(), mask)) {
                 return resultFactory.createFromStart(fromIndex);
             } else {
                 return NoMatchResult.getInstance();

@@ -172,7 +172,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             // The single alternative in the wrappedRoot is composed of N non-optional prefix
             // matchers, 1 group of optional matchers, 1 original root and 1 MatchFound node. By
             // taking size() - 3, we get the number of non-optional prefix matchers.
-            return wrappedRoot.getAlternatives().get(0).getTerms().size() - 3;
+            return wrappedRoot.getAlternatives().get(0).size() - 3;
         }
         return 0;
     }

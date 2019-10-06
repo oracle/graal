@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -126,8 +127,17 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new ArrayList<>();
-        staticLibraries = new ArrayList<>();
+        /*
+         * Libraries can be added during the static analysis, which runs multi-threaded. So the
+         * lists must be synchronized.
+         *
+         * Also note that it is necessary to support duplicate entries, i.e., it must remain a List
+         * and not a Set. The list is passed to the linker, and duplicate entries allow linking of
+         * libraries that have cyclic dependencies.
+         */
+        libraries = Collections.synchronizedList(new ArrayList<>());
+        staticLibraries = Collections.synchronizedList(new ArrayList<>());
+
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();

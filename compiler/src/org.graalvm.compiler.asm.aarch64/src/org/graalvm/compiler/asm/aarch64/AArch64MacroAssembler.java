@@ -1308,6 +1308,20 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         super.fmsub(size, dst, dst, d, n);
     }
 
+    /**
+     * dst = src1 * src2 + src3.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     * @param src3 floating point register. May not be null.
+     */
+    @Override
+    public void fmadd(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.fmadd(size, dst, src1, src2, src3);
+    }
+
     /* Branches */
 
     /**

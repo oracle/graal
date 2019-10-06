@@ -43,65 +43,103 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.result.LazyResult;
 import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.result.SingleIndexArrayResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyFindStartRootNode;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfile.TracksRegexProfile {
 
-    private static final EagerCaptureGroupRegexSearchNode EAGER_SEARCH_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
+    private static final LazyCaptureGroupRegexSearchNode LAZY_DFA_BAILED_OUT = new LazyCaptureGroupRegexSearchNode(null, null, null, null, null, null, null, null);
+    private static final EagerCaptureGroupRegexSearchNode EAGER_DFA_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
-    private final LazyCaptureGroupRegexSearchNode lazySearchNode;
-    private EagerCaptureGroupRegexSearchNode eagerSearchNode;
-    private RegexProfile regexProfile;
     private final TRegexCompiler tRegexCompiler;
-    private final boolean eagerCompilation;
+    private LazyCaptureGroupRegexSearchNode lazyDFANode;
+    private EagerCaptureGroupRegexSearchNode eagerDFANode;
+    private NFARegexSearchNode nfaNode;
+    private RegexProfile regexProfile;
+    private final boolean regressionTestMode;
 
-    @Child private RunRegexSearchNode runRegexSearchNode;
+    @Child private RunRegexSearchNode runnerNode;
 
-    public TRegexExecRootNode(RegexLanguage language,
-                    TRegexCompiler tRegexCompiler,
-                    RegexSource source,
-                    RegexFlags flags,
-                    boolean eagerCompilation,
-                    PreCalculatedResultFactory[] preCalculatedResults,
-                    TRegexDFAExecutorNode forwardExecutor,
-                    TRegexDFAExecutorNode backwardExecutor,
-                    TRegexDFAExecutorNode captureGroupExecutor) {
+    public TRegexExecRootNode(RegexLanguage language, TRegexCompiler tRegexCompiler, RegexSource source, RegexFlags flags, boolean regressionTestMode, TRegexExecutorNode backTrackingExecutor) {
         super(language, source, flags.isUnicode());
-        lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, flags, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor, this);
-        runRegexSearchNode = insert(lazySearchNode);
         this.tRegexCompiler = tRegexCompiler;
-        this.eagerCompilation = eagerCompilation;
-        if (canSwitchToEagerSearch()) {
-            if (eagerCompilation) {
-                compileEagerSearchNode();
-            }
-            if (tRegexCompiler.getOptions().isAlwaysEager()) {
-                switchToEagerSearch(null);
-            }
+        this.regressionTestMode = regressionTestMode;
+        this.nfaNode = new NFARegexSearchNode(createEntryNode(backTrackingExecutor));
+        this.runnerNode = nfaNode;
+        if (this.regressionTestMode) {
+            switchToLazyDFA();
         }
     }
 
     @Override
     public final RegexResult execute(Object input, int fromIndex) {
-        final RegexResult result = runRegexSearchNode.run(input, fromIndex, inputLength(input));
-        assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(input, fromIndex, result);
-        if (CompilerDirectives.inInterpreter() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
+        final RegexResult result = runnerNode.run(input, fromIndex, inputLength(input));
+        assert !regressionTestMode || nfaProducesSameResult(input, fromIndex, result);
+        assert !regressionTestMode || eagerAndLazyDFAProduceSameResult(input, fromIndex, result);
+        if (CompilerDirectives.inInterpreter()) {
             RegexProfile profile = getRegexProfile();
-            if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
-                switchToEagerSearch(profile);
-            }
-            profile.incCalls();
-            if (result != NoMatchResult.getInstance()) {
-                profile.incMatches();
+            if (lazyDFANode == null) {
+                assert !regressionTestMode;
+                profile.incCalls();
+                if (profile.shouldGenerateDFA()) {
+                    switchToLazyDFA();
+                    profile.resetCalls();
+                    // free the NFA for garbage collection
+                    nfaNode = null;
+                }
+            } else if (canSwitchToEagerDFA() && runnerNode == lazyDFANode) {
+                if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
+                    switchToEagerDFA(profile);
+                }
+                profile.incCalls();
+                if (result != NoMatchResult.getInstance()) {
+                    profile.incMatches();
+                }
             }
         }
         return result;
+    }
+
+    private boolean nfaProducesSameResult(Object input, int fromIndex, RegexResult result) {
+        if (lazyDFANode == LAZY_DFA_BAILED_OUT) {
+            return true;
+        }
+        assert !(runnerNode instanceof NFARegexSearchNode);
+        RegexResult btResult = nfaNode.run(input, fromIndex, inputLength(input));
+        if (resultsEqual(result, btResult, ((TRegexNFAExecutorNode) nfaNode.entryNode.getExecutor()).getNumberOfCaptureGroups())) {
+            return true;
+        }
+        LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nBacktracker Result: %s\nDFA Result:         %s", getSource(), input, fromIndex, btResult, result));
+        return false;
+    }
+
+    private static boolean resultsEqual(RegexResult a, RegexResult b, int numberOfCaptureGroups) {
+        if (a == NoMatchResult.getInstance()) {
+            return b == NoMatchResult.getInstance();
+        }
+        if (a instanceof LazyResult) {
+            ((LazyResult) a).debugForceEvaluation();
+        }
+        if (b instanceof LazyResult) {
+            ((LazyResult) b).debugForceEvaluation();
+        }
+        for (int i = 0; i < numberOfCaptureGroups; i++) {
+            if (a.getStart(i) != b.getStart(i) || a.getEnd(i) != b.getEnd(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -112,41 +150,67 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         return regexProfile;
     }
 
-    private boolean canSwitchToEagerSearch() {
-        return lazySearchNode.captureGroupEntryNode != null;
-    }
-
-    private void switchToEagerSearch(RegexProfile profile) {
-        compileEagerSearchNode();
-        if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
-            LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
-            runRegexSearchNode = insert(eagerSearchNode);
-        }
-    }
-
-    private void compileEagerSearchNode() {
-        if (eagerSearchNode == null) {
-            try {
-                TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
-                eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
-            } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
-                eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
+    private void switchToLazyDFA() {
+        compileLazyDFA();
+        if (lazyDFANode != LAZY_DFA_BAILED_OUT) {
+            runnerNode = insert(lazyDFANode);
+            if (canSwitchToEagerDFA()) {
+                if (regressionTestMode) {
+                    compileEagerDFA();
+                }
+                if (tRegexCompiler.getOptions().isAlwaysEager()) {
+                    switchToEagerDFA(null);
+                }
             }
         }
     }
 
-    private boolean eagerAndLazySearchNodesProduceSameResult(Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
-        if (lazySearchNode.captureGroupEntryNode == null || eagerSearchNode == EAGER_SEARCH_BAILED_OUT) {
+    private void compileLazyDFA() {
+        if (lazyDFANode == null) {
+            try {
+                lazyDFANode = tRegexCompiler.compileLazyDFAExecutor(((TRegexNFAExecutorNode) nfaNode.entryNode.getExecutor()).getNFA(), this);
+            } catch (UnsupportedRegexException e) {
+                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
+                lazyDFANode = LAZY_DFA_BAILED_OUT;
+            }
+        }
+    }
+
+    private boolean canSwitchToEagerDFA() {
+        return lazyDFANode.captureGroupEntryNode != null;
+    }
+
+    private void switchToEagerDFA(RegexProfile profile) {
+        compileEagerDFA();
+        if (eagerDFANode != EAGER_DFA_BAILED_OUT) {
+            LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
+            runnerNode = insert(eagerDFANode);
+        }
+    }
+
+    private void compileEagerDFA() {
+        if (eagerDFANode == null) {
+            try {
+                TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
+                eagerDFANode = new EagerCaptureGroupRegexSearchNode(createEntryNode(executorNode));
+            } catch (UnsupportedRegexException e) {
+                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
+                eagerDFANode = EAGER_DFA_BAILED_OUT;
+            }
+        }
+    }
+
+    private boolean eagerAndLazyDFAProduceSameResult(Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
+        if (lazyDFANode.captureGroupEntryNode == null || eagerDFANode == EAGER_DFA_BAILED_OUT) {
             return true;
         }
         RegexResult lazyResult;
         RegexResult eagerResult;
-        if (runRegexSearchNode == lazySearchNode) {
+        if (runnerNode == lazyDFANode) {
             lazyResult = resultOfCurrentSearchNode;
-            eagerResult = eagerSearchNode.run(input, fromIndex, inputLength(input));
+            eagerResult = eagerDFANode.run(input, fromIndex, inputLength(input));
         } else {
-            lazyResult = lazySearchNode.run(input, fromIndex, inputLength(input));
+            lazyResult = lazyDFANode.run(input, fromIndex, inputLength(input));
             eagerResult = resultOfCurrentSearchNode;
         }
         boolean equal;
@@ -162,6 +226,14 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         return equal;
     }
 
+    public TRegexExecutorEntryNode createEntryNode(TRegexExecutorNode executor) {
+        if (executor == null) {
+            return null;
+        }
+        executor.setRoot(this);
+        return TRegexExecutorEntryNode.create(executor);
+    }
+
     @Override
     public final String getEngineLabel() {
         return "TRegex fwd";
@@ -172,47 +244,48 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         abstract RegexResult run(Object input, int fromIndexArg, int inputLength);
     }
 
-    static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
+    public static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
 
         private final RegexFlags flags;
         @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
 
-        @Child private TRegexDFAExecutorEntryNode forwardEntryNode;
-        @Child private TRegexDFAExecutorEntryNode backwardEntryNode;
-        @Child private TRegexDFAExecutorEntryNode captureGroupEntryNode;
+        @Child private TRegexExecutorEntryNode forwardEntryNode;
+        @Child private TRegexExecutorEntryNode backwardEntryNode;
+        @Child private TRegexExecutorEntryNode captureGroupEntryNode;
 
         private final CallTarget backwardCallTarget;
         private final CallTarget captureGroupCallTarget;
 
-        LazyCaptureGroupRegexSearchNode(RegexLanguage language,
+        public LazyCaptureGroupRegexSearchNode(RegexLanguage language,
                         RegexSource source,
                         RegexFlags flags,
                         PreCalculatedResultFactory[] preCalculatedResults,
-                        TRegexDFAExecutorNode forwardNode,
-                        TRegexDFAExecutorNode backwardNode,
-                        TRegexDFAExecutorNode captureGroupExecutor,
-                        RegexProfile.TracksRegexProfile profiler) {
-            this.forwardEntryNode = TRegexDFAExecutorEntryNode.create(forwardNode);
+                        TRegexExecutorEntryNode forwardNode,
+                        TRegexExecutorEntryNode backwardNode,
+                        TRegexExecutorEntryNode captureGroupNode,
+                        TRegexExecRootNode rootNode) {
+            this.forwardEntryNode = forwardNode;
             this.flags = flags;
             this.preCalculatedResults = preCalculatedResults;
-            this.backwardEntryNode = TRegexDFAExecutorEntryNode.create(backwardNode);
+            this.backwardEntryNode = backwardNode;
             if (backwardNode == null) {
-                assert singlePreCalcResult();
+                assert singlePreCalcResult() || forwardNode == null;
                 backwardCallTarget = null;
             } else {
-                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode)));
+                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language,
+                                new TRegexLazyFindStartRootNode(language, source, ((TRegexDFAExecutorNode) forwardNode.getExecutor()).getPrefixLength(), backwardNode)));
             }
-            this.captureGroupEntryNode = TRegexDFAExecutorEntryNode.create(captureGroupExecutor);
-            if (captureGroupExecutor == null) {
+            this.captureGroupEntryNode = insert(captureGroupNode);
+            if (captureGroupNode == null) {
                 captureGroupCallTarget = null;
             } else {
-                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor, profiler)));
+                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupNode, rootNode)));
             }
         }
 
         @Override
         RegexResult run(Object input, int fromIndexArg, int inputLength) {
-            if (backwardEntryNode != null && backwardEntryNode.getExecutor().isAnchored()) {
+            if (backwardEntryNode != null && ((TRegexDFAExecutorNode) backwardEntryNode.getExecutor()).isAnchored()) {
                 return executeBackwardAnchored(input, fromIndexArg, inputLength);
             } else {
                 return executeForward(input, fromIndexArg, inputLength);
@@ -231,7 +304,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 if (end == fromIndexArg) { // zero-length match
                     return new SingleResult(end, end);
                 }
-                if (forwardEntryNode.getExecutor().isAnchored() || flags.isSticky()) {
+                if (((TRegexDFAExecutorNode) forwardEntryNode.getExecutor()).isAnchored() || flags.isSticky()) {
                     return new SingleResult(fromIndexArg, end);
                 }
                 return new SingleResultLazyStart(input, fromIndexArg, end, backwardCallTarget);
@@ -239,8 +312,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 if (preCalculatedResults != null) { // traceFinder
                     return new TraceFinderResult(input, fromIndexArg, end, backwardCallTarget, preCalculatedResults);
                 } else {
-                    if (forwardEntryNode.getExecutor().isAnchored() ||
-                                    (flags.isSticky() && forwardEntryNode.getExecutor().getPrefixLength() == 0)) {
+                    if (((TRegexDFAExecutorNode) forwardEntryNode.getExecutor()).isAnchored() ||
+                                    (flags.isSticky() && ((TRegexDFAExecutorNode) forwardEntryNode.getExecutor()).getPrefixLength() == 0)) {
                         return new LazyCaptureGroupsResult(input, fromIndexArg, end, null, captureGroupCallTarget);
                     }
                     return new LazyCaptureGroupsResult(input, fromIndexArg, end, backwardCallTarget, captureGroupCallTarget);
@@ -249,14 +322,22 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
-            final int backwardResult = (int) backwardEntryNode.execute(input, 0, inputLength - 1, Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
+            final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength - 1,
+                            Math.max(-1, fromIndexArg - 1 - ((TRegexDFAExecutorNode) forwardEntryNode.getExecutor()).getPrefixLength()));
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }
             if (multiplePreCalcResults()) { // traceFinder
-                return preCalculatedResults[backwardResult].createFromEnd(inputLength);
+                RegexResult preCalcResult = preCalculatedResults[backwardResult].createFromEnd(inputLength);
+                if (flags.isSticky() && preCalcResult.getStart(0) != fromIndexArg) {
+                    return NoMatchResult.getInstance();
+                }
+                return preCalcResult;
             }
             final int start = backwardResult + 1;
+            if (flags.isSticky() && start != fromIndexArg) {
+                return NoMatchResult.getInstance();
+            }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromStart(start);
             }
@@ -277,10 +358,10 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     static final class EagerCaptureGroupRegexSearchNode extends RunRegexSearchNode {
 
-        @Child private TRegexDFAExecutorEntryNode entryNode;
+        @Child private TRegexExecutorEntryNode entryNode;
 
-        EagerCaptureGroupRegexSearchNode(TRegexDFAExecutorNode executorNode) {
-            entryNode = TRegexDFAExecutorEntryNode.create(executorNode);
+        EagerCaptureGroupRegexSearchNode(TRegexExecutorEntryNode entryNode) {
+            this.entryNode = entryNode;
         }
 
         @Override
@@ -290,6 +371,24 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 return NoMatchResult.getInstance();
             }
             return new LazyCaptureGroupsResult(input, resultArray);
+        }
+    }
+
+    static final class NFARegexSearchNode extends RunRegexSearchNode {
+
+        @Child private TRegexExecutorEntryNode entryNode;
+
+        NFARegexSearchNode(TRegexExecutorEntryNode entryNode) {
+            this.entryNode = entryNode;
+        }
+
+        @Override
+        RegexResult run(Object input, int fromIndexArg, int inputLength) {
+            final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
+            if (resultArray == null) {
+                return NoMatchResult.getInstance();
+            }
+            return new SingleIndexArrayResult(resultArray);
         }
     }
 }

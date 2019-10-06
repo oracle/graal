@@ -40,14 +40,9 @@ public abstract class TraceFinderGetResultNode extends Node {
     static int[] doTraceFinderCalc(TraceFinderResult receiver,
                     @Cached("createBinaryProfile()") ConditionProfile conditionProfile,
                     @Cached DispatchNode calcResult) {
-        if (conditionProfile.profile(receiver.isResultCalculated())) {
-            return receiver.getIndices();
-        } else {
-            receiver.setResultCalculated();
-            final int preCalcIndex = (int) calcResult.execute(receiver.getTraceFinderCallTarget(),
-                            new Object[]{receiver.getInput(), receiver.getEnd() - 1, receiver.getFromIndex()});
-            receiver.getPreCalculatedResults()[preCalcIndex].applyRelativeToEnd(receiver.getIndices(), receiver.getEnd());
-            return receiver.getIndices();
+        if (conditionProfile.profile(!receiver.isResultCalculated())) {
+            receiver.applyTraceFinderResult((int) calcResult.execute(receiver.getTraceFinderCallTarget(), receiver.createArgsTraceFinder()));
         }
+        return receiver.getIndices();
     }
 }

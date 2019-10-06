@@ -267,11 +267,14 @@ public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConv
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof CodePointSet) {
             return Arrays.equals(ranges, ((CodePointSet) obj).ranges);
         }
         if (obj instanceof SortedListOfRanges) {
-            return equals((SortedListOfRanges) obj);
+            return equalsListOfRanges((SortedListOfRanges) obj);
         }
         return false;
     }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,15 +32,16 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexDFAExecutorNode#execute(TRegexDFAExecutorLocals, boolean)}. A trace contains the
- * arguments received by {@link TRegexDFAExecutorNode#execute(TRegexDFAExecutorLocals, boolean)},
- * and the ID of the DFA transition taken for all characters of the input string that have been
+ * {@link TRegexDFAExecutorNode#execute(TRegexExecutorLocals, boolean)}. A trace contains the
+ * arguments received by {@link TRegexDFAExecutorNode#execute(TRegexExecutorLocals, boolean)}, and
+ * the ID of the DFA transition taken for all characters of the input string that have been
  * traversed. After execution, the recorded trace can be dumped to disk as JSON with
  * {@link #finishRecording()}.
  */

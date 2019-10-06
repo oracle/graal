@@ -22,12 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 
 public class CGTrackingDFAStateNode extends DFAStateNode {
 
@@ -125,9 +127,8 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      * Finds the first matching transition. If a transition matches,
      * {@link #successorFound1(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is called. The
      * index of the element of {@link #getMatchers()} that matched the current input character (
-     * {@link TRegexDFAExecutorNode#getChar(TRegexDFAExecutorLocals)}) or
-     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
+     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
+     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -166,10 +167,9 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      * the looping transition matches,
      * {@link #successorFound2(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is called. The
      * index of the element of {@link #getMatchers()} that matched the current input character (
-     * {@link TRegexDFAExecutorNode#getChar(TRegexDFAExecutorLocals)}) or
-     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. If no transition matches,
-     * {@link #noSuccessor2(TRegexDFAExecutorLocals, TRegexDFAExecutorNode)} is called.
+     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
+     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. If no transition
+     * matches, {@link #noSuccessor2(TRegexDFAExecutorLocals, TRegexDFAExecutorNode)} is called.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
@@ -214,10 +214,10 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
      * than</i> the looping transition matches,
      * {@link #successorFound3(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int, int)} is called.
      * The index of the element of {@link #getMatchers()} that matched the current input character (
-     * {@link TRegexDFAExecutorNode#getChar(TRegexDFAExecutorLocals)}) or
-     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. If no transition matches,
-     * {@link #noSuccessor3(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is called.
+     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
+     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. If no transition
+     * matches, {@link #noSuccessor3(TRegexDFAExecutorLocals, TRegexDFAExecutorNode, int)} is
+     * called.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.

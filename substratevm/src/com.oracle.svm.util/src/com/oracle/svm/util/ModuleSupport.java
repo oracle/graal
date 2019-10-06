@@ -27,12 +27,18 @@ package com.oracle.svm.util;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.ResourceBundle;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public final class ModuleSupport {
     private ModuleSupport() {
+    }
+
+    public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
+        return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
     /**

@@ -30,7 +30,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;

@@ -52,8 +52,8 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 public final class CharSet implements ImmutableSortedListOfRanges, Comparable<CharSet>, JsonConvertible {
 
     private static final CharSet BYTE_RANGE = new CharSet(new char[]{0x00, 0xff});
-    private static final CharSet CONSTANT_EMPTY = new CharSet(new char[0]);
-    private static final CharSet CONSTANT_FULL = new CharSet(new char[]{Character.MIN_VALUE, Character.MAX_VALUE});
+    private static final CharSet CONSTANT_EMPTY = new CharSet(new char[0], true);
+    private static final CharSet CONSTANT_FULL = new CharSet(new char[]{Character.MIN_VALUE, Character.MAX_VALUE}, true);
 
     private static final CharSet[] CONSTANT_ASCII = new CharSet[128];
     private static final CharSet[] CONSTANT_INVERSE_ASCII = new CharSet[128];
@@ -75,16 +75,22 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         }
         CONSTANT_CODE_POINT_SETS_MB = new CharSet[Constants.CONSTANT_CODE_POINT_SETS.length];
         for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
-            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i]);
+            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i], false);
         }
     }
 
     private final char[] ranges;
 
-    private CharSet(char[] ranges) {
+    private CharSet(char[] ranges, boolean staticInit) {
         this.ranges = ranges;
         assert (ranges.length & 1) == 0 : "ranges array must have an even length!";
         assert rangesAreSortedAndDisjoint() : rangesToString(ranges, true);
+        assert staticInit || ranges.length != 0;
+        assert staticInit || !(ranges.length == 2 && ranges[0] == Character.MIN_VALUE && ranges[1] == Character.MAX_VALUE);
+    }
+
+    private CharSet(char[] ranges) {
+        this(ranges, false);
     }
 
     public char[] getRanges() {
@@ -123,24 +129,26 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         if (codePointSet.matchesNothing()) {
             return CONSTANT_EMPTY;
         }
-        if (codePointSet.matchesEverything()) {
-            return CONSTANT_FULL;
-        }
-        if (codePointSet.matchesSingleAscii()) {
-            return CONSTANT_ASCII[codePointSet.getLo(0)];
-        }
-        if (codePointSet.size() == 2) {
-            CharSet ret = checkInverseAndCaseFoldAscii(codePointSet.getLo(0), codePointSet.getHi(0), codePointSet.getLo(1), codePointSet.getHi(1));
-            if (ret != null) {
-                return ret;
+        if (codePointSet.getHi(codePointSet.size() - 1) <= Character.MAX_VALUE) {
+            if (codePointSet.equalsListOfRanges(CONSTANT_FULL)) {
+                return CONSTANT_FULL;
+            }
+            if (codePointSet.matchesSingleAscii()) {
+                return CONSTANT_ASCII[codePointSet.getLo(0)];
+            }
+            if (codePointSet.size() == 2) {
+                CharSet ret = checkInverseAndCaseFoldAscii(codePointSet.getLo(0), codePointSet.getHi(0), codePointSet.getLo(1), codePointSet.getHi(1));
+                if (ret != null) {
+                    return ret;
+                }
+            }
+            for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
+                if (codePointSet.equals(Constants.CONSTANT_CODE_POINT_SETS[i])) {
+                    return CONSTANT_CODE_POINT_SETS_MB[i];
+                }
             }
         }
-        for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
-            if (codePointSet.equals(Constants.CONSTANT_CODE_POINT_SETS[i])) {
-                return CONSTANT_CODE_POINT_SETS_MB[i];
-            }
-        }
-        return createTrimCodePointSet(codePointSet);
+        return createTrimCodePointSet(codePointSet, true);
     }
 
     private static CharSet checkConstants(char[] ranges, int length) {
@@ -194,7 +202,7 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         return null;
     }
 
-    private static CharSet createTrimCodePointSet(SortedListOfRanges codePointSet) {
+    private static CharSet createTrimCodePointSet(SortedListOfRanges codePointSet, boolean dedup) {
         int size = 0;
         for (int i = 0; i < codePointSet.size(); i++) {
             if (codePointSet.intersects(i, Constants.BMP_RANGE.getLo(0), Constants.BMP_RANGE.getHi(0))) {
@@ -207,12 +215,27 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
                 setRange(ranges, i, codePointSet.getLo(i), Math.min(codePointSet.getHi(i), Constants.BMP_RANGE.getHi(0)));
             }
         }
+        if (dedup) {
+            CharSet cs = checkConstants(ranges, ranges.length);
+            return cs == null ? new CharSet(ranges) : cs;
+        }
         return new CharSet(ranges);
     }
 
     private static void setRange(char[] arr, int i, int lo, int hi) {
         arr[i * 2] = (char) lo;
         arr[i * 2 + 1] = (char) hi;
+    }
+
+    @Override
+    public boolean matchesNothing() {
+        return this == getEmpty();
+    }
+
+    @Override
+    public boolean matchesEverything() {
+        assert !(size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue()) || this == getFull();
+        return this == getFull();
     }
 
     @SuppressWarnings("unchecked")
@@ -539,11 +562,14 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof CharSet) {
             return Arrays.equals(ranges, ((CharSet) obj).ranges);
         }
         if (obj instanceof SortedListOfRanges) {
-            return equals((SortedListOfRanges) obj);
+            return equalsListOfRanges((SortedListOfRanges) obj);
         }
         return false;
     }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -52,6 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
 
     private NativeLibraries nativeLibraries;
+    private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
@@ -61,7 +65,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 if (libnameNode.isConstant()) {
                     String libname = (String) SubstrateObjectConstant.asObject(libnameNode.asConstant());
-                    if (libname != null && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+                    if (libname != null && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname) && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
                         /*
                          * Support for automatic static linking of standard libraries. This works
                          * because all of the JDK uses System.loadLibrary with literal String
@@ -152,6 +156,9 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));
+        }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
     }

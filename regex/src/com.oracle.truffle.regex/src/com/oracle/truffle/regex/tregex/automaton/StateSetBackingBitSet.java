@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,9 +30,10 @@ import java.util.PrimitiveIterator;
 
 public class StateSetBackingBitSet implements StateSetBackingSet {
 
-    private CompilationFinalBitSet bitSet;
+    private final CompilationFinalBitSet bitSet;
 
-    public StateSetBackingBitSet() {
+    public StateSetBackingBitSet(int stateIndexSize) {
+        bitSet = new CompilationFinalBitSet(stateIndexSize);
     }
 
     private StateSetBackingBitSet(StateSetBackingBitSet copy) {
@@ -42,17 +43,6 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     @Override
     public StateSetBackingSet copy() {
         return new StateSetBackingBitSet(this);
-    }
-
-    @Override
-    public void create(int stateIndexSize) {
-        assert bitSet == null;
-        bitSet = new CompilationFinalBitSet(stateIndexSize);
-    }
-
-    @Override
-    public boolean isActive() {
-        return bitSet != null;
     }
 
     @Override

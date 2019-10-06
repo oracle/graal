@@ -56,7 +56,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public final class Group extends Term implements RegexASTVisitorIterable {
 
-    private final ArrayList<Sequence> alternatives = new ArrayList<>();
+    private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
     private byte groupNumber = -1;
     private byte enclosedCaptureGroupsLow;
@@ -253,6 +253,13 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         return alternatives;
     }
 
+    public void setAlternatives(ArrayList<Sequence> alternatives) {
+        for (Sequence s : alternatives) {
+            s.setParent(this);
+        }
+        this.alternatives = alternatives;
+    }
+
     @Override
     public SourceSection getSourceSection() {
         if (super.getSourceSection() == null && sourceSectionBegin != null && sourceSectionEnd != null) {
@@ -292,6 +299,10 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         return alternatives.size();
     }
 
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
@@ -327,6 +338,10 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         return sequence;
     }
 
+    public Sequence getLastAlternative() {
+        return alternatives.get(size() - 1);
+    }
+
     public void removeLastSequence() {
         alternatives.remove(alternatives.size() - 1);
     }
@@ -356,11 +371,31 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     }
 
     public String loopToString() {
-        return isLoop() ? "*" : "";
+        return isLoop() ? "*" : quantifierToString();
     }
 
     @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof Group)) {
+            return false;
+        }
+        Group o = (Group) obj;
+        if (size() != o.size() || groupNumber != o.groupNumber || isLoop() != o.isLoop() || (!ignoreQuantifier && !quantifierEquals(o))) {
+            return false;
+        }
+        for (int i = 0; i < size(); i++) {
+            if (!alternatives.get(i).equalsSemantic(o.alternatives.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @TruffleBoundary
+    @Override
     public String toString() {
         return "(" + (isCapturing() ? "" : "?:") + alternativesToString() + ")" + loopToString();
     }

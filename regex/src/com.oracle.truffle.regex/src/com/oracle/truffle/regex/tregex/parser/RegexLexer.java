@@ -221,7 +221,7 @@ public final class RegexLexer {
             curCharClass.appendRange(codePoint, codePoint);
             return charClass(false);
         } else {
-            return Token.createCharClass(CodePointSet.create(codePoint, codePoint));
+            return Token.createCharClass(CodePointSet.create(codePoint, codePoint), true);
         }
     }
 
@@ -236,11 +236,12 @@ public final class RegexLexer {
     }
 
     private Token charClass(boolean invert) {
+        boolean wasSingleChar = !invert && curCharClass.get().matchesSingleChar();
         if (flags.isIgnoreCase()) {
             CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, caseFolding);
         }
-        return Token.createCharClass(invert ? CodePointSet.createInverse(curCharClass.get()) : CodePointSet.create(curCharClass.get()));
+        return Token.createCharClass(invert ? CodePointSet.createInverse(curCharClass.get()) : CodePointSet.create(curCharClass.get()), wasSingleChar);
     }
 
     /* lexer */
