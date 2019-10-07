@@ -149,6 +149,11 @@ public abstract class ConstantPool {
         throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassFormatError.class, message);
     }
 
+    static @Host(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(NoClassDefFoundError.class, message);
+    }
+
     /**
      * Gets the tag at a given index. If {@code index == 0} or there is no valid entry at
      * {@code index} (e.g. it denotes the slot following a double or long entry), then

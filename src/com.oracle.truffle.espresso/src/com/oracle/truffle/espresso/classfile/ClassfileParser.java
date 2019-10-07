@@ -277,7 +277,7 @@ public final class ClassfileParser {
 
         boolean isModule = (classFlags & ACC_MODULE) != 0;
         if (isModule) {
-            throw new NoClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
+            throw ConstantPool.noClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
         }
 
         if (badConstantSeen != null) {
@@ -308,7 +308,7 @@ public final class ClassfileParser {
 
         // Checks if name in class file matches requested name
         if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
-            throw new NoClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
+            throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
         Symbol<Type> superKlass = parseSuperKlass();
