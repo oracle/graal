@@ -613,7 +613,11 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public static LLVM80BitFloat fromUnsignedByte(byte from) {
-        return fromInt(from & Byte.MIN_VALUE);
+        return fromInt(from & 0xFF);
+    }
+
+    public static LLVM80BitFloat fromUnsignedShort(short from) {
+        return fromUnsignedInt(from & 0xFFFF);
     }
 
     public static LLVM80BitFloat fromShort(short from) {
