@@ -77,6 +77,9 @@ builds += [
     name: deploy-vm-maven-linux-amd64
   }
   ${deploy_vm_linux_aarch64} ${maven_base_8_native} {
+    downloads: {
+      JAVA_HOME: ${jdks.openjdk11},
+    }
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
@@ -84,6 +87,9 @@ builds += [
     name: gate-vm-maven-dry-run-linux-aarch64
   }
   ${deploy_vm_linux_aarch64} ${maven_base_8_native} {
+    downloads: {
+      JAVA_HOME: ${jdks.openjdk11},
+    }
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} ["lafo-maven"]
