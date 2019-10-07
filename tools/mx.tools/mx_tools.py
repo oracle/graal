@@ -172,7 +172,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
     name='AgentScript',
-    short_name='agt',
+    short_name='ats',
     dir_name='agentscript',
     license_files=[],
     third_party_license_files=[],
