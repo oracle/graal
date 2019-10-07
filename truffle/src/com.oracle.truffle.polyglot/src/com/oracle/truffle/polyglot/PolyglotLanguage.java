@@ -99,7 +99,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.index = index;
         this.host = host;
         this.profile = new ContextProfile(this);
-        this.instancePool = cache.getPolicy() == ContextPolicy.EXCLUSIVE ? null : new LinkedList<>();
+        this.instancePool = new LinkedList<>();
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         this.multiLanguageReference = PolyglotReferences.createAlwaysMultiLanguage(this);
         this.multiContextReference = PolyglotReferences.createAlwaysMultiContext(this);
