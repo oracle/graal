@@ -51,6 +51,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -173,7 +174,7 @@ final class Runner {
 
         final SulongLibrary sulongLibrary;
         final FrameSlot stackPointerSlot;
-        final ContextReference<LLVMContext> ctxRef;
+        @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
         final int initContextBefore;
         @Child LLVMStatementNode initContext;
@@ -181,11 +182,13 @@ final class Runner {
         @Children final InitializeSymbolsNode[] initSymbols;
         @Children final InitializeModuleNode[] initModules;
 
+        private final Runner runner;
+
         LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
             super(runner.language, rootFrame);
+            this.runner = runner;
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
-            this.ctxRef = runner.language.getContextReference();
 
             this.initContextBefore = order.sulongLibraries.size();
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
@@ -209,6 +212,11 @@ final class Runner {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.ctxRef = lookupContextReference(runner.language.getClass());
+            }
+
             LLVMContext ctx = ctxRef.get();
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);
