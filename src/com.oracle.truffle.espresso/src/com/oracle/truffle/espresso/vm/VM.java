@@ -859,8 +859,17 @@ public final class VM extends NativeEnv implements ContextAccess {
                     RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
                     RootNode rootNode = callTarget.getRootNode();
                     if (rootNode instanceof EspressoRootNode) {
-                        StaticObject loader = ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
-                        if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
+                        Klass holder = ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass();
+                        Meta meta = holder.getMeta();
+                        // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
+                        if (meta.MethodAccessorImpl.isAssignableFrom(holder) || meta.ConstructorAccessorImpl.isAssignableFrom(holder)) {
+                            return null;
+                        }
+
+                        StaticObject loader = holder.getDefiningClassLoader();
+                        // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
+                        if (StaticObject.notNull(loader) &&
+                                        !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
                             return loader;
                         }
                     }
@@ -868,6 +877,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return null;
             }
         });
+
         return result == null ? StaticObject.NULL : result;
     }
 
