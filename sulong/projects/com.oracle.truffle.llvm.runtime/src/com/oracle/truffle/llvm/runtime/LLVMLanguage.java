@@ -121,6 +121,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      * Do not use this on fast-path.
      */
     public static LLVMContext getContext() {
+        CompilerAsserts.neverPartOfCompilation("Use faster context lookup methods for the fast-path.");
         return getCurrentContext(LLVMLanguage.class);
     }
 
@@ -128,6 +129,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      * Do not use this on fast-path.
      */
     public static LLVMLanguage getLanguage() {
+        // TODO add neverPartOfCompilation.
         return getCurrentLanguage(LLVMLanguage.class);
     }
 
