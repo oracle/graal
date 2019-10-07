@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.debugger.exception.ClassNotLoadedException;
 import com.oracle.truffle.espresso.debugger.exception.NoSuchSourceLineException;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
@@ -40,13 +39,13 @@ public class SourceLocator {
         this.context = context;
     }
 
-    public Source lookupSource(Symbol<Type> type, int lineNumber) throws ClassNotLoadedException, NoSuchSourceLineException {
+    public Source lookupSource(Symbol<Type> type, int lineNumber) throws NoSuchSourceLineException {
 
         // Check if class is loaded. Don't ever load classes here since
         // this will break original class initialization order.
         Klass[] klass = context.getRegistries().findLoadedClassAny(type);
         if (klass == null) {
-            throw new ClassNotLoadedException();
+            throw new RuntimeException("not implemented yet!");
         }
 
         // the class was already loaded, so look for the source line

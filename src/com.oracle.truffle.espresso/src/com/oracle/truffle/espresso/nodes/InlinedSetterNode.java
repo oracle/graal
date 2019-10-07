@@ -22,8 +22,8 @@ public class InlinedSetterNode extends QuickNode {
 
     @Child AbstractSetFieldNode setFieldNode;
 
-    InlinedSetterNode(Method inlinedMethod, int top, int opcode) {
-        super(top);
+    InlinedSetterNode(Method inlinedMethod, int top, int opcode, int callerBCI) {
+        super(top, callerBCI);
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
@@ -35,7 +35,7 @@ public class InlinedSetterNode extends QuickNode {
     public static InlinedSetterNode create(Method inlinedMethod, int top, int opCode, int curBCI) {
         setterNodes.inc();
         if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedSetterNode(inlinedMethod, top, opCode);
+            return new InlinedSetterNode(inlinedMethod, top, opCode, curBCI);
         } else {
             leafSetterNodes.inc();
             return new LeafAssumptionSetterNode(inlinedMethod, top, opCode, curBCI);

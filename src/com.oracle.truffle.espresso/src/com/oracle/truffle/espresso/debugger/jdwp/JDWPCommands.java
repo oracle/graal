@@ -25,8 +25,10 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 
 public interface JDWPCommands {
+    void stepOver(int requestId);
+    void stepInto(int requestId);
+    void stepOut(int requestId);
 
     void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
-
     void createStepIntoSpecificCommand(String slashClassName, int line, byte suspendPolicy);
 }

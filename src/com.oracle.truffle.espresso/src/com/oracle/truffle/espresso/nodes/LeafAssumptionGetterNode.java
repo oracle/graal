@@ -10,7 +10,7 @@ public class LeafAssumptionGetterNode extends InlinedGetterNode {
     protected final int curBCI;
 
     protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
-        super(inlinedMethod, top);
+        super(inlinedMethod, top, curBCI);
         this.opCode = opCode;
         this.curBCI = curBCI;
     }

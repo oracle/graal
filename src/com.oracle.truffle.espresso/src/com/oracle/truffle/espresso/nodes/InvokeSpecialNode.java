@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 
@@ -31,8 +32,8 @@ public final class InvokeSpecialNode extends QuickNode {
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeSpecialNode(Method method, int top) {
-        super(top);
+    public InvokeSpecialNode(Method method, int top, int callerBCI) {
+        super(top, callerBCI);
         this.method = method;
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }

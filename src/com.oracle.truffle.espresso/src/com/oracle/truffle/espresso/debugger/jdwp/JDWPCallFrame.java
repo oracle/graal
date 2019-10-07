@@ -28,8 +28,10 @@ public class JDWPCallFrame {
     private final long classId;
     private final long methodId;
     private final long codeIndex;
+    private final long threadId;
 
-    JDWPCallFrame(byte typeTag, long classId, long methodId, long codeIndex) {
+    JDWPCallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
+        this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
         this.methodId = methodId;
@@ -50,5 +52,9 @@ public class JDWPCallFrame {
 
     public long getCodeIndex() {
         return codeIndex;
+    }
+
+    public long getThreadId() {
+        return threadId;
     }
 }

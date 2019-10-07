@@ -64,8 +64,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
-    InvokeVirtualNode(Method resolutionSeed, int top) {
-        super(top);
+    InvokeVirtualNode(Method resolutionSeed, int top, int curBCI) {
+        super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.vtableIndex = resolutionSeed.getVTableIndex();

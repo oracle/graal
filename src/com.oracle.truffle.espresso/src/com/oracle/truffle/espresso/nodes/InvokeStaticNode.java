@@ -33,8 +33,8 @@ public final class InvokeStaticNode extends QuickNode {
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeStaticNode(Method method, int top) {
-        super(top);
+    public InvokeStaticNode(Method method, int top, int curBCI) {
+        super(top, curBCI);
         assert method.isStatic();
         this.method = method;
     }

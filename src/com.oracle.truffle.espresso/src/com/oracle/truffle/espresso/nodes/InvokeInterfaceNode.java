@@ -60,8 +60,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getCallTarget(), arguments);
     }
 
-    InvokeInterfaceNode(Method resolutionSeed, int top) {
-        super(top);
+    InvokeInterfaceNode(Method resolutionSeed, int top, int curBCI) {
+        super(top, curBCI);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.itableIndex = resolutionSeed.getITableIndex();

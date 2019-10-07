@@ -248,6 +248,8 @@ import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -348,6 +350,15 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
     public BytecodesNode(BytecodesNode copy) {
         this(copy.getMethod(), copy.getRootNode().getFrameDescriptor());
         System.err.println("Copying node for " + getMethod());
+    }
+
+    public final SourceSection getSourceSectionAtBCI(int bci) {
+        Source s = getSource();
+        if (s == null) {
+            return null;
+        }
+        int line = getMethod().getLineNumberTable().getLineNumber(bci);
+        return s.createSection(line);
     }
 
     @ExplodeLoop
@@ -1479,7 +1490,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top));
+                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
@@ -1495,7 +1506,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top));
+                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
@@ -1619,20 +1630,20 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         } else if (allowFieldAccessInlining && resolutionSeed.isInlinableSetter()) {
             invoke = InlinedSetterNode.create(resolutionSeed, top, opCode, curBCI);
         } else if (resolutionSeed.isMethodHandleIntrinsic()) {
-            invoke = new MethodHandleInvokeNode(resolutionSeed, top);
+            invoke = new MethodHandleInvokeNode(resolutionSeed, top, curBCI);
         } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
-            invoke = InvokeVirtualNodeGen.create(resolutionSeed, top);
+            invoke = InvokeVirtualNodeGen.create(resolutionSeed, top, curBCI);
         } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
-            invoke = new InvokeSpecialNode(resolutionSeed, top);
+            invoke = new InvokeSpecialNode(resolutionSeed, top, curBCI);
         } else {
             // @formatter:off
             // Checkstyle: stop
             switch (opCode) {
-                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed, top);          break;
-                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed, top); break;
-                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed, top);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed, top);         break;
+                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed, top, curBCI);          break;
+                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed, top, curBCI); break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed, top, curBCI);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed, top, curBCI);         break;
                 default              :
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
             }
@@ -1724,7 +1735,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                 // someone beat us to it, just trust him.
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top));
+                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top, curBCI));
             }
         }
         return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);

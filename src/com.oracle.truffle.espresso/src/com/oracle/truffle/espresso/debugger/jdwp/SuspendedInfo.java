@@ -21,8 +21,6 @@
  * questions.
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
-
-import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -32,6 +30,7 @@ public class SuspendedInfo {
     private int suspendStrategy;
     private JDWPCallFrame[] stackFrames;
     private StaticObject thread;
+    private DebuggerCommand.Kind stepKind;
 
     SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, StaticObject thread) {
         this.event = event;
@@ -54,5 +53,13 @@ public class SuspendedInfo {
 
     public StaticObject getThread() {
         return thread;
+    }
+
+    public void recordStep(DebuggerCommand.Kind kind) {
+        stepKind = kind;
+    }
+
+    public DebuggerCommand.Kind getStepKind() {
+        return stepKind;
     }
 }

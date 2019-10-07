@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.debugger;
 
 import com.oracle.truffle.espresso.debugger.jdwp.ClassPrepareRequest;
+import com.oracle.truffle.espresso.debugger.jdwp.JDWPCallFrame;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -38,4 +39,6 @@ public interface VMEventListener {
     void addThreadDiedRequestId(int id);
 
     void addClassPrepareRequest(ClassPrepareRequest request);
+
+    void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
 }

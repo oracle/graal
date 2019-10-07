@@ -9,7 +9,7 @@ public class LeafAssumptionSetterNode extends InlinedSetterNode {
     private final int opcode;
 
     protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
-        super(inlinedMethod, top, opCode);
+        super(inlinedMethod, top, opCode, curBCI);
         this.curBCI = curBCI;
         this.opcode = opCode;
     }

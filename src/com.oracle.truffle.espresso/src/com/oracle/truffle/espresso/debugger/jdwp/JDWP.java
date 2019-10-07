@@ -63,7 +63,7 @@ class JDWP {
                 reply.writeInt(loaded.length);
                 for (Klass klass : loaded) {
                     reply.writeByte(TypeTag.getKind(klass));
-                    reply.writeByteArray(Ids.getId(klass));
+                    reply.writeLong(Ids.getIdAsLong(klass));
                     if (klass instanceof ObjectKlass) {
                         ObjectKlass objectKlass = (ObjectKlass) klass;
                         reply.writeInt(ClassStatusConstants.fromEspressoStatus(objectKlass.getState()));
@@ -85,7 +85,7 @@ class JDWP {
                 StaticObject[] allThreads = controller.getContext().getAllGuestThreads();
                 reply.writeInt(allThreads.length);
                 for (StaticObject t : allThreads) {
-                    reply.writeByteArray(Ids.getId(t));
+                    reply.writeLong(Ids.getIdAsLong(t));
                 }
                 return reply;
             }
@@ -108,8 +108,25 @@ class JDWP {
         static class RESUME {
             public static final int ID = 9;
 
+            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+                controller.resume();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                return reply;
+            }
+        }
+
+        static class CAPABILITIES {
+            public static final int ID = 12;
+
             static PacketStream createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeBoolean(true); // canWatchFieldModification
+                reply.writeBoolean(true); // canWatchFieldAccess
+                reply.writeBoolean(false); // canGetBytecodes
+                reply.writeBoolean(true); // canGetSyntheticAttribute
+                reply.writeBoolean(false); // canGetOwnedMonitorInfo
+                reply.writeBoolean(false); // canGetCurrentContendedMonitor
+                reply.writeBoolean(false); // canGetMonitorInfo
                 return reply;
             }
         }
@@ -161,6 +178,44 @@ class JDWP {
     static class ReferenceType {
         public static final int ID = 2;
 
+        static class CLASSLOADER {
+            public static final int ID = 2;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long refTypeId = input.readLong();
+                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject loader = klass.getDefiningClassLoader();
+                reply.writeLong(Ids.getIdAsLong(loader));
+                return reply;
+            }
+        }
+
+        static class SOURCE_FILE {
+            public static final int ID = 7;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long refTypeId = input.readLong();
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+
+                String sourceFile = "Generated";
+                Method[] methods = klass.getDeclaredMethods();
+                for (Method method : methods) {
+                    if (method.getSourceFile() != null && !"Generated".equals(method.getSourceFile())) {
+                        sourceFile = method.getSourceFile();
+                        break;
+                    }
+                }
+                reply.writeString(sourceFile);
+                return reply;
+            }
+        }
+
         static class SIGNATURE_WITH_GENERIC {
             public static final int ID = 13;
 
@@ -184,6 +239,7 @@ class JDWP {
                 return reply;
             }
         }
+
         static class METHODS_WITH_GENERIC {
             public static final int ID = 15;
 
@@ -197,7 +253,7 @@ class JDWP {
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (Method method : declaredMethods) {
-                    reply.writeByteArray(Ids.getId(method));
+                    reply.writeLong(Ids.getIdAsLong(method));
                     reply.writeString(method.getName().toString());
                     reply.writeString(method.getRawSignature().toString());
                     reply.writeString(""); // TODO(Gregersen) - get the generic signature
@@ -267,6 +323,21 @@ class JDWP {
                 return reply;
             }
         }
+        static class VARIABLE_TABLE_WITH_GENERIC {
+            public static final int ID = 5;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long refTypeId = input.readLong();
+                long methodId = input.readLong();
+
+                // TODO(Gregersen) - not implemented yet
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeInt(0);
+                reply.writeInt(0);
+                return reply;
+            }
+        }
     }
 
     static class ObjectReference {
@@ -282,7 +353,20 @@ class JDWP {
                 StaticObject object = (StaticObject) Ids.fromId((int) objectId);
                 Klass klass = object.getKlass();
                 reply.writeByte(TypeTag.getKind(klass));
-                reply.writeByteArray(Ids.getId(klass));
+                reply.writeLong(Ids.getIdAsLong(klass));
+                return reply;
+            }
+        }
+
+        static class IS_COLLECTED {
+            public static final int ID = 9;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long objectId = input.readLong();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                reply.writeBoolean(object == Ids.UNKNOWN);
                 return reply;
             }
         }
@@ -309,12 +393,11 @@ class JDWP {
         static class RESUME {
             public static final int ID = 3;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
                 StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
-                String threadName = ((StaticObject) context.getMeta().Thread_name.get(thread)).toString();
-                // TODO(Gregersen) - implement resume call here
+                controller.resume();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 return reply;
             }
@@ -330,7 +413,6 @@ class JDWP {
                 int espressoThreadState = (int) context.getMeta().Thread_state.get(thread);
                 int threadStatus = getThreadStatus(espressoThreadState);
                 //System.out.println("thread state for thread " + thread + " is: " + threadStatus);
-
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(threadStatus);
                 //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread));
@@ -428,7 +510,9 @@ class JDWP {
                 long threadId = input.readLong();
                 StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeInt(ThreadSuspension.getSuspensionCount(thread));
+                int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
+                //System.out.println("Suspension count: " + suspensionCount);
+                reply.writeInt(suspensionCount);
                 return reply;
             }
         }
@@ -456,6 +540,32 @@ class JDWP {
 
         static class SET {
             public static final int ID = 1;
+        }
+
+        static class CLEAR {
+            public static final int ID = 2;
+        }
+    }
+
+    static class StackFrame {
+        public static final int ID = 16;
+
+        static class THIS_OBJECT {
+            public static final int ID = 3;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long threadId = input.readLong();
+                long frameId = input.readLong();
+
+                JDWPCallFrame frame = (JDWPCallFrame) Ids.fromId((int)frameId);
+                //System.out.println("got call frame: " + frame);
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeByte((byte) 76);
+                reply.writeLong(0);
+                return reply;
+            }
         }
     }
 }

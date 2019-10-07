@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.debugger;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.debugger.jdwp.JDWPCallFrame;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -74,6 +75,12 @@ public class VMEventListeners {
     public void breakpointHit(BreakpointInfo info, StaticObject currentThread) {
         if (listeners[0] != null) {
             listeners[0].breakpointHIt(info, currentThread);
+        }
+    }
+
+    public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
+        if (listeners[0] != null) {
+            listeners[0].stepCompleted(commandRequestId, currentFrame);
         }
     }
 }

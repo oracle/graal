@@ -22,8 +22,8 @@ public class MethodHandleInvokeNode extends QuickNode {
     private final int parameterCount;
     private final JavaKind rKind;
 
-    public MethodHandleInvokeNode(Method method, int top) {
-        super(top);
+    public MethodHandleInvokeNode(Method method, int top, int curBCI) {
+        super(top, curBCI);
         this.method = method;
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();

@@ -58,6 +58,8 @@ public class ThreadSuspension {
             if (thread == threads[i]) {
                 if (suspensionCount[i] > 0) {
                     suspensionCount[i]--;
+                    // only decrease the suspension count once!
+                    break;
                 }
             }
         }

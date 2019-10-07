@@ -51,8 +51,8 @@ public abstract class CheckCastNode extends QuickNode {
         return checkCast(typeToCheck, instanceKlass);
     }
 
-    CheckCastNode(Klass typeToCheck, int top) {
-        super(top);
+    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
+        super(top, callerBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
     }

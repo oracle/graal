@@ -43,10 +43,6 @@ public class Ids {
         return generateUniqueId(object);
     }
 
-    public static byte[] getId(Object object) {
-        return toByteArray(getIdAsLong(object));
-    }
-
     public static Object fromId(int id) {
         WeakReference ref = objects[id];
         Object o = ref.get();
@@ -66,26 +62,6 @@ public class Ids {
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
         return id;
-    }
-
-    public static byte[] toByteArray(long l) {
-        byte[] b = new byte[8];
-        b[7] = (byte) (l);
-        l >>>= 8;
-        b[6] = (byte) (l);
-        l >>>= 8;
-        b[5] = (byte) (l);
-        l >>>= 8;
-        b[4] = (byte) (l);
-        l >>>= 8;
-        b[3] = (byte) (l);
-        l >>>= 8;
-        b[2] = (byte) (l);
-        l >>>= 8;
-        b[1] = (byte) (l);
-        l >>>= 8;
-        b[0] = (byte) (l);
-        return b;
     }
 }
 

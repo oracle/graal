@@ -20,12 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+public class SteppingConstants {
+    // step depths
+    public static final int INTO = 0;
+    public static final int OVER = 1;
+    public static final int OUT = 2;
 
-public interface GuestClassLoadingSubscriber {
-
-    void notifyClassLoaded(Symbol<Type> name);
+    // step sizes
+    public static final int MIN = 0;
+    public static final int LINE = 1;
 }
