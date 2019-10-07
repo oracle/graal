@@ -113,7 +113,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         Consumer<WasmContext> initializer = (wasmContext) -> testCase.initializeModule(wasmContext);
 
         Value result = null;
-
         for (int i = 0; i != iterations; ++i) {
             runInitializer.execute(initializer);
             result = mainFunction.execute();

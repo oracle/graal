@@ -121,7 +121,7 @@ public class WasmModule implements TruffleObject {
     final boolean isMemberReadable(String member) {
         try {
             return symbolTable.exportedFunctions().containsKey(member) || symbolTable.exportedGlobals().containsKey(member) ||
-                            symbolTable.exportedMemory().equals(member);
+                            member.equals(symbolTable.exportedMemory());
         } catch (NumberFormatException exc) {
             return false;
         }
