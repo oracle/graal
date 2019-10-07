@@ -156,7 +156,11 @@ final class PolyglotReferences {
 
     private static boolean assertDirectContextAccess(PolyglotLanguageContext languageContext, Object languageContextImpl) throws AssertionError {
         if (languageContext == null) {
-            throw invalidSharingError(null);
+            /*
+             * This case may happen if the assertions were disabled during boot image generation but
+             * were later enabled at runtime. See GR-14463.
+             */
+            return true;
         }
         PolyglotContextImpl otherContext = PolyglotContextImpl.requireContext();
         PolyglotLanguageContext otherLanguageContext = otherContext.getContext(languageContext.language);
@@ -245,6 +249,9 @@ final class PolyglotReferences {
                 return true;
             }
             PolyglotLanguageContext context = contextRef.get();
+            if (context == null) {
+                throw invalidSharingError(null);
+            }
             return PolyglotReferences.assertDirectContextAccess(context, seenContext);
         }
 
