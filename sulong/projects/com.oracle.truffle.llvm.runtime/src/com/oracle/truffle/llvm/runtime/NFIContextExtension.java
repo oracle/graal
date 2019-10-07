@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -183,17 +184,17 @@ public final class NFIContextExtension implements ContextExtension {
              */
             TruffleObject cxxlib;
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-                cxxlib = loadLibrary("libc++.dylib", true, null, context);
+                cxxlib = loadLibrary(locateNativeLibrary(context, "libc++.dylib"), true, null, context);
             } else {
-                cxxlib = loadLibrary("libc++.so.1", true, null, context);
+                cxxlib = loadLibrary(locateNativeLibrary(context, "libc++.so.1"), true, null, context);
                 if (cxxlib == null) {
                     /*
                      * On Ubuntu, libc++ can not be dynamically loaded because of a missing
                      * dependeny on libgcc_s. Work around this by loading it manually first.
                      */
-                    TruffleObject libgcc = loadLibrary("libgcc_s.so.1", true, "RTLD_GLOBAL", context);
+                    TruffleObject libgcc = loadLibrary(locateNativeLibrary(context,"libgcc_s.so.1"), true, "RTLD_GLOBAL", context);
                     if (libgcc != null) {
-                        cxxlib = loadLibrary("libc++.so.1", true, null, context);
+                        cxxlib = loadLibrary(locateNativeLibrary(context,"libc++.so.1"), true, null, context);
                     }
                 }
             }
@@ -204,6 +205,14 @@ public final class NFIContextExtension implements ContextExtension {
         } else {
             return false;
         }
+    }
+
+    private String locateNativeLibrary(LLVMContext context, String libName) {
+        TruffleFile tf = DefaultLibraryLocator.locateGlobal(context, libName);
+        if (tf != null) {
+            return tf.getPath();
+        }
+        return libName;
     }
 
     private TruffleObject loadLibrary(ExternalLibrary lib, LLVMContext context) {
