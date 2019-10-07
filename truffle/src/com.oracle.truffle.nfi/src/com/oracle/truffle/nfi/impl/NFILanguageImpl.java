@@ -185,7 +185,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         @Override
         public CallTarget parse(NativeLibraryDescriptor descriptor) {
             RootNode root;
-            NFIContext ctx = getContextReference().get();
+            NFIContext ctx = getCurrentContext(NFILanguageImpl.class);
 
             if (descriptor.isDefaultLibrary()) {
                 root = new GetDefaultLibraryNode(NFILanguageImpl.this);

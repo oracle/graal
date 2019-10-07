@@ -114,7 +114,7 @@ public abstract class LLVMNode extends Node {
                 assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
                 datalayoutNode = datalayoutNode.getParent();
             } else {
-                return LLVMLanguage.getLLVMContextReference().get().getLibsulongDataLayout();
+                return LLVMLanguage.getContext().getLibsulongDataLayout();
             }
         }
         return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();

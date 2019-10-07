@@ -163,7 +163,7 @@ public abstract class RootNode extends ExecutableNode {
     /**
      * @see TruffleLanguage#getContextReference()
      * @since 0.27
-     * @deprecated use {@link #getContextSupplier(Class)} instead.
+     * @deprecated use {@link #lookupContextReference(Class)} instead.
      */
     @SuppressWarnings("deprecation")
     @Deprecated

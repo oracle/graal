@@ -53,6 +53,8 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -203,9 +205,16 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         String sourceString = request.getSource().getCharacters().toString();
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+
+            @CompilationFinal ContextReference<HostContext> contextRef;
+
             @Override
             public Object execute(VirtualFrame frame) {
-                HostContext context = getContextReference().get();
+                if (contextRef == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    contextRef = lookupContextReference(HostLanguage.class);
+                }
+                HostContext context = contextRef.get();
                 Class<?> allTarget = context.findClass(sourceString);
                 return context.internalContext.toGuestValue(allTarget);
             }

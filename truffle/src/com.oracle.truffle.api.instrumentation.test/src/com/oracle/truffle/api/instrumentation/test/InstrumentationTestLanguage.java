@@ -265,7 +265,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         } catch (LanguageError e) {
             throw new IOException(e);
         }
-        RootCallTarget afterTarget = getContextReference().get().afterTarget;
+        RootCallTarget afterTarget = getCurrentContext(getClass()).afterTarget;
         return lastParsed = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
     }
 
@@ -493,7 +493,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "CONSTANT":
                     return new ConstantNode(idents[0], childArray);
                 case "VARIABLE":
-                    return new VariableNode(idents[0], idents[1], childArray, lang.getContextReference());
+                    return new VariableNode(idents[0], idents[1], childArray, currentEnv().lookup(AllocationReporter.class));
                 case "PRINT":
                     return new PrintNode(idents[0], idents[1], childArray);
                 case "ALLOCATION":
@@ -1518,11 +1518,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @CompilationFinal private FrameSlot slot;
         final AllocationReporter allocationReporter;
 
-        private VariableNode(String name, String identifier, BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
+        private VariableNode(String name, String identifier, BaseNode[] children, AllocationReporter allocationReporter) {
             super(children);
             this.name = name;
             this.value = parseIdent(identifier);
-            this.allocationReporter = contextRef.get().allocationReporter;
+            this.allocationReporter = allocationReporter;
         }
 
         @Override
