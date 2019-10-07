@@ -325,10 +325,9 @@ final class InstrumentCache {
 
             @Override
             Class<? extends TruffleInstrument> aotInitializeAtBuildTime() {
-                throw new UnsupportedOperationException("Not supported yet."); // To change body of
-                                                                               // generated methods,
-                                                                               // choose Tools |
-                                                                               // Templates.
+                initializeInstrumentClass();
+                assert instrumentClass != null;
+                return instrumentClass;
             }
 
             private Class<? extends TruffleInstrument> getInstrumentationClass() {
