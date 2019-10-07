@@ -247,6 +247,7 @@ suite = {
             "native" : True,
             "description" : "Script driven tracing and instrumentation Agentfor the GraalVM",
             "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-agentscript.properties",
             },
         },
         "TRUFFLE_PROFILER": {
