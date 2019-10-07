@@ -87,7 +87,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
     public abstract static class Loader implements LLVMCapability {
@@ -170,14 +169,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
         return context;
-    }
-
-    public NodeFactory getNodeFactory() {
-        return nodeFactory;
-    }
-
-    public void setNodeFactory(NodeFactory nodeFactory) {
-        this.nodeFactory = nodeFactory;
     }
 
     @Override
