@@ -87,11 +87,6 @@ public final class SLEvalRootNode extends RootNode {
     }
 
     @Override
-    public boolean isInternal() {
-        return true;
-    }
-
-    @Override
     public String getName() {
         return "root eval";
     }
