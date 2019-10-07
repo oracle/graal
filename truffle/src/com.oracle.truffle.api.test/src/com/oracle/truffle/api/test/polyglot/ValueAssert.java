@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEME
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
@@ -86,6 +87,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -298,8 +300,20 @@ public class ValueAssert {
                     assertTrue(value.isDuration());
                     assertNotNull(value.asDuration());
                     assertNotNull(value.as(Duration.class));
-
                     break;
+                case EXCEPTION:
+                    assertTrue(value.isException());
+                    try {
+                        value.throwException();
+                        fail("should have thrown");
+                    } catch (PolyglotException expected) {
+                        // caught expected exception
+                        assertTrue(expected.isGuestException());
+                    } catch (UnsupportedOperationException unsupported) {
+                        throw new AssertionError(unsupported);
+                    }
+                    break;
+
                 default:
                     throw new AssertionError();
             }
@@ -569,6 +583,10 @@ public class ValueAssert {
                         assertFails(() -> value.asDuration(), ClassCastException.class);
                         assertFails(() -> value.as(Duration.class), ClassCastException.class);
                     }
+                    break;
+                case EXCEPTION:
+                    assertFalse(value.isException());
+                    assertFails(() -> value.throwException(), UnsupportedOperationException.class);
                     break;
                 default:
                     throw new AssertionError();
@@ -844,6 +862,9 @@ public class ValueAssert {
         if (value.isDuration()) {
             valueTypes.add(DURATION);
         }
+        if (value.isException()) {
+            valueTypes.add(EXCEPTION);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -864,6 +885,7 @@ public class ValueAssert {
         TIME,
         TIMEZONE,
         DURATION,
+        EXCEPTION,
     }
 
 }

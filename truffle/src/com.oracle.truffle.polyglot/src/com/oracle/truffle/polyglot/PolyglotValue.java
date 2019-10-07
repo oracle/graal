@@ -400,6 +400,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     @Override
+    public RuntimeException throwException(Object receiver) {
+        throw unsupported(languageContext, receiver, "throwException()", "isException()");
+    }
+
+    @Override
     public Value getMetaObject(Object receiver) {
         Object prev = enter(languageContext);
         try {
@@ -2482,6 +2487,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Value invoke(Object receiver, String identifier) {
             return (Value) CALL_PROFILED.call(cache.invokeNoArgs, languageContext, receiver, identifier);
+        }
+
+        @Override
+        public boolean isException(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isException, languageContext, receiver);
+        }
+
+        @Override
+        public RuntimeException throwException(Object receiver) {
+            CALL_PROFILED.call(cache.throwException, languageContext, receiver);
+            throw super.throwException(receiver);
         }
 
         @Override

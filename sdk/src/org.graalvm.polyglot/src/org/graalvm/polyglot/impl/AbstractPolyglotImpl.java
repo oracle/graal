@@ -735,6 +735,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract Duration asDuration(Object receiver);
+
+        public boolean isException(Object receiver) {
+            return false;
+        }
+
+        public abstract RuntimeException throwException(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

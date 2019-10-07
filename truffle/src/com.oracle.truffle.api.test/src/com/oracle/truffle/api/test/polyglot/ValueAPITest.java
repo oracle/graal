@@ -48,6 +48,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
@@ -92,6 +93,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -1764,6 +1766,20 @@ public class ValueAPITest {
             objects.add(v);
             objects.add(Value.asValue(v)); // migrate from Value
             objects.add(Value.asValue(object)); // directly from object
+        }
+    }
+
+    @Test
+    public void testException() {
+        Value exceptionValue = context.asValue(new RuntimeException());
+        assertValue(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION);
+        try {
+            exceptionValue.throwException();
+            fail("should have thrown");
+        } catch (PolyglotException expected) {
+            assertTrue(expected.isGuestException());
+        } catch (UnsupportedOperationException unsupported) {
+            throw new AssertionError(unsupported);
         }
     }
 
