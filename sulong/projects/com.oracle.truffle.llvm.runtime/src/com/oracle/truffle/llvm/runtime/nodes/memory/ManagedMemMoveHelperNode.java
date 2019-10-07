@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -69,6 +70,12 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
     public static ManagedMemMoveHelperNode create(LLVMPointer target, LLVMPointer source) {
         MemReadHelperNode read = MemReadHelperNode.create(source);
         MemWriteHelperNode write = MemWriteHelperNode.create(target);
+        return new ManagedMemMoveHelperNode(read, write);
+    }
+
+    public static ManagedMemMoveHelperNode createSlowPath(LLVMPointer target, LLVMPointer source) {
+        MemReadHelperNode read = MemReadHelperNode.createSlowPath(source);
+        MemWriteHelperNode write = MemWriteHelperNode.createSlowPath(target);
         return new ManagedMemMoveHelperNode(read, write);
     }
 
@@ -146,6 +153,21 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
 
     abstract static class MemReadHelperNode extends MemAccessHelperNode {
 
+        private static MemReadHelperNode createManaged(Object type, NativeTypeLibrary nativeTypes, LLVMManagedReadLibrary managedRead) {
+            if (type instanceof LLVMInteropType.Array) {
+                long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+                if (elementSize == 2) {
+                    return MemReadI16NodeGen.create(nativeTypes, managedRead);
+                } else if (elementSize == 4) {
+                    return MemReadI32NodeGen.create(nativeTypes, managedRead);
+                } else if (elementSize == 8) {
+                    return MemReadI64NodeGen.create(nativeTypes, managedRead);
+                }
+            }
+            // elementSize == 1 or unknown
+            return MemReadI8NodeGen.create(nativeTypes, managedRead);
+        }
+
         static MemReadHelperNode create(LLVMPointer target) {
             if (LLVMNativePointer.isInstance(target)) {
                 return MemReadNativeNodeGen.create();
@@ -157,24 +179,25 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
 
                 // we need to use uncached here, since we're not yet adopted
                 Object type = NativeTypeLibrary.getFactory().getUncached().getNativeType(managed.getObject());
-                if (type instanceof LLVMInteropType.Array) {
-                    long elementSize = ((LLVMInteropType.Array) type).getElementSize();
-                    if (elementSize == 2) {
-                        return MemReadI16NodeGen.create(nativeTypes, managedRead);
-                    } else if (elementSize == 4) {
-                        return MemReadI32NodeGen.create(nativeTypes, managedRead);
-                    } else if (elementSize == 8) {
-                        return MemReadI64NodeGen.create(nativeTypes, managedRead);
-                    }
-                }
-                // elementSize == 1 or unknown
-                return MemReadI8NodeGen.create(nativeTypes, managedRead);
+                return createManaged(type, nativeTypes, managedRead);
+            }
+        }
+
+        static MemReadHelperNode createSlowPath(LLVMPointer target) {
+            if (LLVMNativePointer.isInstance(target)) {
+                return MemReadNativeNodeGen.getUncached();
+            } else {
+                assert LLVMManagedPointer.isInstance(target);
+                LLVMManagedPointer managed = LLVMManagedPointer.cast(target);
+                NativeTypeLibrary nativeTypes = NativeTypeLibrary.getFactory().getUncached();
+                return createManaged(nativeTypes.getNativeType(managed.getObject()), nativeTypes, LLVMManagedReadLibrary.getFactory().getUncached());
             }
         }
 
         abstract long execute(LLVMPointer source, int unitSize);
     }
 
+    @GenerateUncached
     abstract static class MemReadNative extends MemReadHelperNode {
 
         @Override
@@ -343,6 +366,21 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
 
     abstract static class MemWriteHelperNode extends MemAccessHelperNode {
 
+        private static MemWriteHelperNode createManaged(Object type, NativeTypeLibrary nativeTypes, LLVMManagedWriteLibrary managedWrite) {
+            if (type instanceof LLVMInteropType.Array) {
+                long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+                if (elementSize == 2) {
+                    return MemWriteI16NodeGen.create(nativeTypes, managedWrite);
+                } else if (elementSize == 4) {
+                    return MemWriteI32NodeGen.create(nativeTypes, managedWrite);
+                } else if (elementSize == 8) {
+                    return MemWriteI64NodeGen.create(nativeTypes, managedWrite);
+                }
+            }
+            // elementSize == 1 or unknown
+            return MemWriteI8NodeGen.create(nativeTypes, managedWrite);
+        }
+
         static MemWriteHelperNode create(LLVMPointer target) {
             if (LLVMNativePointer.isInstance(target)) {
                 return MemWriteNativeNodeGen.create();
@@ -354,24 +392,25 @@ final class ManagedMemMoveHelperNode extends LLVMNode {
 
                 // we need to use uncached here, since we're not yet adopted
                 Object type = NativeTypeLibrary.getFactory().getUncached().getNativeType(managed.getObject());
-                if (type instanceof LLVMInteropType.Array) {
-                    long elementSize = ((LLVMInteropType.Array) type).getElementSize();
-                    if (elementSize == 2) {
-                        return MemWriteI16NodeGen.create(nativeTypes, managedWrite);
-                    } else if (elementSize == 4) {
-                        return MemWriteI32NodeGen.create(nativeTypes, managedWrite);
-                    } else if (elementSize == 8) {
-                        return MemWriteI64NodeGen.create(nativeTypes, managedWrite);
-                    }
-                }
-                // elementSize == 1 or unknown
-                return MemWriteI8NodeGen.create(nativeTypes, managedWrite);
+                return createManaged(type, nativeTypes, managedWrite);
+            }
+        }
+
+        static MemWriteHelperNode createSlowPath(LLVMPointer target) {
+            if (LLVMNativePointer.isInstance(target)) {
+                return MemWriteNativeNodeGen.getUncached();
+            } else {
+                assert LLVMManagedPointer.isInstance(target);
+                LLVMManagedPointer managed = LLVMManagedPointer.cast(target);
+                NativeTypeLibrary nativeTypes = NativeTypeLibrary.getFactory().getUncached();
+                return createManaged(nativeTypes.getNativeType(managed.getObject()), nativeTypes, LLVMManagedWriteLibrary.getFactory().getUncached());
             }
         }
 
         abstract void execute(LLVMPointer target, long value, int unitSize);
     }
 
+    @GenerateUncached
     abstract static class MemWriteNative extends MemWriteHelperNode {
 
         @Override

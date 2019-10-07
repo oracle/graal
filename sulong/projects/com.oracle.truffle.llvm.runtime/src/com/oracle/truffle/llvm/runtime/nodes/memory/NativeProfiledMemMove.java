@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -39,22 +40,39 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNode.UnitSizeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeFactory.UnitSizeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
 
-    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()"})
-    protected void doManagedNonAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
-                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
-                    @Cached UnitSizeNode unitSizeNode) {
+    private static void copyForward(LLVMPointer target, LLVMPointer source, long length,
+                    ManagedMemMoveHelperNode helper,
+                    UnitSizeNode unitSizeNode) {
         int unitSize = unitSizeNode.execute(helper, length);
         for (long i = 0; i < length; i += unitSize) {
             helper.moveUnit(target.increment(i), source.increment(i), unitSize);
         }
+    }
+
+    private static void copyBackward(LLVMPointer target, LLVMPointer source, long length,
+                    ManagedMemMoveHelperNode helper,
+                    UnitSizeNode unitSizeNode) {
+        int unitSize = unitSizeNode.execute(helper, length);
+        for (long i = length - unitSize; i >= 0; i -= unitSize) {
+            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+        }
+    }
+
+    @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() != source.getObject()"})
+    protected void doManagedNonAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
+                    @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
+                    @Cached UnitSizeNode unitSizeNode) {
+        copyForward(target, source, length, helper, unitSizeNode);
     }
 
     @Specialization(limit = "8", guards = {"helper.guard(target, source)", "target.getObject() == source.getObject()"})
@@ -62,37 +80,41 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode,
                     @Cached("createCountingProfile()") ConditionProfile canCopyForward) {
-        int unitSize = unitSizeNode.execute(helper, length);
         if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
-            // forward
-            for (long i = 0; i < length; i += unitSize) {
-                helper.moveUnit(target.increment(i), source.increment(i), unitSize);
-            }
+            copyForward(target, source, length, helper, unitSizeNode);
         } else {
-            // backward
-            for (long i = length - unitSize; i >= 0; i -= unitSize) {
-                helper.moveUnit(target.increment(i), source.increment(i), unitSize);
-            }
+            copyBackward(target, source, length, helper, unitSizeNode);
         }
     }
 
     @Specialization(limit = "4", guards = "helper.guard(target, source)")
-    protected void doManaged(LLVMManagedPointer target, LLVMNativePointer source, long length,
+    protected void doManagedNative(LLVMManagedPointer target, LLVMNativePointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode) {
-        int unitSize = unitSizeNode.execute(helper, length);
-        for (long i = 0; i < length; i += unitSize) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
-        }
+        copyForward(target, source, length, helper, unitSizeNode);
     }
 
     @Specialization(limit = "4", guards = "helper.guard(target, source)")
-    protected void doManaged(LLVMNativePointer target, LLVMManagedPointer source, long length,
+    protected void doNativeManaged(LLVMNativePointer target, LLVMManagedPointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode) {
-        int unitSize = unitSizeNode.execute(helper, length);
-        for (long i = 0; i < length; i++) {
-            helper.moveUnit(target.increment(i), source.increment(i), unitSize);
+        copyForward(target, source, length, helper, unitSizeNode);
+    }
+
+    boolean isManaged(LLVMPointer ptr) {
+        return LLVMManagedPointer.isInstance(ptr);
+    }
+
+    @Specialization(guards = "isManaged(target) || isManaged(source)", replaces = {"doManagedNonAliasing", "doManagedAliasing", "doManagedNative", "doNativeManaged"})
+    @TruffleBoundary
+    protected void doManagedSlowPath(LLVMPointer target, LLVMPointer source, long length) {
+        ManagedMemMoveHelperNode helper = ManagedMemMoveHelperNode.createSlowPath(target, source);
+        UnitSizeNode unitSizeNode = UnitSizeNodeGen.create();
+        if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source)) {
+            // potentially aliasing
+            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached());
+        } else {
+            copyForward(target, source, length, helper, unitSizeNode);
         }
     }
 
