@@ -182,11 +182,8 @@ final class Runner {
         @Children final InitializeSymbolsNode[] initSymbols;
         @Children final InitializeModuleNode[] initModules;
 
-        private final Runner runner;
-
         LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
             super(runner.language, rootFrame);
-            this.runner = runner;
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
@@ -214,7 +211,7 @@ final class Runner {
         public Object execute(VirtualFrame frame) {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.ctxRef = lookupContextReference(runner.language.getClass());
+                this.ctxRef = lookupContextReference(LLVMLanguage.class);
             }
 
             LLVMContext ctx = ctxRef.get();
