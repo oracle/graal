@@ -99,7 +99,7 @@ final class PolyglotLogHandler extends Handler {
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
-        PolyglotContextImpl currentContext = PolyglotContextImpl.current();
+        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
         if (currentContext != null) {
             while (currentContext.parent != null) {
                 currentContext = currentContext.parent;
@@ -179,7 +179,7 @@ final class PolyglotLogHandler extends Handler {
             Object[] copy = parameters;
             if (parameters != null && parameters.length > 0) {
                 copy = new Object[parameters.length];
-                final PolyglotContextImpl context = PolyglotContextImpl.current();
+                final PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
                 for (int i = 0; i < parameters.length; i++) {
                     copy[i] = safeValue(parameters[i], context);
                 }

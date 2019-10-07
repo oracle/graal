@@ -74,10 +74,15 @@ public final class SLEvalRootNode extends RootNode {
     @Child private DirectCallNode mainCallNode;
 
     public SLEvalRootNode(SLLanguage language, RootCallTarget rootFunction, Map<String, RootCallTarget> functions) {
-        super(null); // internal frame
+        super(language);
         this.functions = functions;
         this.mainCallNode = rootFunction != null ? DirectCallNode.create(rootFunction) : null;
         this.reference = language.getContextReference();
+    }
+
+    @Override
+    public boolean isInternal() {
+        return true;
     }
 
     @Override

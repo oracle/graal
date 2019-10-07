@@ -45,19 +45,23 @@ import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -66,7 +70,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
-import org.graalvm.home.HomeFinder;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -93,7 +96,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
-    private final PolyglotExecutionListener executionListenerImpl = new PolyglotExecutionListener(this);
+    private final PolyglotManagement executionListenerImpl = new PolyglotManagement(this);
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
     final Map<Class<?>, PolyglotValue> primitiveValues = new HashMap<>();
@@ -111,6 +114,18 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         this.hostNull = getAPIAccess().newValue(HostObject.NULL, PolyglotValue.createHostNull(this));
         PolyglotValue.createDefaultValues(this, null, primitiveValues);
         disconnectedHostValue = new PolyglotValue.HostValue(this);
+    }
+
+    @Override
+    public Context getLimitEventContext(Object impl) {
+        return (Context) impl;
+    }
+
+    @Override
+    public Object buildLimits(long statementLimit, Predicate<org.graalvm.polyglot.Source> statementLimitSourceFilter,
+                    Duration timeLimit, Duration timeLimitAccuracy,
+                    Consumer<ResourceLimitEvent> onLimit) {
+        return new PolyglotLimits(statementLimit, statementLimitSourceFilter, timeLimit, timeLimitAccuracy, onLimit);
     }
 
     /**
@@ -133,7 +148,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public AbstractExecutionListenerImpl getExecutionListenerImpl() {
+    public AbstractManagementImpl getManagementImpl() {
         return executionListenerImpl;
     }
 
@@ -142,7 +157,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Context getCurrentContext() {
-        PolyglotContextImpl context = PolyglotContextImpl.current();
+        PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
         if (context == null) {
             return super.getCurrentContext();
         }
@@ -248,7 +263,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     @TruffleBoundary
     public Value asValue(Object hostValue) {
-        PolyglotContextImpl currentContext = PolyglotContextImpl.current();
+        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
         if (currentContext != null) {
             // if we are currently entered in a context just use it and bind the value to it.
             return currentContext.asValue(hostValue);

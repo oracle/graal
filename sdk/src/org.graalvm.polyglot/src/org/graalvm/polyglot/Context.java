@@ -424,6 +424,15 @@ public final class Context implements AutoCloseable {
     }
 
     /**
+     * Resets all accumulators of resource limits for the associated context to zero.
+     *
+     * @since 19.3
+     */
+    public void resetLimits() {
+        impl.resetLimits();
+    }
+
+    /**
      * Converts a host value to a polyglot {@link Value value} representation. This conversion is
      * applied implicitly whenever {@link Value#execute(Object...) execution} or
      * {@link Value#newInstance(Object...) instantiation} arguments are provided,
@@ -766,6 +775,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAccess;
+        private ResourceLimits resourceLimits;
         private Map<String, String> environment;
         private ZoneId zone;
 
@@ -1278,6 +1288,20 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Assigns resource limit configuration to a context. By default no resource limits are
+         * assigned. The limits will be enabled for all contexts created using this builder.
+         * Assigning a limit may have performance impact of all contexts that run with the same
+         * engine.
+         *
+         * @see ResourceLimits for usage examples
+         * @since 19.3.0
+         */
+        public Builder resourceLimits(ResourceLimits limits) {
+            this.resourceLimits = limits;
+            return this;
+        }
+
+        /**
          * Allow environment access using the provided policy. If {@link #allowAllAccess(boolean)
          * all access} is {@code true} then the default environment access policy is
          * {@link EnvironmentAccess#INHERIT}, otherwise {@link EnvironmentAccess#NONE}. The provided
@@ -1378,6 +1402,13 @@ public final class Context implements AutoCloseable {
             if (environmentAccess == null) {
                 environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
+            Object limits;
+            if (resourceLimits != null) {
+                limits = resourceLimits.impl;
+            } else {
+                limits = null;
+            }
+
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
@@ -1407,7 +1438,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1415,7 +1446,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
             }
         }
 

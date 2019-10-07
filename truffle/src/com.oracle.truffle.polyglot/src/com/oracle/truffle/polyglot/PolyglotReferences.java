@@ -307,7 +307,7 @@ final class PolyglotReferences {
         @Override
         public TruffleLanguage<Object> get() {
             assert language.assertCorrectEngine();
-            return PolyglotContextImpl.requireContextEntered(language.engine).getContext(language).getLanguageInstance().spi;
+            return PolyglotContextImpl.currentEntered(language.engine).getContext(language).getLanguageInstance().spi;
         }
     }
 
@@ -322,7 +322,7 @@ final class PolyglotReferences {
         @Override
         public Object get() {
             assert language.assertCorrectEngine();
-            return PolyglotContextImpl.requireContextEntered(language.engine).getContextImpl(language);
+            return PolyglotContextImpl.currentEntered(language.engine).getContextImpl(language);
         }
     }
 

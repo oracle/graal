@@ -40,7 +40,6 @@
  */
 package org.graalvm.polyglot.management;
 
-import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -48,9 +47,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.MonitoringAccess;
 
 /**
  * Execution listeners allow to instrument the execution of guest languages. For example, it is
@@ -215,7 +211,7 @@ public final class ExecutionListener implements AutoCloseable {
      * @since 19.0
      */
     public void close() {
-        IMPL.closeExecutionListener(impl);
+        Management.IMPL.closeExecutionListener(impl);
     }
 
     /**
@@ -427,29 +423,8 @@ public final class ExecutionListener implements AutoCloseable {
          */
         public ExecutionListener attach(Engine engine) {
             return new ExecutionListener(
-                            IMPL.attachExecutionListener(engine, onEnter, onReturn, expressions, statements, roots,
+                            Management.IMPL.attachExecutionListener(engine, onEnter, onReturn, expressions, statements, roots,
                                             sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions));
-        }
-    }
-
-    static final AbstractExecutionListenerImpl IMPL = initImpl();
-
-    private static AbstractExecutionListenerImpl initImpl() {
-        try {
-            Method method = Engine.class.getDeclaredMethod("getImpl");
-            method.setAccessible(true);
-            AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
-            impl.setMonitoring(new MonitoringAccessImpl());
-            return impl.getExecutionListenerImpl();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize execution listener class.", e);
-        }
-    }
-
-    private static class MonitoringAccessImpl extends MonitoringAccess {
-        @Override
-        public ExecutionEvent newExecutionEvent(Object event) {
-            return new ExecutionEvent(event);
         }
     }
 

@@ -356,7 +356,7 @@ public class EngineAPITest {
         }
     }
 
-    private static Object resetSingleContextState(boolean reuse) {
+    public static Object resetSingleContextState(boolean reuse) {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
             Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);

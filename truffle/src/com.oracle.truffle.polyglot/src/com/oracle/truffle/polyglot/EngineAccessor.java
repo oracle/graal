@@ -343,7 +343,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object getCurrentVM() {
-            PolyglotContextImpl context = PolyglotContextImpl.current();
+            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
             if (context == null) {
                 return null;
             }
@@ -352,7 +352,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isMultiThreaded(Object o) {
-            PolyglotContextImpl context = PolyglotContextImpl.current();
+            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
             if (context == null) {
                 return true;
             }
@@ -451,17 +451,17 @@ final class EngineAccessor extends Accessor {
             }
 
             if (value == null) {
-                context.context.polyglotBindings.remove(symbolName);
+                context.context.getPolyglotGuestBindings().remove(symbolName);
             } else {
-                context.context.polyglotBindings.put(symbolName, context.asValue(value));
+                context.context.getPolyglotGuestBindings().put(symbolName, context.asValue(value));
             }
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public Map<String, ? extends Object> getExportedSymbols(Object vmObject) {
-            PolyglotContextImpl currentContext = PolyglotContextImpl.current();
-            return currentContext.polyglotHostBindings.as(Map.class);
+            PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+            return currentContext.getPolyglotBindings().as(Map.class);
         }
 
         @Override
@@ -519,12 +519,14 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object enterInternalContext(Object impl) {
-            return ((PolyglotContextImpl) impl).enter();
+            PolyglotContextImpl context = ((PolyglotContextImpl) impl);
+            return context.engine.enter(context);
         }
 
         @Override
         public void leaveInternalContext(Object impl, Object prev) {
-            ((PolyglotContextImpl) impl).leave(prev);
+            PolyglotContextImpl context = ((PolyglotContextImpl) impl);
+            context.engine.leave(prev, context);
         }
 
         @Override
@@ -598,7 +600,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object getCurrentHostContext() {
-            PolyglotContextImpl polyglotContext = PolyglotContextImpl.current();
+            PolyglotContextImpl polyglotContext = PolyglotContextImpl.currentNotEntered();
             return polyglotContext == null ? null : polyglotContext.getHostContext();
         }
 
@@ -640,7 +642,7 @@ final class EngineAccessor extends Accessor {
         @SuppressWarnings("cast")
         @Override
         public PolyglotException wrapGuestException(String languageId, Throwable e) {
-            PolyglotContextImpl pc = PolyglotContextImpl.current();
+            PolyglotContextImpl pc = PolyglotContextImpl.currentNotEntered();
             if (pc == null) {
                 return null;
             }

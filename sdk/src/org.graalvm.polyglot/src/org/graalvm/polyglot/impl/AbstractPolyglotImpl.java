@@ -78,6 +78,8 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
@@ -98,14 +100,15 @@ public abstract class AbstractPolyglotImpl {
         }
     }
 
-    public abstract static class MonitoringAccess {
-        protected MonitoringAccess() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.management.ExecutionListener.MonitoringAccessImpl")) {
-                throw new AssertionError("Only one implementation of MonitoringAccessImpl allowed. " + getClass().getCanonicalName());
+    public abstract static class ManagementAccess {
+        protected ManagementAccess() {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.management.Management.ManagementAccessImpl")) {
+                throw new AssertionError("Only one implementation of ManagementAccessImpl allowed. " + getClass().getCanonicalName());
             }
         }
 
         public abstract ExecutionEvent newExecutionEvent(Object event);
+
     }
 
     public abstract static class IOAccess {
@@ -151,7 +154,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getReceiver(Value value);
 
-        public abstract AbstractValueImpl getImpl(Value engine);
+        public abstract AbstractValueImpl getImpl(Value value);
+
+        public abstract AbstractContextImpl getImpl(Context context);
 
         public abstract AbstractEngineImpl getImpl(Engine engine);
 
@@ -162,6 +167,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract AbstractLanguageImpl getImpl(Language value);
 
         public abstract AbstractInstrumentImpl getImpl(Instrument value);
+
+        public abstract ResourceLimitEvent newResourceLimitsEvent(Object impl);
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
@@ -185,16 +192,18 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
 
+        public abstract Object getImpl(ResourceLimits value);
+
     }
 
     // shared SPI
 
     APIAccess api;
-    MonitoringAccess monitoring;
+    ManagementAccess management;
     IOAccess io;
 
-    public final void setMonitoring(MonitoringAccess monitoring) {
-        this.monitoring = monitoring;
+    public final void setMonitoring(ManagementAccess monitoring) {
+        this.management = monitoring;
     }
 
     public final void setConstructors(APIAccess constructors) {
@@ -211,8 +220,8 @@ public abstract class AbstractPolyglotImpl {
         return api;
     }
 
-    public MonitoringAccess getMonitoring() {
-        return monitoring;
+    public ManagementAccess getManagement() {
+        return management;
     }
 
     public final IOAccess getIO() {
@@ -242,29 +251,29 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
 
-    public abstract AbstractExecutionListenerImpl getExecutionListenerImpl();
+    public abstract AbstractManagementImpl getManagementImpl();
 
     public abstract Path findHome();
 
-    public abstract static class AbstractExecutionListenerImpl {
+    public abstract static class AbstractManagementImpl {
 
-        protected AbstractExecutionListenerImpl(AbstractPolyglotImpl engineImpl) {
+        protected AbstractManagementImpl(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract List<Value> getInputValues(Object impl);
+        public abstract List<Value> getExecutionEventInputValues(Object impl);
 
-        public abstract SourceSection getLocation(Object impl);
+        public abstract SourceSection getExecutionEventLocation(Object impl);
 
-        public abstract String getRootName(Object impl);
+        public abstract String getExecutionEventRootName(Object impl);
 
-        public abstract Value getReturnValue(Object impl);
+        public abstract Value getExecutionEventReturnValue(Object impl);
 
-        public abstract boolean isExpression(Object impl);
+        public abstract boolean isExecutionEventExpression(Object impl);
 
-        public abstract boolean isStatement(Object impl);
+        public abstract boolean isExecutionEventStatement(Object impl);
 
-        public abstract boolean isRoot(Object impl);
+        public abstract boolean isExecutionEventRoot(Object impl);
 
         public abstract void closeExecutionListener(Object impl);
 
@@ -275,7 +284,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean roots,
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
-        public abstract PolyglotException getException(Object impl);
+        public abstract PolyglotException getExecutionEventException(Object impl);
 
     }
 
@@ -412,6 +421,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getBindings(String language);
 
         public abstract Value getPolyglotBindings();
+
+        public abstract void resetLimits();
     }
 
     public abstract static class AbstractEngineImpl {
@@ -442,7 +453,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl);
 
         public abstract String getImplementationName();
 
@@ -733,5 +744,9 @@ public abstract class AbstractPolyglotImpl {
     public abstract Value asValue(Object o);
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
+
+    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
+
+    public abstract Context getLimitEventContext(Object impl);
 
 }
