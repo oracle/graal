@@ -73,12 +73,13 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public boolean isInitialized() {
-        return getElementalType().isInitialized();
+        // Always initialized, independent of the elemental type initialization state.
+        return true;
     }
 
     @Override
     public void initialize() {
-        getElementalType().initialize();
+        // Array class initialization does not trigger elemental type initialization.
     }
 
     @Override
