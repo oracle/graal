@@ -54,7 +54,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
@@ -222,7 +221,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isExecutable")
     public Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -256,7 +254,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isInstantiable")
     public Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -284,7 +281,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -408,7 +404,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public byte asByte(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -424,7 +419,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public short asShort(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -440,7 +434,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public int asInt(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -456,7 +449,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public long asLong(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -472,7 +464,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public float asFloat(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -488,7 +479,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public double asDouble(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -532,7 +522,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "hasMembers")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -578,7 +567,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -628,7 +616,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
     public void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -660,7 +647,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isMemberRemovable")
     public void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -693,7 +679,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isMemberInvocable")
     public Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -788,7 +773,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -801,7 +785,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public long getArraySize(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -833,7 +816,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isArrayElementModifiable", "isArrayElementInsertable"})
     public void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -853,7 +835,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isArrayElementRemovable")
     public void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -956,7 +937,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isPointer"})
     public long asPointer(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
