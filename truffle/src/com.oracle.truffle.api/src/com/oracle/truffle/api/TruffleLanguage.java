@@ -494,7 +494,7 @@ public abstract class TruffleLanguage<C> {
      * here-in provided <code>env</code> and adjust itself according to parameters provided by the
      * <code>env</code> object.
      * <p>
-     * The context created by this method is accessible using {@link #getContextReference()}. An
+     * The context created by this method is accessible using {@link #getCurrentContext(Class)}. An
      * {@link IllegalStateException} is thrown if the context is tried to be accessed while the
      * createContext method is executed.
      * <p>
