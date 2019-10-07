@@ -28,7 +28,11 @@ export async function installGraalVM(storagePath: string | undefined): Promise<v
         const files = fs.readdirSync(targetDir);
         files.forEach((file) => {
             if (file.startsWith('graalvm') && fs.statSync(path.join(targetDir, file)).isDirectory()) {
-                vscode.workspace.getConfiguration('graalvm').update('home', path.join(targetDir, file), true);
+                let graalVMHome: string = path.join(targetDir, file);
+                if (process.platform === 'darwin') {
+                    graalVMHome = path.join(graalVMHome, 'Contents', 'Home');
+                }
+                vscode.workspace.getConfiguration('graalvm').update('home', graalVMHome, true);
                 vscode.window.showInformationMessage("GraalVM installed.");
                 return;
             }
@@ -55,7 +59,7 @@ export async function installGraalVMComponent(componentId: string): Promise<void
                 terminal = vscode.window.createTerminal();
             }
             terminal.show();
-            terminal.sendText(executablePath + " install " + componentId);
+            terminal.sendText(`${executablePath.replace(/(\s+)/g, '\\$1')} install ${componentId}`);
         }
     } catch (err) {
         vscode.window.showErrorMessage(err.message);
@@ -65,23 +69,19 @@ export async function installGraalVMComponent(componentId: string): Promise<void
 export async function selectInstalledGraalVM(storagePath: string | undefined): Promise<void> {
     const vms: vscode.QuickPickItem[] = [];
     if (storagePath) {
-        findGraalVMIn(storagePath, 1, vms);
+        findGraalVMsIn(storagePath, vms);
     }
     if (fs.existsSync('/opt')) {
-        findGraalVMIn('/opt', 1, vms);
+        findGraalVMsIn('/opt', vms);
     }
     if (process.env.GRAALVM_HOME) {
-        findGraalVMIn(path.normalize(process.env.GRAALVM_HOME), 0, vms);
+        addGraalVMInfo(path.normalize(process.env.GRAALVM_HOME), vms);
     }
     if (process.env.JAVA_HOME) {
-        findGraalVMIn(path.normalize(process.env.JAVA_HOME), 0, vms);
+        addGraalVMInfo(path.normalize(process.env.JAVA_HOME), vms);
     }
     if (process.env.PATH) {
-        process.env.PATH.split(':').forEach(p => {
-            if (path.basename(p) === 'bin') {
-                findGraalVMIn(path.normalize(path.join(p, '..', '..')), 1, vms);
-            }
-        });
+        process.env.PATH.split(':').filter(p => path.basename(p) === 'bin').forEach(p => addGraalVMInfo(path.dirname(p), vms));
     }
     vms.push({ label: 'Browse...' });
     const selected = await vscode.window.showQuickPick(vms, { matchOnDetail: true, placeHolder: 'Select GraalVM Home' });
@@ -209,6 +209,18 @@ async function dowloadGraalVMRelease(releaseURL: string, storagePath: string | u
     });
 }
 
+async function extractGraalVM(downloadedFile: string, targetDir: string): Promise<void> {
+    return vscode.window.withProgress<void>({
+        location: vscode.ProgressLocation.Notification,
+        title: "Installing GraalVM..."
+    }, (_progress, _token) => {
+        return tar.extract({
+            cwd: targetDir,
+            file: downloadedFile
+        });
+    });
+}
+
 function deleteFolder(folder: string) {
     if (fs.existsSync(folder)) {
         fs.readdirSync(folder).forEach((file, _index) => {
@@ -223,7 +235,19 @@ function deleteFolder(folder: string) {
     }
 }
 
-function findGraalVMIn(folder: string, depth: number, vms: vscode.QuickPickItem[]) {
+function findGraalVMsIn(folder: string, vms: vscode.QuickPickItem[]) {
+    if (folder && fs.existsSync(folder) && fs.statSync(folder).isDirectory) {
+        fs.readdirSync(folder).map(f => path.join(folder, f)).map(p => {
+            if (process.platform === 'darwin') {
+                let homePath: string = path.join(p, 'Contents', 'Home');
+                return fs.existsSync(homePath) ? homePath : p;
+            }
+            return p;
+        }).filter(p => fs.statSync(p).isDirectory()).forEach(p => addGraalVMInfo(p, vms));
+    }
+}
+
+function addGraalVMInfo(folder: string, vms: vscode.QuickPickItem[]) {
     if (!vms.find(vm => vm.detail === folder)) {
         if (fs.existsSync(folder)) {
             const executable: string | undefined = utils.findExecutable('gu', folder);
@@ -244,23 +268,9 @@ function findGraalVMIn(folder: string, depth: number, vms: vscode.QuickPickItem[
                         }
                     });
                 }
-            } else if (depth > 0) {
-                fs.readdirSync(folder).filter(f => fs.statSync(path.join(folder, f)).isDirectory()).forEach(f => findGraalVMIn(path.join(folder, f), depth - 1, vms));
             }
         }
     }
-}
-
-async function extractGraalVM(downloadedFile: string, targetDir: string): Promise<void> {
-    return vscode.window.withProgress<void>({
-        location: vscode.ProgressLocation.Notification,
-        title: "Installing GraalVM..."
-    }, (_progress, _token) => {
-        return tar.extract({
-            cwd: targetDir,
-            file: downloadedFile
-        });
-    });
 }
 
 async function selectAvailableComponent(graalVMHome: string): Promise<string> {
