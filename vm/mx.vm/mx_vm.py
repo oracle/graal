@@ -1912,6 +1912,8 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
             add_files_from_component(dependency, base_dir + dependency_path + '/', excluded_paths)
 
+        mx.logv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
+
         self.maven = True
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
