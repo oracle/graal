@@ -202,6 +202,7 @@ public final class Meta implements ContextAccess {
         Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
 
         MethodAccessorImpl = knownKlass(Type.MethodAccessorImpl);
+        ConstructorAccessorImpl = knownKlass(Type.ConstructorAccessorImpl);
 
         Parameter = knownKlass(Type.Parameter);
 
@@ -404,6 +405,7 @@ public final class Meta implements ContextAccess {
     public final Field Method_parameterTypes;
 
     public final ObjectKlass MethodAccessorImpl;
+    public final ObjectKlass ConstructorAccessorImpl;
 
     public final ObjectKlass Parameter;
 
