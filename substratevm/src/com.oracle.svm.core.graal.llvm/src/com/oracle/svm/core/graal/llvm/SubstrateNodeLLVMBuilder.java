@@ -27,8 +27,6 @@ package com.oracle.svm.core.graal.llvm;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.getJavaFrameAnchor;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.hasJavaFrameAnchor;
 
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
@@ -53,6 +51,8 @@ import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;

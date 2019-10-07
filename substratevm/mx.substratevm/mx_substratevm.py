@@ -911,9 +911,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     builder_jar_distributions=[
         'substratevm:SVM_LLVM',
         'compiler:GRAAL_LLVM',
-        'compiler:LLVM_WRAPPER',
-        'compiler:JAVACPP',
-        'compiler:LLVM_PLATFORM_SPECIFIC',
+        'compiler:LLVM_WRAPPER_SHADOWED',
+        'compiler:JAVACPP_SHADOWED',
+        'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
     ],
 ))
 
