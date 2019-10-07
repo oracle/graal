@@ -36,7 +36,7 @@ maven_base_8_native: ${linux-deploy} {
     JAVA_HOME: ${jdks.openjdk8},
   }
   native_distributions: "TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE"
-  mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js,/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
+  mx_cmd_base: [mx, --dynamicimports, "/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
   build: ${maven_base_8_native.mx_cmd_base} [build, --dependencies, ${maven_base_8_native.native_distributions}]
   deploy: ${maven_base_8_native.mx_cmd_base} [maven-deploy, --only, ${maven_base_8_native.native_distributions}, --all-suites, --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
 }
@@ -79,22 +79,43 @@ builds += [
   }
   ${deploy_vm_linux_aarch64} ${maven_base_8_native} {
     run: [
-      ${maven_base_8_11.build_svm_plugin}
-      ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
+    ]
+    name: gate-vm-maven-dry-run-linux-aarch64
+  }
+  ${deploy_vm_linux_aarch64} ${maven_base_8_native} {
+    run: [
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-aarch64
   }
   ${deploy_daily_vm_darwin} ${maven_base_8_native} {
     run: [
-      ${maven_base_8_11.build_svm_plugin}
-      ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
+    ]
+    name: gate-vm-maven-dry-run-darwin-amd64
+  }
+  ${deploy_daily_vm_darwin} ${maven_base_8_native} {
+    run: [
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-darwin-amd64
   }
   ${deploy_daily_vm_windows} ${maven_base_8_native} {
     run: [
-      ${maven_base_8_11.build_svm_plugin}
-      ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
+    ]
+    name: gate-vm-maven-dry-run-windows-amd64
+  }
+  ${deploy_daily_vm_windows} ${maven_base_8_native} {
+    run: [
+      ${maven_base_8_native.build}
+      ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-windows-amd64
   }

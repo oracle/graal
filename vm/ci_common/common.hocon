@@ -36,6 +36,9 @@ common_vm_windows: ${common_vm} ${windows} {
   environment : {
     PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
   }
+  packages : {
+    msvc : "==10.0"
+  }
 }
 
 # SULONG
@@ -129,7 +132,7 @@ vm_linux: ${common_vm_linux} {
 }
 
 vm_linux_aarch64: ${common_vm_linux} {
-  capabilities: [linux, aarch64, manycores, ram16gb, fast]
+  capabilities: [linux, aarch64]
 }
 
 vm_darwin: ${common_vm_darwin} {
