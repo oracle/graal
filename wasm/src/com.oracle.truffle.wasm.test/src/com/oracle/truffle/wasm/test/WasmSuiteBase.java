@@ -42,11 +42,9 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -109,12 +107,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         // Then, we execute a special function, which resets the globals to their initial values.
         Value mainFunction = context.getBindings("wasm").getMember("_main");
         Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
-        Value runInitializer = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_INITIALIZER);
-        Consumer<WasmContext> initializer = (wasmContext) -> testCase.initializeModule(wasmContext);
+        Value initializeModule = context.getBindings("wasm").getMember(TestutilModule.Names.INITIALIZE_MODULE);
 
         Value result = null;
         for (int i = 0; i != iterations; ++i) {
-            runInitializer.execute(initializer);
+            initializeModule.execute(testCase.initialization());
             result = mainFunction.execute();
             resetGlobals.execute();
         }
@@ -347,7 +344,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Object mainContent = getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
             String resultContent = getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
             String initContent = getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
-            WasmTestInitialization initializer = testInitializer(initContent);
+            WasmTestInitialization initializer = testInitialization(initContent);
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);
             String resultType = resultTypeValue[0];
@@ -424,7 +421,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestCaseData(expectedErrorMessage);
     }
 
-    protected WasmTestInitialization testInitializer(String initContent) {
+    protected WasmTestInitialization testInitialization(String initContent) {
         if (initContent == null) {
             return null;
         }
@@ -480,6 +477,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
 
         public abstract byte[] createBinary() throws IOException, InterruptedException;
+
+        public WasmTestInitialization initialization() {
+            return initialization;
+        }
 
         public void initializeModule(WasmContext context) {
             try {

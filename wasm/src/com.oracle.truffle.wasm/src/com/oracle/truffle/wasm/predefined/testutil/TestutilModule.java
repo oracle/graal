@@ -37,14 +37,14 @@ import com.oracle.truffle.wasm.predefined.PredefinedModule;
 public class TestutilModule extends PredefinedModule {
     public static class Names {
         public static final String RESET_GLOBALS = "__testutil_reset_globals";
-        public static final String RUN_INITIALIZER = "__testutil_run_initializer";
+        public static final String INITIALIZE_MODULE = "__testutil_initialize_module";
     }
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);
         defineFunction(module, Names.RESET_GLOBALS, types(), types(), new ResetGlobalsNode(language, null, null));
-        defineFunction(module, Names.RUN_INITIALIZER, types(), types(), new RunInitializerNode(language, null, null));
+        defineFunction(module, Names.INITIALIZE_MODULE, types(), types(), new InitializeModule(language, null, null));
         return module;
     }
 }

@@ -38,28 +38,27 @@ import com.oracle.truffle.wasm.binary.WasmVoidResult;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-import java.util.function.Consumer;
-
-public class RunInitializerNode extends WasmPredefinedRootNode {
-    public RunInitializerNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+public class InitializeModule extends WasmPredefinedRootNode {
+    public InitializeModule(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
         super(language, codeEntry, memory);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        runInitializer(frame.getArguments()[0]);
+        initializeModule(frame.getArguments()[0]);
         return WasmVoidResult.getInstance();
     }
 
     @Override
     public String name() {
-        return TestutilModule.Names.RUN_INITIALIZER;
+        return TestutilModule.Names.INITIALIZE_MODULE;
     }
 
     @SuppressWarnings("unchecked")
     @CompilerDirectives.TruffleBoundary
-    private void runInitializer(Object initializer) {
-        Consumer<WasmContext> contextInitializer = (Consumer<WasmContext>) initializer;
-        contextInitializer.accept(contextReference().get());
+    private void initializeModule(Object initialization) {
+        if (initialization != null) {
+            WasmContext context = WasmContext.getCurrent();
+        }
     }
 }
