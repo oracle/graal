@@ -45,7 +45,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.impl.Field;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -72,6 +71,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.Callback;
@@ -524,6 +524,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         return ste;
     }
 
+    private static void checkTag(ConstantPool pool, int index, ConstantPool.Tag expected) {
+        ConstantPool.Tag target = pool.tagAt(index);
+        if (target != expected) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(IllegalArgumentException.class, "Wrong type at constant pool index");
+        }
+    }
+
     @VmImpl
     @JniImpl
     public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObject jcpool) {
@@ -533,42 +540,49 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public static @Host(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.CLASS);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl
     @JniImpl
     public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.DOUBLE);
         return jcpool.getMirrorKlass().getConstantPool().doubleAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.FLOAT);
         return jcpool.getMirrorKlass().getConstantPool().floatAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static @Host(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.STRING);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedStringAt(index);
     }
 
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
-        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.UTF8);
+        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().symbolAt(index).toString());
     }
 
     @VmImpl
     @JniImpl
     public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.INTEGER);
         return jcpool.getMirrorKlass().getConstantPool().intAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.LONG);
         return jcpool.getMirrorKlass().getConstantPool().longAt(index);
     }
 
@@ -1036,7 +1050,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 // For a 0 index, give an empty name.
                 String hostName = "";
                 if (entry.getNameIndex() != 0) {
-                    hostName = method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString();
+                    hostName = method.getConstantPool().symbolAt(entry.getNameIndex(), "parameter name").toString();
                 }
                 parameterInit.invokeDirect(/* this */ instance,
                                 /* name */ getMeta().toGuestString(hostName),

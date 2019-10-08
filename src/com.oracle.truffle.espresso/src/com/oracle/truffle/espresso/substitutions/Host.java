@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,30 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Hints the expected host type for guest parameters and return types.
+ *
+ * <br>
+ * Used to derive correct signatures for substitutions and the JNI and VM implementations. Can be
+ * used as a hint for guest parameter/return types, just for readability.
+ *
+ * <pre>
+ * {@code @Host(byte[].class) StaticObject data}
+ * {@code @Host(Class.class) StaticObject clazz}
+ * {@code @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName}
+ * {@code @Host(typeName = "Ljava/lang/Thread$State;") StaticObject threadState}
+ * </pre>
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value = {TYPE_USE})
 public @interface Host {
+    /**
+     * Host class for the expected type.
+     */
     Class<?> value() default Host.class;
 
+    /**
+     * Host class in internal form. Used when the host class is not accessible.
+     */
     String typeName() default "";
 }

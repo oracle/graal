@@ -23,16 +23,16 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -40,55 +40,54 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Represents a resolved Espresso field.
  */
-public final class Field implements ModifiersProvider {
+public final class Field extends Member<Type> {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
     private final LinkedField linkedField;
     private final ObjectKlass holder;
-    private final Symbol<Type> type;
-    private final Symbol<Name> name;
     private volatile Klass typeKlassCache;
 
-    @CompilerDirectives.CompilationFinal private int fieldIndex = -1;
-    @CompilerDirectives.CompilationFinal private String genericSignature = null;
-    @CompilerDirectives.CompilationFinal private int slot = -1;
+    @CompilationFinal private int fieldIndex = -1;
+    @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
+    @CompilationFinal private int slot = -1;
 
     public Symbol<Type> getType() {
-        return type;
+        return descriptor;
     }
 
-    public final String getGenericSignature() {
+    public final Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
             SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
             if (attr == null) {
-                genericSignature = getType().toString();
+                genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
-                genericSignature = holder.getConstantPool().utf8At(attr.getSignatureIndex()).toString();
+                genericSignature = holder.getConstantPool().symbolAt(attr.getSignatureIndex());
             }
         }
         return genericSignature;
     }
 
     public Field(LinkedField linkedField, ObjectKlass holder) {
+        super(linkedField.getType(), linkedField.getName());
         this.linkedField = linkedField;
         this.holder = holder;
-        this.type = linkedField.getType();
-        this.name = linkedField.getName();
     }
 
-    // Hidden field. Placeholder in the fieldTable
-    public Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+    public static Field createHidden(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+        return new Field(holder, hiddenSlot, hiddenIndex, name);
+    }
+
+    private Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+        super(null, name);
         this.holder = holder;
-        this.linkedField = new LinkedField(new ParserField(0, name, Type.Object, -1, null), holder.getLinkedKlass(), -1);
-        this.type = null;
-        this.name = name;
+        this.linkedField = new LinkedField(new ParserField(0, name, Type.Object, null), holder.getLinkedKlass(), -1);
         this.slot = hiddenSlot;
         this.fieldIndex = hiddenIndex;
     }
 
     public boolean isHidden() {
-        return linkedField.getParserField().getTypeIndex() == -1;
+        return getDescriptor() == null;
     }
 
     public JavaKind getKind() {
@@ -99,6 +98,7 @@ public final class Field implements ModifiersProvider {
         return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
     }
 
+    @Override
     public ObjectKlass getDeclaringKlass() {
         return holder;
     }
@@ -173,10 +173,6 @@ public final class Field implements ModifiersProvider {
         // Checkstyle: resume
     }
 
-    public Symbol<Name> getName() {
-        return name;
-    }
-
     public final Klass resolveTypeKlass() {
         Klass tk = typeKlassCache;
         if (tk == null) {
@@ -213,6 +209,6 @@ public final class Field implements ModifiersProvider {
     }
 
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
 }

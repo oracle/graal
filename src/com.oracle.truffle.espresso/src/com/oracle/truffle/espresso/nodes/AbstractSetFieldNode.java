@@ -1,13 +1,13 @@
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.nodes.QuickNode.nullCheck;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import static com.oracle.truffle.espresso.nodes.QuickNode.nullCheck;
 
 public abstract class AbstractSetFieldNode extends Node {
     final Field field;

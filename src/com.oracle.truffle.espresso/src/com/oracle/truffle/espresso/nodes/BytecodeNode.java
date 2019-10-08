@@ -263,11 +263,11 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -1335,7 +1335,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     @TruffleBoundary
     private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
+        return (BootstrapMethodsAttribute) (getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
@@ -1528,7 +1528,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
             invoke = InvokeVirtualNodeGen.create(resolutionSeed);
-        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
+        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinalFlagSet() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
             invoke = new InvokeSpecialNode(resolutionSeed);
         } else {
             // @formatter:off
@@ -1607,7 +1607,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
         // Preparing Bootstrap call.
         StaticObject name = meta.toGuestString(specifier.getName(pool));
-        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+        Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);

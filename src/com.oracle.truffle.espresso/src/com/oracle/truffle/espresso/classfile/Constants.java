@@ -49,14 +49,21 @@ public final class Constants {
     public static final int ACC_MANDATED = 0x00008000;
     public static final int ACC_MODULE = 0x00008000;
 
+    // Not part of the spec, used internally by the VM.
+    public static final int ACC_FINALIZER = 0x00010000;
+    public static final int ACC_INNER_CLASS = 0x00020000;
+
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
-                    // ACC_SUPER | // Only very old compilers.
+                    ACC_SUPER | // Only very old compilers.
                     ACC_INTERFACE |
                     ACC_ABSTRACT |
                     ACC_ANNOTATION |
                     ACC_ENUM |
                     ACC_SYNTHETIC;
+
+    // Inner classes can be static, private or protected (classic VM does this)
+    public static final int RECOGNIZED_INNER_CLASS_MODIFIERS = (JVM_RECOGNIZED_CLASS_MODIFIERS | ACC_PRIVATE | ACC_PROTECTED | ACC_STATIC);
 
     public static final int JVM_RECOGNIZED_FIELD_MODIFIERS = ACC_PUBLIC |
                     ACC_PRIVATE |
@@ -100,6 +107,8 @@ public final class Constants {
     public static final int SAME_FRAME_EXTENDED = 251;
     public static final int APPEND_FRAME_BOUND = 255;
     public static final int FULL_FRAME = 255;
+
+    public static final int MAX_ARRAY_DIMENSIONS = 255;
 
     //@formatter:off
 

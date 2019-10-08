@@ -21,14 +21,14 @@ import com.oracle.truffle.espresso.runtime.Attribute;
  */
 public final class ConstantValueAttribute extends Attribute {
     public static final Symbol<Name> NAME = Name.ConstantValue;
-    private final int constantvalueIndex;
+    private final int constantValueIndex;
 
-    public ConstantValueAttribute(int constantvalueIndex) {
+    public ConstantValueAttribute(int constantValueIndex) {
         super(NAME, null);
-        this.constantvalueIndex = constantvalueIndex;
+        this.constantValueIndex = constantValueIndex;
     }
 
-    public int getConstantvalueIndex() {
-        return constantvalueIndex;
+    public int getConstantValueIndex() {
+        return constantValueIndex;
     }
 }

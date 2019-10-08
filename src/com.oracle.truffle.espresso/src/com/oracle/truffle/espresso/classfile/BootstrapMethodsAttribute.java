@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-public class BootstrapMethodsAttribute extends Attribute {
+public final class BootstrapMethodsAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Name.BootstrapMethods;
 
@@ -34,7 +34,7 @@ public class BootstrapMethodsAttribute extends Attribute {
         return entries;
     }
 
-    public static class Entry {
+    public static final class Entry {
         final char bootstrapMethodRef;
         final char[] bootstrapArguments;
 

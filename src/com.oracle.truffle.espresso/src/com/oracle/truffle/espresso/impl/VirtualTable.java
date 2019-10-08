@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
 
 /**
  * Helper for creating virtual tables in ObjectKlass

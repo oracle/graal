@@ -130,6 +130,12 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             return new Resolved(field);
         }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            super.validate(pool);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateField(pool);
+        }
     }
 
     final class Resolved implements FieldRefConstant, Resolvable.ResolvedConstant {

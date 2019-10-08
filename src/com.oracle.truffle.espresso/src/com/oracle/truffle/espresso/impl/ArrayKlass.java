@@ -23,7 +23,11 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -58,7 +62,19 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public final int getFlags() {
-        return (getElementalType().getFlags() & (Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED)) | Modifier.FINAL | Modifier.ABSTRACT;
+        return (getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED /*
+                                                                                               * array
+                                                                                               * of
+                                                                                               * static
+                                                                                               * inner
+                                                                                               * class
+                                                                                               */)) | ACC_FINAL | ACC_ABSTRACT;
+    }
+
+    @Override
+    public final int getModifiers() {
+        // ACC_SUPER is kept for backward compatibility, should be ignored.
+        return getFlags();
     }
 
     @Override

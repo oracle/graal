@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * A copy is created (almost) only if the symbol doesn't exist. This allows copy-less

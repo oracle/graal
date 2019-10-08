@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
 
 import java.util.Objects;
@@ -68,7 +67,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.utf8At(classNameIndex);
+            return pool.symbolAt(classNameIndex);
         }
 
         /**
@@ -114,7 +113,7 @@ public interface ClassConstant extends PoolConstant {
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
                 if (pool.getContext().getMeta().ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
-                    throw pool.getContext().getMeta().throwEx(NoClassDefFoundError.class);
+                    throw pool.getContext().getMeta().throwExWithMessage(NoClassDefFoundError.class, klassName.toString());
                 }
                 throw e;
             } catch (VirtualMachineError e) {
@@ -128,11 +127,8 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(classNameIndex).tag() != UTF8) {
-                throw new VerifyError("Ill-formed constant: " + tag());
-            }
-            pool.at(classNameIndex).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.utf8At(classNameIndex).validateClassName();
         }
     }
 

@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -47,14 +47,14 @@ public interface StringConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    Symbol<Constant> getSymbol(ConstantPool pool);
+    Symbol<ModifiedUTF8> getSymbol(ConstantPool pool);
 
     final class Index implements StringConstant, Resolvable {
         private final int utf8Index;
 
         @Override
-        public Symbol<Constant> getSymbol(ConstantPool pool) {
-            return pool.utf8At(utf8Index);
+        public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
+            return pool.symbolAt(utf8Index);
         }
 
         Index(int utf8Index) {
@@ -67,11 +67,8 @@ public interface StringConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(utf8Index).tag() != Tag.UTF8) {
-                throw new VerifyError("invalid pool constant: " + tag());
-            }
-            pool.at(utf8Index).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.utf8At(utf8Index).validateUTF8();
         }
     }
 
@@ -89,7 +86,7 @@ public interface StringConstant extends PoolConstant {
         }
 
         @Override
-        public Symbol<Constant> getSymbol(ConstantPool pool) {
+        public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
     }
@@ -98,7 +95,7 @@ public interface StringConstant extends PoolConstant {
         private final StaticObject resolved;
 
         @Override
-        public Symbol<Constant> getSymbol(ConstantPool pool) {
+        public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("String already Pre-Resolved");
         }
 

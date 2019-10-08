@@ -39,6 +39,10 @@ public class Attribute {
         return name;
     }
 
+    /**
+     * Attribute raw data. Known attributes that parse the raw data, can drop the raw data (return
+     * null).
+     */
     public final byte[] getData() {
         return data;
     }

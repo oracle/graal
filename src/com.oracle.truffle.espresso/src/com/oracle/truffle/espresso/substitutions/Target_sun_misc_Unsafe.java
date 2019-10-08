@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -50,9 +51,9 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions
 public final class Target_sun_misc_Unsafe {
 
-    public static final int SAFETY_FIELD_OFFSET = 123456789;
+    static final int SAFETY_FIELD_OFFSET = 123456789;
 
-    private static Unsafe U;
+    private static final Unsafe U;
 
     static {
         try {
@@ -69,8 +70,8 @@ public final class Target_sun_misc_Unsafe {
     public static @Host(Class.class) StaticObject defineAnonymousClass(
                     @Host(Unsafe.class) StaticObject self,
                     @Host(Class.class) StaticObject hostClass,
-                    @Host(typeName = "[B") StaticObject data,
-                    @Host(typeName = "[Ljava/lang/Object;") StaticObject constantPoolPatches) {
+                    @Host(byte[].class) StaticObject data,
+                    @Host(Object[].class) StaticObject constantPoolPatches) {
 
         EspressoContext context = self.getKlass().getContext();
         Meta meta = context.getMeta();
@@ -83,14 +84,13 @@ public final class Target_sun_misc_Unsafe {
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap();
         Klass hostKlass = hostClass.getMirrorKlass();
         ClassfileStream cfs = new ClassfileStream(bytes, null);
-        ClassfileParser parser = new ClassfileParser(cfs, null, hostKlass, context, patches);
-        ParserKlass parserKlass = parser.parseClass();
+        ParserKlass parserKlass = ClassfileParser.parse(cfs, null, hostKlass, context, patches);
         StaticObject classLoader = hostKlass.getDefiningClassLoader();
-        return defineAnonymousKlass(parserKlass, context, classLoader, parser.getThisKlassIndex(), hostKlass).mirror();
+        return defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
     }
 
-    private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, int thisKlassIndex, Klass hostKlass) {
-        Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
+    private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, Klass hostKlass) {
+        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
         ClassRegistries classRegistry = context.getRegistries();
 
         // TODO(garcia): Superclass must be a class, and non-final.
@@ -100,7 +100,7 @@ public final class Target_sun_misc_Unsafe {
 
         assert superKlass == null || !superKlass.isInterface();
 
-        final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
         LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
                         ? LinkedKlass.EMPTY_ARRAY
@@ -121,7 +121,7 @@ public final class Target_sun_misc_Unsafe {
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
 
-        klass.getConstantPool().setKlassAt(thisKlassIndex, klass);
+        klass.getConstantPool().setKlassAt(parserKlass.getThisKlassIndex(), klass);
 
         return klass;
     }

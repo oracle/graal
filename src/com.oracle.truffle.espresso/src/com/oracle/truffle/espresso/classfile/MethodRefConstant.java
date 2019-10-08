@@ -40,5 +40,11 @@ public interface MethodRefConstant extends MemberRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
         }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            super.validate(pool);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+        }
     }
 }

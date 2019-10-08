@@ -253,6 +253,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.FieldRefConstant;
@@ -957,6 +958,13 @@ public final class MethodVerifier implements ContextAccess {
             if (endBCI < 0) {
                 throw new ClassFormatError("negative branch target: " + endBCI);
             }
+            if (handler.catchTypeCPI() != 0) {
+                Klass catchType = pool.resolvedKlassAt(thisKlass, handler.catchTypeCPI());
+                if (!getMeta().Throwable.isAssignableFrom(catchType)) {
+                    throw new VerifyError("Illegal exception handler catch type: " + catchType);
+                }
+            }
+
             if (endBCI != code.endBCI()) {
                 if (BCIstates[endBCI] == UNREACHABLE) {
                     throw new ClassFormatError("Jump to the middle of an instruction: " + endBCI);
@@ -1221,12 +1229,12 @@ public final class MethodVerifier implements ContextAccess {
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodHandleConstant in classfile version < 51");
                 }
                 return MethodHandle;
             case METHODTYPE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return MethodType;
@@ -1294,7 +1302,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LDC: 
                 case LDC_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
@@ -1307,7 +1315,7 @@ public final class MethodVerifier implements ContextAccess {
                 }
                 case LDC2_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (!isType2(op)) {
                         throw new VerifyError("Loading non-Long or Double with LDC2_W, please use LDC or LDC_W.");
@@ -1618,7 +1626,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.INVOKEDYNAMIC) {
             throw new VerifyError("Invalid CP constant for INVOKEDYNAMIC: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
         Symbol<Name> name = idc.getName(pool);
@@ -1649,7 +1657,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != CLASS) {
             throw new VerifyError(s + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         ClassConstant cc = (ClassConstant) pc;
         Symbol<Type> type = getTypes().fromName(cc.getName(pool));
         Types.verify(type);
@@ -1768,7 +1776,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for PUTFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
@@ -1798,7 +1806,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for GETFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
@@ -1914,7 +1922,7 @@ public final class MethodVerifier implements ContextAccess {
         if (!(pc instanceof MethodRefConstant)) {
             throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         return (MethodRefConstant) pc;
     }
 
@@ -2036,7 +2044,7 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(BCI);
 
         // Checks versioning
-        if (majorVersion <= 51 && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (majorVersion <= ClassfileParser.JAVA_7_VERSION && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);

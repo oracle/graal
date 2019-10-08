@@ -210,4 +210,69 @@ public final class Utf8 {
         // The number of chars produced may be less than utflen
         return new String(chararr, 0, chararrCount);
     }
+
+    public static boolean isValid(byte[] bytearr, int offset, int length) {
+        int c, char2, char3;
+        int count = 0;
+
+        while (count < length) {
+            c = bytearr[count + offset] & 0xff;
+            if (c == 0 || c > 127)
+                break;
+            count++;
+        }
+
+        while (count < length) {
+            c = bytearr[count + offset] & 0xff;
+            if (c == 0) {
+                count += 2;
+                if (count > length) {
+                    return false;
+                }
+                char2 = bytearr[count - 1 + offset];
+                if (char2 != 0) {
+                    return false;
+                }
+            } else {
+                switch (c >> 4) {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                    case 6:
+                    case 7:
+                        /* 0xxxxxxx */
+                        count++;
+                        break;
+                    case 12:
+                    case 13:
+                        /* 110x xxxx 10xx xxxx */
+                        count += 2;
+                        if (count > length)
+                            return false;
+                        char2 = bytearr[count - 1 + offset];
+                        if ((char2 & 0xC0) != 0x80)
+                            return false;
+                        break;
+                    case 14:
+                        /* 1110 xxxx 10xx xxxx 10xx xxxx */
+                        count += 3;
+                        if (count > length)
+                            return false;
+                        char2 = bytearr[count - 2 + offset];
+                        char3 = bytearr[count - 1 + offset];
+                        if (((char2 & 0xC0) != 0x80) || ((char3 & 0xC0) != 0x80))
+                            return false;
+                        break;
+                    default:
+                        /* 10xx xxxx, 1111 xxxx */
+                        return false;
+                }
+            }
+        }
+        // The number of chars produced may be less than utflen
+        return true;
+    }
 }

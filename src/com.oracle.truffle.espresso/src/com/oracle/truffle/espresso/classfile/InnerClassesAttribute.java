@@ -56,7 +56,7 @@ public final class InnerClassesAttribute extends Attribute {
         return Arrays.asList(entries);
     }
 
-    public InnerClassesAttribute(Symbol<Name> name, Entry[] entries) {
+    InnerClassesAttribute(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         assert NAME.equals(name);
         this.entries = entries;
