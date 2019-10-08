@@ -156,7 +156,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             # Step 3: compile to just a .wasm file, to avoid name mangling.
             output_wasm_path = os.path.join(output_dir, subdir, basename + ".wasm")
             build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path]
-            # mx.run(build_cmd_line)
+            mx.run(build_cmd_line)
 
             # Step 4: copy the result file if it exists.
             result_path = os.path.join(root, basename + ".result")
