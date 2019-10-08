@@ -65,6 +65,8 @@ def mkdir_p(path):
 def remove_extension(filename):
     if filename.endswith(".c"):
         return filename[:-2]
+    if filename.endswith(".wat"):
+        return filename[:-4]
     else:
         mx.abort("Unknown extension: " + filename)
 
@@ -188,6 +190,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             with open(os.path.join(output_dir, subdir, "wasm_test_index"), "w") as f:
                 for name in subdir_program_names[subdir]:
                     f.write(name)
+                    f.write("\n")
 
     def extractInitialization(self, output_js_path):
         globals = {}
