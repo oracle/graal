@@ -35,6 +35,8 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 
 public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
@@ -45,23 +47,53 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
         Target_java_io_FileDescriptor_JNI.initIDs();
         Target_java_io_FileInputStream_JNI.initIDs();
         Target_java_io_FileOutputStream_JNI.initIDs();
+
+        initializeEncoding();
+    }
+
+    /**
+     * The JDK C code has a field `fastEncoding` to speed up conversions between C string and Java
+     * strings. We need to ensure that the initialization code runs early:
+     *
+     * On JDK 8, the C method initializeEncoding() is called lazily from various places. But
+     * unfortunately the implementation is not thread safe: a second thread can use unititialized
+     * state while the first thread is still in the initialization. So we need to force
+     * initialization here where we are still single threaded.
+     *
+     * On JDK 11, the initialization is performed from Java during `System.initPhase1` by
+     * `System.initProperties`. We do invoke that part of the system initialization because we
+     * already have many system properties pre-initialized in the image heap.
+     *
+     * On both JDK 8 and 11, the system property `sun.jnu.encoding` decides which encoding to use.
+     * Currently, we inherit this system property from image build time (see
+     * {@link SystemPropertiesSupport}), i.e., we do not allow it to be specified at run time and
+     * (more importantly) also do not look at environment variables to determine the encoding.
+     */
+    private static void initializeEncoding() {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             /*
-             * Unlike JDK 8, where platform encoding is initialized from native code, in JDK 11 the
-             * initialization of platform encoding is performed from Java during `System.initPhase1`
-             * by `System.initProperties`. Hence, we do it here.
-             *
-             * Note that the value of `sun.jnu.encoding` property is determined at image build time,
-             * see `SystemPropertiesSupport.HOSTED_PROPERTIES`.
+             * On JDK 11 and later, the method InitializeEncoding is an exported JNI function and we
+             * can call it directly.
              */
             try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
-                initializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
+                nativeInitializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
             }
+        } else {
+            /*
+             * On JDK 8, the method initializeEncoding is not an exported JNI function. We call an
+             * exported function that unconditionally triggers the initialization.
+             */
+            nativeNewStringPlatform(CurrentIsolate.getCurrentThread(), EMPTY_C_STRING.get());
         }
     }
 
     @CFunction("InitializeEncoding")
-    private static native void initializeEncoding(PointerBase env, CCharPointer name);
+    private static native void nativeInitializeEncoding(PointerBase env, CCharPointer name);
+
+    private static final CGlobalData<CCharPointer> EMPTY_C_STRING = CGlobalDataFactory.createCString("");
+
+    @CFunction("JNU_NewStringPlatform")
+    private static native void nativeNewStringPlatform(PointerBase env, CCharPointer str);
 
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     protected void loadZipLibrary() {
