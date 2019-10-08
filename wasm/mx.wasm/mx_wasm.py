@@ -96,10 +96,10 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             build_output_name = lambda ext: os.path.join(output_dir, subdir, remove_extension(filename) + ext)
             yield build_output_name(".wasm")
             yield build_output_name(".init")
-            result_path = os.path.join(output_dir, subdir, remove_extension(filename) + ".result")
+            result_path = os.path.join(root, remove_extension(filename) + ".result")
             # Unlike tests, benchmarks do not have result files, so these files are optional.
             if os.path.isfile(result_path):
-                yield result_path
+                yield build_output_name(".result")
             if wabt_dir:
                 yield build_output_name(".wat")
         for subdir in subdirs:
