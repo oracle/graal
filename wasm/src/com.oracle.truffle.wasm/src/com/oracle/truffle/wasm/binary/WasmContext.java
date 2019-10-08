@@ -47,7 +47,7 @@ public class WasmContext {
     private @CompilationFinal Memories memories;
     private @CompilationFinal Globals globals;
     private @CompilationFinal Tables tables;
-    private Linker linker;
+    private @CompilationFinal Linker linker;
     private Map<String, WasmModule> modules;
 
     public static WasmContext getCurrent() {
@@ -101,8 +101,7 @@ public class WasmContext {
     }
 
     /**
-     * Returns the map with all the modules that have been fully parsed, initialized and linked
-     * against other such modules.
+     * Returns the map with all the modules that have been parsed.
      */
     public Map<String, WasmModule> modules() {
         return modules;

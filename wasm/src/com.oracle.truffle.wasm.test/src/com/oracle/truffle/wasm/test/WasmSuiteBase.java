@@ -42,10 +42,12 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.wasm.binary.WasmContext;
@@ -111,7 +113,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
         Value result = null;
         for (int i = 0; i != iterations; ++i) {
-            initializeModule.execute(testCase.initialization());
+            if (testCase.initialization() != null) {
+                initializeModule.execute(testCase.initialization());
+            }
             result = mainFunction.execute();
             resetGlobals.execute();
         }
@@ -433,7 +437,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             if (line.startsWith("[")) {
                 // Memory store.
                 String[] parts = line.split("=");
-                String address = parts[0].substring(1, parts[0].length() - 2);
+                String address = parts[0].substring(1, parts[0].length() - 1);
                 String value = parts[1];
                 memory.put(address, value);
             } else {
@@ -447,7 +451,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestInitialization(globals, memory);
     }
 
-    protected static class WasmTestInitialization {
+    protected static class WasmTestInitialization implements Consumer<WasmContext>, TruffleObject {
         private final Map<String, Long> globalValues;
         private final Map<String, String> memoryValues;
 
@@ -456,12 +460,35 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             this.memoryValues = memoryValues;
         }
 
-        public Map<String, Long> globalValues() {
-            return globalValues;
+        public void accept(WasmContext context) {
+            try {
+                final WasmModule module = context.modules().get("env");
+                for (Map.Entry<String, Long> entry : globalValues.entrySet()) {
+                    final String name = entry.getKey();
+                    final Long value = entry.getValue();
+                    if (!module.isLinked() || module.global(name).isMutable()) {
+                        module.writeMember(name, value);
+                    }
+                }
+                final WasmMemory memory = (WasmMemory) module.readMember("memory");
+                for (Map.Entry<String, String> entry : memoryValues.entrySet()) {
+                    final String addressGlobal = entry.getKey();
+                    final long address = getValue(addressGlobal);
+                    final String valueGlobal = entry.getValue();
+                    final long value = getValue(valueGlobal);
+                    memory.writeArrayElement(address, value);
+                }
+            } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
 
-        public Map<String, String> memoryValues() {
-            return memoryValues;
+        private long getValue(String s) {
+            if (Character.isDigit(s.charAt(0))) {
+                return Integer.parseInt(s);
+            } else {
+                return globalValues.get(s);
+            }
         }
     }
 
@@ -480,28 +507,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
         public WasmTestInitialization initialization() {
             return initialization;
-        }
-
-        public void initializeModule(WasmContext context) {
-            try {
-                final WasmModule module = context.modules().get(name);
-                final Map<String, Long> globals = initialization.globalValues();
-                for (Map.Entry<String, Long> entry : globals.entrySet()) {
-                    final String name = entry.getKey();
-                    final Long value = entry.getValue();
-                    module.writeMember(name, value);
-                }
-                final WasmMemory memory = (WasmMemory) module.readMember("memory");
-                for (Map.Entry<String, String> entry : initialization.memoryValues().entrySet()) {
-                    final String addressGlobal = entry.getKey();
-                    final String valueGlobal = entry.getValue();
-                    final long address = globals.get(addressGlobal);
-                    final long value = globals.get(valueGlobal);
-                    memory.writeArrayElement(address, value);
-                }
-            } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 

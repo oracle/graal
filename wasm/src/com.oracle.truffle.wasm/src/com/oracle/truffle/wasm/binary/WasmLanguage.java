@@ -56,7 +56,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final WasmModule module = new WasmModule(moduleName, data);
         final BinaryReader reader = new BinaryReader(this, module, data);
         reader.readModule();
-        context.linker().link(module);
         context.registerModule(module);
         // TODO: Should this return an initialization function? Or a start function?
         return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(this));

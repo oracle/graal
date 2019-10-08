@@ -30,7 +30,6 @@
 package com.oracle.truffle.wasm.binary;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,7 @@ public class SymbolTable {
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
     private static final int GLOBAL_EXPORT_BIT = 1 << 24;
-    public static final int UNINITIALIZED_TABLE_BIT = 0x8000_0000;
+    private static final int UNINITIALIZED_TABLE_BIT = 0x8000_0000;
 
     @CompilationFinal private WasmModule module;
 
@@ -431,10 +430,14 @@ public class SymbolTable {
         return address;
     }
 
-    public void importGlobal(String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution, int address) {
+    void importGlobal(String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution, int address) {
         assert resolution.isImported();
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
         allocateGlobal(index, valueType, mutability, resolution, address);
+    }
+
+    public LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
+        return importedGlobals;
     }
 
     public int maxGlobalIndex() {
@@ -480,7 +483,7 @@ public class SymbolTable {
      * Tracks an unresolved declared global, which depends on an unresolved imported global.
      * The global must have been previously allocated.
      */
-    public void trackUnresolvedGlobal(int globalIndex, int dependentGlobal) {
+    void trackUnresolvedGlobal(int globalIndex, int dependentGlobal) {
         assertGlobalAllocated(globalIndex);
         addUnresolvedGlobal((dependentGlobal << 32) | globalIndex);
     }
@@ -560,7 +563,7 @@ public class SymbolTable {
         return tableExists() ? 1 : 0;
     }
 
-    public void setTableIndex(int i) {
+    void setTableIndex(int i) {
         tableIndex = i;
     }
 
@@ -568,11 +571,11 @@ public class SymbolTable {
         return importedTableDescriptor;
     }
 
-    public void setImportedTable(ImportDescriptor descriptor) {
+    void setImportedTable(ImportDescriptor descriptor) {
         importedTableDescriptor = descriptor;
     }
 
-    public String exportedTable() {
+    String exportedTable() {
         return exportedTable;
     }
 
@@ -626,7 +629,7 @@ public class SymbolTable {
         return memory;
     }
 
-    int memoryCount() {
+    public int memoryCount() {
         return memoryExists() ? 1 : 0;
     }
 

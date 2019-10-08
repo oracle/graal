@@ -38,6 +38,8 @@ import com.oracle.truffle.wasm.binary.WasmVoidResult;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
+import java.util.function.Consumer;
+
 public class InitializeModule extends WasmPredefinedRootNode {
     public InitializeModule(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
         super(language, codeEntry, memory);
@@ -59,6 +61,7 @@ public class InitializeModule extends WasmPredefinedRootNode {
     private void initializeModule(Object initialization) {
         if (initialization != null) {
             WasmContext context = WasmContext.getCurrent();
+            ((Consumer<WasmContext>) initialization).accept(context);
         }
     }
 }

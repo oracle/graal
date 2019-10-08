@@ -67,6 +67,12 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        // We want to ensure that linking always precedes the running of the WebAssembly code.
+        // This linking should be as late as possible, because a WebAssembly context should
+        // be able to parse multiple modules before the code gets run.
+        final WasmContext context = contextReference().get();
+        context.linker().tryLink();
+
         /*
          * WebAssembly structure dictates that a function's arguments are provided to the function
          * as local variables, followed by any additional local variables that the function declares.
@@ -83,7 +89,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
         logger.finest(() -> this + " EXECUTE");
 
-        body.execute(contextReference().get(), frame);
+        body.execute(context, frame);
 
         long returnValue = pop(frame, 0);
         switch (body.returnTypeId()) {

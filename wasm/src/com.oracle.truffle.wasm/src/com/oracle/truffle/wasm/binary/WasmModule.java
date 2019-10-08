@@ -45,6 +45,7 @@ import com.oracle.truffle.wasm.collection.IntArrayList;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 // TODO: We should make this class more Truffle-compliant.
@@ -55,11 +56,13 @@ public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;
     @CompilationFinal(dimensions = 1) private final byte[] data;
+    private boolean isLinked;
 
     public WasmModule(String name, byte[] data) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
         this.data = data;
+        this.isLinked = false;
     }
 
     public SymbolTable symbolTable() {
@@ -72,6 +75,14 @@ public class WasmModule implements TruffleObject {
 
     public byte[] data() {
         return data;
+    }
+
+    void setLinked() {
+        isLinked = true;
+    }
+
+    public boolean isLinked() {
+        return isLinked;
     }
 
     @ExportMessage
@@ -109,7 +120,8 @@ public class WasmModule implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
         final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-        if (!mutable) {
+        if (isLinked && !mutable) {
+            // Constant variables cannot be modified after linking.
             throw UnsupportedMessageException.create();
         }
         long longValue = ((Number) value).longValue();
@@ -145,13 +157,6 @@ public class WasmModule implements TruffleObject {
         return false;
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        // TODO: Handle includeInternal.
-        return new ExportedMembers(symbolTable);
-    }
-
     private static Object readGlobal(SymbolTable symbolTable, int globalIndex) {
         final int address = symbolTable.globalAddress(globalIndex);
         final Globals globals = WasmContext.getCurrent().globals();
@@ -168,6 +173,26 @@ public class WasmModule implements TruffleObject {
             default:
                 throw new RuntimeException("Unknown type: " + type);
         }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        // TODO: Handle includeInternal.
+        return new ExportedMembers(symbolTable);
+    }
+
+    public Global global(String name) {
+        final Integer index = symbolTable.exportedGlobals().get(name);
+        if (index != null) {
+            return new Global(symbolTable, index);
+        }
+        for (Map.Entry<Integer, ImportDescriptor> entry : symbolTable.importedGlobals().entrySet()) {
+            if (entry.getValue().memberName.equals(name)) {
+                return new Global(symbolTable, entry.getKey());
+            }
+        }
+        return null;
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -220,6 +245,20 @@ public class WasmModule implements TruffleObject {
                 return readGlobal(symbolTable, globalIndex);
             }
             return symbolTable.memory();
+        }
+    }
+
+    public static final class Global {
+        private SymbolTable symbolTable;
+        private final int index;
+
+        Global(SymbolTable symbolTable, Integer index) {
+            this.symbolTable = symbolTable;
+            this.index = index;
+        }
+
+        public boolean isMutable() {
+            return symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
         }
     }
 
