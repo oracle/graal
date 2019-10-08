@@ -139,15 +139,15 @@ public final class NFIContextExtension implements ContextExtension {
         }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
-            addLibrary(l);
+            addLibrary(l, context);
         }
     }
 
-    private void addLibrary(ExternalLibrary lib) throws UnsatisfiedLinkError {
+    private void addLibrary(ExternalLibrary lib, LLVMContext context) throws UnsatisfiedLinkError {
         CompilerAsserts.neverPartOfCompilation();
-        if (!libraryHandles.containsKey(lib) && !handleSpecialLibraries(lib)) {
+        if (!libraryHandles.containsKey(lib) && !handleSpecialLibraries(lib, context)) {
             try {
-                libraryHandles.put(lib, loadLibrary(lib));
+                libraryHandles.put(lib, loadLibrary(lib, context));
             } catch (UnsatisfiedLinkError e) {
                 System.err.println(lib.toString() + " not found!\n" + e.getMessage());
                 throw e;
@@ -163,7 +163,7 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    private boolean handleSpecialLibraries(ExternalLibrary lib) {
+    private boolean handleSpecialLibraries(ExternalLibrary lib, LLVMContext context) {
         Path fileNamePath = lib.getPath().getFileName();
         if (fileNamePath == null) {
             throw new IllegalArgumentException("Filename path of " + lib.getPath() + " is null");
@@ -171,6 +171,9 @@ public final class NFIContextExtension implements ContextExtension {
         String fileName = fileNamePath.toString().trim();
         if (fileName.startsWith("libc.") || fileName.startsWith("libSystem.")) {
             // nothing to do, since libsulong.so already links against libc.so/libSystem.B.dylib
+            return true;
+        } else if (fileName.startsWith("libpolyglot-mock.")) {
+            // special mock library for polyglot intrinsics
             return true;
         } else if (fileName.startsWith("libsulong++.") || fileName.startsWith("libc++.")) {
             /*
@@ -180,17 +183,17 @@ public final class NFIContextExtension implements ContextExtension {
              */
             TruffleObject cxxlib;
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-                cxxlib = loadLibrary("libc++.dylib", true, null);
+                cxxlib = loadLibrary("libc++.dylib", true, null, context);
             } else {
-                cxxlib = loadLibrary("libc++.so.1", true, null);
+                cxxlib = loadLibrary("libc++.so.1", true, null, context);
                 if (cxxlib == null) {
                     /*
                      * On Ubuntu, libc++ can not be dynamically loaded because of a missing
                      * dependeny on libgcc_s. Work around this by loading it manually first.
                      */
-                    TruffleObject libgcc = loadLibrary("libgcc_s.so.1", true, "RTLD_GLOBAL");
+                    TruffleObject libgcc = loadLibrary("libgcc_s.so.1", true, "RTLD_GLOBAL", context);
                     if (libgcc != null) {
-                        cxxlib = loadLibrary("libc++.so.1", true, null);
+                        cxxlib = loadLibrary("libc++.so.1", true, null, context);
                     }
                 }
             }
@@ -203,13 +206,18 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    private TruffleObject loadLibrary(ExternalLibrary lib) {
+    private TruffleObject loadLibrary(ExternalLibrary lib, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         String libName = lib.getPath().toString();
-        return loadLibrary(libName, false, null);
+        return loadLibrary(libName, false, null, context, lib);
     }
 
-    private TruffleObject loadLibrary(String libName, boolean optional, String flags) {
+    private TruffleObject loadLibrary(String libName, boolean optional, String flags, LLVMContext context) {
+        return loadLibrary(libName, optional, flags, context, libName);
+    }
+
+    private TruffleObject loadLibrary(String libName, boolean optional, String flags, LLVMContext context, Object file) {
+        LibraryLocator.traceLoadNative(context, file);
         String loadExpression;
         if (flags == null) {
             loadExpression = String.format("load \"%s\"", libName);

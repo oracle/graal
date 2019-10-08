@@ -323,9 +323,11 @@ suite = {
       "class" : "ToolchainLauncherProject",
       "native": True,
       "vpath": True,
-      "platformDependent": False,
+      "platformDependent": True,
       "buildEnv" : {
         "MX_EXE" : "<mx_exe>",
+        "SUITE_DIR" : "<path:bootstrap-toolchain-launchers>/../..",
+        "PLATFORM" : "native",
       },
       "buildDependencies" : [
         "SULONG_LLVM_ORG",
@@ -337,7 +339,7 @@ suite = {
       "subDir": "tests",
       "native": True,
       "vpath": True,
-      "platformDependent": False,
+      "platformDependent": True,
       "max_jobs": "1",
       "buildEnv" : {
         "SULONG_EXE" : "<mx_exe> lli",
@@ -1128,6 +1130,7 @@ suite = {
           "file:patches/*"
         ],
       },
+      "platformDependent" : True,
       "maven": False,
       "license" : "NCSA",
     },
