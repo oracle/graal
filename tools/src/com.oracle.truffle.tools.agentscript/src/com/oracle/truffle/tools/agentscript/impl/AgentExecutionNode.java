@@ -36,30 +36,56 @@ import com.oracle.truffle.api.nodes.Node;
 final class AgentExecutionNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary dispatch = InteropLibrary.getFactory().createDispatched(3);
     private final TruffleInstrument.Env env;
-    private final Object fn;
+    private final Object enter;
+    private final Object exit;
     private final EventContextObject ctx;
 
-    AgentExecutionNode(TruffleInstrument.Env env, Object fn, EventContextObject ctx) {
+    AgentExecutionNode(TruffleInstrument.Env env, Object enter, Object exit, EventContextObject ctx) {
         this.env = env;
-        this.fn = fn;
+        this.enter = enter;
+        this.exit = exit;
         this.ctx = ctx;
     }
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        try {
-            dispatch.execute(fn, ctx, new VariablesObject(env, this, frame));
-        } catch (InteropException ex) {
-            throw AgentObject.raise(RuntimeException.class, ex);
+        if (enter != null) {
+            try {
+                dispatch.execute(enter, ctx, new VariablesObject(env, this, frame));
+            } catch (InteropException ex) {
+                throw AgentObject.raise(RuntimeException.class, ex);
+            }
         }
     }
 
-    static ExecutionEventNodeFactory factory(TruffleInstrument.Env env, final Object fn) {
+    @Override
+    protected void onReturnValue(VirtualFrame frame, Object result) {
+        if (exit != null) {
+            try {
+                dispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
+            } catch (InteropException ex) {
+                throw AgentObject.raise(RuntimeException.class, ex);
+            }
+        }
+    }
+
+    @Override
+    protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+        if (exit != null) {
+            try {
+                dispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
+            } catch (InteropException ex) {
+                throw AgentObject.raise(RuntimeException.class, ex);
+            }
+        }
+    }
+
+    static ExecutionEventNodeFactory factory(TruffleInstrument.Env env, final Object enter, final Object exit) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 final EventContextObject ctx = new EventContextObject(context);
-                return new AgentExecutionNode(env, fn, ctx);
+                return new AgentExecutionNode(env, enter, exit, ctx);
             }
         };
     }

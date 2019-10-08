@@ -68,7 +68,7 @@ public interface AgentScriptAPI {
     }
     /** Register a handler on a particular elements in the source code.
      *
-     * @param event one of {@code "enter"} strings
+     * @param event one of {@code "enter"}, {@code "return"} strings
      * @param handler callback
      *      {@link OnEventHandler#event function with two arguments}
      * @param config config object to identify locations to listen to

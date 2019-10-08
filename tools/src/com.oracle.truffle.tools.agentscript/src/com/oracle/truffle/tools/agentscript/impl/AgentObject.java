@@ -117,41 +117,14 @@ final class AgentObject implements TruffleObject {
                     }
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
-                        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false);
-                        List<Class<? extends Tag>> allTags = new ArrayList<>();
-                        if (args.length > 2) {
-                            final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-                            final Object config = args[2];
-
-                            if (isSet(iop, config, "expressions")) {
-                                allTags.add(StandardTags.ExpressionTag.class);
-                            }
-                            if (isSet(iop, config, "statements")) {
-                                allTags.add(StandardTags.StatementTag.class);
-                            }
-                            if (isSet(iop, config, "roots")) {
-                                allTags.add(StandardTags.RootBodyTag.class);
-                            }
-                            try {
-                                Object rootNameFilter = iop.readMember(config, "rootNameFilter");
-                                if (rootNameFilter != null && !iop.isNull(rootNameFilter)) {
-                                    if (!iop.isExecutable(rootNameFilter)) {
-                                        throw new IllegalArgumentException("rootNameFilter has to be a function!");
-                                    }
-                                    builder.rootNameIs(new RootNameFilter(rootNameFilter, obj.initializationFinished));
-                                }
-                            } catch (UnknownIdentifierException ex) {
-                                // OK
-                            }
-                        }
-                        if (allTags.isEmpty()) {
-                            throw new IllegalArgumentException(
-                                            "No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
-                        }
-                        builder.tagIs(allTags.toArray(new Class<?>[0]));
-
-                        final SourceSectionFilter filter = builder.build();
-                        instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, args[1]));
+                        SourceSectionFilter filter = createFilter(obj, args);
+                        instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, args[1], null));
+                        break;
+                    }
+                    case RETURN: {
+                        CompilerDirectives.transferToInterpreter();
+                        SourceSectionFilter filter = createFilter(obj, args);
+                        instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, null, args[1]));
                         break;
                     }
                     case CLOSE: {
@@ -167,6 +140,43 @@ final class AgentObject implements TruffleObject {
                 throw UnknownIdentifierException.create(member);
         }
         return obj;
+    }
+
+    private static SourceSectionFilter createFilter(AgentObject obj, Object[] args) throws IllegalArgumentException, UnsupportedMessageException {
+        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().sourceIs(new ExcludeAgentScriptsFilter(obj.initializationFinished)).includeInternal(false);
+        List<Class<? extends Tag>> allTags = new ArrayList<>();
+        if (args.length > 2) {
+            final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            final Object config = args[2];
+
+            if (isSet(iop, config, "expressions")) {
+                allTags.add(StandardTags.ExpressionTag.class);
+            }
+            if (isSet(iop, config, "statements")) {
+                allTags.add(StandardTags.StatementTag.class);
+            }
+            if (isSet(iop, config, "roots")) {
+                allTags.add(StandardTags.RootBodyTag.class);
+            }
+            try {
+                Object rootNameFilter = iop.readMember(config, "rootNameFilter");
+                if (rootNameFilter != null && !iop.isNull(rootNameFilter)) {
+                    if (!iop.isExecutable(rootNameFilter)) {
+                        throw new IllegalArgumentException("rootNameFilter has to be a function!");
+                    }
+                    builder.rootNameIs(new RootNameFilter(rootNameFilter, obj.initializationFinished));
+                }
+            } catch (UnknownIdentifierException ex) {
+                // OK
+            }
+        }
+        if (allTags.isEmpty()) {
+            throw new IllegalArgumentException(
+                            "No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
+        }
+        builder.tagIs(allTags.toArray(new Class<?>[0]));
+        final SourceSectionFilter filter = builder.build();
+        return filter;
     }
 
     @ExportMessage

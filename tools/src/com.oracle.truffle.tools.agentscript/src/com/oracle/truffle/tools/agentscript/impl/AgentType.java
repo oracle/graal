@@ -27,7 +27,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 enum AgentType {
     SOURCE,
     ENTER,
-    // RETURN,
+    RETURN,
     CLOSE;
 
     static AgentType find(String str) {

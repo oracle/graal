@@ -26,6 +26,9 @@ package com.oracle.truffle.tools.agentscript.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -193,6 +196,52 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
+        }
+    }
+
+    @Test
+    public void onEnterAndReturn() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[][] max = {new String[0]};
+            LinkedList<String> stack = new LinkedList<>();
+            final AgentScriptAPI.OnConfig allRoots = createConfig(false, false, true, null);
+            agentAPI.on("enter", (ev, frame) -> {
+                stack.push(ev.name());
+                if (stack.size() > max[0].length) {
+                    max[0] = stack.toArray(new String[0]);
+                }
+            }, allRoots);
+            agentAPI.on("return", (ev, frame) -> {
+                String prev = stack.pop();
+                assertEquals("Exit from a topmost scope", prev, ev.name());
+
+            }, allRoots);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(mar,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  DEFINE(bar,\n" +
+                "    LOOP(10, CALL(mar))\n" +
+                "  ),\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, CALL(bar))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            List<String> maxStack = Arrays.asList(max[0]);
+            assertEquals("Three functions & main program", Arrays.asList("mar", "bar", "foo", ""), maxStack);
         }
     }
 
