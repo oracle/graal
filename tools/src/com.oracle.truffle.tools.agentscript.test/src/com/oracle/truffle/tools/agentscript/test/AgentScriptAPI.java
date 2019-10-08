@@ -36,6 +36,12 @@ import java.util.function.Predicate;
  * {@link AgentScript#registerAgentScript registered scripts}.
  */
 public interface AgentScriptAPI {
+    /** Version of the API.
+     *
+     * @return same value of {@link AgentScript#VERSION}
+     */
+    String version();
+
     @FunctionalInterface
     interface OnSourceLoadedHandler {
         interface Info {

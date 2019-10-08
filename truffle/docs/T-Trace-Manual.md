@@ -700,6 +700,19 @@ sources and other characteristics) and the OpenTracing will happen
 automatically and only on demand, without modifying the application code
 at all.
 
+## Compatibility of **T-Trace**
+
+Compatibility of the **T-Trace** API exposed via the `agent` interface
+is treated seriously. Future versions add new features, but whatever was
+exposed, remains functional. If your script depends on some fancy new
+feature, it may check version of the exposed API:
+
+```
+print(`Agent version is ${agent.version}`);
+```
+
+and act according to the obtain value.
+
 <!--
 
 ## TODO:

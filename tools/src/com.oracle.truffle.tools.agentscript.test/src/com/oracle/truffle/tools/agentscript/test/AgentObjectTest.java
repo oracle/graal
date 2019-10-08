@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.agentscript.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +43,17 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class AgentObjectTest {
+
+    @Test
+    public void versionOfTheAgent() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            assertEquals(AgentScript.VERSION, agentAPI.version());
+        }
+    }
 
     @Test
     public void onSourceCallback() throws Exception {

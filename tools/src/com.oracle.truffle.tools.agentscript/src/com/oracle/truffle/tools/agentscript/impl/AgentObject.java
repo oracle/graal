@@ -42,6 +42,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +84,11 @@ final class AgentObject implements TruffleObject {
     }
 
     @ExportMessage
+    boolean isMemberReadable(String member) {
+        return true;
+    }
+
+    @ExportMessage
     static boolean hasMembers(AgentObject obj) {
         return true;
     }
@@ -90,6 +96,15 @@ final class AgentObject implements TruffleObject {
     @ExportMessage
     static Object getMembers(AgentObject obj, boolean includeInternal) {
         return new Object[0];
+    }
+
+    @ExportMessage
+    Object readMember(String name) throws UnknownIdentifierException {
+        switch (name) {
+            case "version":
+                return AgentScript.VERSION;
+        }
+        throw UnknownIdentifierException.create(name);
     }
 
     @CompilerDirectives.TruffleBoundary
