@@ -174,23 +174,34 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
         return create(subtractionRanges);
     }
 
+    final class IntersectAndSubtractResult<T extends ImmutableSortedListOfRanges> {
+
+        public final T subtractedA;
+        public final T subtractedB;
+        public final T intersection;
+
+        public IntersectAndSubtractResult(T subtractedA, T subtractedB, T intersected) {
+            this.subtractedA = subtractedA;
+            this.subtractedB = subtractedB;
+            this.intersection = intersected;
+        }
+    }
+
     /**
      * Calculates the intersection and the "rest" of this and {@code o}. Uses
      * {@link #getBuffer1(CompilationBuffer)}, {@link #getBuffer2(CompilationBuffer)} and
      * {@link #getBuffer3(CompilationBuffer)}.
      *
      * @param o MatcherBuilder to intersect with.
-     * @param result Array of results, where index 0 is equal to {@code this.subtract(intersection)}
-     *            , index 1 is equal to {@code o.subtract(intersection)} and index 2 is equal to
-     *            {@code this.createIntersection(o)}.
+     * @return a new {@link IntersectAndSubtractResult}, where field {@code subtractedA} is equal to
+     *         {@code this.subtract(intersection)}, {@code subtractedB} is equal to
+     *         {@code o.subtract(intersection)} and {@code intersected} is equal to
+     *         {@code this.createIntersection(o)}
      */
     @SuppressWarnings("unchecked")
-    default <T extends ImmutableSortedListOfRanges> void intersectAndSubtract(T o, CompilationBuffer compilationBuffer, T[] result) {
+    default <T extends ImmutableSortedListOfRanges> IntersectAndSubtractResult<T> intersectAndSubtract(T o, CompilationBuffer compilationBuffer) {
         if (matchesNothing() || o.matchesNothing()) {
-            result[0] = (T) this;
-            result[1] = o;
-            result[2] = createEmpty();
-            return;
+            return new IntersectAndSubtractResult<>((T) this, o, createEmpty());
         }
         RangesBuffer subtractedA = getBuffer1(compilationBuffer);
         RangesBuffer subtractedB = getBuffer2(compilationBuffer);
@@ -205,23 +216,18 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
                     noIntersection = true;
                     break;
                 }
-                continue;
-            }
-            if (o.leftOf(ib, this, ia)) {
+            } else if (o.leftOf(ib, this, ia)) {
                 ib++;
                 if (ib >= o.size()) {
                     noIntersection = true;
                     break;
                 }
-                continue;
+            } else {
+                break;
             }
-            break;
         }
         if (noIntersection) {
-            result[0] = (T) this;
-            result[1] = o;
-            result[2] = createEmpty();
-            return;
+            return new IntersectAndSubtractResult<>((T) this, o, createEmpty());
         }
         appendRangesTo(subtractedA, 0, ia);
         o.appendRangesTo(subtractedB, 0, ib);
@@ -232,82 +238,97 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
         assert SortedListOfRanges.intersects(raLo, raHi, rbLo, rbHi);
         ia++;
         ib++;
-        boolean advanceA = false;
-        boolean advanceB = false;
-        boolean finish = false;
         while (true) {
-            if (advanceA) {
-                advanceA = false;
+            if (SortedListOfRanges.leftOf(raLo, raHi, rbLo, rbHi)) {
+                subtractedA.appendRange(raLo, raHi);
                 if (ia < size()) {
                     raLo = getLo(ia);
                     raHi = getHi(ia);
                     ia++;
+                    continue;
                 } else {
-                    if (!advanceB) {
-                        subtractedB.appendRange(rbLo, rbHi);
-                    }
+                    subtractedB.appendRange(rbLo, rbHi);
                     o.appendRangesTo(subtractedB, ib, o.size());
-                    finish = true;
+                    break;
                 }
             }
-            if (advanceB) {
-                advanceB = false;
+            if (SortedListOfRanges.leftOf(rbLo, rbHi, raLo, raHi)) {
+                subtractedB.appendRange(rbLo, rbHi);
+                if (ib < o.size()) {
+                    rbLo = o.getLo(ib);
+                    rbHi = o.getHi(ib);
+                    ib++;
+                    continue;
+                } else {
+                    subtractedA.appendRange(raLo, raHi);
+                    appendRangesTo(subtractedA, ia, size());
+                    break;
+                }
+            }
+            assert SortedListOfRanges.intersects(raLo, raHi, rbLo, rbHi);
+            int intersectionLo = raLo;
+            if (raLo < rbLo) {
+                intersectionLo = rbLo;
+                subtractedA.appendRange(raLo, intersectionLo - 1);
+            } else if (raLo != rbLo) {
+                subtractedB.appendRange(rbLo, intersectionLo - 1);
+            }
+            int intersectionHi = raHi;
+            if (raHi > rbHi) {
+                intersectionHi = rbHi;
+                intersectionRanges.appendRange(intersectionLo, intersectionHi);
+                raLo = intersectionHi + 1;
                 if (ib < o.size()) {
                     rbLo = o.getLo(ib);
                     rbHi = o.getHi(ib);
                     ib++;
                 } else {
-                    if (!finish) {
-                        subtractedA.appendRange(raLo, raHi);
-                    }
+                    subtractedA.appendRange(raLo, raHi);
                     appendRangesTo(subtractedA, ia, size());
-                    finish = true;
+                    break;
+                }
+            } else if (raHi < rbHi) {
+                intersectionRanges.appendRange(intersectionLo, intersectionHi);
+                rbLo = intersectionHi + 1;
+                if (ia < size()) {
+                    raLo = getLo(ia);
+                    raHi = getHi(ia);
+                    ia++;
+                } else {
+                    subtractedB.appendRange(rbLo, rbHi);
+                    o.appendRangesTo(subtractedB, ib, o.size());
+                    break;
+                }
+            } else {
+                assert raHi == rbHi;
+                intersectionRanges.appendRange(intersectionLo, intersectionHi);
+                if (ia < size()) {
+                    raLo = getLo(ia);
+                    raHi = getHi(ia);
+                    ia++;
+                } else {
+                    o.appendRangesTo(subtractedB, ib, o.size());
+                    break;
+                }
+                if (ib < o.size()) {
+                    rbLo = o.getLo(ib);
+                    rbHi = o.getHi(ib);
+                    ib++;
+                } else {
+                    subtractedA.appendRange(raLo, raHi);
+                    appendRangesTo(subtractedA, ia, size());
+                    break;
                 }
             }
-            if (finish) {
-                break;
-            }
-            if (SortedListOfRanges.leftOf(raLo, raHi, rbLo, rbHi)) {
-                subtractedA.appendRange(raLo, raHi);
-                advanceA = true;
-                continue;
-            }
-            if (SortedListOfRanges.leftOf(rbLo, rbHi, raLo, raHi)) {
-                subtractedB.appendRange(rbLo, rbHi);
-                advanceB = true;
-                continue;
-            }
-            assert SortedListOfRanges.intersects(raLo, raHi, rbLo, rbHi);
-            int intersectionLo = Math.max(raLo, rbLo);
-            int intersectionHi = Math.min(raHi, rbHi);
-            intersectionRanges.appendRange(intersectionLo, intersectionHi);
-            if (raLo < intersectionLo) {
-                subtractedA.appendRange(raLo, intersectionLo - 1);
-            }
-            if (raHi > intersectionHi) {
-                raLo = intersectionHi + 1;
-            } else {
-                advanceA = true;
-            }
-            if (rbLo < intersectionLo) {
-                subtractedB.appendRange(rbLo, intersectionLo - 1);
-            }
-            if (rbHi > intersectionHi) {
-                rbLo = intersectionHi + 1;
-            } else {
-                advanceB = true;
-            }
         }
-        result[0] = create(subtractedA);
-        result[1] = create(subtractedB);
         if (subtractedA.isEmpty()) {
             assert equalsBuffer(intersectionRanges);
-            result[2] = (T) this;
+            return new IntersectAndSubtractResult<>(createEmpty(), create(subtractedB), (T) this);
         } else if (subtractedB.isEmpty()) {
             assert o.equalsBuffer(intersectionRanges);
-            result[2] = o;
+            return new IntersectAndSubtractResult<>(create(subtractedA), createEmpty(), o);
         } else {
-            result[2] = create(intersectionRanges);
+            return new IntersectAndSubtractResult<>(create(subtractedA), create(subtractedB), create(intersectionRanges));
         }
     }
 

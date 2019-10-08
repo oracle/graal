@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
@@ -71,7 +72,9 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
     }
 
     @Override
-    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue methodIdArg, int offset) {
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+
         CompilationResult result = new CompilationResult(identifier);
         LLVMGenerationResult genResult = new LLVMGenerationResult(method);
         LLVMContextRef context = LLVM.LLVMContextCreate();
@@ -87,8 +90,18 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         long startPatchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         builder.buildStackmap(builder.constantLong(startPatchpointId));
 
-        LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
-        LLVMValueRef jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        LLVMValueRef jumpAddressAddress;
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            LLVMValueRef thread = builder.buildInlineGetRegister(threadArg.getRegister().name);
+            LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
+            LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
+            LLVMValueRef methodId = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+            LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildIntToPtr(methodId, builder.rawPointerType()));
+            jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
+        } else {
+            LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+            jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
+        }
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();

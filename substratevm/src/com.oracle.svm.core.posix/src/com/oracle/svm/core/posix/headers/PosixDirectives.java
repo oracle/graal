@@ -90,7 +90,8 @@ public class PosixDirectives implements CContext.Directives {
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
                     "<netinet6/in6_var.h>",
-                    "<net/if_dl.h>"
+                    "<net/if_dl.h>",
+                    "<sys/syslimits.h>",
     };
 
     private static final String[] linuxLibs = new String[]{

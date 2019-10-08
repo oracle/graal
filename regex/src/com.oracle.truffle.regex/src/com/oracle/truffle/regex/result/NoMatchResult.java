@@ -39,4 +39,14 @@ public final class NoMatchResult extends RegexResult {
     public String toString() {
         return "NO_MATCH";
     }
+
+    @Override
+    public int getStart(int groupNumber) {
+        return -1;
+    }
+
+    @Override
+    public int getEnd(int groupNumber) {
+        return -1;
+    }
 }

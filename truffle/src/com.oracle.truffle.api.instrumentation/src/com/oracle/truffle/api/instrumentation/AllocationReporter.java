@@ -361,6 +361,10 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     void example() {
     }
 
+    static ContextObject getCurrentContext() {
+        return getCurrentContext(AllocationReporterSnippets.class);
+    }
+
     // @formatter:off
     // BEGIN: AllocationReporterSnippets#example
     @Override
@@ -370,7 +374,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     }
 
     Object allocateNew() {
-        AllocationReporter reporter = getContextReference().get().getReporter();
+        AllocationReporter reporter = getCurrentContext().getReporter();
         // Test if the reporter is active, we should compute the size estimate
         if (reporter.isActive()) {
             long size = findSizeEstimate();
@@ -388,7 +392,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     }
 
     Object allocateComplex() {
-        AllocationReporter reporter = getContextReference().get().getReporter();
+        AllocationReporter reporter = getCurrentContext().getReporter();
         // If the allocated size is a constant, onEnter() and onReturnValue()
         // can be called without a fast-path performance penalty when not active
         reporter.onEnter(null, 0, 16);

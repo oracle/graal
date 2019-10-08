@@ -24,8 +24,11 @@
  */
 package com.oracle.truffle.regex.result;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class TraceFinderResult extends LazyResult {
 
@@ -39,6 +42,16 @@ public final class TraceFinderResult extends LazyResult {
         this.indices = new int[preCalculatedResults[0].getNumberOfGroups() * 2];
         this.traceFinderCallTarget = traceFinderCallTarget;
         this.preCalculatedResults = preCalculatedResults;
+    }
+
+    @Override
+    public int getStart(int groupNumber) {
+        return indices[groupNumber * 2];
+    }
+
+    @Override
+    public int getEnd(int groupNumber) {
+        return indices[groupNumber * 2 + 1];
     }
 
     public int[] getIndices() {
@@ -57,8 +70,33 @@ public final class TraceFinderResult extends LazyResult {
         return resultCalculated;
     }
 
-    public void setResultCalculated() {
-        this.resultCalculated = true;
+    public Object[] createArgsTraceFinder() {
+        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
     }
 
+    public void applyTraceFinderResult(int preCalcIndex) {
+        preCalculatedResults[preCalcIndex].applyRelativeToEnd(indices, getEnd());
+        resultCalculated = true;
+    }
+
+    /**
+     * Forces evaluation of this lazy regex result. Do not use this method on any fast paths, use
+     * {@link com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode} instead!
+     */
+    @TruffleBoundary
+    @Override
+    public void debugForceEvaluation() {
+        if (!isResultCalculated()) {
+            applyTraceFinderResult((int) traceFinderCallTarget.call(createArgsTraceFinder()));
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        if (!isResultCalculated()) {
+            debugForceEvaluation();
+        }
+        return Arrays.toString(indices);
+    }
 }

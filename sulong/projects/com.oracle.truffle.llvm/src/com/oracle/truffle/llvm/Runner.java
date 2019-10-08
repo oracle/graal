@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -51,6 +52,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -173,7 +175,7 @@ final class Runner {
 
         final SulongLibrary sulongLibrary;
         final FrameSlot stackPointerSlot;
-        final ContextReference<LLVMContext> ctxRef;
+        @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
         final int initContextBefore;
         @Child LLVMStatementNode initContext;
@@ -185,7 +187,6 @@ final class Runner {
             super(runner.language, rootFrame);
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
-            this.ctxRef = runner.language.getContextReference();
 
             this.initContextBefore = order.sulongLibraries.size();
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
@@ -209,6 +210,11 @@ final class Runner {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.ctxRef = lookupContextReference(LLVMLanguage.class);
+            }
+
             LLVMContext ctx = ctxRef.get();
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);
@@ -683,6 +689,7 @@ final class Runner {
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
+            LibraryLocator.traceDelegateNative(context, library);
             return null;
         }
     }

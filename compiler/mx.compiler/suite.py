@@ -709,49 +709,20 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
-    "org.graalvm.compiler.hotspot.management.jdk11" : {
+    "org.graalvm.compiler.management" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.serviceprovider.jdk11",
-        "org.graalvm.compiler.hotspot.management",
+        "org.graalvm.compiler.serviceprovider",
       ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : ["jdk.vm.ci.hotspot"],
-      },
       "requires" : [
         "jdk.management",
       ],
-      "overlayTarget" : "org.graalvm.compiler.hotspot.management",
-      "multiReleaseJarVersion" : "11",
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
       "javaCompliance" : "11+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.management.jdk13" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.serviceprovider.jdk13",
-        "org.graalvm.compiler.hotspot.management",
-      ],
-      "requires" : [
-        "jdk.management",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : ["jdk.vm.ci.hotspot"],
-      },
-      "overlayTarget" : "org.graalvm.compiler.hotspot.management",
-      "multiReleaseJarVersion" : "13",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-      ],
-      "javaCompliance" : "13+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -2622,6 +2593,7 @@ suite = {
       },
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.compiler.management",
         "org.graalvm.compiler.hotspot.management",
       ],
       "distDependencies" : [

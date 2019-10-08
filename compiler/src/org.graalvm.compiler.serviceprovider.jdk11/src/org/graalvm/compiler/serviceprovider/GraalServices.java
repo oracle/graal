@@ -250,7 +250,6 @@ public final class GraalServices {
 
         Module module = c.getModule();
         Module jvmciModule = JVMCI_MODULE;
-        assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
         if (module == jvmciModule || jvmciModule.isOpen(JVMCI_RUNTIME_PACKAGE, module)) {
             // Can access non-statically-exported package in JVMCI
             return true;

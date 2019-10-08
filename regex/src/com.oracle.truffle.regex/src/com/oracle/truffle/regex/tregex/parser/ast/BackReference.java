@@ -54,13 +54,19 @@ public class BackReference extends Term {
         return ast.register(new BackReference(this));
     }
 
-    @Override
-    public String toString() {
-        return "\\" + groupNr;
-    }
-
     public int getGroupNr() {
         return groupNr;
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        return obj instanceof BackReference && ((BackReference) obj).groupNr == groupNr && (ignoreQuantifier || quantifierEquals((BackReference) obj));
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "\\" + groupNr + quantifierToString();
     }
 
     @TruffleBoundary

@@ -110,7 +110,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
         public boolean groupHasNextAlternative() {
             assert node instanceof Group;
-            return groupAlternativeIndex < ((Group) node).getAlternatives().size();
+            return groupAlternativeIndex < ((Group) node).size();
         }
 
         public Sequence groupGetNextAlternative() {

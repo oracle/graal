@@ -24,16 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import org.graalvm.collections.EconomicMap;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Used for pre-calculating and finding the result of tree-like regular expressions. A regular
@@ -116,7 +116,7 @@ public final class NFATraceFinderGenerator {
      * <li>To find the correct pre-calculated result, we simply run the new DFA in reverse
      * direction, starting from the index we found with the forward searching DFA.</li>
      * </ul>
-     * 
+     *
      * <pre>
      *     {@code
      *     Example:
@@ -145,7 +145,7 @@ public final class NFATraceFinderGenerator {
      *     g -> result 1
      *     }
      * </pre>
-     * 
+     *
      * We also have to take care of the order in which results are to be found. For example, in the
      * expression {@code /a(b)c|ab(c)/}, we always have to return the result created from taking the
      * first branch, never the second. Therefore, we create the reverse tree-shaped NFA while
@@ -172,11 +172,11 @@ public final class NFATraceFinderGenerator {
         }
 
         public boolean hasNextTransition() {
-            return i < transition.getTarget().getNext().size();
+            return i < transition.getTarget().getNext().length;
         }
 
         public NFAStateTransition getNextTransition() {
-            return transition.getTarget().getNext().get(i++);
+            return transition.getTarget().getNext()[i++];
         }
     }
 
@@ -184,10 +184,7 @@ public final class NFATraceFinderGenerator {
         NFAState dummyInitialState = copy(originalNFA.getDummyInitialState());
         NFAStateTransition newAnchoredEntry = copyEntry(dummyInitialState, originalNFA.getReverseAnchoredEntry());
         NFAStateTransition newUnAnchoredEntry = copyEntry(dummyInitialState, originalNFA.getReverseUnAnchoredEntry());
-        ArrayList<NFAStateTransition> dummyInitPrev = new ArrayList<>(2);
-        dummyInitPrev.add(newAnchoredEntry);
-        dummyInitPrev.add(newUnAnchoredEntry);
-        dummyInitialState.setPrev(dummyInitPrev);
+        dummyInitialState.setPrev(new NFAStateTransition[]{newAnchoredEntry, newUnAnchoredEntry});
         ArrayList<PathElement> graphPath = new ArrayList<>();
         for (NFAStateTransition entry : new NFAStateTransition[]{originalNFA.getAnchoredEntry()[0], originalNFA.getUnAnchoredEntry()[0]}) {
             for (NFAStateTransition t : entry.getTarget().getNext()) {
@@ -230,10 +227,10 @@ public final class NFATraceFinderGenerator {
                         NFAState treeNode = duplicate;
                         while (!treeNode.isForwardFinalState()) {
                             i++;
-                            assert treeNode.getNext().size() == 1;
+                            assert treeNode.getNext().length == 1;
                             treeNode.addPossibleResult(resultID);
-                            treeNode.getNext().get(0).getGroupBoundaries().applyToResultFactory(result, i);
-                            treeNode = treeNode.getNext().get(0).getTarget();
+                            treeNode.getNext()[0].getGroupBoundaries().applyToResultFactory(result, i);
+                            treeNode = treeNode.getNext()[0].getTarget();
                         }
                         treeNode.addPossibleResult(resultID);
                         result.setLength(i);
@@ -265,13 +262,16 @@ public final class NFATraceFinderGenerator {
         } else {
             preCalculatedResults = resultList.toArray(new PreCalculatedResultFactory[0]);
         }
+        for (NFAState s : states) {
+            s.linkPrev();
+        }
         return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, preCalculatedResults);
     }
 
     private void createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
                     PreCalculatedResultFactory preCalcResult, int preCalcResultIndex) {
         originalTransition.getGroupBoundaries().applyToResultFactory(preCalcResult, preCalcResultIndex);
-        source.setNext(new ArrayList<>(Collections.singletonList(new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getGroupBoundaries()))), true);
+        source.setNext(new NFAStateTransition[]{new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getGroupBoundaries())}, true);
     }
 
     private PreCalculatedResultFactory resultFactory() {

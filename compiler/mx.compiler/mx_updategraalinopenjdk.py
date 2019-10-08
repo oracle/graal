@@ -154,6 +154,8 @@ def updategraalinopenjdk(args):
         if out:
             mx.abort(jdkrepo + ' is not "clean":' + '\n' + out[:min(200, len(out))] + '...')
 
+    mx.checkcopyrights(['--primary', '--', '--fix'])
+
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
             if filename.endswith('.gmk'):

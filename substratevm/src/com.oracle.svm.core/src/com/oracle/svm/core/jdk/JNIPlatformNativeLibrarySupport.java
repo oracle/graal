@@ -25,8 +25,13 @@
 package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -40,7 +45,23 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
         Target_java_io_FileDescriptor_JNI.initIDs();
         Target_java_io_FileInputStream_JNI.initIDs();
         Target_java_io_FileOutputStream_JNI.initIDs();
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            /*
+             * Unlike JDK 8, where platform encoding is initialized from native code, in JDK 11 the
+             * initialization of platform encoding is performed from Java during `System.initPhase1`
+             * by `System.initProperties`. Hence, we do it here.
+             *
+             * Note that the value of `sun.jnu.encoding` property is determined at image build time,
+             * see `SystemPropertiesSupport.HOSTED_PROPERTIES`.
+             */
+            try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
+                initializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
+            }
+        }
     }
+
+    @CFunction("InitializeEncoding")
+    private static native void initializeEncoding(PointerBase env, CCharPointer name);
 
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     protected void loadZipLibrary() {

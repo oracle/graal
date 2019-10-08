@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -40,6 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.tests.SulongSuite;
@@ -1107,13 +1109,14 @@ public class LLVMInteropTest {
             return new ArrayObject("foo");
         }
 
-        static TruffleObject getTestToNative() {
-            return (TruffleObject) LLVMLanguage.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
+        static Object getTestToNative(LLVMContext context) {
+            return context.getEnv().importSymbol("test_to_native");
         }
 
-        @ExportMessage
-        void toNative(
-                        @Cached(value = "getTestToNative()", allowUncached = true) TruffleObject testToNative,
+        @ExportMessage(limit = "3")
+        @SuppressWarnings("unused")
+        void toNative(@CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @Cached(value = "getTestToNative(context)", allowUncached = true) Object testToNative,
                         @CachedLibrary("testToNative") InteropLibrary interop) {
             try {
                 interop.execute(testToNative, this);

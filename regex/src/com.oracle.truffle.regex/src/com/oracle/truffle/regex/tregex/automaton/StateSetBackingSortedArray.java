@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,28 +33,17 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     private short size;
 
     public StateSetBackingSortedArray() {
+        array = new short[8];
     }
 
     private StateSetBackingSortedArray(StateSetBackingSortedArray copy) {
-        if (copy.isActive()) {
-            array = Arrays.copyOf(copy.array, copy.array.length);
-        }
+        array = Arrays.copyOf(copy.array, copy.array.length);
         size = copy.size;
     }
 
     @Override
     public StateSetBackingSet copy() {
         return new StateSetBackingSortedArray(this);
-    }
-
-    @Override
-    public void create(int stateIndexSize) {
-        array = new short[8];
-    }
-
-    @Override
-    public boolean isActive() {
-        return array != null;
     }
 
     private int find(short id) {
@@ -198,11 +187,8 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
             return false;
         }
         StateSetBackingSortedArray o = (StateSetBackingSortedArray) obj;
-        if (size != o.size || isActive() != o.isActive()) {
+        if (size != o.size) {
             return false;
-        }
-        if (!isActive()) {
-            return true;
         }
         for (int i = 0; i < size; i++) {
             if (array[i] != o.array[i]) {

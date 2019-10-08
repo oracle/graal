@@ -113,8 +113,7 @@ public interface InstrumentableNode extends NodeInterface {
      * calling this method remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
-     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
-     * language context} currently being active.
+     * threaded. The method may be invoked without a language context currently being active.
      *
      * @since 0.33
      */
@@ -150,8 +149,8 @@ public interface InstrumentableNode extends NodeInterface {
      * delegate has just thrown an exception.</li>
      * </ul>
      * <p>
-     * This method is always invoked on an interpreter thread. The method is always invoked with a
-     * {@link TruffleLanguage#getContextReference() language context} currently being active.
+     * This method is always invoked on an interpreter thread. The method may be invoked without a
+     * language context currently being active.
      *
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
      *            wrapper
@@ -188,8 +187,7 @@ public interface InstrumentableNode extends NodeInterface {
      * calling this method for a particular tag remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
-     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
-     * language context} currently being active.
+     * threaded. The method may be invoked without a language context currently being active.
      *
      * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
      *            the {@link TruffleLanguage language}
@@ -227,9 +225,9 @@ public interface InstrumentableNode extends NodeInterface {
      * a TruffleObject and return this instance.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
-     * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
-     * language context} currently being active. The {@link Node#getLock() AST lock} is held while
-     * {@link #getNodeObject()} object is invoked. There is no lock held when the object is read.
+     * threaded. The method may be invoked without a language context currently being active. The
+     * {@link Node#getLock() AST lock} is held while {@link #getNodeObject()} object is invoked.
+     * There is no lock held when the object is read.
      *
      * @return the node object as TruffleObject or <code>null</code> if no node object properties
      *         are available for this instrumented node
@@ -258,8 +256,7 @@ public interface InstrumentableNode extends NodeInterface {
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
-     * without a {@link TruffleLanguage#getContextReference() language context} currently being
-     * active.
+     * without a language context currently being active.
      * <p>
      * In the example below, we show how the <code>IncrementNode</code> with a
      * <code>ConstantNode</code> child is optimized into a <code>ConstantIncrementNode</code> and
@@ -387,8 +384,7 @@ public interface InstrumentableNode extends NodeInterface {
          * whose execution events the wrapper reports to the instrumentation framework.
          * <p>
          * This method might be called in parallel from multiple threads. The method may be invoked
-         * without a {@link TruffleLanguage#getContextReference() language context} currently being
-         * active.
+         * without a language context currently being active.
          *
          * @since 0.33
          */
@@ -399,8 +395,7 @@ public interface InstrumentableNode extends NodeInterface {
          * guest language <em>delegate</em> node.
          * <p>
          * This method might be called in parallel from multiple threads. The method may be invoked
-         * without a {@link TruffleLanguage#getContextReference() language context} currently being
-         * active.
+         * without a language context currently being active.
          *
          * @since 0.33
          */

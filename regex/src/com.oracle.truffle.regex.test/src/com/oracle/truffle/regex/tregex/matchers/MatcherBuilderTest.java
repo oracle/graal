@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.ImmutableSortedListOfRanges;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 
 import static org.junit.Assert.assertTrue;
@@ -52,6 +53,10 @@ public class MatcherBuilderTest {
         return CharSet.create(values);
     }
 
+    private static String matchError(String errorMsg, CharSet m, CharSet expected) {
+        return String.format("%s: got %s, expected %s", errorMsg, m, expected);
+    }
+
     private static String matchError(String errorMsg, CharSet m, char[] values) {
         StringBuilder sb = new StringBuilder(errorMsg).append(": got ").append(m.toString()).append(", expected [ ");
         for (int i = 0; i < values.length; i += 2) {
@@ -61,7 +66,7 @@ public class MatcherBuilderTest {
     }
 
     private static void checkMatch(String errorMsg, CharSet m, CharSet expected) {
-        checkMatch(errorMsg, m, expected.getRanges());
+        Assert.assertArrayEquals(matchError(errorMsg, m, expected), expected.getRanges(), m.getRanges());
     }
 
     private static void checkMatch(String errorMsg, CharSet m, char... values) {
@@ -81,11 +86,10 @@ public class MatcherBuilderTest {
         CharSet intersection = a.createIntersection(b, new CompilationBuffer());
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
         assertTrue("intersection(" + a + "," + b + ")", a.intersects(b) == intersection.matchesSomething());
-        CharSet[] result = new CharSet[3];
-        a.intersectAndSubtract(b, new CompilationBuffer(), result);
-        checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result[0], a.subtract(intersection, new CompilationBuffer()));
-        checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result[1], b.subtract(intersection, new CompilationBuffer()));
-        checkMatch("intersectAndSubtract(" + a + "," + b + ")[2]", result[2], intersection);
+        ImmutableSortedListOfRanges.IntersectAndSubtractResult<CharSet> result = a.intersectAndSubtract(b, new CompilationBuffer());
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result.subtractedA, a.subtract(intersection, new CompilationBuffer()));
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result.subtractedB, b.subtract(intersection, new CompilationBuffer()));
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[2]", result.intersection, intersection);
     }
 
     private static void checkSubtraction(CharSet a, CharSet b, char... values) {

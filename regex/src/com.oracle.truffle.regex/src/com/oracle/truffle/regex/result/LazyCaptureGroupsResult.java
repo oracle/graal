@@ -24,12 +24,10 @@
  */
 package com.oracle.truffle.regex.result;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexLazyFindStartRootNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyFindStartRootNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -53,6 +51,16 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
     public LazyCaptureGroupsResult(Object input, int[] result) {
         this(input, -1, -1, null, null);
         this.result = result;
+    }
+
+    @Override
+    public int getStart(int groupNumber) {
+        return result[groupNumber * 2] - 1;
+    }
+
+    @Override
+    public int getEnd(int groupNumber) {
+        return result[groupNumber * 2 + 1] - 1;
     }
 
     public void setResult(int[] result) {
@@ -112,11 +120,14 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
      * {@link com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode} instead!
      */
     @TruffleBoundary
+    @Override
     public void debugForceEvaluation() {
-        if (getFindStartCallTarget() == null) {
-            getCaptureGroupCallTarget().call(createArgsCGNoFindStart());
-        } else {
-            getCaptureGroupCallTarget().call(createArgsCG((int) getFindStartCallTarget().call(createArgsFindStart())));
+        if (result == null) {
+            if (getFindStartCallTarget() == null) {
+                getCaptureGroupCallTarget().call(createArgsCGNoFindStart());
+            } else {
+                getCaptureGroupCallTarget().call(createArgsCG((int) getFindStartCallTarget().call(createArgsFindStart())));
+            }
         }
     }
 
@@ -126,7 +137,11 @@ public final class LazyCaptureGroupsResult extends LazyResult implements JsonCon
         if (result == null) {
             debugForceEvaluation();
         }
-        return Arrays.toString(result);
+        StringBuilder sb = new StringBuilder("[").append(result[0] - 1);
+        for (int i = 1; i < result.length; i++) {
+            sb.append(", ").append(result[i] - 1);
+        }
+        return sb.append("]").toString();
     }
 
     @TruffleBoundary

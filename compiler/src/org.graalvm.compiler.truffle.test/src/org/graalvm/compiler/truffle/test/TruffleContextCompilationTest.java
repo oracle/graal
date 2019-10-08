@@ -105,10 +105,6 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
             return false;
         }
 
-        public static ContextReference<Env> getCurrentContextReference() {
-            return getCurrentLanguage(Language.class).getContextReference();
-        }
-
         public static Env getCurrentContext() {
             return getCurrentContext(Language.class);
         }

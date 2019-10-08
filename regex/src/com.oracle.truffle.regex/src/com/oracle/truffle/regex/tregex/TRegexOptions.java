@@ -29,14 +29,22 @@ import com.oracle.truffle.regex.tregex.nfa.ASTStep;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
 public class TRegexOptions {
+
+    /**
+     * Number of regex searches done without generating a DFA for a given regular expression. When
+     * this threshold is reached, TRegex tries to generate a fully expanded DFA to speed up further
+     * searches. This threshold is only checked in interpreter mode, so it should be sufficiently
+     * smaller than the Graal compilation threshold!
+     */
+    public static final int TRegexGenerateDFAThreshold = 100;
 
     /**
      * Try to pre-calculate results of tree-like expressions (see {@link NFATraceFinderGenerator}).

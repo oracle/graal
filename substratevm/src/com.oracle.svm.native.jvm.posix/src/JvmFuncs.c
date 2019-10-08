@@ -195,7 +195,7 @@ JNIEXPORT jlong Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void 
 }
 
 JNIEXPORT void JVM_Halt(int retcode) {
-    _exit(retcode);
+    exit(retcode);
 }
 
 JNIEXPORT void JVM_BeforeHalt() {

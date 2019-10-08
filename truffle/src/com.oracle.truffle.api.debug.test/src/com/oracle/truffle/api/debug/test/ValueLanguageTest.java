@@ -55,6 +55,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -318,13 +319,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (op == '=') {
                 String valueStr = variable.substring(2);
                 Object value = getValue(var, valueStr, sourceSection.getSource().createSection(sourceSection.getCharIndex() + 2, valueStr.length()));
-                return new VarNode(new String(new char[]{var}), value, sourceSection, getContextReference());
+                return new VarNode(this, new String(new char[]{var}), value, sourceSection);
             } else {
                 char p = variable.charAt(2);
                 assert variable.charAt(3) == '=';
                 String valueStr = variable.substring(4);
                 Object value = getValue(p, valueStr, sourceSection.getSource().createSection(sourceSection.getCharIndex() + 4, valueStr.length()));
-                return new PropNode(new String(new char[]{var}), new String(new char[]{p}), value, sourceSection, getContextReference());
+                return new PropNode(this, new String(new char[]{var}), new String(new char[]{p}), value, sourceSection);
             }
         }
 
@@ -472,24 +473,25 @@ public class ValueLanguageTest extends AbstractDebugTest {
         public static class VarNode extends Node implements InstrumentableNode {
 
             private final SourceSection sourceSection;
+            private final ValuesLanguage language;
             private final String name;
             protected final Object value;
-            protected final ContextReference<Context> contextReference;
+            @CompilationFinal private ContextReference<Context> contextReference;
             @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
-            @CompilerDirectives.CompilationFinal protected FrameSlot slot;
+            @CompilationFinal protected FrameSlot slot;
 
-            VarNode(String name, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
+            VarNode(ValuesLanguage language, String name, Object value, SourceSection sourceSection) {
+                this.language = language;
                 this.name = name;
                 this.value = value;
                 this.sourceSection = sourceSection;
-                this.contextReference = contextReference;
             }
 
             public VarNode(VarNode node) {
+                this.language = node.language;
                 this.name = node.name;
                 this.value = node.value;
                 this.sourceSection = node.sourceSection;
-                this.contextReference = node.contextReference;
             }
 
             public WrapperNode createWrapper(ProbeNode probe) {
@@ -521,13 +523,21 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     frame.setObject(slot, value);
                 }
                 try {
-                    interop.writeMember(contextReference.get().getEnv().getPolyglotBindings(), name, value);
+                    interop.writeMember(getContextReference().get().getEnv().getPolyglotBindings(), name, value);
                 } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     // should not happen for polyglot bindings.
                     throw new AssertionError(e);
                 }
                 return value;
+            }
+
+            protected final ContextReference<Context> getContextReference() {
+                if (contextReference == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.contextReference = lookupContextReference(language.getClass());
+                }
+                return this.contextReference;
             }
 
             @Override
@@ -543,8 +553,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
             private final String prop;
             @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
-            PropNode(String var, String prop, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
-                super(null, value, sourceSection, contextReference);
+            PropNode(ValuesLanguage language, String var, String prop, Object value, SourceSection sourceSection) {
+                super(language, null, value, sourceSection);
                 this.var = var;
                 this.prop = prop;
             }
@@ -581,7 +591,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     slot = frame.getFrameDescriptor().findFrameSlot(var);
                     if (slot == null) {
                         try {
-                            varObj = interop.readMember(contextReference.get().getEnv().getPolyglotBindings(), var);
+                            varObj = interop.readMember(getContextReference().get().getEnv().getPolyglotBindings(), var);
                         } catch (UnknownIdentifierException e) {
                             varObj = null;
                         } catch (UnsupportedMessageException e) {

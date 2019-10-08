@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
@@ -92,14 +94,13 @@ public abstract class PlatformNativeLibrarySupport {
         }
     }
 
-    private List<String> builtInLibraries = new ArrayList<>(Arrays.asList(defaultBuiltInLibraries));
-
-    public void addBuiltInLibrary(String libName) {
-        builtInLibraries.add(libName);
-    }
-
-    public boolean isBuiltinLibrary(String name) {
-        return builtInLibraries.contains(name);
+    /**
+     * Determines if a library which has <em>not</em> been
+     * {@linkplain NativeLibrarySupport#preregisterUninitializedBuiltinLibrary pre-registered}
+     * during image generation is a built-in library.
+     */
+    public boolean isBuiltinLibrary(@SuppressWarnings("unused") String name) {
+        return false;
     }
 
     private List<String> builtInPkgNatives;
@@ -134,24 +135,52 @@ public abstract class PlatformNativeLibrarySupport {
 
         boolean load();
 
-        PointerBase findSymbol(String name);
+        boolean isLoaded();
 
+        PointerBase findSymbol(String name);
     }
 
     public abstract NativeLibrary createLibrary(String canonical, boolean builtIn);
 
     public abstract PointerBase findBuiltinSymbol(String name);
 
+    private boolean firstIsolate = false;
+
     /**
-     * Initializes built-in libraries that are explicitly or implicitly shared between the isolates
-     * of a process (for example, because they have a single native state that does not distinguish
-     * between isolate). This method is called exactly once per process, during the creation of the
-     * first isolate in the process, followed by a call to {@link #initializeBuiltinLibraries()}.
+     * This method is called before {@link #initializeBuiltinLibraries()}, which can then use
+     * {@link #isFirstIsolate()}.
      */
-    public boolean initializeSharedBuiltinLibrariesOnce() {
-        return true;
+    public void setIsFirstIsolate() {
+        firstIsolate = true;
     }
 
-    /** Initializes built-in libraries for the current isolate, during its creation. */
+    /**
+     * Indicates if the current isolate is the first isolate in this process and whether it is
+     * therefore responsible for initializing any built-in libraries that are explicitly or
+     * implicitly shared between the isolates of the process (for example, because they have a
+     * single native state that does not distinguish between isolates).
+     */
+    protected boolean isFirstIsolate() {
+        return firstIsolate;
+    }
+
+    /**
+     * Initializes built-in libraries during isolate creation.
+     *
+     * @see #isFirstIsolate()
+     */
     public abstract boolean initializeBuiltinLibraries();
+}
+
+@AutomaticFeature
+class PlatformNativeLibrarySupportFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+            for (String libName : PlatformNativeLibrarySupport.defaultBuiltInLibraries) {
+                PlatformNativeLibrarySupport.singleton();
+                NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(libName);
+            }
+        }
+    }
 }
