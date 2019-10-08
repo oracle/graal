@@ -135,4 +135,9 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
             return dynamicObject.get(descriptor);
         }
     }
+
+    /*@Specialization
+    public Object accessGlobal(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        return ctx.getGlobal(descriptor);
+    }*/
 }
