@@ -41,7 +41,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,16 +48,15 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
-    private final LanguageInfo language;
     private final AtomicBoolean initializationFinished;
     private Object closeFn;
 
-    AgentObject(TruffleInstrument.Env env, Source script, LanguageInfo language) {
+    AgentObject(TruffleInstrument.Env env) {
         this.env = env;
-        this.language = language;
         this.initializationFinished = new AtomicBoolean(false);
     }
 

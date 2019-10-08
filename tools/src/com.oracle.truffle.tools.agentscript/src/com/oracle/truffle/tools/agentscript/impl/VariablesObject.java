@@ -36,6 +36,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
 final class VariablesObject implements TruffleObject {
 

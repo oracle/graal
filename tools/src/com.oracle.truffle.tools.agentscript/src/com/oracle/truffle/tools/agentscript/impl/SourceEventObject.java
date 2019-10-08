@@ -32,6 +32,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 
+@SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
 final class SourceEventObject implements TruffleObject {
     private final Source source;

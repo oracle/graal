@@ -29,7 +29,6 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -60,7 +59,6 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Use provided agent script", category = OptionCategory.USER) //
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
-    private EventBinding<?> rootsBinding = null;
     private Env env;
 
     @Override
@@ -69,8 +67,8 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     }
 
     @Override
-    protected void onCreate(Env env) {
-        this.env = env;
+    protected void onCreate(Env tmp) {
+        this.env = tmp;
         env.registerService(this);
         final String path = env.getOptions().get(SCRIPT);
         if (path != null && path.length() > 0) {
@@ -118,7 +116,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                 }
                 try {
                     Source script = src.get();
-                    agent = new AgentObject(env, null, language);
+                    agent = new AgentObject(env);
                     CallTarget target = env.parse(script, "agent");
                     target.call(agent);
                     agent.initializationFinished();
@@ -145,9 +143,6 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
     }
 
     @Override
-    protected void onDispose(Env env) {
-        if (rootsBinding != null && !rootsBinding.isDisposed()) {
-            rootsBinding.dispose();
-        }
+    protected void onDispose(Env tmp) {
     }
 }
