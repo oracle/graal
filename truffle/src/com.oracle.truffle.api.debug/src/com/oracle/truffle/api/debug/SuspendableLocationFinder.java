@@ -348,43 +348,47 @@ final class SuspendableLocationFinder {
         }
 
         Node getInner(int sectionLength) {
-            if (next == null) {
-                return node;
+            Node inner = this.node;
+            LinkedNodes linkedNodes = this.next;
+            while (linkedNodes != null) {
+                Node inner2 = linkedNodes.node;
+                if (isParentOf(inner, inner2)) {
+                    // inner stays
+                } else if (isParentOf(inner2, inner)) {
+                    inner = inner2;
+                } else {
+                    // They are in different functions, find out which encloses the other
+                    if (hasLargerParent(inner2, sectionLength)) {
+                        // inner stays
+                    } else {
+                        inner = inner2;
+                    }
+                }
+                linkedNodes = linkedNodes.next;
             }
-            Node o1 = node;
-            Node o2 = next.getInner(sectionLength);
-            if (isParentOf(o1, o2)) {
-                return o1;
-            }
-            if (isParentOf(o2, o1)) {
-                return o2;
-            }
-            // They are in different functions, find out which encloses the other
-            if (hasLargerParent(o2, sectionLength)) {
-                return o1;
-            } else {
-                return o2;
-            }
+            return inner;
         }
 
         Node getOuter(int sectionLength) {
-            if (next == null) {
-                return node;
+            Node outer = this.node;
+            LinkedNodes linkedNodes = this.next;
+            while (linkedNodes != null) {
+                Node outer2 = linkedNodes.node;
+                if (isParentOf(outer, outer2)) {
+                    outer = outer2;
+                } else if (isParentOf(outer2, outer)) {
+                    // outer stays
+                } else {
+                    // They are in different functions, find out which encloses the other
+                    if (hasLargerParent(outer2, sectionLength)) {
+                        outer = outer2;
+                    } else {
+                        // outer stays
+                    }
+                }
+                linkedNodes = linkedNodes.next;
             }
-            Node o1 = node;
-            Node o2 = next.getOuter(sectionLength);
-            if (isParentOf(o1, o2)) {
-                return o2;
-            }
-            if (isParentOf(o2, o1)) {
-                return o1;
-            }
-            // They are in different functions, find out which encloses the other
-            if (hasLargerParent(o2, sectionLength)) {
-                return o2;
-            } else {
-                return o1;
-            }
+            return outer;
         }
 
         @Override
