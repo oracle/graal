@@ -49,4 +49,9 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
     public Object executeGeneric(VirtualFrame frame) {
         return descriptor.getTarget();
     }
+
+    /*@Specialization
+    public Object accessGlobal(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        return ctx.getGlobal(descriptor);
+    }*/
 }
