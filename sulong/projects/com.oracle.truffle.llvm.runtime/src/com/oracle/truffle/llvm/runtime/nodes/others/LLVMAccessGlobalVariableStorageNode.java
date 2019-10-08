@@ -49,9 +49,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
     protected final LLVMGlobal descriptor;
+    private final LLVMContext context;
 
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
+    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor, LLVMContext context) {
         this.descriptor = descriptor;
+        this.context = context;
     }
 
     public LLVMGlobal getDescriptor() {
