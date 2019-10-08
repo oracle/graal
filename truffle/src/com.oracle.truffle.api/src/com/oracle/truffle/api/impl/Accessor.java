@@ -316,7 +316,7 @@ public abstract class Accessor {
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
-        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
+        public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
 
@@ -514,7 +514,7 @@ public abstract class Accessor {
 
     public abstract static class InstrumentSupport {
 
-        public abstract void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass);
+        public abstract void initializeInstrument(Object instrumentationHandler, Object key, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
         public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
 
