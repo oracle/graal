@@ -49,7 +49,8 @@ public interface AgentScriptAPI {
     /** Register a handler to be notified when a source is loaded.
      *
      * @param event has to be {@code "source"} string
-     * @param handler a callback that takes {@link Info one argument}
+     * @param handler a callback that takes
+     *      {@link OnSourceLoadedHandler.Info one argument}
      */
     void on(String event, OnSourceLoadedHandler handler);
 
