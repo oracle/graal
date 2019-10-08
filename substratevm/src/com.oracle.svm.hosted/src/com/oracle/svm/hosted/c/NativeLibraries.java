@@ -188,7 +188,7 @@ public final class NativeLibraries {
             libraryPaths.add(staticLibsDir.toString());
         } else {
             String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
-                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases";
+                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
             if (hint != null) {
                 message += "\n" + hint;
             }
