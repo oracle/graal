@@ -293,14 +293,14 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
-        private boolean boundEngine;
+        private Runnable[] boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
 
         Builder() {
         }
 
-        Builder setBoundEngine(boolean boundEngine) {
+        Builder setBoundEngine(Runnable[] boundEngine) {
             this.boundEngine = boundEngine;
             return this;
         }
@@ -741,7 +741,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, Runnable[] boundEngine, MessageTransport messageInterceptor,
                         Object logHandlerOrStream,
                         HostAccess conf) {
             throw noPolyglotImplementationFound();

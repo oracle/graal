@@ -275,8 +275,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     boolean patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn, Map<String, String> newOptions,
                     boolean newUseSystemProperties, boolean newAllowExperimentalOptions,
-                    ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
+                    ClassLoader newContextClassLoader, Runnable[] initBoundEngine, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
+        boolean newBoundEngine = initBoundEngine != null;
         if (this.boundEngine != newBoundEngine) {
             return false;
         }
@@ -301,7 +302,16 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
         }
 
-        createInstruments(instrumentsOptions, newAllowExperimentalOptions);
+        if (initBoundEngine != null) {
+            initBoundEngine[0] = new Runnable() {
+                @Override
+                public void run() {
+                    createInstruments(instrumentsOptions, newAllowExperimentalOptions);
+                }
+            };
+        } else {
+            createInstruments(instrumentsOptions, newAllowExperimentalOptions);
+        }
         registerShutDownHook();
         return true;
     }

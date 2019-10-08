@@ -230,7 +230,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, Runnable[] boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream,
                     HostAccess conf);
 

@@ -1402,12 +1402,17 @@ public final class Context implements AutoCloseable {
                     engineBuilder.logHandler((OutputStream) customLogHandler);
                 }
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
-                engineBuilder.setBoundEngine(true);
+                Runnable[] finishInitializationWhenContextIsReady = {null};
+                engineBuilder.setBoundEngine(finishInitializationWhenContextIsReady);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                if (finishInitializationWhenContextIsReady[0] != null) {
+                    finishInitializationWhenContextIsReady[0].run();
+                }
+                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
