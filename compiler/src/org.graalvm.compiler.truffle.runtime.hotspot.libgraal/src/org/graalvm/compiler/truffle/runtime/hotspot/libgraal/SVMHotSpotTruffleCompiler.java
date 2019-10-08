@@ -40,7 +40,7 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.libgraal.OptionsEncoder;
+import org.graalvm.util.OptionsEncoder;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 

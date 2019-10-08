@@ -120,7 +120,6 @@ import org.graalvm.libgraal.jni.JNI.JObjectArray;
 import org.graalvm.libgraal.jni.JNI.JString;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -128,6 +127,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
+import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.ResolvedJavaType;

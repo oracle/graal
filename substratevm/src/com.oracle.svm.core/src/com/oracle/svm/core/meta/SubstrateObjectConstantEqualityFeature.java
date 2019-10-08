@@ -22,25 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.meta;
 
-/**
- * Patcher used during native image runtime.
- */
-public interface NativeImagePatcher {
-    /**
-     * Patch directly in the code buffer with an offset relative to the start of this instruction.
-     */
-    void patchCode(int relative, byte[] code);
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-    /**
-     * The position from the beginning of the method where the patch is applied. This offset is used
-     * in the reference map.
-     */
-    int getOffset();
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
 
-    /**
-     * The length of the value to patch in bytes, e.g., the size of an operand.
-     */
-    int getLength();
+final class SubstrateObjectConstantEquality implements ObjectConstantEquality {
+    @Override
+    public boolean test(SubstrateObjectConstant x, SubstrateObjectConstant y) {
+        if (x == y) {
+            return true;
+        } else if (x instanceof DirectSubstrateObjectConstant && y instanceof DirectSubstrateObjectConstant) {
+            return ((DirectSubstrateObjectConstant) x).getObject() == ((DirectSubstrateObjectConstant) y).getObject();
+        }
+        throw VMError.shouldNotReachHere("Unknown object constants: " + x + " and " + y);
+    }
+}
+
+@AutomaticFeature
+final class SubstrateObjectConstantEqualityFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(ObjectConstantEquality.class)) {
+            ImageSingletons.add(ObjectConstantEquality.class, new SubstrateObjectConstantEquality());
+        }
+    }
 }

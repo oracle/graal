@@ -22,25 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.graal.hosted;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 
 /**
- * Patcher used during native image runtime.
+ * Provides functionality during the image build for setting up Graal for compilation at runtime.
  */
-public interface NativeImagePatcher {
-    /**
-     * Patch directly in the code buffer with an offset relative to the start of this instruction.
-     */
-    void patchCode(int relative, byte[] code);
+public interface RuntimeGraalSetup {
 
-    /**
-     * The position from the beginning of the method where the patch is applied. This offset is used
-     * in the reference map.
-     */
-    int getOffset();
-
-    /**
-     * The length of the value to patch in bytes, e.g., the size of an operand.
-     */
-    int getLength();
+    GraalProviderObjectReplacements getProviderObjectReplacements(AnalysisMetaAccess aMetaAccess);
 }

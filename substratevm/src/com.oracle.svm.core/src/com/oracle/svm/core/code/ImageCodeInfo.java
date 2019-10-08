@@ -294,6 +294,16 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public NonmovableArray<InstalledCodeObserver.InstalledCodeObserverHandle> getCodeObserverHandles() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setCodeObserverHandles(NonmovableArray<InstalledCodeObserver.InstalledCodeObserverHandle> handles) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
         public boolean isNull() {
             return false;
         }

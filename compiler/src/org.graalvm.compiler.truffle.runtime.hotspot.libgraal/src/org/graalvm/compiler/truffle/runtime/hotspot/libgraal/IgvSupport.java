@@ -44,7 +44,7 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.libgraal.OptionsEncoder;
+import org.graalvm.util.OptionsEncoder;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.Services;

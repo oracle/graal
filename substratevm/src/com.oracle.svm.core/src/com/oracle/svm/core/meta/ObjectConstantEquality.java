@@ -22,25 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.core.meta;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
- * Patcher used during native image runtime.
+ * Tests if two {@linkplain SubstrateObjectConstant object constants} reference the same object.
+ *
+ * This class is needed because different subclasses of {@link SubstrateObjectConstant} must be
+ * comparable, but their {@link Object#equals} methods should not and cannot (due to dependencies)
+ * have direct knowledge of other classes, so their methods delegate to this class. This code
+ * overlaps with {@link ConstantReflectionProvider#constantEquals}, but existing code relies on
+ * directly testing object equality on constants, such as the {@link ObjectLocationIdentity} class,
+ * which is crucial for the alias analysis of memory accesses during compilation.
  */
-public interface NativeImagePatcher {
-    /**
-     * Patch directly in the code buffer with an offset relative to the start of this instruction.
-     */
-    void patchCode(int relative, byte[] code);
+public interface ObjectConstantEquality {
+    @Fold
+    static ObjectConstantEquality get() {
+        return ImageSingletons.lookup(ObjectConstantEquality.class);
+    }
 
-    /**
-     * The position from the beginning of the method where the patch is applied. This offset is used
-     * in the reference map.
-     */
-    int getOffset();
-
-    /**
-     * The length of the value to patch in bytes, e.g., the size of an operand.
-     */
-    int getLength();
+    boolean test(SubstrateObjectConstant x, SubstrateObjectConstant y);
 }
