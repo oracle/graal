@@ -718,12 +718,17 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
                 if (lc.eventsEnabled && lc.env != null) {
-                    listener.onLanguageContextCreated(context.truffleContext, language);
-                    if (lc.isInitialized()) {
-                        listener.onLanguageContextInitialized(context.truffleContext, language);
-                        if (lc.finalized) {
-                            listener.onLanguageContextFinalized(context.truffleContext, language);
+                    Object prev = context.truffleContext.enter();
+                    try {
+                        listener.onLanguageContextCreated(context.truffleContext, language);
+                        if (lc.isInitialized()) {
+                            listener.onLanguageContextInitialized(context.truffleContext, language);
+                            if (lc.finalized) {
+                                listener.onLanguageContextFinalized(context.truffleContext, language);
+                            }
                         }
+                    } finally {
+                        context.truffleContext.leave(prev);
                     }
                 }
             }
