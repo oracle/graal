@@ -1,1 +1,2 @@
-stdout "Hello world!"
+stdout
+Hello world!
