@@ -583,6 +583,17 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
             for name, contents in sorted(dst_src_zip_contents.items()):
                 zf.writestr(name, contents)
 
+        mx.logv('[Copying static libraries]')
+        lib_prefix = mx.add_lib_prefix('')
+        lib_suffix = '.lib' if mx.is_windows() else '.a'
+        lib_directory = join(jdk.home, 'lib')
+        dst_lib_directory = join(dst_jdk_dir, 'lib')
+        for f in os.listdir(lib_directory):
+            if f.startswith(lib_prefix) and f.endswith(lib_suffix):
+                lib_path = join(lib_directory, f)
+                if isfile(lib_path):
+                    shutil.copy2(lib_path, dst_lib_directory)
+
         # Build the list of modules whose classes might have annotations
         # to be processed by native-image (GR-15192).
         with open(join(dst_jdk_dir, 'lib', 'native-image-modules.list'), 'w') as fp:
