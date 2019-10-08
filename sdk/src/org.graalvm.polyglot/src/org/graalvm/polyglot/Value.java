@@ -814,6 +814,8 @@ public final class Value {
      * timezone}.</li>
      * <li><code>{@link Duration}.class</code> is supported if the value is a {@link #isDuration()
      * duration}.</li>
+     * <li><code>{@link PolyglotException}.class</code> is supported if the value is an
+     * {@link #isException() exception object}.</li>
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()

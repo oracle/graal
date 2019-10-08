@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -287,6 +288,8 @@ abstract class ToHostNode extends Node {
                 return interop.isTimeZone(value);
             } else if (targetType == Duration.class) {
                 return interop.isDuration(value);
+            } else if (targetType == PolyglotException.class) {
+                return interop.isException(value);
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
                 return false;
             } else {
@@ -518,6 +521,12 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have duration information.");
             }
+        } else if (targetType == PolyglotException.class) {
+            if (interop.isException(value)) {
+                obj = asPolyglotException(value, interop, languageContext);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an exception.");
+            }
         } else if (allowsImplementation && targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
@@ -531,6 +540,19 @@ abstract class ToHostNode extends Node {
         }
         assert targetType.isInstance(obj);
         return targetType.cast(obj);
+    }
+
+    private static Object asPolyglotException(Object value, InteropLibrary interop, PolyglotLanguageContext languageContext) {
+        try {
+            interop.throwException(value);
+            throw UnsupportedMessageException.create();
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        } catch (ThreadDeath e) {
+            throw e;
+        } catch (Throwable e) {
+            return PolyglotImpl.wrapGuestException(languageContext, e);
+        }
     }
 
     @TruffleBoundary
