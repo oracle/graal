@@ -50,15 +50,17 @@ public class AgentObjectTest {
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
-            String[] loadedScript = {null};
+            String[] loadedScript = {null, null};
             agentAPI.on("source", (ev) -> {
                 loadedScript[0] = ev.name();
+                loadedScript[1] = ev.characters();
             });
 
             Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").build();
             c.eval(sampleScript);
 
             assertEquals(sampleScript.getName(), loadedScript[0]);
+            assertEquals("sample, code", loadedScript[1]);
         }
     }
 
