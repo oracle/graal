@@ -25,11 +25,11 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -40,7 +40,7 @@ import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 
-@Platforms({Platform.DARWIN_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
 @AutomaticFeature
 class DarwinUContextRegisterDumperFeature implements Feature {
     @Override

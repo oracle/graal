@@ -28,13 +28,13 @@ import java.io.IOException;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.WordFactory;
 
@@ -51,7 +51,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.linux.LinuxEPoll;
 
-@Platforms({Platform.LINUX.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 public final class LinuxNIOSubstitutions {
 
     /* Private constructor: No instances. */
@@ -60,7 +60,7 @@ public final class LinuxNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/EPoll.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.EPoll")
     static final class Target_sun_nio_ch_EPoll {
 
@@ -265,7 +265,7 @@ public final class LinuxNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/EPollArrayWrapper.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.EPollArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_EPollArrayWrapper {
 
@@ -495,7 +495,7 @@ public final class LinuxNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/EPollPort.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.EPollPort")
     static final class Target_sun_nio_ch_EPollPort {
 

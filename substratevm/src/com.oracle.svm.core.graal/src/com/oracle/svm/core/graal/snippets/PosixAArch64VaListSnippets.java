@@ -38,8 +38,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN_AArch64;
-import org.graalvm.nativeimage.Platform.LINUX_AArch64;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AArch64;
 import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AArch64;
 import org.graalvm.word.Pointer;
@@ -54,7 +53,7 @@ import com.oracle.svm.core.util.VMError;
 class PosixAArch64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(LINUX_AArch64.class) || Platform.includedIn(DARWIN_AArch64.class) ||
+        return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AArch64.class) ||
                         Platform.includedIn(LINUX_JNI_AArch64.class) || Platform.includedIn(DARWIN_JNI_AArch64.class);
     }
 

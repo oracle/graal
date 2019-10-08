@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
@@ -93,7 +93,7 @@ public class Signal {
         long read(int index);
     }
 
-    @Platforms({Platform.LINUX_AMD64.class, InternalPlatform.LINUX_JNI_AMD64.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, InternalPlatform.LINUX_JNI_AMD64.class})
     @CEnum
     @CContext(PosixDirectives.class)
     public enum GregEnum {
@@ -150,7 +150,7 @@ public class Signal {
             } mcontext_t;
          */
         @CFieldAddress("uc_mcontext.gregs")
-        @Platforms({Platform.LINUX_AMD64.class, InternalPlatform.LINUX_JNI_AMD64.class})
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, InternalPlatform.LINUX_JNI_AMD64.class})
         GregsPointer uc_mcontext_gregs();
 
         /*-
@@ -176,16 +176,16 @@ public class Signal {
         };
         */
         @CFieldAddress("uc_mcontext")
-        @Platforms({Platform.LINUX_AArch64.class, InternalPlatform.LINUX_JNI_AArch64.class})
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, InternalPlatform.LINUX_JNI_AArch64.class})
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
-        @Platforms({Platform.DARWIN_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
+        @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
         MContext64 uc_mcontext64();
 
     }
 
-    @Platforms({Platform.DARWIN_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, InternalPlatform.DARWIN_JNI_AMD64.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface MContext64 extends PointerBase {
 
@@ -245,7 +245,7 @@ public class Signal {
     }
 
     @CStruct
-    @Platforms({Platform.LINUX_AArch64.class, InternalPlatform.LINUX_JNI_AArch64.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, InternalPlatform.LINUX_JNI_AArch64.class})
     public interface mcontext_t extends PointerBase {
         @CField
         long fault_address();

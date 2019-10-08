@@ -87,6 +87,7 @@ public interface Platform {
     /*
      * The standard architectures that are supported.
      */
+
     /**
      * Supported architecture: x86 64-bit.
      *
@@ -108,23 +109,6 @@ public interface Platform {
     /*
      * The standard operating systems that are supported.
      */
-    /**
-     * Supported operating system: Linux.
-     *
-     * @since 19.0
-     */
-    interface LINUX extends Platform {
-
-    }
-
-    /**
-     * Supported operating system: Darwin (MacOS).
-     *
-     * @since 19.0
-     */
-    interface DARWIN extends Platform {
-
-    }
 
     /**
      * Supported operating system: Windows.
@@ -138,71 +122,6 @@ public interface Platform {
     /*
      * The standard leaf platforms, i.e., OS-architecture combinations that we support.
      */
-    /**
-     * Supported leaf platform: Linux on x86 64-bit.
-     *
-     * @since 19.0
-     */
-    class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.0
-         */
-        public LINUX_AMD64() {
-        }
-
-    }
-
-    /**
-     * Supported leaf platform: Linux on AArch64 64-bit.
-     *
-     * @since 19.0
-     */
-    final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AArch64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.0
-         */
-        public LINUX_AArch64() {
-        }
-
-    }
-
-    /**
-     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
-     *
-     * @since 19.0
-     */
-    class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.0
-         */
-        public DARWIN_AMD64() {
-        }
-    }
-
-    /**
-     * Supported leaf platform: Darwin (MacOS) on AArch 64-bit.
-     *
-     * @since 2.0
-     */
-    final class DARWIN_AArch64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AArch64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 2.0
-         */
-        public DARWIN_AArch64() {
-        }
-    }
 
     /**
      * Supported leaf platform: Windows on x86 64-bit.

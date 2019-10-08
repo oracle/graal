@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -386,7 +387,7 @@ final class Util_jdk_internal_misc_Signal {
 
 /** Translated from: jdk/src/share/native/sun/misc/NativeSignalHandler.c?v=Java_1.8.0_40_b10. */
 @TargetClass(className = "sun.misc.NativeSignalHandler", onlyWith = JDK8OrEarlier.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_sun_misc_NativeSignalHandler {
 
     /**

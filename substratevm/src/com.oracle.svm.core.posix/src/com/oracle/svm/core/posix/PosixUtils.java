@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -109,7 +110,7 @@ public class PosixUtils {
             case "LC_MESSAGES":
                 return Locale.LC_MESSAGES();
         }
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();

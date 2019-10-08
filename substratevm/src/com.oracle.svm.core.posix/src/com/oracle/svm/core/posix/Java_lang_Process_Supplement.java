@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -60,7 +61,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class Java_lang_Process_Supplement {
 
     static final ThreadFactory reaperFactory = new ThreadFactory() {
@@ -78,7 +79,7 @@ public final class Java_lang_Process_Supplement {
     @SuppressWarnings("try")
     static int doForkAndExec(CCharPointer file, CCharPointer dir, CCharPointerPointer argv, CCharPointerPointer envp, int[] stdioFds, int failFd, boolean redirectErrorStream) {
         final int buflen = SizeOf.get(dirent.class) + Limits.PATH_MAX() + 1;
-        final boolean haveProcFs = Platform.includedIn(Platform.LINUX.class);
+        final boolean haveProcFs = Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION.class);
         try (// Allocate any objects we need in the child after the fork() ahead of time here, since
              // only this thread will exist in the child and garbage collection is not possible.
                         PinnedObject bufferPin = PinnedObject.create(new byte[buflen]);

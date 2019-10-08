@@ -27,8 +27,8 @@ package com.oracle.svm.core.posix.darwin;
 import java.net.SocketException;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -56,7 +56,7 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinNetinet6In6_var;
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 public class DarwinJavaNetNetworkInterface {
 
     /** Register the Darwin implementation. */

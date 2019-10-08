@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -39,7 +39,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 @CContext(PosixDirectives.class)
 public class DarwinNetinet6In6_var {
 

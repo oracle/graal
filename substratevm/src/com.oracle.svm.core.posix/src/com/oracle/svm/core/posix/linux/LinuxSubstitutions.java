@@ -30,10 +30,10 @@ import static com.oracle.svm.core.posix.headers.linux.LinuxTime.clock_gettime;
 import static org.graalvm.nativeimage.UnmanagedMemory.calloc;
 import static org.graalvm.nativeimage.UnmanagedMemory.free;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -73,7 +73,7 @@ final class Target_java_lang_System {
     }
 }
 
-@Platforms(Platform.LINUX.class)
+@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
 @TargetClass(java.lang.Runtime.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {

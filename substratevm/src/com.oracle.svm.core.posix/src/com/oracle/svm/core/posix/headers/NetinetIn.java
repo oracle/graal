@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -35,12 +33,13 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 // Allow methods with non-standard names: Checkstyle: stop
 
 /** The definitions I need, manually translated from the C header file. */
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 public class NetinetIn {
 
@@ -85,7 +84,7 @@ public class NetinetIn {
     public static native int IPV6_TCLASS();
 
     /** From linux/in.h, which exists only on Linux. */
-    @Platforms({LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @CConstant
     public static native int IP_MULTICAST_ALL();
 
@@ -98,19 +97,19 @@ public class NetinetIn {
     @CConstant
     public static native int IP_DROP_MEMBERSHIP();
 
-    @Platforms({LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @CConstant
     public static native int IPV6_ADD_MEMBERSHIP();
 
-    @Platforms({LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @CConstant
     public static native int IPV6_DROP_MEMBERSHIP();
 
-    @Platforms({DARWIN.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @CConstant
     public static native int IPV6_JOIN_GROUP();
 
-    @Platforms({DARWIN.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @CConstant
     public static native int IPV6_LEAVE_GROUP();
 

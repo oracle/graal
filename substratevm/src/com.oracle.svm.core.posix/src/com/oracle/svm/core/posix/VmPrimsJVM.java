@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.posix.headers.Socket;
 
 /** Native methods (and macros) from src/share/vm/prims/jvm.cpp translated to Java. */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class VmPrimsJVM {
     /* { Do not re-wrap commented-out code.  @formatter:off */
     /* { Allow names with underscores: @Checkstyle: stop */
