@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ @ApiInfo(
+ group="Tools"
+ )
+ */
+
 /**
  * Write instruments in dynamic languages via
  * {@link com.oracle.truffle.tools.agentscript.AgentScript}.

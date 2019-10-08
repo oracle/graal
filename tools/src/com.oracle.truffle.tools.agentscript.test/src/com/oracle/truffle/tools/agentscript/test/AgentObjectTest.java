@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.agentscript.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.util.Map;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -40,60 +39,12 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class AgentObjectTest {
-    public interface API {
-        public interface Context {
-            String name();
-        }
-
-        @FunctionalInterface
-        public interface OnCloseHandler {
-            void eventHasJustHappened();
-        }
-
-        @FunctionalInterface
-        public interface OnEventHandler {
-            void eventHasJustHappened(Context ctx);
-        }
-
-        @FunctionalInterface
-        public interface OnEventWithFrameHandler {
-            void eventHasJustHappened(Context ctx, Map<String, Object> frame);
-        }
-
-        void on(String event, OnCloseHandler handler);
-
-        void on(String event, OnEventHandler handler);
-
-        void on(String event, OnEventWithFrameHandler handler);
-
-        void on(String event, OnEventHandler handler, OnConfig config);
-
-        void on(String event, OnEventWithFrameHandler handler, OnConfig config);
-
-        final class OnConfig {
-            public final boolean expressions;
-            public final boolean statements;
-            public final boolean roots;
-            public final Predicate<String> rootNameFilter;
-
-            OnConfig(boolean expressions, boolean statements, boolean roots) {
-                this(expressions, statements, roots, null);
-            }
-
-            OnConfig(boolean expressions, boolean statements, boolean roots, Predicate<String> rootNameFilter) {
-                this.expressions = expressions;
-                this.statements = statements;
-                this.roots = roots;
-                this.rootNameFilter = rootNameFilter;
-            }
-        }
-    }
 
     @Test
     public void onSourceCallback() throws Exception {
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            API agentAPI = agent.as(API.class);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] loadedScript = {null};
@@ -112,7 +63,7 @@ public class AgentObjectTest {
     public void onEnterCallback() throws Exception {
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            API agentAPI = agent.as(API.class);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             boolean[] program = {false};
@@ -125,7 +76,7 @@ public class AgentObjectTest {
                 }
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, new API.OnConfig(false, false, true));
+            }, createConfig(false, false, true, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -150,14 +101,14 @@ public class AgentObjectTest {
         boolean[] finished = {false};
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            API agentAPI = agent.as(API.class);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] functionName = {null};
             agentAPI.on("enter", (ctx, frame) -> {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, new API.OnConfig(false, false, true, (name) -> "foo".equals(name)));
+            }, createConfig(false, false, true, (name) -> "foo".equals(name)));
             agentAPI.on("close", () -> {
                 finished[0] = true;
             });
@@ -189,7 +140,7 @@ public class AgentObjectTest {
     public void onStatementCallback() throws Exception {
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            API agentAPI = agent.as(API.class);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] loopIndexSum = {0};
@@ -197,7 +148,7 @@ public class AgentObjectTest {
                 Object index = frame.get("loopIndex0");
                 assertTrue("Number as expected: " + index, index instanceof Number);
                 loopIndexSum[0] += ((Number) index).intValue();
-            }, new API.OnConfig(false, true, false));
+            }, createConfig(false, true, false, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -220,13 +171,13 @@ public class AgentObjectTest {
     public void onExpressionCallback() throws Exception {
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            API agentAPI = agent.as(API.class);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] expressionCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
-            }, new API.OnConfig(true, false, false));
+            }, createConfig(true, false, false, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -243,5 +194,16 @@ public class AgentObjectTest {
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
         }
+    }
+
+    private static AgentScriptAPI.OnConfig createConfig(
+                    boolean expressions, boolean statements, boolean roots,
+                    Predicate<String> rootNameFilter) {
+        AgentScriptAPI.OnConfig config = new AgentScriptAPI.OnConfig();
+        config.expressions = expressions;
+        config.statements = statements;
+        config.roots = roots;
+        config.rootNameFilter = rootNameFilter;
+        return config;
     }
 }

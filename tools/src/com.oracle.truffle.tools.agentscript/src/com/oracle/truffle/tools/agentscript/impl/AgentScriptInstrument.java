@@ -52,9 +52,7 @@ import org.graalvm.options.OptionStability;
 // @formatter:on
 public final class AgentScriptInstrument extends TruffleInstrument implements AgentScript {
 
-    public static final String ID = "agentscript";
     static final String NAME = "Agent Script";
-    static final String VERSION = "0.1";
 
     @Option(stability = OptionStability.EXPERIMENTAL, name = "", help = "Use provided agent script", category = OptionCategory.USER) //
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
