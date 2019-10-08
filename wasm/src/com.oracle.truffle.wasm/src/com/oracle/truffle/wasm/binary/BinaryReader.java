@@ -281,7 +281,7 @@ public class BinaryReader extends BinaryStreamReader {
             int startOffset = offset;
             switch (sectionID) {
                 case CUSTOM:
-                    readCustomSection();
+                    readCustomSection(size);
                     break;
                 case TYPE:
                     readTypeSection();
@@ -323,7 +323,9 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    private void readCustomSection() {
+    private void readCustomSection(int size) {
+        // TODO: We skip the custom section for now, but we should see what we could typically pick up here.
+        offset += size;
     }
 
     private void readTypeSection() {

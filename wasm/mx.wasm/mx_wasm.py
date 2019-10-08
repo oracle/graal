@@ -86,6 +86,8 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             for filename in files:
                 if filename.endswith(".c"):
                     yield (root, filename)
+                if filename.endswith(".wat"):
+                    yield (root, filename)
 
     def getResults(self):
         output_dir = self.getOutputDir()
@@ -95,13 +97,14 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             subdirs.add(subdir)
             build_output_name = lambda ext: os.path.join(output_dir, subdir, remove_extension(filename) + ext)
             yield build_output_name(".wasm")
-            yield build_output_name(".init")
+            if filename.endswith(".c"):
+                # C-compiled sources generate an initialization file.
+                yield build_output_name(".init")
             result_path = os.path.join(root, remove_extension(filename) + ".result")
             # Unlike tests, benchmarks do not have result files, so these files are optional.
             if os.path.isfile(result_path):
                 yield build_output_name(".result")
-            if wabt_dir:
-                yield build_output_name(".wat")
+            yield build_output_name(".wat")
         for subdir in subdirs:
             yield os.path.join(output_dir, subdir, "wasm_test_index")
 
@@ -132,7 +135,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         mx.run([emcc_cmd, "-v"])
         if not wabt_dir:
-            mx.warn("Set WABT_DIR if you want the binary to include .wat files.")
+            mx.abort("Set WABT_DIR if you want the binary to include .wat files.")
         mx.log("Building files from the source dir: " + source_dir)
         flags = ["-O3", "-g2"]
         subdir_program_names = defaultdict(lambda: [])
@@ -140,34 +143,44 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             subdir = os.path.relpath(root, self.subject.getSourceDir())
             mkdir_p(os.path.join(output_dir, subdir))
 
-            # Step 1: compile with the JS file.
-            source_path = os.path.join(root, filename)
             basename = remove_extension(filename)
-            output_js_path = os.path.join(output_dir, subdir, basename + ".js")
-            build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path]
-            mx.run(build_cmd_line)
-
-            # Step 2: extract the relevant information out of the JS file, and record it into an initialization file.
-            init_info = self.extractInitialization(output_js_path)
-            with open(os.path.join(output_dir, subdir, basename + ".init"), "w") as f:
-                f.write(init_info)
-
-            # Step 3: compile to just a .wasm file, to avoid name mangling.
+            source_path = os.path.join(root, filename)
             output_wasm_path = os.path.join(output_dir, subdir, basename + ".wasm")
-            build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path]
-            mx.run(build_cmd_line)
+            if filename.endswith(".c"):
+                # Step 1a: compile with the JS file.
+                output_js_path = os.path.join(output_dir, subdir, basename + ".js")
+                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path]
+                mx.run(build_cmd_line)
 
-            # Step 4: copy the result file if it exists.
+                # Step 1b: extract the relevant information out of the JS file, and record it into an initialization file.
+                init_info = self.extractInitialization(output_js_path)
+                with open(os.path.join(output_dir, subdir, basename + ".init"), "w") as f:
+                    f.write(init_info)
+
+                # Step 1c: compile to just a .wasm file, to avoid name mangling.
+                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path]
+                mx.run(build_cmd_line)
+            elif filename.endswith(".wat"):
+                # Step 1: compile the .wat file to .wasm.
+                wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
+                build_cmd_line = [wat2wasm_cmd, "-o", output_wasm_path, source_path]
+                mx.run(build_cmd_line)
+
+            # Step 2: copy the result file if it exists.
             result_path = os.path.join(root, basename + ".result")
             if os.path.isfile(result_path):
                 result_output_path = os.path.join(output_dir, subdir, basename + ".result")
                 shutil.copyfile(result_path, result_output_path)
 
-            # Step 5: optionally produce the .wat files.
-            if wabt_dir:
+            output_wat_path = os.path.join(output_dir, subdir, basename + ".wat")
+            if filename.endswith(".c"):
+                # Step 3: produce the .wat files, for easier debugging.
                 wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
-                output_wat_path = os.path.join(output_dir, subdir, basename + ".wat")
                 mx.run([wasm2wat_cmd, "-o", output_wat_path, output_wasm_path])
+            elif filename.endswith(".wat"):
+                # Step 3: copy the .wait file, for easier debugging.
+                wat_path = os.path.join(root, basename + ".wat")
+                shutil.copyfile(wat_path, output_wat_path)
 
             # Remember the source name.
             subdir_program_names[subdir].append(basename)

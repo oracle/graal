@@ -312,13 +312,13 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     protected Object getResourceAsTest(String baseName, boolean fail) throws IOException {
-        final String text = getResourceAsString(baseName + ".wat", false);
-        if (text != null) {
-            return text;
-        }
         final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
         if (bytes != null) {
             return bytes;
+        }
+        final String text = getResourceAsString(baseName + ".wat", false);
+        if (text != null) {
+            return text;
         }
         if (fail) {
             Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
