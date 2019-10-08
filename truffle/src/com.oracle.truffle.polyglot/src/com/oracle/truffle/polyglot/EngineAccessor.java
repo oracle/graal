@@ -536,7 +536,7 @@ final class EngineAccessor extends Accessor {
             if (context.isActive()) {
                 throw new IllegalStateException("The context is currently entered and cannot be closed.");
             }
-            context.closeImpl(false, false);
+            context.closeImpl(false, false, true);
         }
 
         @Override

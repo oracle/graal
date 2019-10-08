@@ -834,7 +834,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             for (PolyglotContextImpl context : localContexts) {
                 assert !Thread.holdsLock(context);
                 try {
-                    boolean closeCompleted = context.closeImpl(cancelIfExecuting, cancelIfExecuting);
+                    boolean closeCompleted = context.closeImpl(cancelIfExecuting, cancelIfExecuting, true);
                     if (!closeCompleted && !cancelIfExecuting) {
                         if (!ignoreCloseFailure) {
                             throw new IllegalStateException(String.format("One of the context instances is currently executing. " +
@@ -973,7 +973,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         synchronized (engine) {
             try {
                 engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
-                engine.addContext(engine.preInitializedContext);
             } finally {
                 // Reset language homes from native-image compilatio time, will be recomputed in
                 // image execution time
@@ -1282,12 +1281,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {
             context = new PolyglotContextImpl(this, config);
-            addContext(context);
-        } else {
-            // don't add contexts for preinitialized contexts as they have been added already
-            assert Thread.holdsLock(this);
-            assert contexts.contains(context.weakReference);
         }
+        addContext(context);
 
         if (polyglotLimits != null) {
             EngineLimits l = this.limits;
@@ -1322,7 +1317,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 patchResult = context.patch(config);
             } finally {
                 if (!patchResult) {
-                    context.closeImpl(false, false);
+                    context.closeImpl(false, false, false);
                     context = null;
                     PolyglotContextImpl.disposeStaticContext(context);
                     config.fileSystem = oldFileSystem;
