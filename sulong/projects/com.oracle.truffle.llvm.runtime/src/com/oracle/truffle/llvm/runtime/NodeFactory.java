@@ -37,7 +37,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -62,7 +61,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
  * {@link LLVMExpressionNode} and {@link LLVMExpressionNode} visible. The parser should not directly
  * instantiate a node, but instead use the factory facade.
  */
-public interface NodeFactory extends InteropNodeFactory {
+public interface NodeFactory {
 
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
