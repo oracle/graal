@@ -87,7 +87,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    @CompilationFinal private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
     public abstract static class Loader implements LLVMCapability {
@@ -152,6 +151,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguageHome();
     }
 
+    public Configuration getActiveConfiguration() {
+        if (activeConfiguration != null) {
+            return activeConfiguration;
+        }
+        throw new IllegalStateException("No context, please create the context before accessing the configuration.");
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
@@ -163,18 +169,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
         return context;
-    }
-
-    public void setNodeFactory(NodeFactory nodeFactory) {
-        this.nodeFactory = nodeFactory;
-    }
-
-    public NodeFactory getNodeFactory() {
-        return nodeFactory;
-    }
-
-    public Configuration getActiveConfiguration() {
-        return activeConfiguration;
     }
 
     @Override

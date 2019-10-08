@@ -38,8 +38,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
@@ -66,7 +66,7 @@ public final class LLDBSupport {
 
         LoadRootNode(LLDBSupport dbSupport, Type loadType) {
             super(dbSupport.language);
-            loadNode = dbSupport.getNodeFactory().createLoad(loadType, null);
+            loadNode = CommonNodeFactory.createLoad(loadType, null);
         }
 
         @Override
@@ -84,10 +84,6 @@ public final class LLDBSupport {
             loadFunctionCache.put(loadType, ret);
         }
         return ret;
-    }
-
-    private NodeFactory getNodeFactory() {
-        return language.getNodeFactory();
     }
 
     public static boolean pointsToObjectAccess(LLVMPointer pointer) {
@@ -132,14 +128,14 @@ public final class LLDBSupport {
 
     public LLVMDebugValue.Builder createDebugValueBuilder() {
         if (cachedDebugValueBuilder == null) {
-            cachedDebugValueBuilder = new WrappedBuilder(getNodeFactory().createDebugValueBuilder(), language);
+            cachedDebugValueBuilder = new WrappedBuilder(CommonNodeFactory.createDebugValueBuilder(), language);
         }
         return cachedDebugValueBuilder;
     }
 
     public LLVMDebugValue.Builder createDebugDeclarationBuilder() {
         if (cachedDebugDeclarationBuilder == null) {
-            cachedDebugDeclarationBuilder = new WrappedBuilder(getNodeFactory().createDebugDeclarationBuilder(), language);
+            cachedDebugDeclarationBuilder = new WrappedBuilder(CommonNodeFactory.createDebugDeclarationBuilder(), language);
         }
         return cachedDebugDeclarationBuilder;
     }

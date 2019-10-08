@@ -76,9 +76,11 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.util.Pair;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -203,7 +205,7 @@ final class Runner {
                         InitializeModuleNode[] initModules) {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(runner.context, res);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory());
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -361,9 +363,11 @@ final class Runner {
         @Children final AllocGlobalNode[] allocGlobals;
 
         final LLVMScope fileScope;
+        private NodeFactory nodeFactory;
 
-        InitializeSymbolsNode(LLVMContext context, LLVMParserResult res) {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
+            this.nodeFactory = nodeFactory;
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -383,8 +387,8 @@ final class Runner {
                 }
             }
 
-            this.allocRoSection = roSection.getAllocateNode(context.getLanguage().getNodeFactory(), "roglobals_struct", true);
-            this.allocRwSection = rwSection.getAllocateNode(context.getLanguage().getNodeFactory(), "rwglobals_struct", false);
+            this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
+            this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
             this.fileScope = res.getRuntime().getFileScope();
         }
@@ -399,10 +403,10 @@ final class Runner {
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
-                ctx.registerReadOnlyGlobals(roBase);
+                ctx.registerReadOnlyGlobals(roBase, nodeFactory);
             }
             if (allocRwSection != null) {
-                ctx.registerGlobals(rwBase);
+                ctx.registerGlobals(rwBase, nodeFactory);
             }
 
             bindUnresolvedSymbols(ctx);
@@ -436,7 +440,7 @@ final class Runner {
                         bindGlobal(ctx, global, nfiContextExtension);
                     } else if (symbol instanceof LLVMFunctionDescriptor) {
                         LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider);
+                        bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider, nodeFactory);
                     } else if (symbol instanceof LLVMAlias) {
                         // nothing to do
                     } else {
@@ -680,10 +684,14 @@ final class Runner {
                     dependencyQueue.addLast(dependency);
                 }
             }
+            TargetDataLayout layout = module.getTargetDataLayout();
+            DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
+            NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
+            // This needs to be removed once the nodefactory is taken out of the language.
             LLVMScope fileScope = new LLVMScope();
-            LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope);
+            LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory);
             LLVMParser parser = new LLVMParser(source, runtime);
-            LLVMParserResult parserResult = parser.parse(module);
+            LLVMParserResult parserResult = parser.parse(module, targetDataLayout);
             parserResults.add(parserResult);
             return parserResult;
         } else if (!library.isNative()) {
@@ -749,11 +757,12 @@ final class Runner {
         }
     }
 
-    private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider) {
+    private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider,
+                    NodeFactory nodeFactory) {
         if (function.getName().startsWith("llvm.")) {
             // llvm intrinsic
         } else if (intrinsicProvider.isIntrinsified(function.getName())) {
-            function.define(intrinsicProvider);
+            function.define(intrinsicProvider, nodeFactory);
         } else if (nfiContextExtension != null) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getName());
             if (nativeFunction != null) {
@@ -876,9 +885,9 @@ final class Runner {
             this.destructor = runner.createDestructor(parserResult);
             this.dataLayout = parserResult.getDataLayout();
 
-            this.globalVarInit = runner.createGlobalVariableInitializer(rootFrame, parserResult);
-            this.protectRoData = runner.language.getNodeFactory().createProtectGlobalsBlock();
-            this.constructor = runner.createConstructor(parserResult);
+            this.globalVarInit = Runner.createGlobalVariableInitializer(rootFrame, parserResult);
+            this.protectRoData = parserResult.getRuntime().getNodeFactory().createProtectGlobalsBlock();
+            this.constructor = Runner.createConstructor(parserResult);
         }
 
         void execute(VirtualFrame frame, LLVMContext ctx, LLVMPointer roDataBase) {
@@ -899,7 +908,7 @@ final class Runner {
         }
     }
 
-    private StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
+    private static StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory(), parserResult.getDataLayout());
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
@@ -913,7 +922,7 @@ final class Runner {
         return new StaticInitsNode(initNodes);
     }
 
-    private LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
+    private static LLVMStatementNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global, DataLayout dataLayout) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -926,13 +935,13 @@ final class Runner {
             // for fetching the address of the global that we want to initialize, we must use the
             // file scope because we are initializing the globals of the current file
             LLVMGlobal globalDescriptor = runtime.getFileScope().getGlobalVariable(global.getName());
-            final LLVMExpressionNode globalVarAddress = language.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
+            final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
             if (size != 0) {
                 if (type instanceof ArrayType || type instanceof StructureType) {
-                    return language.getNodeFactory().createStore(globalVarAddress, constant, type);
+                    return runtime.getNodeFactory().createStore(globalVarAddress, constant, type);
                 } else {
                     Type t = global.getValue().getType();
-                    return language.getNodeFactory().createStore(globalVarAddress, constant, t);
+                    return runtime.getNodeFactory().createStore(globalVarAddress, constant, t);
                 }
             }
         }
@@ -940,7 +949,7 @@ final class Runner {
         return null;
     }
 
-    private StaticInitsNode createConstructor(LLVMParserResult parserResult) {
+    private static StaticInitsNode createConstructor(LLVMParserResult parserResult) {
         return new StaticInitsNode(createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY));
     }
 
@@ -954,16 +963,17 @@ final class Runner {
         }
     }
 
-    private LLVMStatementNode[] createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private static LLVMStatementNode[] createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
         for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
             if (globalVariable.getName().equals(name)) {
-                return resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator, parserResult.getDataLayout());
+                return resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator, parserResult.getDataLayout(), parserResult.getRuntime().getNodeFactory());
             }
         }
         return LLVMStatementNode.NO_STATEMENTS;
     }
 
-    private LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout) {
+    private static LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout,
+                    NodeFactory nodeFactory) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMStatementNode.NO_STATEMENTS;
@@ -982,17 +992,17 @@ final class Runner {
         final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
         FrameDescriptor rootFrame = StackManager.createRootFrame();
         for (int i = 0; i < elemCount; i++) {
-            final LLVMExpressionNode globalVarAddress = language.getNodeFactory().createLiteral(global, new PointerType(globalSymbol.getType()));
-            final LLVMExpressionNode iNode = language.getNodeFactory().createLiteral(i, PrimitiveType.I32);
-            final LLVMExpressionNode structPointer = language.getNodeFactory().createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
-            final LLVMExpressionNode loadedStruct = language.getNodeFactory().createLoad(elementType, structPointer);
+            final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
+            final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
+            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
+            final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
 
-            final LLVMExpressionNode oneLiteralNode = language.getNodeFactory().createLiteral(1, PrimitiveType.I32);
-            final LLVMExpressionNode functionLoadTarget = language.getNodeFactory().createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
-            final LLVMExpressionNode loadedFunction = language.getNodeFactory().createLoad(functionType, functionLoadTarget);
+            final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
+            final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                            language.getNodeFactory().createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(language.getNodeFactory().createFunctionCall(loadedFunction, argNodes, functionType));
+                            CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
@@ -1081,7 +1091,7 @@ final class Runner {
                         throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
                     } else if (symbol instanceof LLVMFunctionDescriptor) {
                         LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        function.define(intrinsicProvider);
+                        function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
                     } else {
                         throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
                     }
