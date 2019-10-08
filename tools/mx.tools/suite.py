@@ -238,7 +238,7 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
-                "TRUFFLE_PROFILER",
+                "AGENTSCRIPT",
             ],
             "description" : "Tests for the script driven tracing and instrumentation Agent.",
             "maven" : False,
