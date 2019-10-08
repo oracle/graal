@@ -1307,7 +1307,7 @@ public class BasicNodeFactory implements NodeFactory {
             } else if (LLVMManagedPointer.isInstance(value)) {
                 return new LLVMManagedPointerLiteralNode(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal) {
-                return new LLVMAccessGlobalVariableStorageNode((LLVMGlobal) value);
+                return new LLVMAccessGlobalVariableStorageNode((LLVMGlobal) value, context);
             } else {
                 throw new AssertionError(value.getClass());
             }
