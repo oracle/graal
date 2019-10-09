@@ -140,13 +140,23 @@ public abstract class ClassRegistry implements ContextAccess {
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
+
         loadKlassCountInc();
+
+        // Double-checked locking on the symbol (globally unique).
         Klass klass = classes.get(type);
-        if (klass != null) {
+        if (klass == null) {
+            synchronized (type) {
+                klass = classes.get(type);
+                if (klass == null) {
+                    klass = loadKlassImpl(type);
+                }
+            }
+        } else {
+            // Grabbing a lock to fetch the class is not considered a hit.
             loadKlassCacheHitsInc();
-            return klass;
         }
-        return loadKlassImpl(type);
+        return klass;
     }
 
     protected abstract Klass loadKlassImpl(Symbol<Type> type);
@@ -169,12 +179,7 @@ public abstract class ClassRegistry implements ContextAccess {
         return classes.get(type);
     }
 
-    /**
-     * TODO(peterssen): defineKlass being synchronized is too costly when several threads load
-     * different classes. Ideally, parsing should be extracted out from the synchronized block and
-     * synchronization left entirely to the concurrent map.
-     */
-    public synchronized ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         Meta meta = getMeta();
         String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass = getParserKlass(bytes, strType);
@@ -254,9 +259,8 @@ public abstract class ClassRegistry implements ContextAccess {
             }
         }
 
-        assert Thread.holdsLock(this) : "Class definition must be protected by a lock";
         Klass previous = classes.putIfAbsent(type, klass);
-        assert previous == null : "class already defined";
+        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
         return klass;

@@ -58,6 +58,9 @@ import sun.misc.VM;
  * <li>Symbol&lt;{@link Type}&gt; valid type descriptor in internal form
  * </ul>
  *
+ * <b> Note: Do not synchronize on symbols; class loading relies on exclusive ownership of the
+ * symbol's monitors, it may cause unexpected dead-locks. </b>
+ *
  * @param <T> generic tag for improved type-safety
  */
 public final class Symbol<T> extends ByteSequence {
