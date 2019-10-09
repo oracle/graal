@@ -90,4 +90,10 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements Arit
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
         builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitCountTrailingZeros(builder.operand(getValue())));
     }
+
+    @NodeIntrinsic
+    public static native int countTrailingZeros(int i);
+
+    @NodeIntrinsic
+    public static native int countTrailingZeros(long i);
 }

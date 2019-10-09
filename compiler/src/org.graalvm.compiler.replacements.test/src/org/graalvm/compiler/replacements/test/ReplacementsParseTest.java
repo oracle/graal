@@ -318,7 +318,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        Registration r = new Registration(invocationPlugins, TestObject.class, replacementBytecodeProvider);
+        Registration r = new Registration(invocationPlugins, TestObject.class, getReplacements(), replacementBytecodeProvider);
         NodeIntrinsicPluginFactory.InjectionProvider injections = new DummyInjectionProvider();
         new PluginFactory_ReplacementsParseTest().registerPlugins(invocationPlugins, injections);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nextAfter", double.class, double.class);

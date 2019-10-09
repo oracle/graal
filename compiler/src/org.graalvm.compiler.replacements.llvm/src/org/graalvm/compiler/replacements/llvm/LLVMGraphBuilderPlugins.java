@@ -41,7 +41,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -54,6 +53,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafeAccessPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafeGetPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafePutPlugin;
@@ -72,25 +72,25 @@ import sun.misc.Unsafe;
 public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     @Override
-    public void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerMathPlugins,
+    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerMathPlugins,
                     boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacementsBytecodeProvider);
-                registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacementsBytecodeProvider);
-                registerPlatformSpecificUnsafePlugins(invocationPlugins, replacementsBytecodeProvider, explicitUnsafeNullChecks,
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
+                registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
                                 new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double});
-                registerUnsafePlugins(invocationPlugins, replacementsBytecodeProvider, explicitUnsafeNullChecks);
-                registerMathPlugins(invocationPlugins, replacementsBytecodeProvider);
+                registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
+                registerMathPlugins(invocationPlugins, replacements);
             }
         });
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, BytecodeProvider bytecodeProvider) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Replacements replacements) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
-        Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
+        Registration r = new Registration(plugins, declaringClass, replacements);
         registerUnaryLLVMIntrinsic(r, "numberOfLeadingZeros", CTLZ, JavaKind.Int, kind.toJavaClass());
         registerUnaryLLVMIntrinsic(r, "numberOfTrailingZeros", CTTZ, JavaKind.Int, kind.toJavaClass());
         r.register1("bitCount", kind.toJavaClass(), new InvocationPlugin() {
@@ -102,8 +102,8 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Math.class, bytecodeProvider);
+    private static void registerMathPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Math.class, replacements);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
         registerUnaryMath(r, "exp", EXP);
@@ -179,10 +179,10 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
                         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider, boolean explicitUnsafeNullChecks) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
         registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, true);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider), explicitUnsafeNullChecks,
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacements), explicitUnsafeNullChecks,
                             new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object},
                             JavaVersionUtil.JAVA_SPEC <= 11);
         }
