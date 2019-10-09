@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.predefined.emscripten;
 
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
@@ -60,6 +61,11 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
         int iovcnt = (int) args[2];
         int pnum = (int) args[3];
 
+        return fdWrite(stream, iov, iovcnt, pnum);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private Object fdWrite(int stream, int iov, int iovcnt, int pnum) {
         Consumer<Character> charPrinter;
         switch (stream) {
             case 1:

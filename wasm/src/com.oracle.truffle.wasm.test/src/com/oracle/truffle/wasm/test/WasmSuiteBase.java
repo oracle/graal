@@ -65,6 +65,18 @@ import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
+
+    private static final String MOVE_LEFT = "\u001b[1D";
+    private static final String TEST_PASSED_ICON = "\uD83D\uDE0D";
+    private static final String TEST_FAILED_ICON = "\uD83D\uDE21";
+    private static final String TEST_IN_PROGRESS_ICON = "\u003F";
+    private static final String PHASE_PARSE_ICON = "\uD83E\uDD13";
+    private static final String PHASE_SYNC_NO_INLINE_ICON = "\uD83D\uDD34";
+    private static final String PHASE_SYNC_INLINE_ICON = "\uD83D\uDD36";
+    private static final String PHASE_ASYNC_ICON = "\uD83D\uDD35";
+    private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
+    private static final String PHASE_FINAL_CHECK_ICON = "\uD83D\uDE09";
+
     private Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
         contextBuilder.option("engine.Inlining", "false");
@@ -101,7 +113,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations) {
+    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, PrintStream oldOut, String phaseIcon) {
+        oldOut.print(MOVE_LEFT);
+        oldOut.print(MOVE_LEFT);
+        oldOut.print(PHASE_PARSE_ICON);
+        oldOut.flush();
+
         context.eval(source);
 
         // The sequence of WebAssembly functions to execute.
@@ -112,6 +129,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         Value initializeModule = context.getBindings("wasm").getMember(TestutilModule.Names.INITIALIZE_MODULE);
 
         Value result = null;
+        oldOut.print(MOVE_LEFT);
+        oldOut.print(MOVE_LEFT);
+        oldOut.print(phaseIcon);
+        oldOut.flush();
         for (int i = 0; i != iterations; ++i) {
             if (testCase.initialization() != null) {
                 initializeModule.execute(testCase.initialization());
@@ -124,6 +145,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private WasmTestStatus runTestCase(WasmTestCase testCase) {
+        final PrintStream oldOut = System.out;
         try {
             byte[] binary = testCase.createBinary();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
@@ -154,7 +176,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             context = getInterpretedNoInline(contextBuilder);
-            final Value resultInterpreted = runInContext(testCase, context, source, 1);
+            final Value resultInterpreted = runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON);
 
             // TODO: We should validate the result for all intermediate runs.
             validateResult(testCase.data.resultValidator, resultInterpreted, capturedStdout);
@@ -166,30 +188,32 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, 2);
+            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_NO_INLINE_ICON);
 
             // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
             context = getInterpretedWithInline(contextBuilder);
-            runInContext(testCase, context, source, 1);
+            runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON);
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, 2);
+            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_INLINE_ICON);
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, 1000);
+            runInContext(testCase, context, source, 1000000, oldOut, PHASE_ASYNC_ICON);
 
             System.setOut(new PrintStream(capturedStdout));
-            final Value result = runInContext(testCase, context, source, 1);
+            final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON);
 
             validateResult(testCase.data.resultValidator, result, capturedStdout);
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
         } catch (PolyglotException e) {
             validateThrown(testCase.data.expectedErrorMessage, e);
+        } finally {
+            System.setOut(oldOut);
         }
         return WasmTestStatus.OK;
     }
@@ -231,8 +255,15 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
+        int width = retrieveTerminalWidth();
+        int position = 0;
         for (WasmTestCase testCase : qualifyingTestCases) {
-            String statusIcon = "\u003F";
+            int requiredWidth = testCase.name.length() + 3;
+            if (position + requiredWidth >= width) {
+                System.out.println();
+                position = 0;
+            }
+            String statusIcon = TEST_IN_PROGRESS_ICON;
             try {
                 // We print each test name behind the line of test status icons,
                 // so that we know which test failed in case the VM exits suddenly.
@@ -240,21 +271,24 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 // and erase the test name.
                 System.out.print(" ");
                 System.out.print(testCase.name);
+                System.out.print(" ");
+                System.out.print(" ");
                 System.out.flush();
                 runTestCase(testCase);
-                statusIcon = "\uD83D\uDE0D";
+                statusIcon = TEST_PASSED_ICON;
             } catch (Throwable e) {
-                statusIcon = "\uD83D\uDE21";
+                statusIcon = TEST_FAILED_ICON;
                 errors.put(testCase, e);
             } finally {
-                for (int i = 0; i < testCase.name.length() + 1; i++) {
-                    System.out.print("\u001b[1D");
+                for (int i = 0; i < requiredWidth; i++) {
+                    System.out.print(MOVE_LEFT);
                     System.out.print(" ");
-                    System.out.print("\u001b[1D");
+                    System.out.print(MOVE_LEFT);
                 }
                 System.out.print(statusIcon);
                 System.out.flush();
             }
+            position++;
         }
         System.out.println();
         System.out.println("Finished running: " + suiteName());
@@ -269,6 +303,24 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             System.out.println(String.format("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size()));
         }
         System.out.println();
+    }
+
+    private int retrieveTerminalWidth() {
+        try {
+            final ProcessBuilder builder = new ProcessBuilder("/bin/sh", "-c", "stty size </dev/tty");
+            final Process process = builder.start();
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            final String output = reader.readLine();
+            if (process.waitFor() != 0) {
+                return -1;
+            }
+            final int width = Integer.parseInt(output.split(" ")[0]);
+            return width;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected String testResource() {
