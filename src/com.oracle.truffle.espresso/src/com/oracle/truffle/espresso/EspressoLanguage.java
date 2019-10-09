@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.nodes.BytecodesNode;
+import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
+import com.oracle.truffle.espresso.nodes.QuickNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -49,6 +56,8 @@ import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+
+import java.util.Collections;
 
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
@@ -123,6 +132,60 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
 
         return context;
+    }
+
+    @Override
+    protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
+        int currentBci = 0;
+
+        node = findKnownEspressoNode(node);
+
+        Method method;
+        Node scopeNode;
+        if (node instanceof QuickNode) {
+            QuickNode quick = (QuickNode) node;
+            currentBci = quick.getBCI();
+            method = quick.getBytecodesNode().getMethod();
+            scopeNode = quick.getBytecodesNode();
+        } else if (node instanceof EspressoStatementNode) {
+            EspressoStatementNode statementNode = (EspressoStatementNode) node;
+            currentBci = statementNode.getBci();
+            method = statementNode.getBytecodesNode().getMethod();
+            scopeNode = statementNode.getBytecodesNode();
+        } else if (node instanceof BytecodesNode) {
+            BytecodesNode bytecodesNode = (BytecodesNode) node;
+            currentBci = 0; // start of the method
+            method = bytecodesNode.getMethod();
+            scopeNode = bytecodesNode;
+            } else {
+            return super.findLocalScopes(context, node, frame);
+        }
+        Klass klass = method.getDeclaringKlass();
+        String scopeName = klass.getName().toString() + "." + method.getName().toString() + method.getRawSignature().toString();
+
+        // construct the current scope with valid local variables information
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
+
+        Scope scope = Scope.newBuilder(scopeName, getVariables(liveLocals, frame)).node(scopeNode).build();
+        //new RuntimeException().printStackTrace();
+        return Collections.singletonList(scope);
+    }
+
+    private Node findKnownEspressoNode(Node input) {
+        Node currentNode = input;
+        boolean known = false;
+        while (currentNode != null && !known) {
+            if (currentNode instanceof QuickNode || currentNode instanceof BytecodesNode || currentNode instanceof EspressoStatementNode) {
+                known = true;
+            } else {
+                currentNode = currentNode.getParent();
+            }
+        }
+        return currentNode;
+    }
+
+    private Object getVariables(Local[] liveLocals, Frame frame) {
+        return EspressoScope.createVariables(liveLocals, frame);
     }
 
     @Override

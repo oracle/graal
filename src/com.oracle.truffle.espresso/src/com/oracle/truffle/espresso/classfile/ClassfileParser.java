@@ -49,6 +49,8 @@ import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -340,6 +342,9 @@ public final class ClassfileParser {
         if (StackMapTableAttribute.NAME.equals(name)) {
             return parseStackMapTableAttribute(name);
         }
+        if (LocalVariableTable.NAME.equals(name)) {
+            return parseLocalVariableAtttribute(name);
+        }
         int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
@@ -366,6 +371,29 @@ public final class ClassfileParser {
             entries[i] = new LineNumberTable.Entry(bci, lineNumber);
         }
         return new LineNumberTable(name, entries);
+    }
+
+    private LocalVariableTable parseLocalVariableAtttribute(Symbol<Name> name) {
+        assert Name.LocalVariableTable.equals(name);
+        /* int length = */ stream.readS4();
+        int entryCount = stream.readU2();
+        if (entryCount == 0) {
+            return LocalVariableTable.EMPTY;
+        }
+        Local[] locals = new Local[entryCount];
+        for (int i = 0; i < entryCount; i++) {
+            int bci = stream.readU2();
+            int length = stream.readU2();
+            int nameIndex = stream.readU2();
+            int descIndex = stream.readU2();
+            int slot = stream.readU2();
+
+            Symbol<Name> poolName = pool.utf8At(nameIndex);
+            Symbol<Name> typeName = pool.utf8At(descIndex);
+            locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
+
+        }
+        return new LocalVariableTable(locals);
     }
 
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {

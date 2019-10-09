@@ -56,8 +56,12 @@ public abstract class QuickNode extends Node {
         return value;
     }
 
-    protected final BytecodesNode getBytecodesNode() {
+    public final BytecodesNode getBytecodesNode() {
         return (BytecodesNode) getParent();
+    }
+
+    public int getBCI() {
+        return callerBCI;
     }
 
     @Override

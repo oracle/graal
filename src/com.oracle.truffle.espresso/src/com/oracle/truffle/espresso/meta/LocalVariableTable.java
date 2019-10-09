@@ -26,13 +26,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
 /**
  * Describes the {@link Local}s for a Java method.
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.13"
  */
-public final class LocalVariableTable {
+public final class LocalVariableTable extends Attribute {
+
+    public static final Symbol<Symbol.Name> NAME = Name.LocalVariableTable;
+    public static final LocalVariableTable EMPTY = new LocalVariableTable(Local.EMPTY_ARRAY);
 
     @CompilationFinal(dimensions = 1) //
     private final Local[] locals;
@@ -46,6 +52,7 @@ public final class LocalVariableTable {
     // @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "caller transfers ownership of
     // `locals`")
     public LocalVariableTable(Local[] locals) {
+        super(NAME, null);
         this.locals = locals;
     }
 

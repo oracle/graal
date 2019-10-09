@@ -36,12 +36,12 @@ public final class Local {
     public static final Local[] EMPTY_ARRAY = new Local[0];
 
     private final Symbol<Name> name;
-    private final Symbol<Type> type;
+    private final Symbol<Name> type;
     private final int startBci;
     private final int endBci;
     private final int slot;
 
-    public Local(Symbol<Name> name, Symbol<Type> type, int startBci, int endBci, int slot) {
+    public Local(Symbol<Name> name, Symbol<Name> type, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
@@ -61,7 +61,7 @@ public final class Local {
         return name;
     }
 
-    public Symbol<Type> getType() {
+    public Symbol<Name> getType() {
         return type;
     }
 

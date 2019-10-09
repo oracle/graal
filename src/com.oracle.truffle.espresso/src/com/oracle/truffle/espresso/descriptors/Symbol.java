@@ -213,6 +213,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> Exceptions = StaticSymbols.putName("Exceptions");
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
         public static final Symbol<Name> LineNumberTable = StaticSymbols.putName("LineNumberTable");
+        public static final Symbol<Name> LocalVariableTable = StaticSymbols.putName("LocalVariableTable");
 
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
         public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");

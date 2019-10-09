@@ -50,8 +50,10 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -291,32 +293,46 @@ public class JDWPDebuggerController {
                     int line = frame.getSourceSection().getStartLine();
 
                     long codeIndex = method.getLineNumberTable().getBCI(line);
-                    list.addLast(new JDWPCallFrame(threadId, typeTag, klassId, methodId, codeIndex));
+
+                    DebugScope scope = frame.getScope();
 
                     //System.out.println("collected frame info for method: " + klass.getName().toString() + "." + method.getName() + "(" + line + ") : BCI(" + codeIndex + ")") ;
 
-                    // TODO(Gregersen) - get the "this" object for the frame
-                    // and in general implement a mechanism for retrieving variables
+                    StaticObject thisValue = null;
+                    ArrayList<Object> realVariables = new ArrayList<>();
 
-                    /*
-                    DebugScope dscope = frame.getScope();
-                    DebugValue thisValue = dscope.getReceiver();
-
-                    if (thisValue == null) {
-                        // return null object
-                        System.out.println("null 'this' object");
-                    } else {
-                        Collection<DebugValue> properties = thisValue.getProperties();
-                        for (DebugValue property : properties) {
-                            System.out.println("got property " + property);
+                    if (scope != null ) {
+                        Iterator<DebugValue> variables = scope.getDeclaredValues().iterator();
+                        while (variables.hasNext()) {
+                            DebugValue var = variables.next();
+                            if ("this".equals(var.getName())) {
+                                // get the real object reference and register it with Id
+                                thisValue = (StaticObject) getRealValue(var);
+                            } else {
+                                // add to variables list
+                                realVariables.add(getRealValue(var));
+                            }
                         }
                     }
-                    */
+                    list.addLast(new JDWPCallFrame(threadId, typeTag, klassId, methodId, codeIndex, thisValue, realVariables.toArray(new Object[realVariables.size()])));
                 } else {
                     throw new RuntimeException("stack walking not implemented for root node type! " + root);
                 }
             }
             return list.toArray(new JDWPCallFrame[list.size()]);
+        }
+
+        private Object getRealValue(DebugValue value) {
+            // TODO(Gregersen) - hacked in with reflection currently
+            // awaiting a proper API for this
+            try {
+                java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod("get");
+                getMethod.setAccessible(true);
+                return getMethod.invoke(value);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
         }
 
         private RootNode findCurrentRoot(DebugStackFrame frame) {
@@ -331,21 +347,6 @@ public class JDWPDebuggerController {
             }
             return null;
         }
-
-        /*
-        private Node findKnownEspressoNode(DebugStackFrame frame) {
-            Node currentNode = frame.findCurrentNode();
-            boolean known = false;
-            while (currentNode != null && !known) {
-                if (currentNode instanceof QuickNode || currentNode instanceof BytecodesNode) {
-                    known = true;
-                } else {
-                    currentNode = currentNode.getParent();
-                }
-            }
-            return currentNode;
-        }
-         */
 
         private void suspend(byte strategy, StaticObject thread, JDWPCallFrame currentFrame) {
             switch(strategy) {

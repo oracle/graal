@@ -70,6 +70,8 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -784,6 +786,14 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             return codeAttribute.getLineNumberTableAttribute();
         }
         return LineNumberTable.EMPTY;
+    }
+
+    public LocalVariableTable getLocalVariableTable() {
+        CodeAttribute codeAttribute = getCodeAttribute();
+        if (codeAttribute != null) {
+            return codeAttribute.getLocalvariableTable();
+        }
+        return LocalVariableTable.EMPTY;
     }
 
     /**
