@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.object.dsl.processor;
 
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
-import com.oracle.truffle.object.dsl.processor.model.NameUtils;
-import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.NameUtils;
+import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
 
 public class LayoutGenerator {
 
@@ -324,9 +324,9 @@ public class LayoutGenerator {
         if (layout.getSuperLayout() == null) {
             stream.print("    protected static final Layout LAYOUT = Layout.newLayout()");
 
-            for (Layout.ImplicitCast implicitCast : layout.getImplicitCasts()) {
+            for (VariableElement implicitCast : layout.getImplicitCasts()) {
                 stream.print(".addAllowedImplicitCast(Layout.ImplicitCast.");
-                stream.print(implicitCast.name());
+                stream.print(implicitCast.getSimpleName().toString());
                 stream.print(")");
             }
 

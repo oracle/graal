@@ -47,7 +47,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -129,7 +128,7 @@ public final class LibraryData extends Template {
     }
 
     public boolean isDynamicDispatch() {
-        return getTemplateType().getSimpleName().toString().equals(DynamicDispatchLibrary.class.getSimpleName());
+        return getTemplateType().getSimpleName().toString().equals(types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
     }
 
     void setObjectExports(ExportsLibrary objectExports) {

@@ -43,10 +43,13 @@ package com.oracle.truffle.dsl.processor.generator;
 import java.util.List;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.RefectiveTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 
 public abstract class CodeTypeElementFactory<M> {
 
     public abstract List<CodeTypeElement> create(ProcessorContext context, M m);
+
+    protected final RefectiveTypes types = ProcessorContext.getInstance().getTypes();
 
 }

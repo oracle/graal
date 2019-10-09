@@ -89,7 +89,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     @Override
     public boolean isParsable(ExecutableElement method) {
         if (getAnnotationType() != null) {
-            return ElementUtils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+            return ElementUtils.findAnnotationMirror(method, getAnnotationType()) != null;
         }
 
         return true;

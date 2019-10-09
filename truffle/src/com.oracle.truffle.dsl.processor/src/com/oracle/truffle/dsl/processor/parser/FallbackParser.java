@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
 import java.util.Arrays;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -81,8 +80,8 @@ public class FallbackParser extends NodeMethodParser<SpecializationData> {
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return Fallback.class;
+    public DeclaredType getAnnotationType() {
+        return types.Fallback;
     }
 
 }
