@@ -39,6 +39,7 @@ final class AgentException extends RuntimeException implements TruffleException 
         this.exitCode = exitCode;
     }
 
+    @SuppressWarnings("all")
     @Override
     public Throwable fillInStackTrace() {
         return this;
@@ -59,10 +60,12 @@ final class AgentException extends RuntimeException implements TruffleException 
         return exitCode;
     }
 
+    @TruffleBoundary
     static AgentException raise(Exception ex) throws AgentException {
         throw new AgentException(ex.getMessage(), ex, -1);
     }
 
+    @TruffleBoundary
     static AgentException notFound(TruffleFile file) {
         throw new AgentException(file.getName() + ": No such file or directory", null, 1);
     }

@@ -29,6 +29,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+@SuppressWarnings({"static-method"})
 @ExportLibrary(InteropLibrary.class)
 final class NullObject implements TruffleObject {
     private static final NullObject NULL = new NullObject();
