@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -181,25 +183,13 @@ public final class NFIContextExtension implements ContextExtension {
              * available. The libc++ dependency is optional. The bitcode interpreter will still work
              * if it is not found, but C++ programs might not work because of unresolved symbols.
              */
-            TruffleObject cxxlib;
-            if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-                cxxlib = loadLibrary("libc++.dylib", true, null, context);
-            } else {
-                cxxlib = loadLibrary("libc++.so.1", true, null, context);
-                if (cxxlib == null) {
-                    /*
-                     * On Ubuntu, libc++ can not be dynamically loaded because of a missing
-                     * dependeny on libgcc_s. Work around this by loading it manually first.
-                     */
-                    TruffleObject libgcc = loadLibrary("libgcc_s.so.1", true, "RTLD_GLOBAL", context);
-                    if (libgcc != null) {
-                        cxxlib = loadLibrary("libc++.so.1", true, null, context);
-                    }
-                }
+            String libName = LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
+            TruffleFile tf = DefaultLibraryLocator.locateGlobal(context, libName);
+            if (tf != null) {
+                libName = tf.getPath();
             }
-            if (cxxlib != null) {
-                libraryHandles.put(lib, cxxlib);
-            }
+            TruffleObject cxxlib = loadLibrary(libName, false, null, context);
+            libraryHandles.put(lib, cxxlib);
             return true;
         } else {
             return false;
