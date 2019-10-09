@@ -29,6 +29,7 @@ import static com.oracle.svm.agent.Support.getClassNameOrNull;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import org.graalvm.compiler.phases.common.LazyValue;
 
 class AbstractAccessVerifier {
     protected final AccessAdvisor accessAdvisor;
@@ -38,6 +39,6 @@ class AbstractAccessVerifier {
     }
 
     protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnore(() -> getClassNameOrNull(env, callerClass));
+        return accessAdvisor.shouldIgnore(new LazyValue<>(() -> getClassNameOrNull(env, callerClass)));
     }
 }
