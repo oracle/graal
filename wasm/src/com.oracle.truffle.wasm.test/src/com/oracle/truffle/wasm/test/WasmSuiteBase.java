@@ -78,6 +78,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_FINAL_CHECK_ICON = "\uD83D\uDE09";
     private static final int STATUS_ICON_WIDTH = 2;
     private static final int STATUS_LABEL_WIDTH = 11;
+    public static final int DEFAULT_ASYNC_ITERATIONS = 50000;
 
     private Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
@@ -218,7 +219,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, 1000, oldOut, PHASE_ASYNC_ICON, "async,multi");
+            runInContext(testCase, context, source, DEFAULT_ASYNC_ITERATIONS, oldOut, PHASE_ASYNC_ICON, "async,multi");
 
             System.setOut(new PrintStream(capturedStdout));
             final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON, "async,check");
