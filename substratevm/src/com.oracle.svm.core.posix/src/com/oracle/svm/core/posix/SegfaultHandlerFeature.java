@@ -27,6 +27,8 @@ package com.oracle.svm.core.posix;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,15 +38,23 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -54,6 +64,7 @@ import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.sigaction;
 import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class, Platform.DARWIN_AMD64.class})
@@ -78,8 +89,41 @@ class SubstrateSegfaultHandler {
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
-    @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints", calleeMustBe = false)
+    @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
+        if (SubstrateOptions.CompilerBackend.getValue().equals("lir")) {
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
+                PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
+                WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
+            }
+            if (SubstrateOptions.MultiThreaded.getValue()) {
+                IsolateThread threadPointer = (IsolateThread) ImageSingletons.lookup(UContextRegisterDumper.class).getThreadPointer(uContext);
+                WriteCurrentVMThreadNode.writeCurrentVMThread(threadPointer);
+            }
+            Isolate isolate = VMThreads.IsolateTL.get();
+            if (Isolates.checkSanity(isolate) != CEntryPointErrors.NO_ERROR ||
+                            (SubstrateOptions.SpawnIsolates.getValue() && VMThreads.IsolateTL.get().notEqual(KnownIntrinsics.heapBase()))) {
+                /*
+                 * This means the segfault happened in native code, so we don't even try to dump.
+                 */
+                return;
+            }
+        } else if (SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+            Isolate isolate = CEntryPointSnippets.baseIsolate.get().readWord(0);
+            if (isolate.rawValue() == -1) {
+                /*
+                 * Multiple isolates registered, we can't know which one caused the segfault.
+                 */
+                return;
+            }
+            CEntryPointActions.enterIsolateFromCrashHandler(isolate);
+        }
+
+        dump(signalNumber, uContext);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible method", calleeMustBe = false)
+    private static void dump(int signalNumber, ucontext_t uContext) {
         if (dispatchInProgress) {
             Log.log().newline().string("[ [ SubstrateSegfaultHandler already handling signal ").signed(signalNumber).string(" ] ]").newline();
             return;

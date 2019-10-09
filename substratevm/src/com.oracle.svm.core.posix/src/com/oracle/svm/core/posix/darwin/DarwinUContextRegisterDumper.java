@@ -31,20 +31,28 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.amd64.AMD64;
 
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
 @AutomaticFeature
 class DarwinUContextRegisterDumperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        VMError.guarantee(AMD64.r14.equals(SubstrateAMD64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AMD64.r15.equals(SubstrateAMD64RegisterConfig.THREAD_REGISTER_CANDIDATE));
         ImageSingletons.add(UContextRegisterDumper.class, new DarwinUContextRegisterDumper());
     }
 }
@@ -84,7 +92,23 @@ class DarwinUContextRegisterDumper implements UContextRegisterDumper {
         SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(ipValue));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     private static long readRegisterAt(Signal.MContext64 sigcontext, int i) {
         return ((CLongPointer) ((CCharPointer) sigcontext).addressOf(i)).read();
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public PointerBase getHeapBase(ucontext_t uContext) {
+        Signal.MContext64 sigcontext = uContext.uc_mcontext64();
+        return WordFactory.pointer(readRegisterAt(sigcontext, sigcontext.r14_offset()));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public PointerBase getThreadPointer(ucontext_t uContext) {
+        Signal.MContext64 sigcontext = uContext.uc_mcontext64();
+        return WordFactory.pointer(readRegisterAt(sigcontext, sigcontext.r15_offset()));
+    }
+
 }

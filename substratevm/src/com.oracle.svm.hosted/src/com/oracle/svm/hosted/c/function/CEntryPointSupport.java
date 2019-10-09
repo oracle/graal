@@ -95,7 +95,14 @@ public class CEntryPointSupport implements GraalFeature {
         r.register1("enterIsolate", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, false));
+                return true;
+            }
+        });
+        r.register1("enterIsolateFromCrashHandler", Isolate.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, true));
                 return true;
             }
         });

@@ -419,20 +419,31 @@ public abstract class VMThreads {
     protected abstract OSThreadId getCurrentOSThreadId();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public IsolateThread findIsolateThreadforCurrentOSThread() {
+    public IsolateThread findIsolateThreadforCurrentOSThread(boolean inCrashHandler) {
         OSThreadId osThreadId = getCurrentOSThreadId();
+
         /*
-         * Accessing the VMThread list requires the lock, but locking must be without transitions
-         * because the IsolateThread is not set up yet.
+         * This code can execute during the prologue of a crash handler for a thread that already
+         * owns the lock because it is the master of a safepoint. Trying to reacquire the lock here
+         * would result in deadlock.
          */
-        VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
+        boolean needsLock = !(inCrashHandler && VMOperationControl.isFrozen());
+        if (needsLock) {
+            /*
+             * Accessing the VMThread list requires the lock, but locking must be without
+             * transitions because the IsolateThread is not set up yet.
+             */
+            VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
+        }
         try {
             IsolateThread thread;
             for (thread = firstThreadUnsafe(); thread.isNonNull() && OSThreadIdTL.get(thread).notEqual(osThreadId); thread = nextThread(thread)) {
             }
             return thread;
         } finally {
-            VMThreads.THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
+            if (needsLock) {
+                VMThreads.THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
+            }
         }
     }
 
