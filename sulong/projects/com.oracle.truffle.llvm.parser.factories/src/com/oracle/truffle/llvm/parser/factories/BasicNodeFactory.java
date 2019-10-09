@@ -322,7 +322,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVM80BitFloatSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMDoubleSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMFloatSelectNodeGen;
@@ -1307,7 +1307,7 @@ public class BasicNodeFactory implements NodeFactory {
             } else if (LLVMManagedPointer.isInstance(value)) {
                 return new LLVMManagedPointerLiteralNode(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal) {
-                return new LLVMAccessGlobalVariableStorageNode((LLVMGlobal) value, context);
+                return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobal) value, context);
             } else {
                 throw new AssertionError(value.getClass());
             }

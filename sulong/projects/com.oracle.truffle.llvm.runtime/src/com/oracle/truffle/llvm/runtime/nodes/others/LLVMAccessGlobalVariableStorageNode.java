@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
+public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
     protected final LLVMGlobal descriptor;
     private final LLVMContext context;
@@ -48,13 +48,8 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
         return descriptor;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return descriptor.getTarget();
+    @Specialization
+    public Object accessGlobal() {
+        return context.getGlobalStorage(descriptor);
     }
-
-    /*@Specialization
-    public Object accessGlobal(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        return ctx.getGlobal(descriptor);
-    }*/
 }
