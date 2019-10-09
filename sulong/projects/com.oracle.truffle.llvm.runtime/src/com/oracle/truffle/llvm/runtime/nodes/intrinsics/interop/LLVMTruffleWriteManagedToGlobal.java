@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -64,7 +65,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
             throw new LLVMPolyglotException(this, "First argument to truffle_assign_managed must be a pointer to a global.");
         }
         Object newValue = attachType.execute(value, global.getInteropType(ctx));
-        global.setTarget(newValue);
+        ctx.setGlobalStorage(global, LLVMManagedPointer.create(newValue));
         return newValue;
     }
 }

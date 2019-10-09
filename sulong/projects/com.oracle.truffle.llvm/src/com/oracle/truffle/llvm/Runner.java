@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -90,6 +89,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
@@ -419,11 +419,11 @@ final class Runner {
         private void allocGlobals(LLVMContext ctx, LLVMPointer roBase, LLVMPointer rwBase) {
             for (AllocGlobalNode allocGlobal : allocGlobals) {
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
-                if (!descriptor.isInitialized()) {
+                if (!ctx.globalExists(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
-                    descriptor.setTarget(ref);
+                    ctx.setGlobalStorage(descriptor, ref);
                     ctx.registerGlobalReverseMap(descriptor, ref);
                 }
             }
@@ -750,7 +750,7 @@ final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                global.setTarget(LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
+                ctx.setGlobalStorage(global, LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 

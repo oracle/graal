@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
@@ -218,7 +219,8 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     @Specialization
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
-        Object target = global.getTarget();
+        LLVMContext context = value.getContext();
+        Object target = context.getGlobalStorage(global);
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
@@ -226,10 +228,11 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
                 return new LLDBMemoryValue(managedPointer);
             }
         } else if (!LLVMPointer.isInstance(target)) {
-            // a non-pointer was stored as a pointer in this global
+            // a non-pointer was stored as a pointer in this global -- PLi: I'm not sure if this is possible anymore
+            // since we have removed AssumedValue<Object> being stored in a global
             return executeWithTarget(target);
         }
-        return new LLDBGlobalConstant(global);
+        return new LLDBGlobalConstant(global, context);
     }
 
     @Fallback

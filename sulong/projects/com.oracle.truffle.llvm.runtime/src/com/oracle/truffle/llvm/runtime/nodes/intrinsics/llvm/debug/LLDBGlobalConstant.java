@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
@@ -42,9 +43,11 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private final LLVMGlobal global;
+    private final LLVMContext context;
 
-    LLDBGlobalConstant(LLVMGlobal global) {
+    LLDBGlobalConstant(LLVMGlobal global, LLVMContext context) {
         this.global = global;
+        this.context = context;
     }
 
     @Override
@@ -53,7 +56,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
-        return global.isInitialized() && currentValue != null && currentValue.canRead(bitOffset, bits);
+        return context.globalExists(global) && currentValue != null && currentValue.canRead(bitOffset, bits);
     }
 
     private Object doRead(long offset, int size, String kind, Function<LLVMDebugValue, Object> readOperation) {
@@ -162,13 +165,13 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         if (isInNative(global)) {
-            return new LLDBMemoryValue(LLVMNativePointer.cast(global.getTarget()));
+            return new LLDBMemoryValue(LLVMNativePointer.cast(context.getGlobalStorage(global)));
         } else {
-            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(global.getTarget());
+            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(context.getGlobalStorage(global));
         }
     }
 
-    private static boolean isInNative(LLVMGlobal global) {
-        return LLVMNativePointer.isInstance(global.getTarget());
+    private boolean isInNative(LLVMGlobal global) {
+        return LLVMNativePointer.isInstance(context.getGlobalStorage(global));
     }
 }

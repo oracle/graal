@@ -64,7 +64,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
@@ -133,7 +132,7 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    private final Map<LLVMGlobal, AssumedValue<Object>> globalStorageMap = new IdentityHashMap<>();
+    private final Map<LLVMGlobal, LLVMPointer> globalStorageMap = new IdentityHashMap<>();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -603,12 +602,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void setGlobalStorage(LLVMGlobal descriptor, AssumedValue<Object> value){
+    public boolean globalExists(LLVMGlobal descriptor){
+        return globalStorageMap.containsKey(descriptor) && globalStorageMap.get(descriptor) != null;
+    }
+
+    @TruffleBoundary
+    public void setGlobalStorage(LLVMGlobal descriptor, LLVMPointer value){
         globalStorageMap.put(descriptor, value);
     }
 
     @TruffleBoundary
-    public AssumedValue<Object> getGlobalStorage(LLVMGlobal descriptor){
+    public LLVMPointer getGlobalStorage(LLVMGlobal descriptor){
         return globalStorageMap.get(descriptor);
     }
 
