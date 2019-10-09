@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.agentscript.test;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScript;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -62,17 +64,51 @@ public class AgentObjectTest {
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
-            String[] loadedScript = {null, null};
+            String[] loadedScript = new String[5];
             agentAPI.on("source", (ev) -> {
                 loadedScript[0] = ev.name();
                 loadedScript[1] = ev.characters();
+                loadedScript[2] = ev.language();
+                loadedScript[3] = ev.mimeType();
+                loadedScript[4] = ev.uri();
             });
 
-            Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").build();
+            Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").mimeType("application/x-proxy-language").uri(new URI("http://app.test/data")).build();
             c.eval(sampleScript);
 
             assertEquals(sampleScript.getName(), loadedScript[0]);
             assertEquals("sample, code", loadedScript[1]);
+            assertEquals("language check", ProxyLanguage.ID, loadedScript[2]);
+            assertEquals("mime type check", "application/x-proxy-language", loadedScript[3]);
+            assertEquals("URI", "http://app.test/data", loadedScript[4]);
+        }
+    }
+
+    @Test
+    public void nullMimeType() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            String[] loadedScript = new String[5];
+            agentAPI.on("source", (ev) -> {
+                loadedScript[0] = ev.name();
+                loadedScript[1] = ev.characters();
+                loadedScript[2] = ev.language();
+                loadedScript[3] = ev.mimeType();
+                loadedScript[4] = ev.uri();
+            });
+
+            Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "another code", "sample.px").build();
+            c.eval(sampleScript);
+
+            assertEquals(sampleScript.getName(), loadedScript[0]);
+            assertEquals("another code", loadedScript[1]);
+            assertEquals("language check", ProxyLanguage.ID, loadedScript[2]);
+            assertNull("null mime type", loadedScript[3]);
+            assertNotNull("Some uri generated", loadedScript[4]);
+            assertTrue("Uses truffle prefix: " + loadedScript[4], loadedScript[4].startsWith("truffle:"));
         }
     }
 

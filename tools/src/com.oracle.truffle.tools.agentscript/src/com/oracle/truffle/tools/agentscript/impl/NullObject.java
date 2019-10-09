@@ -24,55 +24,24 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.Source;
 
-@SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
-final class SourceEventObject implements TruffleObject {
-    private final Source source;
+final class NullObject implements TruffleObject {
+    private static final NullObject NULL = new NullObject();
 
-    SourceEventObject(Source source) {
-        this.source = source;
+    private NullObject() {
     }
 
     @ExportMessage
-    static boolean hasMembers(SourceEventObject obj) {
+    boolean isNull() {
         return true;
     }
 
-    @ExportMessage
-    static Object getMembers(SourceEventObject obj, boolean includeInternal) {
-        return new Object[0];
+    public static Object nullCheck(Object obj) {
+        return obj == null ? NULL : obj;
     }
-
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static Object readMember(SourceEventObject obj, String member) throws UnknownIdentifierException {
-        switch (member) {
-            case "characters":
-                return obj.source.getCharacters().toString();
-            case "name":
-                return obj.source.getName();
-            case "language":
-                return obj.source.getLanguage();
-            case "mimeType":
-                return NullObject.nullCheck(obj.source.getMimeType());
-            case "uri":
-                return obj.source.getURI().toASCIIString();
-            default:
-                throw UnknownIdentifierException.create(member);
-        }
-    }
-
-    @ExportMessage
-    static boolean isMemberReadable(SourceEventObject obj, String member) {
-        return true;
-    }
-
 }

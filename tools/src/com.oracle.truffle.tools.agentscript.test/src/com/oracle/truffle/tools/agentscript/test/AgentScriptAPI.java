@@ -53,6 +53,18 @@ public interface AgentScriptAPI {
              * @return content of the loaded source
              */
             String characters();
+            /** Identification of this source's language.
+             * @return String representing the language ID
+             */
+            String language();
+            /** Mime type of this source.
+             * @return given mime type or {@code null}
+             */
+            String mimeType();
+            /** URI uniquely identifying the source.
+             * @return the URI
+             */
+            String uri();
         }
         void sourceLoaded(Info info);
     }
