@@ -306,15 +306,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     /**
      * Gets a copy of this frame state.
      */
-    public FrameState duplicate(int newBci) {
-        return graph().add(new FrameState(outerFrameState(), code, newBci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings));
-    }
-
-    /**
-     * Gets a copy of this frame state.
-     */
     public FrameState duplicate() {
-        return duplicate(bci);
+        return graph().add(new FrameState(outerFrameState(), code, bci, values, localsSize, stackSize, rethrowException, duringCall, monitorIds, virtualObjectMappings));
     }
 
     /**

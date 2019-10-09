@@ -398,7 +398,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         JavaKind kind = invoke.asNode().getStackKind();
         if (kind != JavaKind.Void) {
             FrameState stateAfter = invoke.stateAfter();
-            stateAfter = stateAfter.duplicate(stateAfter.bci);
+            stateAfter = stateAfter.duplicate();
             stateAfter.replaceFirstInput(invoke.asNode(), result.asNode());
             result.setStateAfter(stateAfter);
         }
