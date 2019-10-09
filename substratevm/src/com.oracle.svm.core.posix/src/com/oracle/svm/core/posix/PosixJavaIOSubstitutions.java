@@ -90,7 +90,6 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -98,6 +97,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -122,12 +122,12 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.io.ExpiringCache")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_io_ExpiringCache {
 }
 
 @TargetClass(className = "java.io.UnixFileSystem")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @SuppressWarnings("static-method")
 final class Target_java_io_UnixFileSystem {
 
@@ -447,7 +447,7 @@ final class Target_java_io_UnixFileSystem {
 }
 
 @TargetClass(java.io.FileInputStream.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_io_FileInputStream {
 
     @Alias private FileDescriptor fd;
@@ -548,7 +548,7 @@ final class Util_java_io_FileInputStream {
 }
 
 @TargetClass(java.io.FileOutputStream.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_io_FileOutputStream {
 
     @Substitute
@@ -574,7 +574,7 @@ final class Target_java_io_FileOutputStream {
 }
 
 @TargetClass(java.io.RandomAccessFile.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_io_RandomAccessFile {
 
     // Checkstyle: stop
@@ -691,7 +691,7 @@ final class Target_java_io_RandomAccessFile {
 }
 
 @TargetClass(java.io.Console.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_io_Console {
 
     @Alias //

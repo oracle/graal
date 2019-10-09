@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -36,12 +33,13 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 // Allow methods with non-standard names: Checkstyle: stop
 
 /** The definitions I need, manually translated from the C header file. */
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 public class NetIf {
 
@@ -64,7 +62,7 @@ public class NetIf {
     public static native int IFNAMSIZ();
 
     @CConstant
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     public static native int IFHWADDRLEN();
 
     @CConstant
@@ -72,7 +70,7 @@ public class NetIf {
 
     /* { Do not reformat commented out C code: @formatter:off */
     @CContext(PosixDirectives.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @CStruct(addStructKeyword = true)
     public interface ifreq extends PointerBase {
         // /*
@@ -147,13 +145,13 @@ public class NetIf {
         @AllowWideningCast
         short ifr_flags();
 
-        @Platforms(Platform.LINUX.class)
+        @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
         @CField
         int ifr_ifindex();
 
         NetIf.ifreq addressOf(int index);
 
-        @Platforms(Platform.LINUX.class)
+        @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
         @CFieldAddress
         Socket.sockaddr ifr_hwaddr();
 
@@ -162,7 +160,7 @@ public class NetIf {
 
     /* { Do not reformat commented out C code: @formatter:off */
     @CContext(PosixDirectives.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @CStruct(addStructKeyword = true)
     public interface ifconf extends PointerBase {
         // /*

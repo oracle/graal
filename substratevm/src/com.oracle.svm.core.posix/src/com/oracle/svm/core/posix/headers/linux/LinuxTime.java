@@ -40,7 +40,7 @@ import com.oracle.svm.core.posix.headers.Time;
  * Definitions manually translated from the C header file sys/time.h.
  */
 @CContext(PosixDirectives.class)
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 public class LinuxTime extends Time {
 
     /** Monotonic system-wide clock. */

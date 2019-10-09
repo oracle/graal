@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 //Checkstyle: stop
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 class DarwinErrno {
 
     @TargetClass(Errno.class)

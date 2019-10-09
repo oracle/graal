@@ -26,13 +26,13 @@ package com.oracle.svm.core.posix.darwin;
 
 import java.io.IOException;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -47,7 +47,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinEvent;
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class DarwinNIOSubstitutions {
 
     /* Private constructor: No instances. */
@@ -56,7 +56,7 @@ public final class DarwinNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/KQueue.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.KQueue")
     static final class Target_sun_nio_ch_KQueue {
 
@@ -218,7 +218,7 @@ public final class DarwinNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/macosx/native/sun/nio/ch/KQueueArrayWrapper.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.KQueueArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_KQueueArrayWrapper {
 
@@ -350,7 +350,7 @@ public final class DarwinNIOSubstitutions {
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/KQueuePort.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.KQueuePort")
     static final class Target_sun_nio_ch_KQueuePort {
 

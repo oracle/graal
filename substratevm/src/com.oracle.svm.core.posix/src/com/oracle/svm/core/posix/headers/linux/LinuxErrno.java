@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 //Checkstyle: stop
 
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 class LinuxErrno {
 
     @TargetClass(Errno.class)

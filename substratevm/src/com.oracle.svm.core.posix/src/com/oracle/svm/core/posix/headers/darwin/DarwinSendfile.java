@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
@@ -39,7 +39,7 @@ import com.oracle.svm.core.posix.headers.Uio.iovec;
 //Checkstyle: stop
 
 @CContext(PosixDirectives.class)
-@Platforms(Platform.DARWIN.class)
+@Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 public class DarwinSendfile {
 
     @CStruct(addStructKeyword = true)

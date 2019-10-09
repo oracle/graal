@@ -32,7 +32,6 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
@@ -44,15 +43,15 @@ import com.oracle.svm.util.ReflectionUtil;
 public class JNIRegistrationUtil {
 
     protected static boolean isPosix() {
-        return Platform.includedIn(InternalPlatform.LINUX_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_JNI.class);
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     protected static boolean isLinux() {
-        return Platform.includedIn(InternalPlatform.LINUX_JNI.class);
+        return Platform.includedIn(Platform.LINUX.class);
     }
 
     protected static boolean isDarwin() {
-        return Platform.includedIn(InternalPlatform.DARWIN_JNI.class);
+        return Platform.includedIn(Platform.DARWIN.class);
     }
 
     protected static boolean isWindows() {

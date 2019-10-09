@@ -43,7 +43,7 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime.MachTimebaseInfo;
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System {
 
@@ -86,7 +86,7 @@ final class Target_java_lang_System {
 }
 
 /** Additional static-like fields for {@link Target_java_lang_System}. */
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 final class Util_java_lang_System {
     boolean timeBaseValid = false;
     boolean fastTime = false;
@@ -97,7 +97,7 @@ final class Util_java_lang_System {
     }
 }
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @AutomaticFeature
 class DarwinSubsitutionsFeature implements Feature {
 

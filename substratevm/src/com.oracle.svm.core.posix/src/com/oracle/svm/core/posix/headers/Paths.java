@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 @CContext(PosixDirectives.class)
 public class Paths {
 
-    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native String _PATH_VARTMP();
 }

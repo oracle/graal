@@ -35,17 +35,17 @@ import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.JavaUtilZipSubstitutions;
 import com.oracle.svm.core.posix.headers.ZLib;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 // Dummy class for file name.
 public class Target_java_util_Zip {
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(value = java.util.zip.Deflater.class, onlyWith = JDK11OrLater.class)
 final class Target_java_util_zip_Deflater {
 
@@ -194,7 +194,7 @@ final class Util_java_util_zip_Deflater {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(value = java.util.zip.Inflater.class, onlyWith = JDK11OrLater.class)
 final class Target_java_util_zip_Inflater {
 

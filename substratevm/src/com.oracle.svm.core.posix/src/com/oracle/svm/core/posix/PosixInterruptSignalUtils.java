@@ -27,11 +27,11 @@ package com.oracle.svm.core.posix;
 
 import java.io.IOException;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -55,7 +55,7 @@ import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
  * Adapted from /jdk8u-dev/jdk/src/solaris/native/sun/nio/ch/NativeThread.c, but shared by anyone
  * who sends C signals to interrupt blocked operations.
  */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public class PosixInterruptSignalUtils {
 
     /**

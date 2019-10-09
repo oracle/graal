@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -65,7 +66,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
 
 @TargetClass(className = "java.lang.ProcessEnvironment")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessEnvironment {
 
     /*
@@ -158,7 +159,7 @@ final class Target_java_lang_ProcessEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "StringEnvironment")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessEnvironment_StringEnvironment {
     @Alias
     @SuppressWarnings("unused")
@@ -171,14 +172,14 @@ final class Target_java_lang_ProcessEnvironment_StringEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Variable")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessEnvironment_Variable {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Variable valueOf(byte[] bytes);
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Value")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessEnvironment_Value {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Value valueOf(byte[] bytes);
@@ -198,12 +199,12 @@ class ProcessNameProvider implements Function<TargetClass, String> {
 }
 
 @TargetClass(classNameProvider = ProcessNameProvider.class)
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})//
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})//
     @TargetElement(onlyWith = JDK8OrEarlier.class)//
     @Delete static Executor processReaperExecutor;
 
@@ -222,7 +223,7 @@ final class Target_java_lang_UNIXProcess {
      */
 
     @Substitute
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @SuppressWarnings({"unused", "static-method"})
     int forkAndExec(int mode, byte[] helperpath,
                     byte[] file,
@@ -237,20 +238,20 @@ final class Target_java_lang_UNIXProcess {
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     void initStreams(int[] fds) {
         UNIXProcess_Support.doInitStreams(this, fds, false);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     void initStreams(int[] fds, boolean forceNullOutputStream) {
         UNIXProcess_Support.doInitStreams(this, fds, forceNullOutputStream);
     }
 
     @Substitute
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings({"static-method"})
     int waitForProcessExit(int ppid) {
@@ -259,7 +260,7 @@ final class Target_java_lang_UNIXProcess {
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static void destroyProcess(int ppid, boolean force) {
         int sig = force ? Signal.SignalEnum.SIGKILL.getCValue() : Signal.SignalEnum.SIGTERM.getCValue();
         Signal.kill(ppid, sig);
@@ -317,7 +318,7 @@ final class UNIXProcess_Support {
 }
 
 @TargetClass(classNameProvider = ProcessNameProvider.class, innerClass = "ProcessPipeInputStream")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeInputStream(@SuppressWarnings("unused") int fd) {
@@ -328,7 +329,7 @@ final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
 }
 
 @TargetClass(classNameProvider = ProcessNameProvider.class, innerClass = "ProcessPipeOutputStream")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeOutputStream(@SuppressWarnings("unused") int fd) {
@@ -339,19 +340,19 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
     @Alias static Target_java_lang_ProcessBuilder_NullInputStream INSTANCE;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
     @Alias static Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE;
 }
 
 @TargetClass(java.lang.System.class)
-@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_JNI.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, Platform.LINUX.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class, Platform.DARWIN.class})
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -368,7 +369,7 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(className = "java.lang.Shutdown")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_lang_Shutdown {
 
     @Substitute
@@ -378,7 +379,7 @@ final class Target_java_lang_Shutdown {
 }
 
 @TargetClass(java.lang.Runtime.class)
-@Platforms({Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

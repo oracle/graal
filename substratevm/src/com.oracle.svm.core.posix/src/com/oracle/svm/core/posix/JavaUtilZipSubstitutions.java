@@ -27,12 +27,12 @@ package com.oracle.svm.core.posix;
 import java.util.zip.DataFormatException;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -45,7 +45,7 @@ import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(java.util.zip.Adler32.class)
 final class Target_java_util_zip_Adler32 {
     // Adler32.c-Java_java_util_zip_Adler32_update(JNIEnv *env, jclass cls, jint adler, jint b)
@@ -75,7 +75,7 @@ final class Target_java_util_zip_Adler32 {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(java.util.zip.CRC32.class)
 final class Target_java_util_zip_CRC32 {
     // CRC32.c-Java_java_util_zip_CRC32_update(JNIEnv *env, jclass cls, jint crc, jint b)
@@ -105,7 +105,7 @@ final class Target_java_util_zip_CRC32 {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(value = java.util.zip.Deflater.class)
 final class Target_java_util_zip_Deflater {
     @Alias //
@@ -269,7 +269,7 @@ final class Util_java_util_zip_Inflater {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(value = java.util.zip.Inflater.class)
 final class Target_java_util_zip_Inflater {
 
@@ -399,7 +399,7 @@ final class Target_java_util_zip_Inflater {
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class JavaUtilZipSubstitutions {
 
     public static class Util_java_util_zip_Deflater {

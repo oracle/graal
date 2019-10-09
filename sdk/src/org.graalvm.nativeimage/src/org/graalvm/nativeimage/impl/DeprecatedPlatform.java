@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,33 +42,85 @@ package org.graalvm.nativeimage.impl;
 
 import org.graalvm.nativeimage.Platform;
 
-public interface InternalPlatform {
+public interface DeprecatedPlatform {
 
     /**
-     * Used for all platforms that make use of static JNI JDK libraries (libjava.a, libnio.a, ...).
-     *
-     * @since 19.2
-     */
-    interface PLATFORM_JNI extends Platform {
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for LINUX and
-     * LINUX_SUBSTITUTION platforms.
+     * Supported operating system: Linux.
      *
      * @since 19.0
      */
-    interface LINUX_JNI_AND_SUBSTITUTIONS extends Platform {
-
+    interface LINUX_SUBSTITUTION extends Platform {
     }
 
     /**
-     * Temporary platform used to mark classes or methods that are used for DARWIN (MacOS) and
-     * DARWIN_SUBSTITUTION platforms.
+     * Supported operating system: Darwin (MacOS).
      *
      * @since 19.0
      */
-    interface DARWIN_JNI_AND_SUBSTITUTIONS extends Platform {
+    interface DARWIN_SUBSTITUTION extends Platform {
+    }
 
+    /**
+     * Supported leaf platform: Linux on x86 64-bit.
+     *
+     * @since 19.0
+     */
+    class LINUX_SUBSTITUTION_AMD64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public LINUX_SUBSTITUTION_AMD64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Linux on AArch64 64-bit.
+     *
+     * @since 19.0
+     */
+    class LINUX_SUBSTITUTION_AArch64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public LINUX_SUBSTITUTION_AArch64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
+     *
+     * @since 19.0
+     */
+    class DARWIN_SUBSTITUTION_AMD64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public DARWIN_SUBSTITUTION_AMD64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Darwin (MacOS) on AArch 64-bit.
+     *
+     * @since 2.0
+     */
+    class DARWIN_SUBSTITUTION_AArch64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 2.0
+         */
+        public DARWIN_SUBSTITUTION_AArch64() {
+        }
     }
 }

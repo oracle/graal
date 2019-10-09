@@ -36,7 +36,7 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 public class LinuxPthread {
     /* { Allow names with underscores: Checkstyle: stop */
 

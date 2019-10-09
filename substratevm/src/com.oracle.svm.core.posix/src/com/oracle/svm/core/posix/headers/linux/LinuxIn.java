@@ -28,16 +28,17 @@ package com.oracle.svm.core.posix.headers.linux;
 
 import com.oracle.svm.core.posix.headers.NetinetIn;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
-import org.graalvm.nativeimage.Platform;
+
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 @CContext(PosixDirectives.class)
-@Platforms(Platform.LINUX.class)
+@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
 public class LinuxIn {
     // @formatter:off
     // struct ip_mreqn {
