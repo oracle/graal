@@ -45,7 +45,11 @@ public interface NameAndTypeConstant extends PoolConstant {
      */
     Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-    void validateMethod(ConstantPool pool);
+    default void validateMethod(ConstantPool pool) {
+        validateMethod(pool, true);
+    }
+
+    void validateMethod(ConstantPool pool, boolean allowClinit);
 
     void validateField(ConstantPool pool);
 
@@ -91,8 +95,8 @@ public interface NameAndTypeConstant extends PoolConstant {
         }
 
         @Override
-        public void validateMethod(ConstantPool pool) {
-            pool.utf8At(nameIndex).validateMethodName();
+        public void validateMethod(ConstantPool pool, boolean allowClinit) {
+            pool.utf8At(nameIndex).validateMethodName(allowClinit);
             pool.utf8At(typeIndex).validateSignature();
         }
 

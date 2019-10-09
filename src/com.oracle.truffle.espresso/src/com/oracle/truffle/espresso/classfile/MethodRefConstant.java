@@ -44,6 +44,7 @@ public interface MethodRefConstant extends MemberRefConstant {
         @Override
         public void validate(ConstantPool pool) {
             super.validate(pool);
+            // <clinit> method name is allowed here.
             pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
         }
     }

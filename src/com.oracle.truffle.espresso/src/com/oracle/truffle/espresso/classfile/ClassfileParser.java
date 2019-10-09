@@ -435,7 +435,7 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int signatureIndex = stream.readU2();
 
-        pool.utf8At(nameIndex).validateMethodName();
+        pool.utf8At(nameIndex).validateMethodName(true);
         final Symbol<Name> name = pool.symbolAt(nameIndex, "method name");
 
         int extraFlags = methodFlags;

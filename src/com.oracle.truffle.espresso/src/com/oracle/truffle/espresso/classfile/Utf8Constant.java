@@ -30,10 +30,13 @@ public final class Utf8Constant implements PoolConstant {
 
     private static final int VALID_CLASS_NAME = 0x01;
     private static final int VALID_METHOD_NAME = 0x02;
-    private static final int VALID_FIELD_NAME = 0x04;
-    private static final int VALID_SIGNATURE = 0x04;
-    private static final int VALID_UTF8 = 0x08;
-    private static final int VALID_TYPE = 0x1;
+    private static final int VALID_METHOD_NAME_OR_CLINIT = 0x4;
+    private static final int VALID_FIELD_NAME = 0x08;
+    private static final int VALID_SIGNATURE = 0x10;
+
+    private static final int VALID_UTF8 = 0x20;
+    private static final int VALID_TYPE = 0x40;
+    private static final int VALID_TYPE_OR_VOID = 0x80;
 
     private byte validationCache;
 
@@ -80,21 +83,23 @@ public final class Utf8Constant implements PoolConstant {
 
     public void validateType(boolean allowVoid) {
         validateUTF8();
-        if ((validationCache & VALID_TYPE) == 0) {
+        int mask = allowVoid ? VALID_TYPE_OR_VOID : VALID_TYPE;
+        if ((validationCache & mask) == 0) {
             if (!Validation.validTypeDescriptor(value, allowVoid)) {
                 throw ConstantPool.classFormatError("Invalid type descriptor: " + value);
             }
-            validationCache |= VALID_TYPE;
+            validationCache |= mask;
         }
     }
 
-    public void validateMethodName() {
+    public void validateMethodName(boolean allowClinit) {
         validateUTF8();
-        if ((validationCache & VALID_METHOD_NAME) == 0) {
-            if (!Validation.validMethodName(value)) {
+        int mask = allowClinit ? VALID_METHOD_NAME_OR_CLINIT : VALID_METHOD_NAME;
+        if ((validationCache & mask) == 0) {
+            if (!Validation.validMethodName(value, allowClinit)) {
                 throw ConstantPool.classFormatError("Invalid method name: " + value);
             }
-            validationCache |= VALID_METHOD_NAME;
+            validationCache |= mask;
         }
     }
 

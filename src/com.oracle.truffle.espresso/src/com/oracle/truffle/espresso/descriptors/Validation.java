@@ -40,13 +40,13 @@ public final class Validation {
      *
      * Does not check that the byte sequence is well-formed modified-UTF8 string.
      */
-    public static boolean validMethodName(ByteSequence bytes) {
+    public static boolean validMethodName(ByteSequence bytes, boolean allowClinit) {
         if (bytes.length() == 0) {
             return false;
         }
         char first = (char) bytes.byteAt(0);
         if (first == '<') {
-            return bytes.contentEquals(Name.INIT) || bytes.contentEquals(Name.CLINIT);
+            return bytes.contentEquals(Name.INIT) || (allowClinit && bytes.contentEquals(Name.CLINIT));
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
