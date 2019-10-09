@@ -349,16 +349,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         return duplicateModified(graph(), newBci, rethrowException, false, popKind, pushedSlotKinds, pushedValues);
     }
 
-    /**
-     * Creates a copy of this frame state with one stack element of type {@code popKind} popped from
-     * the stack and the values in {@code pushedValues} pushed on the stack. The
-     * {@code pushedValues} will be formatted correctly in slot encoding: a long or double will be
-     * followed by a null slot.
-     */
-    public FrameState duplicateModified(int newBci, boolean newRethrowException, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
-        return duplicateModified(graph(), newBci, newRethrowException, duringCall, popKind, pushedSlotKinds, pushedValues);
-    }
-
     public FrameState duplicateModified(int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
         return duplicateModified(graph(), newBci, newRethrowException, newDuringCall, popKind, pushedSlotKinds, pushedValues);
     }
