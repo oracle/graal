@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,6 @@
  * questions.
  */
 package com.oracle.svm.core.graal.nodes;
-
-import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.graph.NodeClass;
@@ -51,22 +49,11 @@ import jdk.vm.ci.code.Register;
  * registers (only stack slots and constants).
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class ReadRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
+public abstract class ReadRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<ReadRegisterFixedNode> TYPE = NodeClass.create(ReadRegisterFixedNode.class);
 
-    public static ReadRegisterFixedNode forHeapBase() {
-        return new ReadRegisterFixedNode(SubstrateRegisterConfig::getHeapBaseRegister);
-    }
-
-    public static ReadRegisterFixedNode forIsolateThread() {
-        return new ReadRegisterFixedNode(SubstrateRegisterConfig::getThreadRegister);
-    }
-
-    private final Function<SubstrateRegisterConfig, Register> registerSupplier;
-
-    public ReadRegisterFixedNode(Function<SubstrateRegisterConfig, Register> registerSupplier) {
-        super(TYPE, FrameAccess.getWordStamp());
-        this.registerSupplier = registerSupplier;
+    public ReadRegisterFixedNode(NodeClass<? extends ReadRegisterFixedNode> c) {
+        super(c, FrameAccess.getWordStamp());
     }
 
     @Override
@@ -74,7 +61,10 @@ public class ReadRegisterFixedNode extends FixedWithNextNode implements LIRLower
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
         LIRKind lirKind = tool.getLIRKind(FrameAccess.getWordStamp());
-        Register register = registerSupplier.apply(registerConfig);
+        Register register = getReadRegister(registerConfig);
         gen.setResult(this, tool.emitReadRegister(register, lirKind));
     }
+
+    protected abstract Register getReadRegister(SubstrateRegisterConfig registerConfig);
+
 }

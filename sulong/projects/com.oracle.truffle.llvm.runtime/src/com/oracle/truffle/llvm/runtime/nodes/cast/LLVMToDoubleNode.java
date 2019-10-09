@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -77,7 +78,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
     }
 
     protected ForeignToLLVM createForeignToLLVM() {
-        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
+        return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.DOUBLE);
     }
 
     protected boolean isForeign(LLVMManagedPointer pointer) {

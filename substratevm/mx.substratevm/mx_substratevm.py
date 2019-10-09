@@ -107,7 +107,9 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
     'jdk.internal.vm.ci/jdk.vm.ci.services',
     'jdk.internal.vm.ci/jdk.vm.ci.common',
-    'jdk.internal.vm.ci/jdk.vm.ci.code.site']
+    'jdk.internal.vm.ci/jdk.vm.ci.code.site',
+    'jdk.internal.vm.ci/jdk.vm.ci.code.stack',
+]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 graal_compiler_opens_packages = [
@@ -821,7 +823,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler'],
+    dependencies=['GraalVM compiler', 'Truffle Macro', 'Truffle NFI'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -931,7 +933,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM', 'Truffle Macro'],
+    dependencies=['SubstrateVM'],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",

@@ -25,7 +25,9 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.c.GraalAccess;
 
@@ -34,7 +36,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstitutionField implements ReadableJavaField {
+public class SubstitutionField implements ReadableJavaField, OriginalFieldProvider {
 
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
@@ -116,5 +118,10 @@ public class SubstitutionField implements ReadableJavaField {
     @Override
     public Annotation[] getDeclaredAnnotations() {
         return annotated.getDeclaredAnnotations();
+    }
+
+    @Override
+    public Field getJavaField() {
+        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

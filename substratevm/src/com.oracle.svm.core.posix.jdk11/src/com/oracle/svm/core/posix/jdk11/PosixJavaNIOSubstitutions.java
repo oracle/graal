@@ -30,10 +30,10 @@ import static com.oracle.svm.core.posix.headers.Unistd.write;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -44,11 +44,11 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Statvfs;
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public class PosixJavaNIOSubstitutions {
 
     @TargetClass(className = "sun.nio.ch.IOUtil", onlyWith = JDK11OrLater.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_IOUtil {
         // ported from {jdk11}/src/java.base/unix/native/libnio/ch/IOUtil.c
         // 107 JNIEXPORT jint JNICALL
@@ -64,7 +64,7 @@ public class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.FileDispatcherImpl", onlyWith = JDK11OrLater.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_FileDispatcherImpl {
 
         /* Do not re-format commented out C code. @formatter:off */

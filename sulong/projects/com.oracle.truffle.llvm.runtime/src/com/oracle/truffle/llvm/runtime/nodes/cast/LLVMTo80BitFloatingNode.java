@@ -70,6 +70,15 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVM80BitFloat doLLVM80BitFloatNode(boolean from) {
+            if (from) {
+                return LLVM80BitFloat.fromShort((short) 1);
+            } else {
+                return LLVM80BitFloat.fromShort((short) 0);
+            }
+        }
+
+        @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
             return LLVM80BitFloat.fromByte(from);
         }
@@ -119,8 +128,22 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVM80BitFloat doLLVM80BitFloatNode(boolean from) {
+            if (from) {
+                return LLVM80BitFloat.fromUnsignedShort((short) 1);
+            } else {
+                return LLVM80BitFloat.fromUnsignedShort((short) 0);
+            }
+        }
+
+        @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
             return LLVM80BitFloat.fromUnsignedByte(from);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat do80BitFloat(short from) {
+            return LLVM80BitFloat.fromUnsignedShort(from);
         }
 
         @Specialization

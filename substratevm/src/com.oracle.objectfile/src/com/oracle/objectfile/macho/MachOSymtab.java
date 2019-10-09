@@ -162,7 +162,7 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         }
     }
 
-    static final class Entry implements Symbol {
+    public static final class Entry implements Symbol {
         /*
          * In Mach-O-speak, this class is modelling an 'nlist64', but I couldn't bring myself to
          * call it that.
@@ -270,11 +270,12 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         }
 
         public boolean isLocal() {
-            return !isGlobal();
+            return !extern && !privateExtern;
         }
 
+        @Override
         public boolean isGlobal() {
-            return extern || privateExtern;
+            return extern;
         }
 
         @Override

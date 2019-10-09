@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,7 +103,7 @@ import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
-import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
 import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
@@ -124,6 +124,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -500,6 +501,11 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processObjectFieldOffset(GraphBuilderContext b, Field targetField, boolean analysis, MetaAccessProvider metaAccess) {
+        if (targetField == null) {
+            /* A NullPointerException will be thrown at run time for this call. */
+            return false;
+        }
+
         if (analysis) {
             /* Register the field for unsafe access. */
             AnalysisField analysisTargetField = (AnalysisField) metaAccess.lookupJavaField(targetField);
@@ -510,9 +516,19 @@ public class SubstrateGraphBuilderPlugins {
         } else {
             /* Compute the offset value and constant fold the call. */
             HostedMetaAccess hostedMetaAccess = (HostedMetaAccess) metaAccess;
-            JavaConstant offsetValue = JavaConstant.forLong(hostedMetaAccess.lookupJavaField(targetField).getLocation());
-            b.addPush(JavaKind.Long, ConstantNode.forConstant(offsetValue, b.getMetaAccess(), b.getGraph()));
-            return true;
+            HostedField hostedField = hostedMetaAccess.lookupJavaField(targetField);
+            if (hostedField.wrapped.isUnsafeAccessed()) {
+                JavaConstant offsetValue = JavaConstant.forLong(hostedField.getLocation());
+                b.addPush(JavaKind.Long, ConstantNode.forConstant(offsetValue, b.getMetaAccess(), b.getGraph()));
+                return true;
+            } else {
+                /*
+                 * The target field was not constant folded during static analysis, so the above
+                 * unsafe access registration did not run. A UnsupportedFeatureError will be thrown
+                 * at run time for this call.
+                 */
+                return false;
+            }
         }
     }
 
@@ -593,7 +609,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("heapBase", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, ReadRegisterFixedNode.forHeapBase());
+                b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
                 return true;
             }
         });

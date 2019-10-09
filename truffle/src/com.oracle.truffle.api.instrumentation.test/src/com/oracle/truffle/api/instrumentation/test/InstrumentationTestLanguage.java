@@ -229,6 +229,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         return new InstrumentContext(env, initSource, runInitAfterExec);
     }
 
+    private CallTarget lastParsed;
+
+    public static CallTarget getLastParsedCalltarget() {
+        return getCurrentLanguage(InstrumentationTestLanguage.class).lastParsed;
+    }
+
     @Override
     protected void initializeContext(InstrumentContext context) throws Exception {
         super.initializeContext(context);
@@ -259,8 +265,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         } catch (LanguageError e) {
             throw new IOException(e);
         }
-        RootCallTarget afterTarget = getContextReference().get().afterTarget;
-        return Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+        RootCallTarget afterTarget = getCurrentContext(getClass()).afterTarget;
+        return lastParsed = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
     }
 
     public static RootNode parse(String code) {
@@ -487,7 +493,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "CONSTANT":
                     return new ConstantNode(idents[0], childArray);
                 case "VARIABLE":
-                    return new VariableNode(idents[0], idents[1], childArray, lang.getContextReference());
+                    return new VariableNode(idents[0], idents[1], childArray, currentEnv().lookup(AllocationReporter.class));
                 case "PRINT":
                     return new PrintNode(idents[0], idents[1], childArray);
                 case "ALLOCATION":
@@ -1512,11 +1518,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @CompilationFinal private FrameSlot slot;
         final AllocationReporter allocationReporter;
 
-        private VariableNode(String name, String identifier, BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
+        private VariableNode(String name, String identifier, BaseNode[] children, AllocationReporter allocationReporter) {
             super(children);
             this.name = name;
             this.value = parseIdent(identifier);
-            this.allocationReporter = contextRef.get().allocationReporter;
+            this.allocationReporter = allocationReporter;
         }
 
         @Override
@@ -1824,31 +1830,35 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected Iterable<Scope> findLocalScopes(InstrumentContext context, Node node, Frame frame) {
         Iterable<Scope> scopes = super.findLocalScopes(context, node, frame);
+        // arguments[0] contains 'this'. Add it to the default scope:
         Object[] arguments;
-        if (frame == null || (arguments = frame.getArguments()) == null || arguments.length == 0 || !(arguments[0] instanceof ThisArg)) {
-            return scopes;
+        Object thisObject;
+        if (frame != null && (arguments = frame.getArguments()) != null && arguments.length > 0 && arguments[0] instanceof ThisArg) {
+            thisObject = ((ThisArg) arguments[0]).thisElement;
         } else {
-            // arguments[0] contains 'this'. Add it to the default scope:
-            Object thisObject = ((ThisArg) arguments[0]).thisElement;
-            return new Iterable<Scope>() {
-                @Override
-                public Iterator<Scope> iterator() {
-                    Iterator<Scope> iterator = scopes.iterator();
-                    return new Iterator<Scope>() {
-                        @Override
-                        public boolean hasNext() {
-                            return iterator.hasNext();
-                        }
-
-                        @Override
-                        public Scope next() {
-                            Scope scope = iterator.next();
-                            return Scope.newBuilder(scope.getName(), scope.getVariables()).node(scope.getNode()).receiver("THIS", thisObject).build();
-                        }
-                    };
-                }
-            };
+            thisObject = null;
         }
+        // Find the current root instance - function.
+        Object function = context.callFunctions.findFunction(node.getRootNode().getName());
+        return new Iterable<Scope>() {
+            @Override
+            public Iterator<Scope> iterator() {
+                Iterator<Scope> iterator = scopes.iterator();
+                return new Iterator<Scope>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public Scope next() {
+                        Scope scope = iterator.next();
+                        return Scope.newBuilder(scope.getName(), scope.getVariables()).node(scope.getNode()).arguments(scope.getArguments()).receiver("THIS", thisObject).rootInstance(
+                                        function).build();
+                    }
+                };
+            }
+        };
     }
 
     @Override
@@ -1861,6 +1871,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
             return Source.newBuilder(ID, "source infinity", "double").build().createSection(1);
+        }
+        if (obj instanceof Function) {
+            return ((RootCallTarget) ((Function) obj).ct).getRootNode().getSourceSection();
         }
         return null;
     }

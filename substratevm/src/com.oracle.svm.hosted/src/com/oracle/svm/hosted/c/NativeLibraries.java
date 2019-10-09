@@ -32,14 +32,18 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -47,6 +51,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -99,13 +104,16 @@ public final class NativeLibraries {
 
     private final CAnnotationProcessorCache cache;
 
+    public final Path tempDirectory;
+
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
-                    ClassInitializationSupport classInitializationSupport) {
+                    ClassInitializationSupport classInitializationSupport, Path tempDirectory) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.classInitializationSupport = classInitializationSupport;
+        this.tempDirectory = tempDirectory;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -120,8 +128,17 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new ArrayList<>();
-        staticLibraries = new ArrayList<>();
+        /*
+         * Libraries can be added during the static analysis, which runs multi-threaded. So the
+         * lists must be synchronized.
+         *
+         * Also note that it is necessary to support duplicate entries, i.e., it must remain a List
+         * and not a Set. The list is passed to the linker, and duplicate entries allow linking of
+         * libraries that have cyclic dependencies.
+         */
+        libraries = Collections.synchronizedList(new ArrayList<>());
+        staticLibraries = Collections.synchronizedList(new ArrayList<>());
+
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
@@ -146,28 +163,21 @@ public final class NativeLibraries {
         LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
 
         Path staticLibsDir = null;
+        String hint = null;
 
         /* Probe for static JDK libraries in JDK lib directory */
         try {
             Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
-            if (Files.isDirectory(jdkLibDir)) {
-                List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
-                if (Files.list(jdkLibDir).filter(path -> {
-                    if (Files.isDirectory(path)) {
-                        return false;
-                    }
-                    String libName = path.getFileName().toString();
-                    if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
-                        return false;
-                    }
-                    String lib = libName.substring(libPrefix.length(), libName.length() - libSuffix.length());
-                    return defaultBuiltInLibraries.contains(lib);
-                }).count() == defaultBuiltInLibraries.size()) {
-                    staticLibsDir = jdkLibDir;
-                }
+            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
+            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));
+            if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
+                staticLibsDir = jdkLibDir;
+            } else {
+                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries:", ""));
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             /* Fallthrough to next strategy */
+            hint = e.getMessage();
         }
 
         if (staticLibsDir == null) {
@@ -177,10 +187,12 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            UserError.guarantee(OS.getCurrent() != OS.WINDOWS,
-                            "Building images for " + OS.getCurrent().className +
-                                            " requires static JDK libraries." +
-                                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases");
+            String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
+                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
+            if (hint != null) {
+                message += "\n" + hint;
+            }
+            UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
         }
         return libraryPaths;
     }
@@ -343,7 +355,7 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish(Path tempDirectory) {
+    public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {

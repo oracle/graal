@@ -600,7 +600,7 @@ public interface SortedListOfRanges extends CharacterSet {
         return size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue();
     }
 
-    default boolean equals(SortedListOfRanges o) {
+    default boolean equalsListOfRanges(SortedListOfRanges o) {
         if (o == null || size() != o.size()) {
             return false;
         }
@@ -637,9 +637,6 @@ public interface SortedListOfRanges extends CharacterSet {
         }
         if (equals(Constants.NON_WHITE_SPACE)) {
             return "\\S";
-        }
-        if (matchesEverything()) {
-            return "[\\s\\S]";
         }
         if (matchesNothing()) {
             return "[]";

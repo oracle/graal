@@ -956,10 +956,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     @Override
-    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue methodIdArg, int offset) {
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+
         CompilationResult result = new CompilationResult(identifier);
         AMD64Assembler asm = new AMD64Assembler(getTarget());
-        asm.jmp(new AMD64Address(methodIdArg.getRegister(), offset));
+        if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
+            asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
+            asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
+            asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
+        } else { // methodId is absolute address
+            asm.jmp(new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
+        }
         result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_DECD_RSP);
         result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_END);
         byte[] instructions = asm.close(true);

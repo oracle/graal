@@ -39,30 +39,36 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen.LLV
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeField(type = long.class, name = "typeWidth")
+@NodeField(type = Type.class, name = "targetType")
 public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
     @Child private LLVMIncrementPointerNode incrementNode = LLVMIncrementPointerNodeGen.create();
 
     public abstract long getTypeWidth();
 
+    public abstract Type getTargetType();
+
     @Specialization
-    protected Object longIncrement(Object addr, long val) {
+    protected LLVMPointer longIncrement(LLVMPointer addr, long val) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);
     }
 
     @Specialization
-    protected Object longIncrement(Object addr, LLVMNativePointer val) {
+    protected LLVMPointer longIncrement(LLVMPointer addr, LLVMNativePointer val) {
         long incr = getTypeWidth() * val.asNative();
         return incrementNode.executeWithTarget(addr, incr);
     }
 
     @Specialization
-    protected Object intIncrement(Object addr, int val) {
+    protected LLVMPointer intIncrement(LLVMPointer addr, int val) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);
     }
@@ -85,13 +91,22 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         return LLVMNativePointer.create(val.getOffset() + addr.getOffset());
     }
 
+    @Specialization
+    protected LLVMPointerVector doPointer(LLVMPointerVector val1, LLVMI64Vector val2) {
+        LLVMPointer[] result = new LLVMPointer[val1.getLength()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = longIncrement(val1.getValue(i), val2.getValue(i));
+        }
+        return LLVMPointerVector.create(result);
+    }
+
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
 
-        public abstract Object executeWithTarget(Object addr, int val);
+        public abstract LLVMPointer executeWithTarget(LLVMPointer addr, int val);
 
-        public abstract Object executeWithTarget(Object addr, long val);
+        public abstract LLVMPointer executeWithTarget(LLVMPointer addr, long val);
 
-        public abstract Object executeWithTarget(Object addr, Object val);
+        public abstract LLVMPointer executeWithTarget(LLVMPointer addr, Object val);
 
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr, int incr) {

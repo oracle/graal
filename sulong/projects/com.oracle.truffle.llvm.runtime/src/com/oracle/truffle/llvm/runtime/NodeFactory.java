@@ -33,18 +33,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -54,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesReg
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -70,7 +61,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
  * {@link LLVMExpressionNode} and {@link LLVMExpressionNode} visible. The parser should not directly
  * instantiate a node, but instead use the factory facade.
  */
-public interface NodeFactory extends InteropNodeFactory {
+public interface NodeFactory {
 
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
@@ -78,8 +69,6 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createShuffleVector(Type llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask);
-
-    LLVMLoadNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget);
 
     LLVMStatementNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
@@ -120,8 +109,6 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, int normalIndex,
                     int unwindIndex, LLVMStatementNode normalPhiWriteNodes,
                     LLVMStatementNode unwindPhiWriteNodes);
-
-    LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot);
 
     LLVMStatementNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot);
 
@@ -185,8 +172,6 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createStructureConstantNode(Type structureType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
-    LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
-
     LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
                     FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor);
 
@@ -211,22 +196,6 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMStatementNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
-
-    LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
-
-    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal);
-
-    LLVMDebugValue.Builder createDebugDeclarationBuilder();
-
-    LLVMDebugValue.Builder createDebugValueBuilder();
-
-    LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
-
-    LLVMStatementNode createDebugTrap();
-
-    TruffleObject toGenericDebuggerValue(Object llvmType, Object value);
-
     LLVMMemMoveNode createMemMove();
 
     LLVMMemSetNode createMemSet();
@@ -240,8 +209,4 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createStackSave();
 
     LLVMExpressionNode createStackRestore(LLVMExpressionNode stackPointer);
-
-    ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type);
-
-    ForeignToLLVM createForeignToLLVM(ForeignToLLVMType type);
 }

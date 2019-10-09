@@ -778,7 +778,13 @@ public final class Function implements ParserListener {
         int pointer = readIndex(buffer);
         Type base = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = new PointerType(getElementPointerType(base, indices));
+        Type type;
+        if (base instanceof VectorType) {
+            VectorType vector = (VectorType) base;
+            type = new VectorType(new PointerType(getElementPointerType(vector.getElementType(), indices)), vector.getNumberOfElements());
+        } else {
+            type = new PointerType(getElementPointerType(base, indices));
+        }
 
         emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
     }

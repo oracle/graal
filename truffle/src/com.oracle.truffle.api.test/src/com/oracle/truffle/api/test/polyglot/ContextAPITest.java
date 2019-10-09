@@ -118,6 +118,28 @@ public class ContextAPITest {
     }
 
     @Test
+    public void testCloseBeforeLeave() {
+        for (int i = 0; i < 10; i++) {
+            Context context = Context.create();
+            for (int j = 0; j < i; j++) {
+                context.enter();
+            }
+            context.close();
+            // we have already left the context
+            try {
+                Context.getCurrent();
+                fail();
+            } catch (IllegalStateException e) {
+            }
+            for (int j = 0; j < i; j++) {
+                // additional leave calls are allowed
+                // this allows to simplify some error recovery code
+                context.leave();
+            }
+        }
+    }
+
+    @Test
     public void testContextCreateSingleLanguage() {
         Context context = Context.create(ContextAPITestLanguage.ID);
         try {
@@ -287,20 +309,8 @@ public class ContextAPITest {
         context.getPolyglotBindings().getMember("");
         context.enter();
 
-        try {
-            context.close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
         context.getPolyglotBindings().getMember("");
         context.enter();
-
-        try {
-            context.close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         if (depth < 3) {
             Context innerContext = Context.create();
@@ -310,12 +320,6 @@ public class ContextAPITest {
 
         context.leave();
 
-        try {
-            context.close();
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
         context.leave();
 
         try {
@@ -323,7 +327,6 @@ public class ContextAPITest {
             fail();
         } catch (IllegalStateException e) {
         }
-
     }
 
     @Test

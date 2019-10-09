@@ -223,13 +223,12 @@ public final class LLVMContext {
 
     private static final class InitializeContextNode extends LLVMStatementNode {
 
-        private final ContextReference<LLVMContext> ctxRef;
+        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
         private final FrameSlot stackPointer;
 
         @Child DirectCallNode initContext;
 
         InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
-            this.ctxRef = ctx.getLanguage().getContextReference();
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
             LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunction("__sulong_init_context");
@@ -239,6 +238,10 @@ public final class LLVMContext {
 
         @Override
         public void execute(VirtualFrame frame) {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ctxRef = lookupContextReference(LLVMLanguage.class);
+            }
             LLVMContext ctx = ctxRef.get();
             if (!ctx.initialized) {
                 assert !ctx.cleanupNecessary;
@@ -387,13 +390,13 @@ public final class LLVMContext {
 
     private CallTarget freeGlobalBlocks;
 
-    private void initFreeGlobalBlocks() {
+    private void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
         if (freeGlobalBlocks == null) {
             freeGlobalBlocks = Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-                @Child LLVMMemoryOpNode freeRo = language.getNodeFactory().createFreeGlobalsBlock(true);
-                @Child LLVMMemoryOpNode freeRw = language.getNodeFactory().createFreeGlobalsBlock(false);
+                @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
+                @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -765,17 +768,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore) {
+    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
-            initFreeGlobalBlocks();
+            initFreeGlobalBlocks(nodeFactory);
             globalsReadOnlyStore.add(nonPointerStore);
         }
     }
 
     @TruffleBoundary
-    public void registerGlobals(LLVMPointer nonPointerStore) {
+    public void registerGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
-            initFreeGlobalBlocks();
+            initFreeGlobalBlocks(nodeFactory);
             globalsNonPointerStore.add(nonPointerStore);
         }
     }

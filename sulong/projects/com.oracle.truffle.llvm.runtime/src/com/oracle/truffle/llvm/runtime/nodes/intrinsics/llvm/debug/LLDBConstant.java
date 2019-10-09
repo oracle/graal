@@ -358,7 +358,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 Object foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
-                    foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
+                    foreign = LLVMLanguage.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
 
                 } else if (LLVMManagedPointer.isInstance(pointer)) {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
@@ -378,7 +378,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 return false;
 
             } else if (LLVMNativePointer.isInstance(pointer)) {
-                return LLVMLanguage.getLLVMContextReference().get().isHandle(LLVMNativePointer.cast(pointer));
+                return LLVMLanguage.getContext().isHandle(LLVMNativePointer.cast(pointer));
 
             } else if (LLVMManagedPointer.isInstance(pointer)) {
                 final Object target = LLVMManagedPointer.cast(pointer).getObject();

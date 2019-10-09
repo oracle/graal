@@ -28,7 +28,7 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
@@ -42,11 +42,11 @@ import com.oracle.svm.core.posix.headers.Unistd;
 
 /* Do not reformat commented-out code: @formatter:off */
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class PosixSunNioSubstitutions {
 
     /** Translations of jdk/src/solaris/native/sun/nio/ch/PollArrayWrapper.c?v=Java_1.8.0_40_b10. */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.ch.PollArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_PollArrayWrapper {
 

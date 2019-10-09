@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.result;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public final class SingleResult extends RegexResult {
 
     private final int start;
@@ -42,4 +44,19 @@ public final class SingleResult extends RegexResult {
         return end;
     }
 
+    @Override
+    public int getStart(int groupNumber) {
+        return groupNumber == 0 ? start : -1;
+    }
+
+    @Override
+    public int getEnd(int groupNumber) {
+        return groupNumber == 0 ? end : -1;
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "[" + start + ", " + end + "]";
+    }
 }

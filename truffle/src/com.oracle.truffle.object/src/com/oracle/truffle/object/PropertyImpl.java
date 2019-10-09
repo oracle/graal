@@ -56,6 +56,7 @@ import com.oracle.truffle.api.object.Shape;
  *
  * @since 0.17 or earlier
  */
+@SuppressWarnings("deprecation")
 public class PropertyImpl extends Property {
     private final Object key;
     private final Location location;

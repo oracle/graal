@@ -45,6 +45,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     protected static final short FLAG_LOOK_AROUND_NEGATED = 1 << 6;
     protected static final short FLAG_EMPTY_GUARD = 1 << 7;
     protected static final short FLAG_HAS_LOOPS = 1 << 8;
+    protected static final short FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 9;
 
     private short id = -1;
     private RegexASTNode parent;
@@ -77,6 +78,8 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
      * @return A shallow or deep copy of this node.
      */
     public abstract RegexASTNode copy(RegexAST ast, boolean recursive);
+
+    public abstract boolean equalsSemantic(RegexASTNode obj);
 
     public boolean idInitialized() {
         return id >= 0;

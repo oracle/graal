@@ -807,7 +807,7 @@ final class Target_com_oracle_truffle_polyglot_ContextThreadLocal {
      * Don't store any threads in the image.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Thread firstThread;
+    Thread activeSingleThread;
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)

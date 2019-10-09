@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -32,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.posix.headers.Stdio.FILE;
 
 //Checkstyle: stop
 
-@Platforms(Platform.LINUX.class)
+@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
 class Linux64Suffix {
 
     @TargetClass(com.oracle.svm.core.posix.headers.Dirent.dirent.class)
@@ -138,10 +138,16 @@ class Linux64Suffix {
     @CContext(PosixDirectives.class)
     interface rlimit64 extends PointerBase {
         @KeepOriginal
-        long rlim_cur();
+        UnsignedWord rlim_cur();
 
         @KeepOriginal
-        long rlim_max();
+        void set_rlim_cur(UnsignedWord value);
+
+        @KeepOriginal
+        UnsignedWord rlim_max();
+
+        @KeepOriginal
+        void set_rlim_max(UnsignedWord value);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Resource.class)

@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
 import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +42,7 @@ import java.util.Objects;
 public class ClangLike extends Driver {
 
     public static final String NATIVE_PLATFORM = "native";
+    public static final String XCRUN = "/usr/bin/xcrun";
     /**
      * Detects whether we are attempting a linker invocation. If not we can omit flags which would
      * cause warnings with clang. This should be conservative and return {@code true} if in doubt.
@@ -136,6 +139,11 @@ public class ClangLike extends Driver {
 
     protected List<String> getArgs() {
         List<String> sulongArgs = new ArrayList<>();
+        if (os == OS.DARWIN && Files.isExecutable(Paths.get(XCRUN))) {
+            sulongArgs.add(XCRUN);
+            sulongArgs.add("--sdk");
+            sulongArgs.add("macosx");
+        }
         sulongArgs.add(exe);
 
         // compiler flags

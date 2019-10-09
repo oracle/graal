@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+
 import org.junit.Assert;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -47,10 +51,6 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.ShapeImpl;
-import com.oracle.truffle.object.basic.BasicLocations.FieldLocation;
-import com.oracle.truffle.object.basic.BasicLocations.PrimitiveLocationDecorator;
-import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
-import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
 
 public abstract class DOTestAsserts {
 
@@ -76,15 +76,16 @@ public abstract class DOTestAsserts {
         Assert.assertNotSame(getInternalLocation(location1), getInternalLocation(location2));
     }
 
-    private static FieldLocation getInternalLocation(Location location) {
-        if (location instanceof PrimitiveLocationDecorator) {
-            return (FieldLocation) ((PrimitiveLocationDecorator) location).getInternalLocation();
-        } else if (location instanceof SimpleLongFieldLocation) {
-            return (FieldLocation) location;
-        } else if (location instanceof SimpleObjectFieldLocation) {
-            return (FieldLocation) location;
-        } else {
-            throw new AssertionError("Could not find internal location of " + location);
+    private static Location getInternalLocation(Location location) {
+        try {
+            Class<?> locations = Class.forName("com.oracle.truffle.object.CoreLocations");
+            Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
+                            m -> m.getName().equals("getInternalLocation")).findFirst().get();
+            getInternalLocationMethod.setAccessible(true);
+            return (Location) getInternalLocationMethod.invoke(null, location);
+        } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            Assert.fail(e.toString());
+            return location;
         }
     }
 

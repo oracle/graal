@@ -65,7 +65,7 @@ public abstract class InputIndexOfStringNode extends Node {
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
-            if (regionMatchesNode.execute(input, i, match, mask)) {
+            if (regionMatchesNode.execute(input, i, match, 0, match.length(), mask)) {
                 return i;
             }
         }

@@ -32,13 +32,16 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
@@ -46,6 +49,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.hosted.thread.VMThreadMTFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
@@ -119,9 +123,19 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
                             SubstrateCallingConventionType.NativeCall, returnType, parameters.toArray(new JavaType[0]), backend);
+            RegisterValue threadArg = null;
+            int threadIsolateOffset = -1;
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
+                threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
+                if (SubstrateOptions.MultiThreaded.getValue()) {
+                    threadIsolateOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.IsolateTL);
+                }
+                // NOTE: GR-17030: JNI is currently broken in the single-threaded, multi-isolate
+                // case. Fixing this also requires changes to how trampolines are generated.
+            }
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
-            return backend.createJNITrampolineMethod(method, identifier, methodIdArg, getFieldOffset(providers));
+            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers));
         };
     }
 

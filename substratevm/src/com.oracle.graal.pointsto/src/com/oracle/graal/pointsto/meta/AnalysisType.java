@@ -79,7 +79,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConstantContextSensitiveObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConstantContextSensitiveObject.class, "uniqueConstant");
 
-    private final AnalysisUniverse universe;
+    protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
 
     private boolean isInHeap;

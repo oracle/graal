@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,19 +35,6 @@ public interface StateSetBackingSet extends Iterable<Integer> {
      * @return a deep copy of this set.
      */
     StateSetBackingSet copy();
-
-    /**
-     * Initialize the backing set. This method must be called before calling any other method of the
-     * set. After this method is called, {@link #isActive()} will return {@code true}.
-     *
-     * @param stateIndexSize the maximum {@code short} value to be expected.
-     */
-    void create(int stateIndexSize);
-
-    /**
-     * @return {@code true} if the set was initialized by {@link #create(int)}.
-     */
-    boolean isActive();
 
     /**
      * Analogous to {@link java.util.Set#contains(Object)}.

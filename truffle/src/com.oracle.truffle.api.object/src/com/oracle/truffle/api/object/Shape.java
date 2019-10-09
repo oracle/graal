@@ -112,7 +112,9 @@ public abstract class Shape {
      *
      * @return list of properties
      * @since 0.8 or earlier
+     * @deprecated use {@link #getPropertyList()} instead
      */
+    @Deprecated
     public abstract List<Property> getPropertyList(Pred<Property> filter);
 
     /**
@@ -136,7 +138,9 @@ public abstract class Shape {
      * Get a filtered list of property keys in insertion order.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link #getKeyList()} instead
      */
+    @Deprecated
     public abstract List<Object> getKeyList(Pred<Property> filter);
 
     /**
@@ -240,7 +244,7 @@ public abstract class Shape {
     public abstract int getPropertyCount();
 
     /**
-     * Get the shape's operations.
+     * Get the shape's object type info.
      *
      * @since 0.8 or earlier
      */
@@ -254,7 +258,7 @@ public abstract class Shape {
     public abstract Shape getRoot();
 
     /**
-     * Check whether this shape is identical to the given shape.
+     * Checks whether the given object's shape is identical to this shape.
      *
      * @since 0.8 or earlier
      */
@@ -278,7 +282,9 @@ public abstract class Shape {
      * Query whether the shape has a transition with the given key.
      *
      * @since 0.8 or earlier
+     * @deprecated the result of this method may change at any time
      */
+    @Deprecated
     public abstract boolean hasTransitionWithKey(Object key);
 
     /**
@@ -375,10 +381,14 @@ public abstract class Shape {
         }
 
         /** @since 0.8 or earlier */
+        @Deprecated
         protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
 
         /**
          * Create a new location compatible with the given initial value.
+         *
+         * Use {@link #locationForType(Class)} or {@link Shape#defineProperty(Object, Object, int)}
+         * instead.
          *
          * @param value the initial value this location is going to be assigned
          * @since 0.8 or earlier
@@ -393,7 +403,10 @@ public abstract class Shape {
          * @param value the initial value this location is going to be assigned
          * @param modifiers additional restrictions and semantics
          * @since 0.8 or earlier
+         * @deprecated use {@link #locationForType(Class, EnumSet)} or
+         *             {@link Shape#defineProperty(Object, Object, int)} instead
          */
+        @Deprecated
         public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
             assert value != null || !modifiers.contains(LocationModifier.NonNull);
             return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
@@ -462,7 +475,10 @@ public abstract class Shape {
      *
      * @param <T> the type of the input to the predicate
      * @since 0.8 or earlier
+     * @deprecated all methods that use this interface are deprecated; use
+     *             {@link java.util.function.Predicate} instead.
      */
+    @Deprecated
     public interface Pred<T> {
         /**
          * Evaluates this predicate on the given argument.

@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
@@ -87,13 +88,13 @@ public class Signal {
         /* Fields unused */
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
     }
 
-    @Platforms(Platform.LINUX_AMD64.class)
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
     @CEnum
     @CContext(PosixDirectives.class)
     public enum GregEnum {
@@ -125,7 +126,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CStruct
     public interface ucontext_t extends PointerBase {
         /*-
@@ -139,7 +140,7 @@ public class Signal {
                 __sigset_t uc_sigmask;
                 struct _libc_fpstate __fpregs_mem;
               } ucontext_t;
-
+        
             // Context to describe whole processor state.
             typedef struct
               {
@@ -150,7 +151,7 @@ public class Signal {
             } mcontext_t;
          */
         @CFieldAddress("uc_mcontext.gregs")
-        @Platforms(Platform.LINUX_AMD64.class)
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
         GregsPointer uc_mcontext_gregs();
 
         /*-
@@ -176,16 +177,16 @@ public class Signal {
         };
         */
         @CFieldAddress("uc_mcontext")
-        @Platforms(Platform.LINUX_AArch64.class)
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, Platform.LINUX_AArch64.class})
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
-        @Platforms(Platform.DARWIN_AMD64.class)
+        @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
         MContext64 uc_mcontext64();
 
     }
 
-    @Platforms({Platform.DARWIN_AMD64.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface MContext64 extends PointerBase {
 
@@ -245,7 +246,7 @@ public class Signal {
     }
 
     @CStruct
-    @Platforms(Platform.LINUX_AArch64.class)
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, Platform.LINUX_AArch64.class})
     public interface mcontext_t extends PointerBase {
         @CField
         long fault_address();
@@ -270,7 +271,7 @@ public class Signal {
         void dispatch(int signum, siginfo_t siginfo, WordPointer opaque);
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CConstant
     public static native int SA_SIGINFO();
 
@@ -349,7 +350,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum LinuxSignalEnum {
@@ -360,7 +361,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+    @Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum DarwinSignalEnum {

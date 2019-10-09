@@ -108,11 +108,13 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         private final String intrinsicName;
         private final Map<FunctionType, RootCallTarget> overloadingMap;
         private final LLVMIntrinsicProvider provider;
+        private final NodeFactory nodeFactory;
 
-        public Intrinsic(LLVMIntrinsicProvider provider, String name) {
+        public Intrinsic(LLVMIntrinsicProvider provider, String name, NodeFactory nodeFactory) {
             this.intrinsicName = name;
             this.overloadingMap = new HashMap<>();
             this.provider = provider;
+            this.nodeFactory = nodeFactory;
         }
 
         public RootCallTarget cachedCallTarget(FunctionType type) {
@@ -135,7 +137,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
         private RootCallTarget generateTarget(FunctionType type) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            RootCallTarget newTarget = provider.generateIntrinsicTarget(intrinsicName, type.getArgumentTypes());
+            RootCallTarget newTarget = provider.generateIntrinsicTarget(intrinsicName, type.getArgumentTypes(), nodeFactory);
             assert newTarget != null;
             overloadingMap.put(type, newTarget);
             return newTarget;
@@ -143,7 +145,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
         public LLVMExpressionNode generateNode(FunctionType type, LLVMExpressionNode[] arguments) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments, type.getArgumentTypes());
+            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments, type.getArgumentTypes(), nodeFactory);
             assert node != null;
             return node;
         }
@@ -332,9 +334,9 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return !(getFunction() instanceof UnresolvedFunction);
     }
 
-    public void define(LLVMIntrinsicProvider intrinsicProvider) {
+    public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
         assert intrinsicProvider.isIntrinsified(name);
-        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name);
+        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name, nodeFactory);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }
 

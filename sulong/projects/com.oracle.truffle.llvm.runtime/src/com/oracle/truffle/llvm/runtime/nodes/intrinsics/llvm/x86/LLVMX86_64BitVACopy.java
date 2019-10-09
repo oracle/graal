@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -72,42 +73,42 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         this.regSaveAreaLoad = LLVMPointerDirectLoadNodeGen.create(null);
     }
 
-    private void setGPOffset(Object address, int value) {
+    private void setGPOffset(LLVMPointer address, int value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.GP_OFFSET);
         gpOffsetStore.executeWithTarget(p, value);
     }
 
-    private void setFPOffset(Object address, int value) {
+    private void setFPOffset(LLVMPointer address, int value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.FP_OFFSET);
         fpOffsetStore.executeWithTarget(p, value);
     }
 
-    private void setOverflowArgArea(Object address, Object value) {
+    private void setOverflowArgArea(LLVMPointer address, Object value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
         overflowArgAreaStore.executeWithTarget(p, value);
     }
 
-    private void setRegSaveArea(Object address, Object value) {
+    private void setRegSaveArea(LLVMPointer address, Object value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.REG_SAVE_AREA);
         regSaveAreaStore.executeWithTarget(p, value);
     }
 
-    private int getGPOffset(Object address) {
+    private int getGPOffset(LLVMPointer address) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.GP_OFFSET);
         return (int) gpOffsetLoad.executeWithTarget(p);
     }
 
-    private int getFPOffset(Object address) {
+    private int getFPOffset(LLVMPointer address) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.FP_OFFSET);
         return (int) fpOffsetLoad.executeWithTarget(p);
     }
 
-    private Object getOverflowArgArea(Object address) {
+    private Object getOverflowArgArea(LLVMPointer address) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
         return overflowArgAreaLoad.executeWithTarget(p);
     }
 
-    private Object getRegSaveArea(Object address) {
+    private Object getRegSaveArea(LLVMPointer address) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.REG_SAVE_AREA);
         return regSaveAreaLoad.executeWithTarget(p);
     }
@@ -115,7 +116,7 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    protected Object doVoid(Object dest, Object source) {
+    protected Object doVoid(LLVMPointer dest, LLVMPointer source) {
 
         /*
          * COPY THIS: typedef struct { unsigned int gp_offset; unsigned int fp_offset; void

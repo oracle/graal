@@ -363,7 +363,7 @@ final class JNIImageHeapHandles {
     }
 
     private static JNIObjectHandle toRange(JNIObjectHandle handle, SignedWord rangeMin) {
-        assert isInRange(handle);
+        assert isInRange(handle) : "assert isInRange(handle) failed";
         return (JNIObjectHandle) ((SignedWord) handle).and(OBJ_OFFSET_BITS_MASK).add(rangeMin);
     }
 

@@ -421,7 +421,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.object",
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "com.oracle.truffle.object.dsl.processor",
         "mx:JUNIT",
       ],
@@ -463,20 +463,11 @@ suite = {
       "workingSets" : "Truffle",
     },
 
-    "com.oracle.truffle.object.basic" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.object"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle",
-    },
-
     "com.oracle.truffle.object.basic.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -751,7 +742,8 @@ suite = {
         "requires" : [
           "static java.desktop",
           "jdk.unsupported", # sun.misc.Unsafe
-          "java.logging"
+          "java.logging",
+          "java.management"
         ],
         "exports" : [
           # Qualified exports
@@ -764,6 +756,8 @@ suite = {
           "com.oracle.truffle.api.TruffleRuntimeAccess",
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
+          "com.oracle.truffle.api.TruffleLanguage.Provider",
+          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider"
         ],
       },
       "moduleInfo:open" : {
@@ -799,7 +793,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
       ],
@@ -818,6 +812,11 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        }
       },
       "subDir" : "src",
       "javaCompliance" : "8+",

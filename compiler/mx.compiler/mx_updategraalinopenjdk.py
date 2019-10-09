@@ -108,14 +108,14 @@ def updategraalinopenjdk(args):
         # JDK module jdk.internal.vm.compiler is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler',
             # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    or projects whose names include "truffle", "management", "core.llvm" or "replacements.llvm"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm']),
+            #    or projects whose names contain terms on the specified exclude list
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm', 'libgraal.jni']),
             # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         # JDK module jdk.internal.vm.compiler.management is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler.management',
             # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
-            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
         # JDK module jdk.aot is composed of sources from:
         GraalJDKModule('jdk.aot',
             # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
@@ -153,6 +153,8 @@ def updategraalinopenjdk(args):
             out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
         if out:
             mx.abort(jdkrepo + ' is not "clean":' + '\n' + out[:min(200, len(out))] + '...')
+
+    mx.checkcopyrights(['--primary', '--', '--fix'])
 
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:

@@ -97,7 +97,7 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
         @Override
         public boolean executeIsCase(VirtualFrame frame, int i, Object value) {
-            return caseEquals[i].executeCompare(cases[i].executeGeneric(frame), value);
+            return caseEquals[i].executeWithTarget(cases[i].executeGeneric(frame), value);
         }
     }
 }

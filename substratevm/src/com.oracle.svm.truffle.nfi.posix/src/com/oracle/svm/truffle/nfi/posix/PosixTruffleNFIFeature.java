@@ -45,7 +45,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public final class PosixTruffleNFIFeature implements Feature {
 
     @Override
@@ -64,10 +64,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     }
 
     private static String getErrnoGetterFunctionName() {
-        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
             return "__errno_location";
         }
-        if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
             return "__error";
         }
         throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");

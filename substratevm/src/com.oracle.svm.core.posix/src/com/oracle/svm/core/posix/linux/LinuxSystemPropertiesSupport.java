@@ -37,7 +37,7 @@ import com.oracle.svm.core.posix.headers.Paths;
 import com.oracle.svm.core.posix.headers.Utsname;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class})
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -55,7 +55,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override

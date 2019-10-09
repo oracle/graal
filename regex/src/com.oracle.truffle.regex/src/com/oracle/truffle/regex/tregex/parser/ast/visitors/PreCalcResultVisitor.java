@@ -38,11 +38,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private final boolean extractLiteral;
+    private final boolean unrollGroups;
 
     private int index = 0;
     private final char[] literal;
     private final char[] mask;
     private final PreCalculatedResultFactory result;
+    private PreCalcResultVisitor groupUnroller;
 
     private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
@@ -54,6 +56,16 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
             literal = null;
             mask = null;
         }
+        unrollGroups = true;
+    }
+
+    private PreCalcResultVisitor(boolean extractLiteral, boolean unrollGroups, int index, char[] literal, char[] mask, PreCalculatedResultFactory result) {
+        this.extractLiteral = extractLiteral;
+        this.unrollGroups = unrollGroups;
+        this.index = index;
+        this.literal = literal;
+        this.mask = mask;
+        this.result = result;
     }
 
     public static PreCalcResultVisitor run(RegexAST ast, boolean extractLiteral) {
@@ -103,6 +115,17 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         if (group.isCapturing()) {
             result.setEnd(group.getGroupNumber(), index);
         }
+        if (unrollGroups && group.hasQuantifier()) {
+            assert group.getQuantifier().getMin() == group.getQuantifier().getMax();
+            if (groupUnroller == null) {
+                groupUnroller = new PreCalcResultVisitor(extractLiteral, false, index, literal, mask, result);
+            }
+            groupUnroller.index = index;
+            for (int i = 0; i < group.getQuantifier().getMin() - 1; i++) {
+                groupUnroller.run(group);
+            }
+            index = groupUnroller.index;
+        }
     }
 
     @Override
@@ -125,14 +148,17 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        if (extractLiteral) {
-            if (mask == null) {
-                literal[index] = (char) characterClass.getCharSet().getLo(0);
-            } else {
-                characterClass.extractSingleChar(literal, mask, index);
+        assert !characterClass.hasQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
+        for (int i = 0; i < (characterClass.hasQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
+            if (extractLiteral) {
+                if (mask == null) {
+                    literal[index] = (char) characterClass.getCharSet().getLo(0);
+                } else {
+                    characterClass.extractSingleChar(literal, mask, index);
+                }
             }
+            index++;
         }
-        index++;
     }
 
     @Override

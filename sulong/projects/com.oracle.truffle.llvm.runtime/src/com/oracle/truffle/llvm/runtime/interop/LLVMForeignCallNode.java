@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -39,11 +40,11 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeFactory.PackForeignArgumentsNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -66,7 +67,6 @@ public class LLVMForeignCallNode extends RootNode {
         @Children final ForeignToLLVM[] toLLVM;
 
         PackForeignArgumentsNode(Type[] parameterTypes, LLVMInteropType interopType) {
-            NodeFactory nodeFactory = getNodeFactory();
             this.toLLVM = new ForeignToLLVM[parameterTypes.length];
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
@@ -74,16 +74,16 @@ public class LLVMForeignCallNode extends RootNode {
                 for (int i = 0; i < parameterTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
-                        toLLVM[i] = nodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
+                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
                     } else {
                         // interop only supported for value types
-                        toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
                     }
                 }
             } else {
                 // no interop parameter types available
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                    toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
                 }
             }
         }
@@ -103,10 +103,9 @@ public class LLVMForeignCallNode extends RootNode {
         ForeignToLLVM[] createVarargsToLLVM(int argCount) {
             int count = argCount - toLLVM.length;
             if (count > 0) {
-                NodeFactory nodeFactory = LLVMNode.getNodeFactory();
                 ForeignToLLVM[] ret = new ForeignToLLVM[count];
                 for (int i = 0; i < count; i++) {
-                    ret[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
+                    ret[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
                 }
                 return ret;
             } else {
@@ -131,7 +130,7 @@ public class LLVMForeignCallNode extends RootNode {
         }
 
         ForeignToLLVM createVarargsToLLVM() {
-            return LLVMNode.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.ANY);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
         }
 
         @Specialization(guards = "arguments.length >= toLLVM.length", replaces = "packCachedArgCount")
@@ -151,7 +150,7 @@ public class LLVMForeignCallNode extends RootNode {
         }
     }
 
-    private final ContextReference<LLVMContext> ctxRef;
+    @CompilationFinal private ContextReference<LLVMContext> ctxRef;
     private final LLVMInteropType.Structured returnBaseType;
 
     @Child LLVMGetStackNode getStack;
@@ -161,7 +160,6 @@ public class LLVMForeignCallNode extends RootNode {
 
     public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType) {
         super(language);
-        this.ctxRef = language.getContextReference();
         this.returnBaseType = getReturnBaseType(interopType);
         this.getStack = LLVMGetStackNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
@@ -178,6 +176,10 @@ public class LLVMForeignCallNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object result;
+        if (ctxRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ctxRef = lookupContextReference(LLVMLanguage.class);
+        }
         LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
         LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
         try (StackPointer stackPointer = stack.newFrame()) {

@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
@@ -78,7 +79,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     private volatile boolean initialized;
 
     private volatile PolyglotLanguageInstance initLanguage;
-    private final LinkedList<PolyglotLanguageInstance> instancePool = new LinkedList<>();
+    private final LinkedList<PolyglotLanguageInstance> instancePool;
 
     final ContextProfile profile;
     private final LanguageReference<TruffleLanguage<Object>> multiLanguageReference;
@@ -98,11 +99,29 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.index = index;
         this.host = host;
         this.profile = new ContextProfile(this);
+        this.instancePool = new LinkedList<>();
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         this.multiLanguageReference = PolyglotReferences.createAlwaysMultiLanguage(this);
         this.multiContextReference = PolyglotReferences.createAlwaysMultiContext(this);
-        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference);
+
+        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference, false);
         this.singleOrMultiLanguageReference = PolyglotReferences.createAssumeSingleLanguage(this, null, singleInstance, multiLanguageReference);
+    }
+
+    ContextPolicy getEffectiveContextPolicy(PolyglotLanguage inLanguage) {
+        ContextPolicy sourcePolicy;
+        if (engine.boundEngine) {
+            // with a bound engine context policy is effectively always exclusive
+            sourcePolicy = ContextPolicy.EXCLUSIVE;
+        } else {
+            if (inLanguage != null) {
+                sourcePolicy = inLanguage.cache.getPolicy();
+            } else {
+                // we don't know which language we are in so null language means shared policy
+                sourcePolicy = ContextPolicy.SHARED;
+            }
+        }
+        return sourcePolicy;
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {

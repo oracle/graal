@@ -87,16 +87,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    @CompilationFinal private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
     public abstract static class Loader implements LLVMCapability {
 
         public abstract CallTarget load(LLVMContext context, Source source);
-    }
-
-    public static ContextReference<LLVMContext> getLLVMContextReference() {
-        return getCurrentLanguage(LLVMLanguage.class).getContextReference();
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
@@ -121,7 +116,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return null;
     }
 
+    /**
+     * Do not use this on fast-path.
+     */
+    public static LLVMContext getContext() {
+        CompilerAsserts.neverPartOfCompilation("Use faster context lookup methods for the fast-path.");
+        return getCurrentContext(LLVMLanguage.class);
+    }
+
+    /**
+     * Do not use this on fast-path.
+     */
     public static LLVMLanguage getLanguage() {
+        // TODO add neverPartOfCompilation.
         return getCurrentLanguage(LLVMLanguage.class);
     }
 
@@ -144,6 +151,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguageHome();
     }
 
+    public Configuration getActiveConfiguration() {
+        if (activeConfiguration != null) {
+            return activeConfiguration;
+        }
+        throw new IllegalStateException("No context, please create the context before accessing the configuration.");
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
@@ -155,18 +169,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
         return context;
-    }
-
-    public void setNodeFactory(NodeFactory nodeFactory) {
-        this.nodeFactory = nodeFactory;
-    }
-
-    public NodeFactory getNodeFactory() {
-        return nodeFactory;
-    }
-
-    public Configuration getActiveConfiguration() {
-        return activeConfiguration;
     }
 
     @Override
@@ -188,8 +190,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
-        LLVMContext context = getContextReference().get();
-        return getCapability(Loader.class).load(context, source);
+        return getCapability(Loader.class).load(getContext(), source);
     }
 
     @Override

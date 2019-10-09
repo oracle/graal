@@ -204,7 +204,7 @@ public final class SVMHost implements HostVM {
         assert existing == null;
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
 
     @Override

@@ -43,6 +43,7 @@ package com.oracle.truffle.api.object;
 import java.util.EnumSet;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
@@ -85,6 +86,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      */
     public static Builder newLayout() {
+        CompilerAsserts.neverPartOfCompilation();
         return new Builder();
     }
 
@@ -125,11 +127,11 @@ public abstract class Layout {
      *
      * @param objectType that describes the object instance with this shape.
      * @param sharedData for language-specific use
-     * @param id for language-specific use
+     * @param flags for language-specific use, must be in the range 0-255.
      * @return new instance of a shape
      * @since 0.8 or earlier
      */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData, int id);
+    public abstract Shape createShape(ObjectType objectType, Object sharedData, int flags);
 
     /**
      * Create an allocator for static property creation. Reserves all array extension slots.

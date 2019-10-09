@@ -35,8 +35,10 @@ default: ${RESULTS}
 QUIETLY$(MX_VERBOSE)  = @
 
 MX_EXE?=mx
+SUITE_DIR?=suite/dir/not/found
+PLATFORM?=no-platform-specified
 
 bin/%: mx_launcher_template.sh
 	@mkdir -p $(dir $@)
-	$(QUIETLY) cat $< | sed "s#<mx_command>#native-toolchain $(notdir $@)#" | sed "s#<mx_exe>#${MX_EXE}#" > $@
+	$(QUIETLY) cat $< | sed "s#<mx_command>#${PLATFORM}-toolchain $(notdir $@)#" | sed "s#<mx_exe>#${MX_EXE}#" | sed "s#<suite_dir>#${SUITE_DIR}#" > $@
 	@chmod +x $@

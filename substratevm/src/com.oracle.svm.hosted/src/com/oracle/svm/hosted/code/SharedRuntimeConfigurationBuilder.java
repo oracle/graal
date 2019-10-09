@@ -48,7 +48,6 @@ import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
@@ -160,9 +159,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
 
-    protected SubstrateCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
-        return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
-    }
+    protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 
     public void updateLazyState(HostedMetaAccess hMetaAccess) {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);

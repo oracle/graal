@@ -51,4 +51,9 @@ public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
     public boolean isNegated() {
         return isFlagSet(FLAG_LOOK_AROUND_NEGATED);
     }
+
+    boolean groupEqualsSemantic(LookAroundAssertion o) {
+        assert !hasQuantifier();
+        return isNegated() == o.isNegated() && getGroup().equalsSemantic(o.getGroup());
+    }
 }

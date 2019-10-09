@@ -143,6 +143,7 @@ public class PropertyMapTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static Location newLocation(Layout layout, Object id) {
         return layout.createAllocator().locationForValue(id);
     }

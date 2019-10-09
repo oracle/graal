@@ -45,11 +45,11 @@ public class LookBehindAssertion extends LookAroundAssertion {
 
     /**
      * Creates a new look-behind assertion AST node.
-     * 
+     *
      * Note that for this node to be complete, {@link RegexASTSubtreeRootNode#setGroup(Group)} has
      * to be called with the {@link Group} that represents the contents of this lookbehind
      * assertion.
-     * 
+     *
      * @param negated whether this lookbehind assertion is negative or not
      */
     LookBehindAssertion(boolean negated) {
@@ -67,12 +67,12 @@ public class LookBehindAssertion extends LookAroundAssertion {
 
     /**
      * Verifies that the contents of this assertion ({@link #getGroup()}) are in "literal" form.
-     * 
+     *
      * This means that there is only a single alternative which is composed of a sequence of
      * {@link CharacterClass} nodes and terminated by a {@link MatchFound} node.
      */
     public boolean isLiteral() {
-        if (getGroup().getAlternatives().size() != 1) {
+        if (getGroup().size() != 1) {
             return false;
         }
         for (Term t : getGroup().getAlternatives().get(0).getTerms()) {
@@ -99,6 +99,12 @@ public class LookBehindAssertion extends LookAroundAssertion {
     @Override
     public String getPrefix() {
         return isNegated() ? "?<!" : "?<=";
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        assert !hasQuantifier();
+        return this == obj || (obj instanceof LookBehindAssertion && groupEqualsSemantic((LookBehindAssertion) obj));
     }
 
     @TruffleBoundary

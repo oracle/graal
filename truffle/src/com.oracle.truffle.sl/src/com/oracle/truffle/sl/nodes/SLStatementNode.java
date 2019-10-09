@@ -101,7 +101,11 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
         }
         Source source = rootSourceSection.getSource();
         if (sourceCharIndex == UNAVAILABLE_SOURCE) {
-            return source.createUnavailableSection();
+            if (hasRootTag && !rootSourceSection.isAvailable()) {
+                return rootSourceSection;
+            } else {
+                return source.createUnavailableSection();
+            }
         } else {
             return source.createSection(sourceCharIndex, sourceLength);
         }

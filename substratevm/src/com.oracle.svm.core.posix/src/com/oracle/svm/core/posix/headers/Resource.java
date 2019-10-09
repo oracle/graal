@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 // Checkstyle: stop
 
@@ -46,17 +47,17 @@ public class Resource {
     public interface rlimit extends PointerBase {
         /** The current (soft) limit. */
         @CField
-        long rlim_cur();
+        UnsignedWord rlim_cur();
 
         @CField
-        void set_rlim_cur(long value);
+        void set_rlim_cur(UnsignedWord value);
 
         /** The hard limit. */
         @CField
-        long rlim_max();
+        UnsignedWord rlim_max();
 
         @CField
-        void set_rlim_max(long value);
+        void set_rlim_max(UnsignedWord value);
     }
 
     @CFunction

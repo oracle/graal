@@ -168,6 +168,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
             neverInlineSet.add(fieldGetMethod);
 
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                /*
+                 * Various factory methods in VarHandle query the array base/index or field offsets.
+                 * There is no need to analyze these calls because VarHandle accesses are
+                 * intrinsified to simple array and field access nodes in
+                 * IntrinsifyMethodHandlesInvocationPlugin.
+                 */
+                for (Method method : loader.findClassByName("java.lang.invoke.VarHandles", true).getDeclaredMethods()) {
+                    neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
+                }
+            }
+
             Class<?> unsafeClass;
 
             try {
@@ -262,7 +274,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * Post-process computed value fields during analysis, e.g, like registering the target field of
      * field offset computation as unsafe accessed. Operations that lookup fields/methods/types in
      * the analysis universe cannot be executed while the substitution is computed. The call to
-     * {@link #computeSubstitutions(ResolvedJavaType, OptionValues)} is made from
+     * {@link #computeSubstitutions} is made from
      * com.oracle.graal.pointsto.meta.AnalysisUniverse#createType(ResolvedJavaType), before the type
      * is published. Thus if there is a circular dependency between the processed type and one of
      * the fields/methods/types that it needs to access it might lead to a deadlock in
@@ -301,10 +313,26 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     @SuppressWarnings("try")
-    public void computeSubstitutions(ResolvedJavaType hostType, OptionValues options) {
+    public void computeSubstitutions(SVMHost hostVM, ResolvedJavaType hostType, OptionValues options) {
         if (hostType.isArray()) {
             return;
         }
+        if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(hostType)) {
+            /*
+             * The class initializer of this type is executed at run time. The methods in Unsafe are
+             * substituted to return the correct value at image run time, or fail if the field was
+             * not registered for unsafe access.
+             *
+             * Calls to Unsafe.objectFieldOffset() with a constant field parameter are automatically
+             * registered for unsafe access in SubstrateGraphBuilderPlugins. While that logic is a
+             * bit less powerful compared to the parsing in this class (because this class performs
+             * inlining during parsing), it should be sufficient for most cases to automatically
+             * perform the unsafe access registration. And if not, the user needs to provide a
+             * proper manual configuration file.
+             */
+            return;
+        }
+
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
 

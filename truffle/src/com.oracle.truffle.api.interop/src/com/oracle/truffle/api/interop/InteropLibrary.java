@@ -274,12 +274,12 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the Java boolean value if the receiver represents a {@link #isBoolean(Object)
-     * boolean} like value.
+     * Returns the Java string value if the receiver represents a {@link #isString(Object) string}
+     * like value.
      *
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @see #isBoolean(Object)
+     * @see #isString(Object)
      * @since 19.0
      */
     @Abstract(ifExported = "isString")

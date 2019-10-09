@@ -26,9 +26,6 @@ package com.oracle.svm.core;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface LinkerInvocation {
 
@@ -37,10 +34,6 @@ public interface LinkerInvocation {
     void addInputFile(String filename);
 
     void addInputFile(int index, String filename);
-
-    Map<ResolvedJavaMethod, String> getSymbolAliases();
-
-    void addSymbolAlias(ResolvedJavaMethod definition, String alias);
 
     List<String> getLibPaths();
 

@@ -41,7 +41,10 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -206,6 +209,31 @@ public abstract class DebugValue {
         }
         Object value = get();
         return INTEROP.isNull(value);
+    }
+
+    /**
+     * Get a list of breakpoints installed to the value's session and whose
+     * {@link Breakpoint.Builder#rootInstance(DebugValue) root instance} is this value.
+     *
+     * @return a list of breakpoints with this value as root instance
+     * @since 19.3.0
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public final List<Breakpoint> getRootInstanceBreakpoints() {
+        Object value = get();
+        List<Breakpoint>[] breakpoints = new List[]{null};
+        getSession().visitBreakpoints(new Consumer<Breakpoint>() {
+            @Override
+            public void accept(Breakpoint b) {
+                if (b.getRootInstance() == value) {
+                    if (breakpoints[0] == null) {
+                        breakpoints[0] = new LinkedList<>();
+                    }
+                    breakpoints[0].add(b);
+                }
+            }
+        });
+        return breakpoints[0] != null ? breakpoints[0] : Collections.emptyList();
     }
 
     /**

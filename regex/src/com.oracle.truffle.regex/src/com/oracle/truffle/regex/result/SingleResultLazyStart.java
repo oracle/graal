@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class SingleResultLazyStart extends LazyResult {
 
@@ -36,16 +37,54 @@ public final class SingleResultLazyStart extends LazyResult {
         this.findStartCallTarget = findStartCallTarget;
     }
 
-    public int getStart() {
-        return start;
+    @Override
+    public int getStart(int groupNumber) {
+        return groupNumber == 0 ? start : -1;
     }
 
-    public void setStart(int start) {
-        this.start = start;
+    @Override
+    public int getEnd(int groupNumber) {
+        return groupNumber == 0 ? getEnd() : -1;
+    }
+
+    public boolean isStartCalculated() {
+        return start != -1;
+    }
+
+    public int getStart() {
+        return start;
     }
 
     public CallTarget getFindStartCallTarget() {
         return findStartCallTarget;
     }
 
+    public Object[] createArgsFindStart() {
+        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
+    }
+
+    public void applyFindStartResult(int findStartResult) {
+        this.start = findStartResult + 1;
+    }
+
+    /**
+     * Forces evaluation of this lazy regex result. Do not use this method on any fast paths, use
+     * {@link com.oracle.truffle.regex.result.RegexResultGetStartNode} instead!
+     */
+    @TruffleBoundary
+    @Override
+    public void debugForceEvaluation() {
+        if (!isStartCalculated()) {
+            applyFindStartResult((int) findStartCallTarget.call(createArgsFindStart()));
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        if (!isStartCalculated()) {
+            debugForceEvaluation();
+        }
+        return "[" + start + ", " + getEnd() + "]";
+    }
 }
