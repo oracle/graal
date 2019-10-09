@@ -1059,7 +1059,11 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, providers, CanonicalizerPhase.create());
+		    CanonicalizerPhase c = CanonicalizerPhase.create();
+                    if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
+                        c.disableReadCanonicalization();
+                    }
+                    LoopTransformations.fullUnroll(loop, providers, c);
                     CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
