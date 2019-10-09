@@ -112,7 +112,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (agent != null) {
+                if (agent != null || language.isInternal()) {
                     return;
                 }
                 try {
