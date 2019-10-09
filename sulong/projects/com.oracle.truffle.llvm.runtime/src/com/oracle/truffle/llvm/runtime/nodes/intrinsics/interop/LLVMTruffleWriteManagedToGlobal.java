@@ -64,7 +64,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
             throw new LLVMPolyglotException(this, "First argument to truffle_assign_managed must be a pointer to a global.");
         }
         Object newValue = attachType.execute(value, global.getInteropType(ctx));
-        ctx.replaceGlobalStorage(global, address, (LLVMPointer) newValue);
+        ctx.replaceGlobalStorage(global, address, LLVMPointer.cast(newValue));
         return newValue;
     }
 }
