@@ -201,6 +201,41 @@ class JDWP {
             }
         }
 
+        static class GET_VALUES {
+            public static final int ID = 6;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+
+                int fields = input.readInt();
+                reply.writeInt(fields);
+
+                for (int i = 0; i < fields; i++) {
+                    long fieldId = input.readLong();
+                    Field field = (Field) Ids.fromId((int)fieldId);
+
+                    byte tag = TagConstants.fromJavaKind(field.getKind());
+
+                    Object value = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
+                    if (tag == TagConstants.OBJECT) {
+                        // check specifically for String
+                        if (value instanceof StaticObject) {
+                            StaticObject staticObject = (StaticObject) value;
+                            if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
+                                tag = TagConstants.STRING;
+                            }
+                        }
+                    }
+                    writeValue(tag, value, reply);
+                }
+                return reply;
+            }
+        }
+
         static class SOURCE_FILE {
             public static final int ID = 7;
 
@@ -495,9 +530,16 @@ class JDWP {
                     long fieldId = input.readLong();
                     Field field = (Field) Ids.fromId((int) fieldId);
                     Object value = field.get(staticObject);
-                    writeValue(TagConstants.fromJavaKind(field.getKind()), value, reply);
+                    byte tag = TagConstants.fromJavaKind(field.getKind());
+                    if (tag == TagConstants.OBJECT) {
+                        if (value instanceof StaticObject) {
+                            if ("Ljava/lang/String;".equals(((StaticObject) value).getKlass().getType().toString())) {
+                                tag = TagConstants.STRING;
+                            }
+                        }
+                    }
+                    writeValue(tag, value, reply);
                 }
-
                 return reply;
             }
         }
@@ -530,7 +572,15 @@ class JDWP {
                     if (value != null) {
                         if (value instanceof StaticObject) {
                             StaticObject staticObject = (StaticObject) value;
-                            writeValue(TagConstants.fromJavaKind(staticObject.getKlass().getJavaKind()), value, reply);
+                            byte tag = TagConstants.fromJavaKind(staticObject.getKlass().getJavaKind());
+                            if (tag == TagConstants.OBJECT) {
+                                // check specifically for String
+                                System.out.println("580: Type: " + staticObject.getKlass().getType());
+                                if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
+                                    tag = TagConstants.STRING;
+                                }
+                            }
+                            writeValue(tag, value, reply);
                         }
                     }
                     else { // return value in null
@@ -557,6 +607,24 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 StaticObject object = (StaticObject) Ids.fromId((int) objectId);
                 reply.writeBoolean(object == Ids.UNKNOWN);
+                return reply;
+            }
+        }
+    }
+
+    static class STRING_REFERENCE {
+        public static final int ID = 10;
+
+        static class VALUE {
+            public static final int ID = 1;
+
+            static PacketStream createReply(Packet packet, EspressoContext context) {
+                PacketStream input = new PacketStream(packet);
+                long objectId = input.readLong();
+                StaticObject string = (StaticObject) Ids.fromId((int) objectId);
+
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeString(string.asString());
                 return reply;
             }
         }
@@ -756,6 +824,7 @@ class JDWP {
                 StaticObject array = (StaticObject) Ids.fromId((int)arrayId);
                 ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
                 byte tag = TagConstants.fromJavaKind(arrayKlass.getComponentType().getJavaKind());
+
                 if (arrayKlass.getDimension() > 1) {
                     tag = TagConstants.ARRAY;
                 }
@@ -763,6 +832,13 @@ class JDWP {
                 reply.writeInt(length);
                 for (int i = index; i < index + length; i++) {
                     Object theValue = array.get(i);
+                    // check for java.lang.String specifically
+                    if (theValue instanceof StaticObject) {
+                        StaticObject staticObject = (StaticObject) theValue;
+                        if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
+                            tag = TagConstants.STRING;
+                        }
+                    }
                     writeValue(tag, theValue, reply);
                 }
                 return reply;
@@ -808,11 +884,17 @@ class JDWP {
                     Object value = variables[slot - offset];
 
                     byte sigbyte = input.readByte();
-                    JavaKind kind = TagConstants.toJavaKind(sigbyte);
-                    if (kind == null && sigbyte == TagConstants.ARRAY) {
+                    if (sigbyte == TagConstants.ARRAY) {
                         // Array type
                         reply.writeByte(TagConstants.ARRAY);
                         reply.writeLong(Ids.getIdAsLong(value));
+                    } else if (sigbyte == TagConstants.OBJECT) {
+                        if (value instanceof StaticObject) {
+                            StaticObject staticObject = (StaticObject) value;
+                            if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString()));
+                            sigbyte = TagConstants.STRING;
+                            writeValue(sigbyte, value, reply);
+                        }
                     } else {
                         writeValue(sigbyte, value, reply);
                     }
@@ -882,22 +964,20 @@ class JDWP {
     }
 
     private static void writeValue(byte tag, Object value, PacketStream reply) {
+        reply.writeByte(tag);
         switch (tag) {
             case TagConstants.BOOLEAN:
-                reply.writeByte(TagConstants.BOOLEAN);
                 reply.writeBoolean((boolean)value);
                 break;
             case TagConstants.BYTE:
-                reply.writeByte(TagConstants.BYTE);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeByte((byte) unboxed);
                 } else {
-                    reply.writeByte((byte) ((long) value));
+                    reply.writeByte((byte) value);
                 }
                 break;
             case TagConstants.SHORT:
-                reply.writeByte(TagConstants.SHORT);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeShort((short) unboxed);
@@ -906,7 +986,6 @@ class JDWP {
                 }
                 break;
             case TagConstants.CHAR:
-                reply.writeByte(TagConstants.CHAR);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeChar((char) unboxed);
@@ -915,7 +994,6 @@ class JDWP {
                 }
                 break;
             case TagConstants.INT:
-                reply.writeByte(TagConstants.INT);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeInt((int) unboxed);
@@ -924,7 +1002,6 @@ class JDWP {
                 }
                 break;
             case TagConstants.FLOAT:
-                reply.writeByte(TagConstants.FLOAT);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeFloat((float) unboxed);
@@ -933,11 +1010,9 @@ class JDWP {
                 }
                 break;
             case TagConstants.LONG:
-                reply.writeByte(TagConstants.LONG);
                 reply.writeLong((long) value);
                 break;
             case TagConstants.DOUBLE:
-                reply.writeByte(TagConstants.DOUBLE);
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeDouble((double) unboxed);
@@ -946,11 +1021,10 @@ class JDWP {
                 }
                 break;
             case TagConstants.OBJECT:
-                reply.writeByte(TagConstants.OBJECT);
+            case TagConstants.STRING:
                 reply.writeLong(Ids.getIdAsLong(value));
                 break;
             case TagConstants.ARRAY:
-                reply.writeByte(TagConstants.ARRAY);
                 reply.writeLong(Ids.getIdAsLong(value));
             default: throw EspressoError.shouldNotReachHere();
         }
