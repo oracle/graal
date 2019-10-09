@@ -76,6 +76,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_ASYNC_ICON = "\uD83D\uDD35";
     private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
     private static final String PHASE_FINAL_CHECK_ICON = "\uD83D\uDE09";
+    private static final int STATUS_ICON_WIDTH = 2;
+    private static final int STATUS_LABEL_WIDTH = 11;
 
     private Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
@@ -113,11 +115,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, PrintStream oldOut, String phaseIcon) {
-        oldOut.print(MOVE_LEFT);
-        oldOut.print(MOVE_LEFT);
-        oldOut.print(PHASE_PARSE_ICON);
-        oldOut.flush();
+    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, PrintStream oldOut, String phaseIcon, String phaseLabel) {
+        resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
 
         context.eval(source);
 
@@ -129,10 +128,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         Value initializeModule = context.getBindings("wasm").getMember(TestutilModule.Names.INITIALIZE_MODULE);
 
         Value result = null;
-        oldOut.print(MOVE_LEFT);
-        oldOut.print(MOVE_LEFT);
-        oldOut.print(phaseIcon);
-        oldOut.flush();
+        resetStatus(oldOut, phaseIcon, phaseLabel);
         for (int i = 0; i != iterations; ++i) {
             if (testCase.initialization() != null) {
                 initializeModule.execute(testCase.initialization());
@@ -142,6 +138,26 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
 
         return result;
+    }
+
+    private void resetStatus(PrintStream oldOut, String icon, String label) {
+        String formattedLabel = label;
+        if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
+            formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
+        }
+        for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
+            formattedLabel += " ";
+        }
+        eraseStatus(oldOut);
+        oldOut.print(icon);
+        oldOut.print(formattedLabel);
+        oldOut.flush();
+    }
+
+    private void eraseStatus(PrintStream oldOut) {
+        for (int i = 0; i < STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH; i++) {
+            oldOut.print(MOVE_LEFT);
+        }
     }
 
     private WasmTestStatus runTestCase(WasmTestCase testCase) {
@@ -176,7 +192,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             context = getInterpretedNoInline(contextBuilder);
-            final Value resultInterpreted = runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON);
+            final Value resultInterpreted = runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON, "interpreter");
 
             // TODO: We should validate the result for all intermediate runs.
             validateResult(testCase.data.resultValidator, resultInterpreted, capturedStdout);
@@ -188,24 +204,24 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_NO_INLINE_ICON);
+            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
             context = getInterpretedWithInline(contextBuilder);
-            runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON);
+            runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_INLINE_ICON);
+            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, 1000, oldOut, PHASE_ASYNC_ICON);
+            runInContext(testCase, context, source, 1000, oldOut, PHASE_ASYNC_ICON, "async,multi");
 
             System.setOut(new PrintStream(capturedStdout));
-            final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON);
+            final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON, "async,check");
 
             validateResult(testCase.data.resultValidator, result, capturedStdout);
         } catch (InterruptedException | IOException e) {
@@ -258,7 +274,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         int width = retrieveTerminalWidth();
         int position = 0;
         for (WasmTestCase testCase : qualifyingTestCases) {
-            int requiredWidth = testCase.name.length() + 3;
+            int extraWidth = 1 + STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH;
+            int requiredWidth = testCase.name.length() + extraWidth;
             if (position + requiredWidth >= width) {
                 System.out.println();
                 position = 0;
@@ -271,8 +288,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 // and erase the test name.
                 System.out.print(" ");
                 System.out.print(testCase.name);
-                System.out.print(" ");
-                System.out.print(" ");
+                for (int i = 1; i < extraWidth; i++) {
+                    System.out.print(" ");
+                }
                 System.out.flush();
                 runTestCase(testCase);
                 statusIcon = TEST_PASSED_ICON;
