@@ -681,10 +681,13 @@ public final class Target_sun_misc_Unsafe {
         holder.setByteFieldVolatile(f, value);
     }
 
-    @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
-    public static boolean shouldBeInit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
-        Klass k = clazz.getMirrorKlass();
-        return (k != null);
+    @Substitution(hasReceiver = true)
+    public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+        if (StaticObject.isNull(clazz)) {
+            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+        }
+        Klass klass = clazz.getMirrorKlass();
+        return !klass.isInitialized();
     }
 
     /**
