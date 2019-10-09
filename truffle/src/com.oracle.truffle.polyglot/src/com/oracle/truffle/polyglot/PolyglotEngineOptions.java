@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
 
@@ -59,4 +60,9 @@ final class PolyglotEngineOptions {
      */
     @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
     static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables conservative context references. " +
+                    "This allows invalid sharing between contexts. " +
+                    "For testing purposes only.")//
+    static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
 }
