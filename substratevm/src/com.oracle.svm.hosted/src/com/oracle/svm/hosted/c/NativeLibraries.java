@@ -166,13 +166,6 @@ public final class NativeLibraries {
         Path staticLibsDir = null;
         String hint = null;
 
-        /* In case a specific location for the static JDK libraries is provided, use that. */
-
-        String externalStaticLibsDir = NativeImageOptions.StaticJDKLibs.getValue();
-        if (!externalStaticLibsDir.isEmpty()) {
-            staticLibsDir = Paths.get(externalStaticLibsDir);
-        }
-
         /* Probe for static JDK libraries in JDK lib directory */
         try {
             Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
@@ -195,12 +188,14 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
-                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
-            if (hint != null) {
-                message += "\n" + hint;
+            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) { /* Don't fail if we are not supposed to link */
+                String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
+                        "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
+                if (hint != null) {
+                    message += "\n" + hint;
+                }
+                UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
             }
-            UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
         }
         return libraryPaths;
     }
