@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -164,6 +165,13 @@ public final class NativeLibraries {
 
         Path staticLibsDir = null;
         String hint = null;
+
+        /* In case a specific location for the static JDK libraries is provided, use that. */
+
+        String externalStaticLibsDir = NativeImageOptions.StaticJDKLibs.getValue();
+        if (!externalStaticLibsDir.isEmpty()) {
+            staticLibsDir = Paths.get(externalStaticLibsDir);
+        }
 
         /* Probe for static JDK libraries in JDK lib directory */
         try {

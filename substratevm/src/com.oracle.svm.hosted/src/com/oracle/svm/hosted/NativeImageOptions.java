@@ -198,4 +198,7 @@ public class NativeImageOptions {
         }
         return analysisThreads;
     }
+
+    @Option(help = "Specify a directory that contains static JDK libs (e.g. libjava.a etc)")//
+    public static final HostedOptionKey<String> StaticJDKLibs = new HostedOptionKey<>("");
 }
