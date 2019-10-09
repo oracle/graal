@@ -115,7 +115,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, PrintStream oldOut, String phaseIcon, String phaseLabel) {
+    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+        final PrintStream oldOut = System.out;
         resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
 
         context.eval(source);
@@ -130,11 +131,20 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         Value result = null;
         resetStatus(oldOut, phaseIcon, phaseLabel);
         for (int i = 0; i != iterations; ++i) {
-            if (testCase.initialization() != null) {
-                initializeModule.execute(testCase.initialization());
+            final ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
+            try {
+                System.setOut(new PrintStream(capturedStdout));
+
+                if (testCase.initialization() != null) {
+                    initializeModule.execute(testCase.initialization());
+                }
+                result = mainFunction.execute();
+                resetGlobals.execute();
+
+                validateResult(testCase.data.resultValidator, result, capturedStdout);
+            } finally {
+                System.setOut(oldOut);
             }
-            result = mainFunction.execute();
-            resetGlobals.execute();
         }
 
         return result;
@@ -161,7 +171,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private WasmTestStatus runTestCase(WasmTestCase testCase) {
-        final PrintStream oldOut = System.out;
         try {
             byte[] binary = testCase.createBinary();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
@@ -174,62 +183,35 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             contextBuilder.allowExperimentalOptions(true);
             contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
             Source source = sourceBuilder.build();
-
             Context context;
-
-            // Create a /dev/null stream, as well as a surrogate output stream for stdout.
-            // For all the runs except the first and the last ones, suppress the test output.
-            OutputStream devNull = new OutputStream() {
-                @Override
-                public void write(int b) throws IOException {
-                    // emulate write to /dev/null - i.e. do nothing
-                }
-            };
-            final ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
-
-            // Capture output for the first run.
-            System.setOut(new PrintStream(capturedStdout));
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             context = getInterpretedNoInline(contextBuilder);
-            final Value resultInterpreted = runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON, "interpreter");
-
-            // TODO: We should validate the result for all intermediate runs.
-            validateResult(testCase.data.resultValidator, resultInterpreted, capturedStdout);
-            capturedStdout.reset();
-
-            // Do not capture the output for intermediate runs.
-            System.setOut(new PrintStream(devNull));
+            runInContext(testCase, context, source, 1, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
+            runInContext(testCase, context, source, 2, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
             context = getInterpretedWithInline(contextBuilder);
-            runInContext(testCase, context, source, 1, oldOut, PHASE_INTERPRETER_ICON, "interpreter");
+            runInContext(testCase, context, source, 1, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, 2, oldOut, PHASE_SYNC_INLINE_ICON, "sync,inl");
+            runInContext(testCase, context, source, 2, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, 1000, oldOut, PHASE_ASYNC_ICON, "async,multi");
-
-            System.setOut(new PrintStream(capturedStdout));
-            final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON, "async,check");
-
-            validateResult(testCase.data.resultValidator, result, capturedStdout);
+            runInContext(testCase, context, source, 1000, PHASE_ASYNC_ICON, "async,multi");
+            runInContext(testCase, context, source, 1, PHASE_FINAL_CHECK_ICON, "async,check");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
         } catch (PolyglotException e) {
             validateThrown(testCase.data.expectedErrorMessage, e);
-        } finally {
-            System.setOut(oldOut);
         }
         return WasmTestStatus.OK;
     }
