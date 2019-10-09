@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.InvocationTargetException;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -222,6 +223,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      *         method. exception ExceptionInInitializerError if the initialization provoked by this
      *         method fails.
      */
+    @TruffleBoundary
     @Substitution
     public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
                     @Host(Object[].class) StaticObject args) {
