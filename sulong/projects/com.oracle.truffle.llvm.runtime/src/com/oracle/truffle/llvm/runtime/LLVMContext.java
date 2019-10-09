@@ -612,6 +612,11 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
+    public void replaceGlobalStorage(LLVMGlobal descriptor, LLVMPointer oldValue, LLVMPointer newValue) {
+        globalStorageMap.replace(descriptor, oldValue, newValue);
+    }
+
+    @TruffleBoundary
     public LLVMPointer getGlobalStorage(LLVMGlobal descriptor) {
         return globalStorageMap.get(descriptor);
     }
