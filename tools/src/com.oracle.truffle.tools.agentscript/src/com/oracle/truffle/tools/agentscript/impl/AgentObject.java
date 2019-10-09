@@ -110,7 +110,7 @@ final class AgentObject implements TruffleObject {
     @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static Object invokeMember(AgentObject obj, String member, Object[] args,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @CachedLibrary(limit = "0") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
         Instrumenter instrumenter = obj.env.getInstrumenter();
         switch (member) {
             case "on":
