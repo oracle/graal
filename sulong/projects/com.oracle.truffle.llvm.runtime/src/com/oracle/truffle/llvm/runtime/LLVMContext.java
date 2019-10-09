@@ -602,17 +602,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public boolean globalExists(LLVMGlobal descriptor){
+    public boolean globalExists(LLVMGlobal descriptor) {
         return globalStorageMap.containsKey(descriptor) && globalStorageMap.get(descriptor) != null;
     }
 
     @TruffleBoundary
-    public void setGlobalStorage(LLVMGlobal descriptor, LLVMPointer value){
+    public void setGlobalStorage(LLVMGlobal descriptor, LLVMPointer value) {
         globalStorageMap.put(descriptor, value);
     }
 
     @TruffleBoundary
-    public LLVMPointer getGlobalStorage(LLVMGlobal descriptor){
+    public LLVMPointer getGlobalStorage(LLVMGlobal descriptor) {
         return globalStorageMap.get(descriptor);
     }
 

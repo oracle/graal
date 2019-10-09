@@ -730,7 +730,7 @@ final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create( global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
