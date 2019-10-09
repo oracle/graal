@@ -186,7 +186,6 @@ public abstract class ClassRegistry implements ContextAccess {
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
         Klass maybeLoaded = findLoadedKlass(type);
-        assert Thread.holdsLock(this);
         if (maybeLoaded != null) {
             throw meta.throwExWithMessage(LinkageError.class, "Class " + type + " already defined");
         }
