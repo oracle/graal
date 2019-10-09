@@ -101,7 +101,7 @@ final class LanguageCheckGenerator extends InteropNodeGenerator {
     }
 
     @SuppressWarnings("static-method")
-    public  String checkSignature(ExecutableElement method) {
+    public String checkSignature(ExecutableElement method) {
         final List<? extends VariableElement> params = method.getParameters();
         RefectiveTypes types = ProcessorContext.getInstance().getTypes();
         boolean hasFrameArgument = false;
