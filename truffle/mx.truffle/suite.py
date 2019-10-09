@@ -311,9 +311,6 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      # We need to force javac as JDT cannot deal with the amount of deprecations
-      # in this package, together with using it in an annotation processor.
-      # Can be removed when deprecated API was removed.
       "workingSets" : "Truffle,Codegen",
     },
 
