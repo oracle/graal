@@ -31,7 +31,6 @@ package com.oracle.truffle.wasm.test;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -54,6 +53,7 @@ import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
+import com.oracle.truffle.wasm.utils.WasmResource;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -373,45 +373,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return testCases.stream().filter((WasmTestCase x) -> filterTestName().test(x.name)).collect(Collectors.toList());
     }
 
-    protected String getResourceAsString(String resourceName, boolean fail) throws IOException {
-        byte[] contents = getResourceAsBytes(resourceName, fail);
-        if (contents != null) {
-            return new String(contents);
-        } else {
-            assert !fail;
-            return null;
-        }
-    }
-
-    protected byte[] getResourceAsBytes(String resourceName, boolean fail) throws IOException {
-        InputStream stream = getClass().getResourceAsStream(resourceName);
-        if (stream == null) {
-            if (fail) {
-                Assert.fail(String.format("Could not find resource: %s", resourceName));
-            } else {
-                return null;
-            }
-        }
-        byte[] contents = new byte[stream.available()];
-        new DataInputStream(stream).readFully(contents);
-        return contents;
-    }
-
-    protected Object getResourceAsTest(String baseName, boolean fail) throws IOException {
-        final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
-        if (bytes != null) {
-            return bytes;
-        }
-        final String text = getResourceAsString(baseName + ".wat", false);
-        if (text != null) {
-            return text;
-        }
-        if (fail) {
-            Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
-        }
-        return null;
-    }
-
     protected Collection<WasmTestCase> collectFileTestCases(String testBundle) throws IOException {
         Collection<WasmTestCase> collectedCases = new ArrayList<>();
         if (testBundle == null) {
@@ -431,9 +392,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 continue;
             }
 
-            Object mainContent = getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
-            String resultContent = getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
-            String initContent = getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
+            Object mainContent = WasmResource.getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
+            String resultContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
+            String initContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
             WasmTestInitialization initializer = testInitialization(initContent);
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);

@@ -71,11 +71,25 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "com.oracle.truffle.wasm.utils" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle,WebAssembly",
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.wasm.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
+        "com.oracle.truffle.wasm.utils",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
@@ -167,9 +181,20 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
+    "WASM_UTILS" : {
+      "moduleName" : "com.oracle.truffle.wasm.utils",
+      "dependencies" : [
+        "com.oracle.truffle.wasm.utils",
+      ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+      ]
+    },
+
     "WASM_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
+        "com.oracle.truffle.wasm.utils",
         "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
@@ -206,6 +231,9 @@ suite = {
         "com.oracle.truffle.wasm.benchmark",
         "mx:JMH_1_21",
       ],
+      "distDependencies" : [
+        "WASM_UTILS",
+      ]
     },
 
     "WASM_BENCHCASES" : {
