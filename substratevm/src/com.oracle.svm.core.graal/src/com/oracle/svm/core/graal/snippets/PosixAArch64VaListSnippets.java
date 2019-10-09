@@ -51,8 +51,8 @@ import com.oracle.svm.core.util.VMError;
 class PosixAArch64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AArch64.class) ||
-                        Platform.includedIn(Platform.LINUX_AArch64.class) || Platform.includedIn(Platform.DARWIN_AArch64.class);
+        return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AARCH64.class) ||
+                        Platform.includedIn(Platform.LINUX_AARCH64.class) || Platform.includedIn(Platform.DARWIN_AARCH64.class);
     }
 
     @Override

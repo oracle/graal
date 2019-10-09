@@ -215,7 +215,7 @@ innr public static LINUX_AMD64
 innr public static WINDOWS_AMD64
 meth public static boolean includedIn(java.lang.Class<? extends org.graalvm.nativeimage.Platform>)
 
-CLSS public abstract interface static org.graalvm.nativeimage.Platform$AArch64
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$AARCH64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
@@ -244,10 +244,10 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
 
-CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AArch64
+CLSS public final static org.graalvm.nativeimage.Platform$LINUX_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
-intf org.graalvm.nativeimage.Platform$AArch64
+intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$LINUX
 intf org.graalvm.nativeimage.impl.InternalPlatform$LINUX_JNI_AND_SUBSTITUTIONS
 supr java.lang.Object

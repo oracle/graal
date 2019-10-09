@@ -52,7 +52,7 @@ import jdk.vm.ci.code.site.Reference;
 //import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.*;
 
 @AutomaticFeature
-@Platforms({Platform.AArch64.class})
+@Platforms({Platform.AARCH64.class})
 class AArch64HostedPatcherFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

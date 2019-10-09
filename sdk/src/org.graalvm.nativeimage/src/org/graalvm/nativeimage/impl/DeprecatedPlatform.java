@@ -81,14 +81,14 @@ public interface DeprecatedPlatform {
      *
      * @since 19.0
      */
-    class LINUX_SUBSTITUTION_AArch64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
+    class LINUX_SUBSTITUTION_AARCH64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
          * @since 19.0
          */
-        public LINUX_SUBSTITUTION_AArch64() {
+        public LINUX_SUBSTITUTION_AARCH64() {
         }
     }
 
@@ -113,14 +113,14 @@ public interface DeprecatedPlatform {
      *
      * @since 2.0
      */
-    class DARWIN_SUBSTITUTION_AArch64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
+    class DARWIN_SUBSTITUTION_AARCH64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
          * @since 2.0
          */
-        public DARWIN_SUBSTITUTION_AArch64() {
+        public DARWIN_SUBSTITUTION_AARCH64() {
         }
     }
 }
