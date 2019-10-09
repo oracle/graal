@@ -124,7 +124,7 @@ final class AgentObject implements TruffleObject {
                                 try {
                                     interop.execute(args[1], new SourceEventObject(event.getSource()));
                                 } catch (InteropException ex) {
-                                    throw raise(RuntimeException.class, ex);
+                                    throw AgentException.raise(ex);
                                 }
                             }
                         }, true);
@@ -212,7 +212,7 @@ final class AgentObject implements TruffleObject {
         try {
             iop.execute(closeFn);
         } catch (InteropException ex) {
-            throw raise(RuntimeException.class, ex);
+            throw AgentException.raise(ex);
         } finally {
             closeFn = null;
         }
@@ -229,12 +229,7 @@ final class AgentObject implements TruffleObject {
         } catch (UnknownIdentifierException ex) {
             return false;
         } catch (InteropException ex) {
-            throw raise(RuntimeException.class, ex);
+            throw AgentException.raise(ex);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T extends Exception> T raise(Class<T> type, Exception ex) throws T {
-        throw (T) ex;
     }
 }

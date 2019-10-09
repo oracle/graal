@@ -72,7 +72,7 @@ public interface TruffleException {
 
     /**
      * Returns a node indicating the location where this exception occurred in the AST. This method
-     * may <code>null</code> to indicate that the location is not available.
+     * may return <code>null</code> to indicate that the location is not available.
      *
      * @since 0.27
      */

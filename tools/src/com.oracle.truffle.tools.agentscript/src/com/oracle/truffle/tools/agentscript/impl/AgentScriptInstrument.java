@@ -73,6 +73,9 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
             registerAgentScript(() -> {
                 try {
                     TruffleFile file = env.getTruffleFile(path);
+                    if (file == null || !file.exists()) {
+                        throw AgentException.notFound(file);
+                    }
                     String mimeType = file.getMimeType();
                     String lang = null;
                     for (Map.Entry<String, LanguageInfo> e : env.getLanguages().entrySet()) {
@@ -83,7 +86,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     }
                     return Source.newBuilder(lang, file).uri(file.toUri()).internal(true).name(file.getName()).build();
                 } catch (IOException ex) {
-                    throw AgentObject.raise(RuntimeException.class, ex);
+                    throw AgentException.raise(ex);
                 }
             });
         }
@@ -119,7 +122,7 @@ public final class AgentScriptInstrument extends TruffleInstrument implements Ag
                     target.call(agent);
                     agent.initializationFinished();
                 } catch (IOException ex) {
-                    throw AgentObject.raise(RuntimeException.class, ex);
+                    throw AgentException.raise(ex);
                 }
             }
 
