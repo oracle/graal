@@ -39,8 +39,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AMD64;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AMD64;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -54,7 +52,7 @@ class PosixAMD64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class) ||
-                        Platform.includedIn(LINUX_JNI_AMD64.class) || Platform.includedIn(DARWIN_JNI_AMD64.class);
+                        Platform.includedIn(Platform.LINUX_AMD64.class) || Platform.includedIn(Platform.DARWIN_AMD64.class);
     }
 
     @Override

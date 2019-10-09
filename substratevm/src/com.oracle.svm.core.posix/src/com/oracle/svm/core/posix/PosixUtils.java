@@ -72,7 +72,7 @@ import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public class PosixUtils {
 
     static String setLocale(String category, String locale) {

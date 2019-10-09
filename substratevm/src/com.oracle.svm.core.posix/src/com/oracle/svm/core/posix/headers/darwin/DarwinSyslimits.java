@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 /** Declarations of method from <sys/syslimits.h>. */
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @CContext(PosixDirectives.class)
 public class DarwinSyslimits {
     // { Allow names with underscores: Checkstyle: stop

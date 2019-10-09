@@ -28,11 +28,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS;
 
 /** Definitions hand-translated from <langinfo.h>. */
-@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
+@Platforms({DARWIN_JNI_AND_SUBSTITUTIONS.class, LINUX_JNI_AND_SUBSTITUTIONS.class})
 @CContext(PosixDirectives.class)
 public class Langinfo {
     /* Allow non-standard names: Checkstyle: stop */

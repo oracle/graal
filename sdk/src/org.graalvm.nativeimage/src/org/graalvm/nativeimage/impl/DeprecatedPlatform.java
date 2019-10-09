@@ -65,7 +65,7 @@ public interface DeprecatedPlatform {
      *
      * @since 19.0
      */
-    class LINUX_SUBSTITUTION_AMD64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_AND_JNI, Platform.AMD64 {
+    class LINUX_SUBSTITUTION_AMD64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -81,7 +81,7 @@ public interface DeprecatedPlatform {
      *
      * @since 19.0
      */
-    class LINUX_SUBSTITUTION_AArch64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_AND_JNI, Platform.AArch64 {
+    class LINUX_SUBSTITUTION_AArch64 implements DeprecatedPlatform.LINUX_SUBSTITUTION, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -97,7 +97,7 @@ public interface DeprecatedPlatform {
      *
      * @since 19.0
      */
-    class DARWIN_SUBSTITUTION_AMD64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_AND_JNI, Platform.AMD64 {
+    class DARWIN_SUBSTITUTION_AMD64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -113,7 +113,7 @@ public interface DeprecatedPlatform {
      *
      * @since 2.0
      */
-    class DARWIN_SUBSTITUTION_AArch64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_AND_JNI, Platform.AArch64 {
+    class DARWIN_SUBSTITUTION_AArch64 implements DeprecatedPlatform.DARWIN_SUBSTITUTION, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, Platform.AArch64 {
 
         /**
          * Instantiates a marker instance of this platform.

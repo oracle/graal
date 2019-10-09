@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override

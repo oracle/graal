@@ -47,7 +47,7 @@ import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.linux.LinuxSched;
 
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 @TargetClass(java.lang.System.class)
 final class Target_java_lang_System {
 

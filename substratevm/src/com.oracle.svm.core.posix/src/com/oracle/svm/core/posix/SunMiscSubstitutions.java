@@ -68,7 +68,7 @@ class Package_jdk_internal_misc implements Function<TargetClass, String> {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
 final class Target_jdk_internal_misc_Signal {
 
@@ -107,7 +107,7 @@ final class Target_jdk_internal_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -413,7 +413,7 @@ final class Target_sun_misc_NativeSignalHandler {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class IgnoreSIGPIPEFeature implements Feature {
 
@@ -441,7 +441,7 @@ class IgnoreSIGPIPEFeature implements Feature {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_misc_VM {
 

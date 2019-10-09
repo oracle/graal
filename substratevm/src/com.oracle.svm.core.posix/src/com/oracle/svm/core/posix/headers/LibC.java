@@ -40,7 +40,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * Basic functions from the standard C library that we require to be present on all Posix platforms.
  */
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public class LibC {
 
     /**

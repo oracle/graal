@@ -150,11 +150,11 @@ public class Unistd {
     public static native int _SC_NPROCESSORS_ONLN();
 
     @CConstant
-    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     public static native int _SC_PHYS_PAGES();
 
     @CConstant
-    @Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+    @Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
     public static native int _CS_DARWIN_USER_TEMP_DIR();
 
     @CFunction

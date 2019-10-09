@@ -199,7 +199,7 @@ class ProcessNameProvider implements Function<TargetClass, String> {
 }
 
 @TargetClass(classNameProvider = ProcessNameProvider.class)
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
@@ -352,7 +352,7 @@ final class Target_java_lang_ProcessBuilder_NullOutputStream {
 }
 
 @TargetClass(java.lang.System.class)
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, InternalPlatform.LINUX_JNI.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class, InternalPlatform.DARWIN_JNI.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, Platform.LINUX.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class, Platform.DARWIN.class})
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//

@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 // { Allow names with underscores: Checkstyle: stop
 
 /** Declarations of method from </mach-o/dyld.h>. */
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @CContext(PosixDirectives.class)
 public class DarwinDyld {
 

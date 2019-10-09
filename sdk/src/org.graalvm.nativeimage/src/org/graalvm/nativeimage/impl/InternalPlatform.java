@@ -53,112 +53,22 @@ public interface InternalPlatform {
     }
 
     /**
-     * Supported operating system: Linux platform that uses JNI based native JDK libraries.
+     * Temporary platform used to mark classes or methods that are used for LINUX and
+     * LINUX_SUBSTITUTION platforms.
      *
      * @since 19.0
      */
-    interface LINUX_JNI extends PLATFORM_JNI {
-
-    }
-
-    /**
-     * Supported operating system: Darwin (MacOS) platform that uses JNI based native JDK libraries.
-     *
-     * @since 19.0
-     */
-    interface DARWIN_JNI extends PLATFORM_JNI {
-
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for LINUX and LINUX_JNI
-     * platforms.
-     *
-     * @since 19.0
-     */
-    interface LINUX_AND_JNI extends Platform {
+    interface LINUX_JNI_AND_SUBSTITUTIONS extends Platform {
 
     }
 
     /**
      * Temporary platform used to mark classes or methods that are used for DARWIN (MacOS) and
-     * DARWIN_JNI platforms.
+     * DARWIN_SUBSTITUTION platforms.
      *
      * @since 19.0
      */
-    interface DARWIN_AND_JNI extends Platform {
-
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
-     * platforms.
-     *
-     * @since 19.0
-     */
-    class LINUX_JNI_AMD64 implements LINUX_JNI, LINUX_AND_JNI, Platform.AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.0
-         */
-        public LINUX_JNI_AMD64() {
-        }
-
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
-     * platforms.
-     *
-     * @since 19.0
-     */
-    class DARWIN_JNI_AMD64 implements DARWIN_JNI, DARWIN_AND_JNI, Platform.AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.0
-         */
-        public DARWIN_JNI_AMD64() {
-        }
-
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
-     * platforms.
-     *
-     * @since 19.1.0
-     */
-    class LINUX_JNI_AArch64 implements LINUX_JNI, LINUX_AND_JNI, Platform.AArch64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.1.0
-         */
-        public LINUX_JNI_AArch64() {
-        }
-
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
-     * platforms.
-     *
-     * @since 19.1.0
-     */
-    class DARWIN_JNI_AArch64 implements DARWIN_JNI, DARWIN_AND_JNI, Platform.AArch64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 19.1.0
-         */
-        public DARWIN_JNI_AArch64() {
-        }
+    interface DARWIN_JNI_AND_SUBSTITUTIONS extends Platform {
 
     }
 }
