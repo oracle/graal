@@ -292,6 +292,21 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
+    private void stop0(Object o) {
+        VMError.unimplemented();
+    }
+
+    @Substitute
+    private void suspend0() {
+        VMError.unimplemented();
+    }
+
+    @Substitute
+    private void resume0() {
+        VMError.unimplemented();
+    }
+
+    @Substitute
     private boolean isAlive() {
         // There are fewer cases that are not-alive.
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
