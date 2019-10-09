@@ -202,7 +202,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, 1000000, oldOut, PHASE_ASYNC_ICON);
+            runInContext(testCase, context, source, 1000, oldOut, PHASE_ASYNC_ICON);
 
             System.setOut(new PrintStream(capturedStdout));
             final Value result = runInContext(testCase, context, source, 1, oldOut, PHASE_FINAL_CHECK_ICON);
