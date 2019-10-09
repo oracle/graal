@@ -198,5 +198,4 @@ public class NativeImageOptions {
         }
         return analysisThreads;
     }
-
 }
