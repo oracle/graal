@@ -82,10 +82,11 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
 
         int num = 0;
         for (int i = 0; i < iovcnt; i++) {
-            int ptr = memory.load_i32(iov + i * 8);
+            int ptr = memory.load_i32(iov + (i * 8 + 0));
             int len = memory.load_i32(iov + (i * 8 + 4));
             for (int j = 0; j < len; j++) {
-                charPrinter.accept((char) memory.load_i32_8u(ptr + j));
+                final char c = (char) memory.load_i32_8u(ptr + j);
+                charPrinter.accept(c);
             }
             num += len;
             memory.store_i32(pnum, num);
