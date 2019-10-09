@@ -43,6 +43,7 @@ import java.util.concurrent.ThreadFactory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
@@ -99,6 +100,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
+        builder.engine(Engine.create());
         builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(userDir, truffleAdapter));
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
