@@ -352,7 +352,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);
             String resultType = resultTypeValue[0];
-            String resultValue = resultTypeValue[1];
+            String resultValue = resultTypeValue[1].trim();
 
             WasmTestCaseData testData = null;
             switch (resultType) {
