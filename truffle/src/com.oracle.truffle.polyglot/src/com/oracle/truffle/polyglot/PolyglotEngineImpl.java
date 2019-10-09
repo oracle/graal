@@ -591,7 +591,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
 
-        this.hostLanguage = createLanguage(createHostLanguageCache(), HOST_LANGUAGE_INDEX, null);
+        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(), HOST_LANGUAGE_INDEX, null);
 
         int index = 1;
         for (LanguageCache cache : serializedLanguages) {
@@ -646,11 +646,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         Language language = impl.getAPIAccess().newLanguage(languageImpl);
         languageImpl.api = language;
         return languageImpl;
-    }
-
-    private static LanguageCache createHostLanguageCache() {
-        return new LanguageCache(HOST_LANGUAGE_ID,
-                        "Host", "Host", System.getProperty("java.version"), false, false, new HostLanguage());
     }
 
     private static void verifyId(String id, String className) {

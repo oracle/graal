@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -55,7 +56,7 @@ import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import com.oracle.svm.core.thread.VMThreads;
 
-@Platforms({Platform.LINUX_AMD64.class, Platform.DARWIN_AMD64.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class, Platform.DARWIN_AMD64.class})
 @AutomaticFeature
 public class SegfaultHandlerFeature implements Feature {
 

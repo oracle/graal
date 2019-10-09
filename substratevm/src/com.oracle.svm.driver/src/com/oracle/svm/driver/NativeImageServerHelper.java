@@ -38,13 +38,13 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 public class NativeImageServerHelper {
     @Fold
     public static boolean isInConfiguration() {
-        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class);
+        return Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class) || Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class);
     }
 
     /*
      * Ensures started server keeps running even after native-image completes.
      */
-    @Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     static int daemonize(Runnable runnable) {
         int pid = Unistd.fork();
         switch (pid) {
@@ -63,7 +63,7 @@ public class NativeImageServerHelper {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 class UnistdDirectives implements CContext.Directives {
     @Override
     public boolean isInConfiguration() {
@@ -81,7 +81,7 @@ class UnistdDirectives implements CContext.Directives {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @CContext(UnistdDirectives.class)
 class Unistd {
     /**

@@ -29,18 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 
 @FunctionalInterface
 public interface LLVMDebugBuilder {
 
-    static LLVMDebugBuilder createDeclaration(NodeFactory nodeFactory) {
-        return nodeFactory::createDebugDeclarationBuilder;
+    static LLVMDebugBuilder createDeclaration() {
+        return CommonNodeFactory::createDebugDeclarationBuilder;
     }
 
-    static LLVMDebugBuilder createValue(NodeFactory nodeFactory) {
-        return nodeFactory::createDebugValueBuilder;
+    static LLVMDebugBuilder createValue() {
+        return CommonNodeFactory::createDebugValueBuilder;
     }
 
     LLVMDebugValue.Builder createBuilder();

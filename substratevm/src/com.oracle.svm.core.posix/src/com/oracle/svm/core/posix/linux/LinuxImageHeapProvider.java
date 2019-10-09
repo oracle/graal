@@ -79,7 +79,7 @@ import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
-@Platforms(InternalPlatform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

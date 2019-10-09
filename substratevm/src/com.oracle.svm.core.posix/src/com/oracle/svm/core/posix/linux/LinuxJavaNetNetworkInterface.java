@@ -33,8 +33,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
@@ -63,7 +63,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
 
-@Platforms(Platform.LINUX.class)
+@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
 @CContext(PosixDirectives.class)
 public class LinuxJavaNetNetworkInterface {
 

@@ -64,8 +64,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -91,7 +91,6 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 public final class LLVMSymbolReadResolver {
 
     private final LLVMParserRuntime runtime;
-    private final LLVMContext context;
     private final NodeFactory nodeFactory;
     private final FrameDescriptor frame;
     private final GetStackSpaceFactory getStackSpaceFactory;
@@ -169,7 +168,7 @@ public final class LLVMSymbolReadResolver {
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(context, type);
+                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(nodeFactory, type);
                     resolvedNode = nodeFactory.createZeroNode(target, arraySize);
                 }
             }
@@ -181,7 +180,7 @@ public final class LLVMSymbolReadResolver {
                     final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
                 } else {
-                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(context, structureType);
+                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(nodeFactory, structureType);
                     resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
                 }
             }
@@ -417,20 +416,19 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionParameter param) {
             final FrameSlot slot = frame.findFrameSlot(param.getName());
-            resolvedNode = nodeFactory.createFrameRead(param.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(param.getType(), slot);
         }
 
         @Override
         public void visitValueInstruction(ValueInstruction value) {
             final FrameSlot slot = frame.findFrameSlot(value.getName());
-            resolvedNode = nodeFactory.createFrameRead(value.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
         }
     }
 
     public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout) {
         this.runtime = runtime;
-        this.context = runtime.getContext();
-        this.nodeFactory = context.getLanguage().getNodeFactory();
+        this.nodeFactory = runtime.getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
         this.dataLayout = dataLayout;

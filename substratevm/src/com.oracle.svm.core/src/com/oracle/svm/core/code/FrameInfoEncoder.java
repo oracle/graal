@@ -51,7 +51,6 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 
@@ -482,12 +481,8 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAllAndInstall(CodeInfo target) {
-        final JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-        Object[] objectConstantsArray = new Object[encodedJavaConstants.length];
-        for (int i = 0; i < encodedJavaConstants.length; i++) {
-            objectConstantsArray[i] = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class);
-        }
+    protected void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+        JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
         Class<?>[] sourceClassesArray = null;
         String[] sourceMethodNamesArray = null;
         String[] namesArray = null;
@@ -500,17 +495,17 @@ public class FrameInfoEncoder {
             namesArray = names.encodeAll(new String[names.getLength()]);
         }
         NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
-        install(target, frameInfoEncodings, objectConstantsArray, sourceClassesArray, sourceMethodNamesArray, namesArray);
+        install(target, frameInfoEncodings, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, namesArray, adjuster);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings, Object[] objectConstantsArray,
-                    Class<?>[] sourceClassesArray, String[] sourceMethodNamesArray, String[] namesArray) {
+    private static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings, JavaConstant[] objectConstantsArray, Class<?>[] sourceClassesArray,
+                    String[] sourceMethodNamesArray, String[] namesArray, ReferenceAdjuster adjuster) {
 
-        NonmovableObjectArray<Object> frameInfoObjectConstants = NonmovableArrays.copyOfObjectArray(objectConstantsArray);
-        NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? NonmovableArrays.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
-        NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? NonmovableArrays.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
-        NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? NonmovableArrays.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
+        NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray);
+        NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? adjuster.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
+        NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? adjuster.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
+        NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? adjuster.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
 
         CodeInfoAccess.setFrameInfo(target, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
 
@@ -518,10 +513,7 @@ public class FrameInfoEncoder {
     }
 
     @Uninterruptible(reason = "Safe for GC, but called from uninterruptible code.", calleeMustBe = false)
-    private void afterInstallation(CodeInfo info) {
-
-        assert verifyEncoding(info);
-
+    private static void afterInstallation(CodeInfo info) {
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(info.getFrameInfoEncodings())) +
                                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(info.getFrameInfoObjectConstants())));
@@ -638,13 +630,12 @@ public class FrameInfoEncoder {
         return (((long) bci) << FrameInfoDecoder.BCI_SHIFT) | (duringCall ? FrameInfoDecoder.DURING_CALL_MASK : 0) | (rethrowException ? FrameInfoDecoder.RETHROW_EXCEPTION_MASK : 0);
     }
 
-    private boolean verifyEncoding(CodeInfo info) {
+    void verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, new ReusableTypeReader(info.getFrameInfoEncodings(), expectedData.indexInEncodings),
                             info, FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
-        return true;
     }
 }
 

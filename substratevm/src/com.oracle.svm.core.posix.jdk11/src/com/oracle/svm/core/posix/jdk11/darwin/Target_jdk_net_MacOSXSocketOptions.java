@@ -34,11 +34,11 @@ import com.oracle.svm.core.posix.PosixJavaNetClose;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Socket;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import static com.oracle.svm.core.posix.headers.NetinetIn.IPPROTO_TCP;
 import static com.oracle.svm.core.posix.headers.NetinetTcp.TCP_KEEPALIVE;
@@ -48,7 +48,7 @@ import static com.oracle.svm.core.posix.jdk11.darwin.Util_jdk_net_MacOSXSocketOp
 import static com.oracle.svm.core.posix.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.socketOptionSupported;
 
 @TargetClass(className = "jdk.net.MacOSXSocketOptions", onlyWith = JDK11OrLater.class)
-@Platforms({Platform.DARWIN_AMD64.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class})
 public final class Target_jdk_net_MacOSXSocketOptions {
 
     // ported from {jdk11}/src/jdk.net/macosx/native/libextnet/MacOSXSocketOptions.c

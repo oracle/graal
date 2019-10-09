@@ -273,9 +273,9 @@ class AsmFactory {
     private final LLVMLanguage language;
     private final NodeFactory nodeFactory;
 
-    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets, NodeFactory nodeFactory) {
         this.language = language;
-        this.nodeFactory = language.getNodeFactory();
+        this.nodeFactory = nodeFactory;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();

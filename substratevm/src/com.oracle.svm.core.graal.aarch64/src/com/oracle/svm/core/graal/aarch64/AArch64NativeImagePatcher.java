@@ -29,14 +29,12 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 
@@ -70,7 +68,7 @@ public class AArch64NativeImagePatcher extends CompilationResult.CodeAnnotation 
     }
 
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
+    public void patchCode(int relative, byte[] code) {
         // int curValue = relative - (annotation.nextInstructionPosition -
         // annotation.instructionPosition);
         //
@@ -82,30 +80,14 @@ public class AArch64NativeImagePatcher extends CompilationResult.CodeAnnotation 
         // assert curValue == 0;
     }
 
-    @Uninterruptible(reason = "The patcher is intended to work with raw pointers")
     @Override
-    public void patchData(Pointer pointer, Object object) {
-        // Pointer address = pointer.add(annotation.operandPosition);
-        // if (annotation.operandSize == Long.BYTES && annotation.operandSize >
-        // ConfigurationValues.getObjectLayout().getReferenceSize()) {
-        // /*
-        // * Some instructions use 8-byte immediates even for narrow (4-byte) compressed
-        // * references. We zero all 8 bytes and patch a narrow reference at the offset, which
-        // * results in the same 8-byte value with little-endian order.
-        // */
-        // address.writeLong(0, 0);
-        // } else {
-        // assert annotation.operandSize == ConfigurationValues.getObjectLayout().getReferenceSize()
-        // :
-        // "Unsupported reference constant size";
-        // }
-        // boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
-        // ReferenceAccess.singleton().writeObjectAt(address, object, compressed);
+    public int getOffset() {
+        return annotation.operandPosition;
     }
 
     @Override
-    public int getPosition() {
-        return annotation.operandPosition;
+    public int getLength() {
+        return annotation.operandSize;
     }
 
     @Override

@@ -55,6 +55,7 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -207,7 +208,7 @@ public abstract class NativeImageCodeCache {
         }
 
         CodeInfo codeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(codeInfo);
+        codeInfoEncoder.encodeAllAndInstall(codeInfo, new InstantReferenceAdjuster());
         codeInfo.setCodeStart(firstMethod);
         codeInfo.setCodeSize(codeSize);
 
@@ -225,7 +226,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(codeInfo);
         }
 
-        assert verifyMethods(codeInfo);
+        assert verifyMethods(codeInfoEncoder, codeInfo);
     }
 
     private void verifyDeoptEntries(CodeInfo codeInfo) {
@@ -269,10 +270,11 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfo codeInfo) {
+    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
         }
+        codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;
     }
 

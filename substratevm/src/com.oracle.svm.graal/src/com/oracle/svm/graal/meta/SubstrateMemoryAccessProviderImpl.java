@@ -163,7 +163,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
         long rawValue;
 
         if (baseConstant instanceof SubstrateObjectConstant) {
-            Object baseObject = ((SubstrateObjectConstant) baseConstant).getObject();
+            Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
             assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
 
             switch (bits) {
@@ -219,7 +219,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
         return toConstant(kind, rawValue);
     }
 
-    private static JavaConstant toConstant(JavaKind kind, long rawValue) {
+    public static JavaConstant toConstant(JavaKind kind, long rawValue) {
         switch (kind) {
             case Boolean:
                 return JavaConstant.forBoolean(rawValue != 0);

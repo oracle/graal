@@ -49,6 +49,7 @@ import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
@@ -84,6 +85,11 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
+    }
+
+    @Override
+    protected CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
+        return new HostedCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
 
     @Override

@@ -2536,8 +2536,8 @@ else:
 register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'loc', 'nfi', 'ni', 'nil', 'njs', 'nju', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bnative-image', 'bnative-image-configure', 'bpolyglot',
                                     'cmp', 'gu', 'gvm', 'ins', 'ats', 'js', 'loc', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
-register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'loc', 'nfi', 'poly', 'polynative', 'rgx', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'])
-register_vm_config('toolchain-only', ['tfl', 'tflm', 'gu', 'svm', 'gvm', 'rgx', 'polynative', 'llp', 'loc', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'])
+register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'loc', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'])
+register_vm_config('toolchain-only', ['tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'loc', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'])
 
 if mx.get_os() == 'windows':
     register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'loc', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm'], env_file=False)

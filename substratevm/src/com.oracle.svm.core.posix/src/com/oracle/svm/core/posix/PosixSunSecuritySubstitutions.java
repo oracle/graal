@@ -29,9 +29,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -45,7 +45,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
  * handles on isolate tear-down.
  */
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 class NativeSecureRandomFilesCloser implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -70,13 +70,13 @@ class NativeSecureRandomFilesCloser implements Feature {
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_sun_security_provider_NativePRNG {
     @Alias static Target_sun_security_provider_NativePRNG_RandomIO INSTANCE;
 }
 
 @TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "RandomIO")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_sun_security_provider_NativePRNG_RandomIO {
     @Alias InputStream seedIn;
     @Alias InputStream nextIn;

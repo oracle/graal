@@ -24,27 +24,23 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.annotate.Uninterruptible;
-
 /**
  * Patcher used during native image runtime.
  */
 public interface NativeImagePatcher {
     /**
-     * Patch the code buffer.
+     * Patch directly in the code buffer with an offset relative to the start of this instruction.
      */
-    void patch(int codePos, int relative, byte[] code);
+    void patchCode(int relative, byte[] code);
 
     /**
-     * Patch a VMConstant in the native-image.
+     * The position from the beginning of the method where the patch is applied. This offset is used
+     * in the reference map.
      */
-    @Uninterruptible(reason = "The patcher is intended to work with raw pointers")
-    void patchData(Pointer pointer, Object object);
+    int getOffset();
 
     /**
-     * Return the position where the patch is applied. This offset is used in the reference map.
+     * The length of the value to patch in bytes, e.g., the size of an operand.
      */
-    int getPosition();
+    int getLength();
 }

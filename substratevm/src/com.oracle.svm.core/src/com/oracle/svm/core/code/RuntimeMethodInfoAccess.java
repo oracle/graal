@@ -33,8 +33,10 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -56,13 +58,15 @@ public final class RuntimeMethodInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static InstalledCodeObserverHandle[] getCodeObserverHandles(CodeInfo info) {
-        return CodeInfoAccess.getObjectField(info, CodeInfo.OBSERVERS_OBJFIELD);
+    static NonmovableArray<InstalledCodeObserverHandle> getCodeObserverHandles(CodeInfo info) {
+        return info.getCodeObserverHandles();
     }
 
-    public static void setCodeLocation(CodeInfo info, Pointer start, int size) {
+    public static void initialize(CodeInfo info, Pointer start, int size, int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
         info.setCodeStart((CodePointer) start);
         info.setCodeSize(WordFactory.unsigned(size));
+        info.setTier(tier);
+        info.setCodeObserverHandles(observerHandles);
     }
 
     public static void setCodeObjectConstantsInfo(CodeInfo info, NonmovableArray<Byte> refMapEncoding, long refMapIndex) {
@@ -84,13 +88,15 @@ public final class RuntimeMethodInfoAccess {
         info.setDeoptimizationObjectConstants(objectConstants);
     }
 
-    public static void setData(CodeInfo info, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
-        assert codeObserverHandles != null;
-        NonmovableObjectArray<Object> objectFields = info.getObjectFields();
+    public static void beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode) {
+        assert info.getObjectFields().isNull();
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
+        info.setObjectFields(objectFields); // must be first to ensure references are visible to GC
+        Object tether = CodeInfoAccess.haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
+        NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, tether);
         NonmovableArrays.setObject(objectFields, CodeInfo.NAME_OBJFIELD, installedCode.getName());
         NonmovableArrays.setObject(objectFields, CodeInfo.INSTALLEDCODE_OBJFIELD, new WeakReference<>(installedCode));
-        NonmovableArrays.setObject(objectFields, CodeInfo.OBSERVERS_OBJFIELD, codeObserverHandles);
-        info.setTier(tier);
+        createCleaner(info, tether);
     }
 
     static void walkReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
@@ -106,13 +112,8 @@ public final class RuntimeMethodInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo() {
-        CodeInfo info = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(CodeInfo.class)));
+        CodeInfo info = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(SizeOf.unsigned(CodeInfo.class));
         RuntimeMethodInfoMemory.singleton().add(info);
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
-        Object obj = CodeInfoAccess.haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
-        NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, obj);
-        info.setObjectFields(objectFields);
-        createCleaner(info, obj);
         return info;
     }
 
@@ -138,10 +139,12 @@ public final class RuntimeMethodInfoAccess {
     static void partialReleaseAfterInvalidate(CodeInfo info) {
         assert NonmovableArrays.getObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD) != null : "already released";
 
-        info.setCodeConstantsLive(false);
-        releaseInstalledCode(info);
+        InstalledCodeObserverSupport.removeObservers(RuntimeMethodInfoAccess.getCodeObserverHandles(info));
+        NonmovableArrays.releaseUnmanagedArray(info.getCodeObserverHandles());
+        info.setCodeObserverHandles(NonmovableArrays.nullArray());
 
-        NonmovableArrays.setObject(info.getObjectFields(), CodeInfo.OBSERVERS_OBJFIELD, null);
+        info.setCodeConstantsLive(false);
+        releaseCodeMemory(info.getCodeStart(), info.getCodeSize());
 
         /*
          * Set our reference to the tether object to null so that the Cleaner object can free our
@@ -150,35 +153,59 @@ public final class RuntimeMethodInfoAccess {
         NonmovableArrays.setObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD, null);
     }
 
-    private static void releaseInstalledCode(CodeInfo codeInfo) {
-        CommittedMemoryProvider.get().free(codeInfo.getCodeStart(), codeInfo.getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
+    public static CodePointer allocateCodeMemory(UnsignedWord size) {
+        return (CodePointer) CommittedMemoryProvider.get().allocate(size, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
+    }
+
+    public static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
+        CommittedMemoryProvider.get().free(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
-        InstalledCodeObserverHandle[] handles = getCodeObserverHandles(info);
-        if (handles != null) {
-            InstalledCodeObserverSupport.removeObserversOnTearDown(handles);
-        }
+        InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
         releaseMethodInfoMemory(info);
     }
 
+    public interface NonmovableArrayAction {
+        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        void apply(NonmovableArray<?> array);
+    }
+
+    private static final NonmovableArrayAction RELEASE_ACTION = new NonmovableArrayAction() {
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        public void apply(NonmovableArray<?> array) {
+            NonmovableArrays.releaseUnmanagedArray(array);
+        }
+    };
+
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     private static void releaseMethodInfoMemory(CodeInfo info) {
-        NonmovableArrays.releaseUnmanagedArray(info.getObjectFields());
-        NonmovableArrays.releaseUnmanagedArray(info.getCodeInfoIndex());
-        NonmovableArrays.releaseUnmanagedArray(info.getCodeInfoEncodings());
-        NonmovableArrays.releaseUnmanagedArray(info.getReferenceMapEncoding());
-        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoEncodings());
-        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoObjectConstants());
-        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoSourceClasses());
-        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoSourceMethodNames());
-        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoNames());
-        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationStartOffsets());
-        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationEncodings());
-        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationObjectConstants());
-        NonmovableArrays.releaseUnmanagedArray(info.getObjectsReferenceMapEncoding());
-
+        forEachArray(info, RELEASE_ACTION);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void forEachArray(CodeInfo info, NonmovableArrayAction action) {
+        action.apply(info.getCodeInfoIndex());
+        action.apply(info.getCodeInfoEncodings());
+        action.apply(info.getReferenceMapEncoding());
+        action.apply(info.getFrameInfoEncodings());
+        action.apply(info.getDeoptimizationStartOffsets());
+        action.apply(info.getDeoptimizationEncodings());
+        action.apply(info.getObjectsReferenceMapEncoding());
+        action.apply(info.getCodeObserverHandles());
+        forEachObjectArray(info, action);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void forEachObjectArray(CodeInfo info, NonmovableArrayAction action) {
+        action.apply(info.getObjectFields());
+        action.apply(info.getFrameInfoObjectConstants());
+        action.apply(info.getFrameInfoSourceClasses());
+        action.apply(info.getFrameInfoSourceMethodNames());
+        action.apply(info.getFrameInfoNames());
+        action.apply(info.getDeoptimizationObjectConstants());
     }
 }

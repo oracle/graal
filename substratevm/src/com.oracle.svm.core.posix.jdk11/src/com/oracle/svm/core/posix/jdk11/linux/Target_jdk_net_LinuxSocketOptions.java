@@ -36,11 +36,11 @@ import com.oracle.svm.core.posix.headers.NetinetIn;
 import com.oracle.svm.core.posix.headers.NetinetTcp;
 import com.oracle.svm.core.posix.headers.Socket;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import static com.oracle.svm.core.posix.headers.NetinetTcp.SOL_TCP;
 import static com.oracle.svm.core.posix.headers.NetinetTcp.TCP_KEEPIDLE;
@@ -57,7 +57,7 @@ import static com.oracle.svm.core.posix.jdk11.linux.Util_jdk_net_LinuxSocketOpti
 import static com.oracle.svm.core.posix.jdk11.linux.Util_jdk_net_LinuxSocketOptions.socketOptionSupported;
 
 @TargetClass(className = "jdk.net.LinuxSocketOptions", onlyWith = JDK11OrLater.class)
-@Platforms({Platform.LINUX.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 public final class Target_jdk_net_LinuxSocketOptions {
 
     // ported from {jdk11}/src/jdk.net/linux/native/libextnet/LinuxSocketOptions.c

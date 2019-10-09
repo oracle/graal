@@ -39,12 +39,12 @@ public class IsDefined {
 
     @Fold
     public static final boolean isDarwin() {
-        return Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class);
+        return Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class);
     }
 
     @Fold
     public static final boolean isLinux() {
-        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class);
+        return Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class);
     }
 
     @Fold

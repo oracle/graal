@@ -33,8 +33,8 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -50,7 +50,7 @@ import com.oracle.svm.core.thread.VMThreads.OSThreadId;
  * Definitions manually translated from the C header file pthread.h.
  */
 @CContext(PosixDirectives.class)
-@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
+@Platforms({DARWIN_JNI_AND_SUBSTITUTIONS.class, LINUX_JNI_AND_SUBSTITUTIONS.class})
 @CLibrary("pthread")
 public class Pthread {
 

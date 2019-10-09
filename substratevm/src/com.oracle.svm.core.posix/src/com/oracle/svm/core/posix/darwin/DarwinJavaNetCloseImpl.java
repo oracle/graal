@@ -25,8 +25,8 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -53,7 +53,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
  * operations. Where the implementations are identical between platforms, the shared code lives in
  * {@link PosixJavaNetClose}.
  */
-@Platforms({Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class DarwinJavaNetCloseImpl extends PosixJavaNetClose {
 
     protected DarwinJavaNetCloseImpl() {
@@ -279,7 +279,7 @@ public final class DarwinJavaNetCloseImpl extends PosixJavaNetClose {
     /* } Allow names with underscores: Checkstyle: resume */
 }
 
-@Platforms({Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @AutomaticFeature
 class DarwinJavaNetCloseFeature implements Feature {
     @Override

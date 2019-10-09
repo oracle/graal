@@ -75,7 +75,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         return readFieldValue((SubstrateField) field, receiver);
     }
 
-    private static JavaConstant readFieldValue(SubstrateField field, JavaConstant receiver) {
+    public static JavaConstant readFieldValue(SubstrateField field, JavaConstant receiver) {
         if (field.constantValue != null) {
             return field.constantValue;
         }

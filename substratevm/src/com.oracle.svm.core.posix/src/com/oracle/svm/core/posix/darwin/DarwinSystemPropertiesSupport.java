@@ -44,7 +44,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringRef;
 
-@Platforms({InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -99,7 +99,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     }
 }
 
-@Platforms({InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class DarwinSystemPropertiesFeature implements Feature {
     @Override

@@ -86,6 +86,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -116,8 +117,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     public static LLVMBitcodeInstructionVisitor create(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
                     ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler,
-                    DataLayout dataLayout) {
-        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler, dataLayout);
+                    DataLayout dataLayout, NodeFactory nodeFactory) {
+        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler, dataLayout, nodeFactory);
     }
 
     private final LLVMContext context;
@@ -142,9 +143,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
                     LLVMContext context, LLVMContext.ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable,
-                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout) {
+                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout, NodeFactory nodeFactory) {
         this.context = context;
-        this.nodeFactory = context.getLanguage().getNodeFactory();
+        this.nodeFactory = nodeFactory;
         this.frame = frame;
         this.blockPhis = blockPhis;
         this.argCount = argCount;
@@ -250,7 +251,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -300,7 +301,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
-        LLVMExpressionNode getStack = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        LLVMExpressionNode getStack = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(allocateLandingPadValue, getExceptionSlot(), landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
                         entries, getStack);
         createFrameWrite(landingPad, landingpadInstruction);
@@ -343,7 +344,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(DebugTrapInstruction inst) {
-        final LLVMStatementNode debugTrap = nodeFactory.createDebugTrap();
+        final LLVMStatementNode debugTrap = CommonNodeFactory.createDebugTrap();
         assignSourceLocation(debugTrap, inst, SourceInstrumentationStrategy.FORCED);
         addInstruction(debugTrap);
     }
@@ -355,7 +356,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -399,7 +400,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
@@ -465,7 +466,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -657,7 +658,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LoadInstruction load) {
         LLVMExpressionNode source = symbols.resolve(load.getSource());
-        LLVMExpressionNode result = nodeFactory.createLoad(load.getType(), source);
+        LLVMExpressionNode result = CommonNodeFactory.createLoad(load.getType(), source);
         createFrameWrite(result, load);
     }
 
