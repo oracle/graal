@@ -962,13 +962,7 @@ suite = {
           {
             "source_type": "extracted-dependency",
             "dependency": "LLVM_ORG",
-            "path": "./lib/<lib:c++>*",
-            "dereference" : "never",
-          },
-          {
-            "source_type": "extracted-dependency",
-            "dependency": "LLVM_ORG",
-            "path": "./lib/<lib:c++abi>*",
+            "path": "./lib/<lib:c++*>*",
             "dereference" : "never",
           },
         ],
