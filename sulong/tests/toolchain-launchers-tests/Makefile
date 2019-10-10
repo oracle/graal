@@ -34,8 +34,10 @@ QUIETLY$(MX_VERBOSE)  = @
 TARGETS= \
 run-polyglot_biginteger.out-lli \
 run-polyglot_biginteger.comp-and-link.out-lli \
+run-polyglot_biginteger.ld-linked.out-lli \
 run-polyglot_biginteger_cxx.out-lli \
 run-polyglot_biginteger_cxx.comp-and-link.out-lli \
+run-polyglot_biginteger_cxx.ld-linked.out-lli \
 run-main.comp-and-link.out-lli \
 run-main.out-lli \
 print-help \
@@ -59,6 +61,7 @@ endef
 
 $(eval $(call CHECK_ENV,CLANG))
 $(eval $(call CHECK_ENV,CLANGXX))
+$(eval $(call CHECK_ENV,TOOLCHAIN_LD))
 $(eval $(call CHECK_ENV,SULONG_EXE))
 
 ifeq ($(OS), darwin)
@@ -78,7 +81,9 @@ define CHECK_BC_FILE
 endef
 
 ifeq ($(OS), darwin)
+SHARED_FLAGS=-dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem
 else
+SHARED_FLAGS=--shared
 main.out: LDFLAGS+=-Wl,--gc-sections
 endif
 
@@ -87,8 +92,10 @@ obj/main.o: CFLAGS+=-v
 # require libployglot
 polyglot_biginteger.out: LDFLAGS+=-lpolyglot-mock
 polyglot_biginteger.comp-and-link.out: LDFLAGS+=-lpolyglot-mock
+polyglot_biginteger.ld-linked.out: LDFLAGS+=-lpolyglot-mock
 polyglot_biginteger_cxx.out: LDFLAGS+=-lpolyglot-mock
 polyglot_biginteger_cxx.comp-and-link.out: LDFLAGS+=-lpolyglot-mock
+polyglot_biginteger_cxx.ld-linked.out: LDFLAGS+=-lpolyglot-mock
 
 # normal compilation (with -fLTO, i.e., result is bitcode file)
 obj/%.o: src/%.c
@@ -101,6 +108,17 @@ obj/%.opp: src/%.cpp
 	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -c $< -o $@
 	$(QUIETLY) $(call CHECK_BC_FILE,$@)
 
+# compilation with PIC (with -fLTO, i.e., result is bitcode file)
+obj/%.lo: src/%.c
+	$(QUIETLY) mkdir -p $(dir $@)
+	$(QUIETLY) $(CLANG) $(CFLAGS) -fPIC -c $< -o $@
+	$(QUIETLY) $(call CHECK_BC_FILE,$@)
+
+obj/%.lopp: src/%.cpp
+	$(QUIETLY) mkdir -p $(dir $@)
+	$(QUIETLY) $(CLANGXX) $(CXXFLAGS) -fPIC -c $< -o $@
+	$(QUIETLY) $(call CHECK_BC_FILE,$@)
+
 # linking (executable with embedded bitcode)
 %.out: obj/%.o
 	$(QUIETLY) $(CLANG) $(LDFLAGS) $+ -o $@
@@ -108,6 +126,15 @@ obj/%.opp: src/%.cpp
 
 %.out: obj/%.opp
 	$(QUIETLY) $(CLANGXX) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
+
+# linking using ld (executable with embedded bitcode)
+%.ld-linked.out: obj/%.lo
+	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) $(LDFLAGS) $+ -o $@
+	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
+
+%.ld-linked.out: obj/%.lopp
+	$(QUIETLY) $(TOOLCHAIN_LD) $(SHARED_FLAGS) -lc++ $(LDFLAGS) $+ -o $@
 	$(QUIETLY) $(call CHECK_BC_SECTION,$@)
 
 # compile and link (executable with embedded bitcode)
