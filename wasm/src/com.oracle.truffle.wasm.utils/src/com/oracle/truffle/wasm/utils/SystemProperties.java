@@ -29,47 +29,7 @@
  */
 package com.oracle.truffle.wasm.utils;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-public class WasmResource {
-    public static String getResourceAsString(String resourceName, boolean fail) throws IOException {
-        byte[] contents = getResourceAsBytes(resourceName, fail);
-        if (contents != null) {
-            return new String(contents);
-        } else {
-            assert !fail;
-            return null;
-        }
-    }
-
-    public static byte[] getResourceAsBytes(String resourceName, boolean fail) throws IOException {
-        InputStream stream = WasmResource.class.getResourceAsStream(resourceName);
-        if (stream == null) {
-            if (fail) {
-                Assert.fail(String.format("Could not find resource: %s", resourceName));
-            } else {
-                return null;
-            }
-        }
-        byte[] contents = new byte[stream.available()];
-        new DataInputStream(stream).readFully(contents);
-        return contents;
-    }
-
-    public static Object getResourceAsTest(String baseName, boolean fail) throws IOException {
-        final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
-        if (bytes != null) {
-            return bytes;
-        }
-        final String text = getResourceAsString(baseName + ".wat", false);
-        if (text != null) {
-            return text;
-        }
-        if (fail) {
-            Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
-        }
-        return null;
-    }
+public class SystemProperties {
+    public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasm.watToWasmExecutable";
+    public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
 }

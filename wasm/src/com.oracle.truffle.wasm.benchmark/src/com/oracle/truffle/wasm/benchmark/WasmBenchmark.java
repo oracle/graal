@@ -4,8 +4,7 @@ import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.FORKS;
 import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.MEASUREMENT_ITERATIONS;
 import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.WARMUP_ITERATIONS;
 
-import com.oracle.truffle.wasm.benchmark.options.WasmBenchmarkOptions;
-import com.oracle.truffle.wasm.benchmark.util.WasmBenchmarkToolkit;
+import com.oracle.truffle.wasm.utils.WasmBinaryTools;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -31,12 +30,13 @@ public class WasmBenchmark {
     }
 
     private static Path testDirectory() {
-        return Paths.get(WasmBenchmarkOptions.TEST_SOURCE_PATH, "emcc");
+        // TODO
+        return null;
     }
 
     public static byte[] getBinary(String testName) throws IOException, InterruptedException {
         File watFile = Paths.get(testDirectory().toString(), testName + ".wat").toFile();
-        return WasmBenchmarkToolkit.compileWatFile(watFile);
+        return WasmBinaryTools.compileWat(watFile);
     }
 
     public abstract static class WasmBenchmarkState {

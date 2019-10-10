@@ -45,15 +45,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.exception.WasmTrap;
-import com.oracle.truffle.wasm.binary.memory.WasmMemory;
-import com.oracle.truffle.wasm.utils.WasmResource;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -62,8 +53,17 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+import com.oracle.truffle.wasm.utils.WasmBinaryTools;
+import com.oracle.truffle.wasm.utils.WasmResource;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
 
@@ -567,7 +567,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
         @Override
         public byte[] createBinary() throws IOException, InterruptedException {
-            return WasmTestToolkit.compileWatString(program);
+            return WasmBinaryTools.compileWat(program);
         }
     }
 

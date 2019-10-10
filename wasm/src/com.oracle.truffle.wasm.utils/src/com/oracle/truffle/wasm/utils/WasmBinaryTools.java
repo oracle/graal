@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test;
+package com.oracle.truffle.wasm.utils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,12 +38,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.stream.Collectors;
 
-import org.junit.Assert;
+import static com.oracle.truffle.wasm.utils.Assert.format;
 
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-
-
-public class WasmTestToolkit {
+public class WasmBinaryTools {
 
     private static void runExternalToolAndVerify(String message, String[] args) throws IOException, InterruptedException {
         Runtime runtime = Runtime.getRuntime();
@@ -51,19 +48,19 @@ public class WasmTestToolkit {
         int exitCode = process.waitFor();
         if (exitCode != 0) {
             String stderr = new BufferedReader(new InputStreamReader((process.getErrorStream()))).lines().collect(Collectors.joining(System.lineSeparator()));
-            Assert.fail(String.format("%s: %s", message, stderr));
+            Assert.fail(format("%s: %s", message, stderr));
         }
     }
 
-    private static byte[] compileWat(File input, File output) throws IOException, InterruptedException {
+    private static byte[] wat2wasm(File input, File output) throws IOException, InterruptedException {
         Assert.assertNotNull(
-                "The wasmtest.watToWasmExecutable property must be set in order to be able to compile .wat to .wasm",
-                WasmTestOptions.WAT_TO_WASM_EXECUTABLE);
+                format("The property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
+                SystemProperties.WAT_TO_WASM_EXECUTABLE);
         // execute the wat2wasm tool and wait for it to finish execution
         runExternalToolAndVerify(
                 "wat2wasm compilation failed",
                 new String[] {
-                        WasmTestOptions.WAT_TO_WASM_EXECUTABLE,
+                        SystemProperties.WAT_TO_WASM_EXECUTABLE,
                         input.getPath(),
                         "-o",
                         output.getPath(),
@@ -72,23 +69,22 @@ public class WasmTestToolkit {
         return Files.readAllBytes(output.toPath());
     }
 
-    public static byte[] compileWatFile(File watFile) throws IOException, InterruptedException {
+    public static byte[] compileWat(File watFile) throws IOException, InterruptedException {
         File wasmFile = File.createTempFile("wasm-bin-", ".wasm");
-        byte[] binary = compileWat(watFile, wasmFile);
-        Assert.assertTrue(wasmFile.delete());
+        byte[] binary = wat2wasm(watFile, wasmFile);
+        Assert.assertTrue("compileWat: could not delete temp .wasm file", wasmFile.delete());
         return binary;
     }
 
-    public static byte[] compileWatString(String program) throws IOException, InterruptedException {
+    public static byte[] compileWat(String program) throws IOException, InterruptedException {
         // create two temporary files for the text and the binary, write the given program to the first one
         File watFile = File.createTempFile("wasm-text-", ".wat");
         File wasmFile = File.createTempFile("wasm-bin-", ".wasm");
         Files.write(watFile.toPath(), program.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
         // read the resulting binary, delete the temporary files and return
-        byte[] binary = compileWat(watFile, wasmFile);
-        Assert.assertTrue(watFile.delete());
-        Assert.assertTrue(wasmFile.delete());
+        byte[] binary = wat2wasm(watFile, wasmFile);
+        Assert.assertTrue("compileWat: could not delete temp .wat file", watFile.delete());
+        Assert.assertTrue("compileWat: could not delete temp .wasm file", wasmFile.delete());
         return binary;
     }
-
 }

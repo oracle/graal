@@ -140,6 +140,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
+        "com.oracle.truffle.wasm.utils",
         "mx:JMH_1_21",
       ],
       "javaCompliance" : "1.8",
