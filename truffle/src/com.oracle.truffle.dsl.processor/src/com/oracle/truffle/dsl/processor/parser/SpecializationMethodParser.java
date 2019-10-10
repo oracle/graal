@@ -71,10 +71,10 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(types.Cached)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(types.CachedLibrary)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(types.CachedContext)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(types.CachedLanguage)));
+        spec.getAnnotations().add(new CachedParameterSpec(types.Cached));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
         return spec;
     }
 

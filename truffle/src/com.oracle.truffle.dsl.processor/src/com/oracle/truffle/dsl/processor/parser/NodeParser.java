@@ -1058,7 +1058,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (field.getModifiers().contains(Modifier.STATIC)) {
                 continue;
             }
-            AnnotationMirror executed = findAnnotationMirror(field.getAnnotationMirrors(), context.getDeclaredType(types.Executed));
+            AnnotationMirror executed = findAnnotationMirror(field.getAnnotationMirrors(), types.Executed);
             if (executed != null) {
                 TypeMirror type = field.asType();
                 String name = field.getSimpleName().toString();
@@ -1856,7 +1856,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeAssumptions(SpecializationData specialization, DSLExpressionResolver resolver) {
-        final DeclaredType assumptionType = context.getDeclaredType(types.Assumption);
+        final DeclaredType assumptionType = types.Assumption;
         final TypeMirror assumptionArrayType = new ArrayCodeTypeMirror(assumptionType);
         final List<String> assumptionDefinitions = getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
         List<AssumptionExpression> assumptionExpressions = new ArrayList<>();

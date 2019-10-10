@@ -244,7 +244,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(uncachedType).end();
         }
 
-        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.LibraryExport), "createUncached"));
+        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport, "createUncached"));
         createUncached.setReturnType(libraryBaseType);
         createUncached.getModifiers().remove(Modifier.ABSTRACT);
         createUncached.renameArguments("receiver");
@@ -278,7 +278,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(cachedType).end();
         }
 
-        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.LibraryExport), "createCached"));
+        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport, "createCached"));
         createCached.setReturnType(libraryBaseType);
         createCached.getModifiers().remove(Modifier.ABSTRACT);
         createCached.renameArguments("receiver");
@@ -354,14 +354,14 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 builder.staticReference(useLibraryConstant(key.libraryType)).startCall(".create").tree(mergedLibraryIdentifier).end();
                 builder.string(")").end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
-                var.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.Node_Child)));
+                var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
             }
         }
 
         CodeTreeBuilder builder;
         CodeTree defaultAccepts = createDefaultAccepts(cacheClass, constructor, libraryExports, exportReceiverType, true);
 
-        CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.Library), ACCEPTS));
+        CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
         accepts.getModifiers().remove(Modifier.ABSTRACT);
         accepts.renameArguments("receiver");
         builder = accepts.createBuilder();
@@ -408,7 +408,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cacheClass.add(accepts);
 
         if (!libraryExports.needsRewrites() && useSingleton(libraryExports, true)) {
-            CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.Node), "isAdoptable")));
+            CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
             builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
                 builder.startReturn();
@@ -536,7 +536,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             GeneratorUtils.mergeSupressWarnings(castMethod, "cast");
         }
         if (!cached && ElementUtils.findAnnotationMirror(castMethod, types.CompilerDirectives_TruffleBoundary) == null) {
-            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
         builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
         return castMethod;
@@ -547,7 +547,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
         if (libraryExports.needsDynamicDispatch()) {
             CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), types.DynamicDispatchLibrary, "dynamicDispatch_"));
-            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(types.Node_Child)));
+            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Child));
 
             CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
 
@@ -642,9 +642,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
         CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, constructor, libraryExports, exportReceiverType, false);
 
-        CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.Library), ACCEPTS));
+        CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
         if (ElementUtils.findAnnotationMirror(acceptUncached, types.CompilerDirectives_TruffleBoundary) == null) {
-            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
         acceptUncached.getModifiers().remove(Modifier.ABSTRACT);
         acceptUncached.renameArguments("receiver");
@@ -669,11 +669,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
 
-        CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.Node), "isAdoptable")));
+        CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
         isAdoptable.createBuilder().returnFalse();
 
-        CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(types.Node), "getCost")));
-        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(types.NodeCost), "MEGAMORPHIC")).end();
+        CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
+        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
 
         boolean firstNode = true;
 
@@ -716,7 +716,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 ElementUtils.setVisibility(uncachedExecute.getModifiers(), Modifier.PRIVATE);
             }
             if (ElementUtils.findAnnotationMirror(uncachedExecute, types.CompilerDirectives_TruffleBoundary) == null) {
-                uncachedExecute.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+                uncachedExecute.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             }
         }
         return uncachedClass;

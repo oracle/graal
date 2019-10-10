@@ -783,7 +783,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             element.getParameters().clear();
             element.getParameters().addAll(exportedMethod.getParameters());
 
-            DeclaredType specializationType = context.getDeclaredType(types.Specialization);
+            DeclaredType specializationType = types.Specialization;
             CodeAnnotationMirror specialization = new CodeAnnotationMirror(specializationType);
             specialization.setElementValue(ElementUtils.findExecutableElement(specializationType, "limit"), ElementUtils.getAnnotationValue(exportedElement.getMessageAnnotation(), "limit", false));
             element.getAnnotationMirrors().clear();
@@ -859,7 +859,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 staticImports.add(new CodeAnnotationValue(existingImport));
             }
         }
-        DeclaredType importStaticType = context.getDeclaredType(types.ImportStatic);
+        DeclaredType importStaticType = types.ImportStatic;
         staticImports.add(new CodeAnnotationValue(exportedMessage.getExportsLibrary().getTemplateType().asType()));
         CodeAnnotationMirror newImports = new CodeAnnotationMirror(importStaticType);
         newImports.setElementValue(ElementUtils.findExecutableElement(importStaticType, "value"), new CodeAnnotationValue(staticImports));
@@ -869,7 +869,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (generateUncached != null) {
             clonedType.getAnnotationMirrors().add(generateUncached);
         } else {
-            clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.GenerateUncached)));
+            clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateUncached));
         }
 
         NodeData parsedNodeData = NodeParser.createExportParser(

@@ -241,7 +241,7 @@ public class FlatNodeGenFactory {
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
         this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
         this.libraryConstants = libraryConstants;
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(types.LibraryFactory), "resolve"),
+        substitutions.put(ElementUtils.findExecutableElement(types.LibraryFactory, "resolve"),
                         (binary) -> substituteLibraryCall(binary));
     }
 
@@ -558,7 +558,7 @@ public class FlatNodeGenFactory {
             if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
                 uncached.add(createGetCostMethod(true));
             }
-            CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(context.getDeclaredType(types.Node), "isAdoptable"));
+            CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
             isAdoptable.createBuilder().returnFalse();
             uncached.add(isAdoptable);
 
@@ -747,7 +747,7 @@ public class FlatNodeGenFactory {
             for (CacheExpression cache : cacheExpressions) {
                 CodeVariableElement supplierField = new CodeVariableElement(modifiers(PRIVATE),
                                 cache.getReferenceType(), createElementReferenceName(cache));
-                supplierField.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_CompilationFinal)));
+                supplierField.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_CompilationFinal));
                 clazz.getEnclosedElements().add(supplierField);
             }
         }
@@ -1181,10 +1181,10 @@ public class FlatNodeGenFactory {
     }
 
     private CodeAnnotationMirror createExplodeLoop() {
-        DeclaredType explodeLoopType = context.getDeclaredType(types.ExplodeLoop);
+        DeclaredType explodeLoopType = types.ExplodeLoop;
         CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(explodeLoopType);
 
-        DeclaredType loopExplosionKind = context.getDeclaredType(types.ExplodeLoop_LoopExplosionKind);
+        DeclaredType loopExplosionKind = types.ExplodeLoop_LoopExplosionKind;
         if (loopExplosionKind != null) {
             VariableElement kindValue = findVariableElement(loopExplosionKind, "FULL_EXPLODE_UNTIL_RETURN");
             if (kindValue != null) {
@@ -1331,7 +1331,7 @@ public class FlatNodeGenFactory {
 
         boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount();
         if (!isExecutableInUncached) {
-            method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
 
         if (forType.getMethod() != null) {
@@ -2224,7 +2224,7 @@ public class FlatNodeGenFactory {
 
             CodeTreeBuilder builder = method.createBuilder();
             if (uncached) {
-                method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+                method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
                 builder.startThrow().startNew(context.getType(AssertionError.class));
                 builder.doubleQuote("This getter method cannot be used for uncached node versions as it requires child nodes to be present.");
                 builder.end().end();
@@ -2269,7 +2269,7 @@ public class FlatNodeGenFactory {
             if (annotationClass == ProcessorContext.getInstance().getTypes().CompilerDirectives_CompilationFinal) {
                 setFieldCompilationFinal(childField, 0);
             } else {
-                childField.getAnnotationMirrors().add(new CodeAnnotationMirror(ProcessorContext.getInstance().getDeclaredType(annotationClass)));
+                childField.getAnnotationMirrors().add(new CodeAnnotationMirror(annotationClass));
             }
         }
         setVisibility(childField.getModifiers(), visibility);
@@ -2458,7 +2458,7 @@ public class FlatNodeGenFactory {
             executable = new CodeExecutableElement(modifiers(PUBLIC), returnType, methodName);
         }
 
-        DeclaredType unexpectedResult = context.getDeclaredType(types.UnexpectedResultException);
+        DeclaredType unexpectedResult = types.UnexpectedResultException;
         Iterator<TypeMirror> thrownTypes = executable.getThrownTypes().iterator();
         while (thrownTypes.hasNext()) {
             if (typeEquals(unexpectedResult, thrownTypes.next())) {
@@ -3173,7 +3173,7 @@ public class FlatNodeGenFactory {
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
         frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, STATE_VALUE, includeFrameParameter,
                         createSpecializationLocalName(specialization));
-        boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(types.CompilerDirectives_TruffleBoundary)));
+        boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);

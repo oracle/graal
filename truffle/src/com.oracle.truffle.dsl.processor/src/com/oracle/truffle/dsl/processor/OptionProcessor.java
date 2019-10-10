@@ -353,7 +353,7 @@ public class OptionProcessor extends AbstractProcessor {
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
         Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.FINAL);
         CodeTypeElement descriptors = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, optionsClassName);
-        DeclaredType optionDescriptorsType = context.getDeclaredType(types.OptionDescriptors);
+        DeclaredType optionDescriptorsType = types.OptionDescriptors;
         descriptors.getImplements().add(optionDescriptorsType);
         GeneratorUtils.addGeneratedBy(context, descriptors, (TypeElement) element);
 

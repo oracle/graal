@@ -115,7 +115,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
             RefectiveTypes types = context.getTypes();
-            DeclaredType instrumentableNode = context.getDeclaredType(types.InstrumentableNode);
+            DeclaredType instrumentableNode = types.InstrumentableNode;
             ExecutableElement createWrapper = ElementUtils.findExecutableElement(instrumentableNode, CREATE_WRAPPER_NAME);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.GenerateWrapper))) {

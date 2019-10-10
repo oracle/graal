@@ -122,7 +122,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         parseAssertions(element, mirror, type, model);
 
         List<ExecutableElement> allMethods = ElementFilter.methodsIn(CompilerFactory.getCompiler(type).getEnclosedElementsInDeclarationOrder(type));
-        allMethods.add(ElementUtils.findExecutableElement(context.getDeclaredType(types.Library), "accepts"));
+        allMethods.add(ElementUtils.findExecutableElement(types.Library, "accepts"));
 
         TypeMirror inferredReceiverType = null;
         Map<String, LibraryMessage> messages = new HashMap<>();

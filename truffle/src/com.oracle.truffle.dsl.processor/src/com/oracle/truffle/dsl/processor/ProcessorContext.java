@@ -111,10 +111,6 @@ public class ProcessorContext {
         return (DeclaredType) ElementUtils.getType(environment, element);
     }
 
-    public DeclaredType getDeclaredType(DeclaredType element) {
-        return element;
-    }
-
     public DeclaredType getDeclaredTypeOptional(String element) {
         TypeElement type = environment.getElementUtils().getTypeElement(element);
         if (type == null) {
