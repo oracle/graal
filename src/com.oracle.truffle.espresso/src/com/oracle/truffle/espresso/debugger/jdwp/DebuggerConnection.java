@@ -166,6 +166,9 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.VirtualMachine.RESUME.ID:
                                 reply = JDWP.VirtualMachine.RESUME.createReply(packet, controller);
                                 break;
+                            case JDWP.VirtualMachine.CREATE_STRING.ID:
+                                reply = JDWP.VirtualMachine.CREATE_STRING.createReply(packet, controller);
+                                break;
                             case JDWP.VirtualMachine.CAPABILITIES.ID:
                                 reply = JDWP.VirtualMachine.CAPABILITIES.createReply(packet);
                                 break;
@@ -289,6 +292,10 @@ public class DebuggerConnection implements JDWPCommands {
                             }
                             case JDWP.ArrayReference.GET_VALUES.ID: {
                                 reply = JDWP.ArrayReference.GET_VALUES.createReply(packet);
+                                break;
+                            }
+                            case JDWP.ArrayReference.SET_VALUES.ID: {
+                                reply = JDWP.ArrayReference.SET_VALUES.createReply(packet, controller.getContext().getMeta());
                                 break;
                             }
                             default:

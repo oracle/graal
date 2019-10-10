@@ -32,13 +32,17 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
 class JDWP {
+
+    public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
 
     static class VirtualMachine {
         public static final int ID = 1;
@@ -119,6 +123,21 @@ class JDWP {
             static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
                 controller.resume();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                return reply;
+            }
+        }
+
+        static class CREATE_STRING {
+            public static final int ID = 11;
+
+            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                String utf = input.readString();
+                // we must create a new StaticObject instance representing the String
+                Meta meta = controller.getContext().getMeta();
+                StaticObject createdString = meta.toGuestString(utf, meta);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                reply.writeLong(Ids.getIdAsLong(createdString));
                 return reply;
             }
         }
@@ -225,12 +244,14 @@ class JDWP {
                         // check specifically for String
                         if (value instanceof StaticObject) {
                             StaticObject staticObject = (StaticObject) value;
-                            if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
+                            if (staticObject.isArray()) {
+                                tag = TagConstants.ARRAY;
+                            } else if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString())) {
                                 tag = TagConstants.STRING;
                             }
                         }
                     }
-                    writeValue(tag, value, reply);
+                    writeValue(tag, value, reply, true);
                 }
                 return reply;
             }
@@ -533,12 +554,15 @@ class JDWP {
                     byte tag = TagConstants.fromJavaKind(field.getKind());
                     if (tag == TagConstants.OBJECT) {
                         if (value instanceof StaticObject) {
-                            if ("Ljava/lang/String;".equals(((StaticObject) value).getKlass().getType().toString())) {
+                            if (((StaticObject) value).isArray()) {
+                                tag = TagConstants.ARRAY;
+                            }
+                            else if (JAVA_LANG_STRING.equals(((StaticObject) value).getKlass().getType().toString())) {
                                 tag = TagConstants.STRING;
                             }
                         }
                     }
-                    writeValue(tag, value, reply);
+                    writeValue(tag, value, reply, true);
                 }
                 return reply;
             }
@@ -559,6 +583,7 @@ class JDWP {
                 for (int i = 0; i < arguments; i++) {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input);
+                    // TODO(Gregersen) - convert to guest objects and locate real objects by IDs
                 }
                 int options = input.readInt(); // TODO(Gregersen) - handle invocation options
 
@@ -575,12 +600,11 @@ class JDWP {
                             byte tag = TagConstants.fromJavaKind(staticObject.getKlass().getJavaKind());
                             if (tag == TagConstants.OBJECT) {
                                 // check specifically for String
-                                System.out.println("580: Type: " + staticObject.getKlass().getType());
-                                if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
+                                if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString())) {
                                     tag = TagConstants.STRING;
                                 }
                             }
-                            writeValue(tag, value, reply);
+                            writeValue(tag, value, reply, true);
                         }
                     }
                     else { // return value in null
@@ -824,24 +848,108 @@ class JDWP {
                 StaticObject array = (StaticObject) Ids.fromId((int)arrayId);
                 ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
                 byte tag = TagConstants.fromJavaKind(arrayKlass.getComponentType().getJavaKind());
+                boolean tagged = false;
 
                 if (arrayKlass.getDimension() > 1) {
                     tag = TagConstants.ARRAY;
+                    tagged = true;
+                }
+                if (tag == TagConstants.OBJECT) {
+                    tagged = true;
+                    if (JAVA_LANG_STRING.equals(arrayKlass.getComponentType().getType().toString())) {
+                        tag = TagConstants.STRING;
+                    }
                 }
                 reply.writeByte(tag);
                 reply.writeInt(length);
                 for (int i = index; i < index + length; i++) {
-                    Object theValue = array.get(i);
-                    // check for java.lang.String specifically
-                    if (theValue instanceof StaticObject) {
-                        StaticObject staticObject = (StaticObject) theValue;
-                        if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString())) {
-                            tag = TagConstants.STRING;
-                        }
+                    Object theValue;
+                    if (!tagged) {
+                        // primitive array type needs wrapping
+                        Object boxedArray = array.unwrap();
+                        theValue = Array.get(boxedArray, i);
+                    } else {
+                        theValue = array.get(i);
                     }
-                    writeValue(tag, theValue, reply);
+                    writeValue(tag, theValue, reply, tagged);
                 }
                 return reply;
+            }
+        }
+
+        static class SET_VALUES {
+            public static final int ID = 3;
+
+            static PacketStream createReply(Packet packet, Meta meta) {
+                PacketStream input = new PacketStream(packet);
+
+                long arrayId = input.readLong();
+                int index = input.readInt();
+                int values = input.readInt();
+
+                StaticObject array = (StaticObject) Ids.fromId((int) arrayId);
+                byte tag = TagConstants.fromJavaKind(array.getKlass().getComponentType().getJavaKind());
+                if (tag == TagConstants.OBJECT) {
+                    if (JAVA_LANG_STRING.equals(array.getKlass().getComponentType().getType().toString())) {
+                        tag = TagConstants.STRING;
+                    }
+                }
+                if (((ArrayKlass) array.getKlass()).getDimension() > 1) {
+                    tag = TagConstants.ARRAY;
+                }
+
+                for (int i = index; i < index + values; i++) {
+                    switch (tag) {
+                        case TagConstants.BOOLEAN:
+                            boolean bool = input.readBoolean();
+                            boolean[] boolArray = array.unwrap();
+                            boolArray[i] = bool;
+                            break;
+                        case TagConstants.BYTE:
+                            byte b = input.readByte();
+                            byte[] byteArray = array.unwrap();
+                            byteArray[i] = b;
+                            break;
+                        case TagConstants.SHORT:
+                            short s = input.readShort();
+                            short[] shortArray = array.unwrap();
+                            shortArray[i] = s;
+                            break;
+                        case TagConstants.CHAR:
+                            char c = input.readChar();
+                            char[] charArray = array.unwrap();
+                            charArray[i] = c;
+                            break;
+                        case TagConstants.INT:
+                            int j = input.readInt();
+                            int[] intArray = array.unwrap();
+                            intArray[i] = j;
+                            break;
+                        case TagConstants.FLOAT:
+                            float f = input.readFloat();
+                            float[] floatArray = array.unwrap();
+                            floatArray[i] = f;
+                            break;
+                        case TagConstants.LONG:
+                            long l = input.readLong();
+                            long[] longArray = array.unwrap();
+                            longArray[i] = l;
+                            break;
+                        case TagConstants.DOUBLE:
+                            double d = input.readDouble();
+                            double[] doubleArray = array.unwrap();
+                            doubleArray[i] = d;
+                            break;
+                        case TagConstants.ARRAY:
+                        case TagConstants.STRING:
+                        case TagConstants.OBJECT:
+                            StaticObject so = (StaticObject) Ids.fromId((int)input.readLong());
+                            array.putObject(so, i, meta);
+                            break;
+                        default: throw EspressoError.shouldNotReachHere();
+                    }
+                }
+                return new PacketStream().replyPacket().id(packet.id);
             }
         }
     }
@@ -891,12 +999,12 @@ class JDWP {
                     } else if (sigbyte == TagConstants.OBJECT) {
                         if (value instanceof StaticObject) {
                             StaticObject staticObject = (StaticObject) value;
-                            if ("Ljava/lang/String;".equals(staticObject.getKlass().getType().toString()));
+                            if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString()));
                             sigbyte = TagConstants.STRING;
-                            writeValue(sigbyte, value, reply);
+                            writeValue(sigbyte, value, reply, true);
                         }
                     } else {
-                        writeValue(sigbyte, value, reply);
+                        writeValue(sigbyte, value, reply, true);
                     }
                     // TODO(Gregersen) - verify sigbyte against actual value type
                 }
@@ -958,13 +1066,17 @@ class JDWP {
             case TagConstants.FLOAT: return input.readFloat();
             case TagConstants.LONG: return input.readLong();
             case TagConstants.DOUBLE: return input.readDouble();
+            case TagConstants.ARRAY:
+            case TagConstants.STRING:
             case TagConstants.OBJECT: return Ids.fromId((int)input.readLong());
             default: throw EspressoError.shouldNotReachHere();
         }
     }
 
-    private static void writeValue(byte tag, Object value, PacketStream reply) {
-        reply.writeByte(tag);
+    private static void writeValue(byte tag, Object value, PacketStream reply, boolean tagged) {
+        if (tagged) {
+            reply.writeByte(tag);
+        }
         switch (tag) {
             case TagConstants.BOOLEAN:
                 reply.writeBoolean((boolean)value);
@@ -1022,10 +1134,9 @@ class JDWP {
                 break;
             case TagConstants.OBJECT:
             case TagConstants.STRING:
-                reply.writeLong(Ids.getIdAsLong(value));
-                break;
             case TagConstants.ARRAY:
                 reply.writeLong(Ids.getIdAsLong(value));
+                break;
             default: throw EspressoError.shouldNotReachHere();
         }
     }

@@ -28,6 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -747,13 +748,19 @@ public final class Meta implements ContextAccess {
 
     @TruffleBoundary
     public StaticObject toGuestString(String hostString) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        return toGuestString(hostString, meta);
+    }
+
+    @TruffleBoundary
+    public StaticObject toGuestString(String hostString, Meta meta) {
         if (hostString == null) {
             return StaticObject.NULL;
         }
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = String.allocateInstance();
-        String_value.set(guestString, StaticObject.wrap(value));
+        String_value.set(guestString, StaticObject.wrap(value, meta));
         String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) String_hashCode.invokeDirect(guestString);
