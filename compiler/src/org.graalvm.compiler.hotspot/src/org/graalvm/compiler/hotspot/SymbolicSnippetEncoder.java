@@ -1109,7 +1109,7 @@ public class SymbolicSnippetEncoder {
                 // Because supporting arbitrary plugins in the context of encoded graphs is complex
                 // we disallow it. This limitation can be worked around through the use of method
                 // substitutions.
-                throw new GraalError("conditional plugins are unsupported in in snippets and method substitutions: " + targetMethod + " " + plugin);
+                throw new GraalError("conditional plugins are unsupported in snippets and method substitutions: " + targetMethod + " " + plugin);
             }
             return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
         }

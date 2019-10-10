@@ -492,13 +492,13 @@ public class HotSpotGraphBuilderPlugins {
         String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
         String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
 
-        r.registerPredicatedMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class,
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                         int.class);
-        r.registerPredicatedMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class,
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class,
                         int.class, int.class, byte[].class, int.class);
         r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerPredicatedMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
-        r.registerPredicatedMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class,
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class,
                         byte[].class, int.class);
     }
 
@@ -506,18 +506,18 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
         assert !config.useMultiplyToLenIntrinsic() || config.multiplyToLen != 0L;
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r.registerPredicatedMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
+            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
                             int.class, int[].class);
         } else {
-            r.registerPredicatedMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
+            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
                             int.class, int[].class);
         }
-        r.registerPredicatedMethodSubstitution(config.useMulAddIntrinsic(), BigIntegerSubstitutions.class, "implMulAdd", int[].class, int[].class, int.class, int.class, int.class);
-        r.registerPredicatedMethodSubstitution(config.useMontgomeryMultiplyIntrinsic(), BigIntegerSubstitutions.class, "implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class,
+        r.registerConditionalMethodSubstitution(config.useMulAddIntrinsic(), BigIntegerSubstitutions.class, "implMulAdd", int[].class, int[].class, int.class, int.class, int.class);
+        r.registerConditionalMethodSubstitution(config.useMontgomeryMultiplyIntrinsic(), BigIntegerSubstitutions.class, "implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class,
                         long.class, int[].class);
-        r.registerPredicatedMethodSubstitution(config.useMontgomerySquareIntrinsic(), BigIntegerSubstitutions.class, "implMontgomerySquare", int[].class, int[].class, int.class, long.class,
+        r.registerConditionalMethodSubstitution(config.useMontgomerySquareIntrinsic(), BigIntegerSubstitutions.class, "implMontgomerySquare", int[].class, int[].class, int.class, long.class,
                         int[].class);
-        r.registerPredicatedMethodSubstitution(config.useSquareToLenIntrinsic(), BigIntegerSubstitutions.class, "implSquareToLen", int[].class, int.class, int[].class, int.class);
+        r.registerConditionalMethodSubstitution(config.useSquareToLenIntrinsic(), BigIntegerSubstitutions.class, "implSquareToLen", int[].class, int.class, int[].class, int.class);
     }
 
     private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
@@ -527,18 +527,18 @@ public class HotSpotGraphBuilderPlugins {
 
         if (JavaVersionUtil.JAVA_SPEC > 8 && (useSha1 || useSha256 || useSha512)) {
             Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
-            r.registerPredicatedMethodSubstitution((useSha1 || useSha256 || useSha512), DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution((useSha1 || useSha256 || useSha512), DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
 
         assert !useSha1 || config.sha1ImplCompress != 0L;
         Registration r = new Registration(plugins, "sun.security.provider.SHA", replacements);
-        r.registerPredicatedMethodSubstitution(useSha1, SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        r.registerConditionalMethodSubstitution(useSha1, SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         assert !useSha256 || config.sha256ImplCompress != 0L;
         Registration r2 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        r2.registerPredicatedMethodSubstitution(useSha256, SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        r2.registerConditionalMethodSubstitution(useSha256, SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         assert !useSha512 || config.sha512ImplCompress != 0L;
         Registration r5 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-        r5.registerPredicatedMethodSubstitution(useSha512, SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        r5.registerConditionalMethodSubstitution(useSha512, SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
     }
 
     private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
@@ -578,7 +578,7 @@ public class HotSpotGraphBuilderPlugins {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             assert !config.useAESCTRIntrinsics || config.counterModeAESCrypt != 0L;
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
-            r.registerPredicatedMethodSubstitution(config.useAESCTRIntrinsics, CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,
+            r.registerConditionalMethodSubstitution(config.useAESCTRIntrinsics, CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
         }
     }
@@ -619,26 +619,26 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, CRC32.class, replacements);
         r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r.registerPredicatedMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-            r.registerPredicatedMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
         } else {
-            r.registerPredicatedMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
-            r.registerPredicatedMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
         }
     }
 
     private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "java.util.zip.CRC32C", replacements);
-            r.registerPredicatedMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-            r.registerPredicatedMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
         }
     }
 
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-            r.registerPredicatedMethodSubstitution(config.useVectorizedMismatchIntrinsic, ArraysSupportSubstitutions.class, "vectorizedMismatch", Object.class, long.class, Object.class, long.class,
+            r.registerConditionalMethodSubstitution(config.useVectorizedMismatchIntrinsic, ArraysSupportSubstitutions.class, "vectorizedMismatch", Object.class, long.class, Object.class, long.class,
                             int.class, int.class);
         }
     }

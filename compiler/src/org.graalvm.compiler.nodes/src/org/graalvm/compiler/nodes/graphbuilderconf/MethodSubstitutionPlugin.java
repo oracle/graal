@@ -67,11 +67,12 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
     private final Class<?> declaringClass;
 
     /**
-     * The name of the original method.
+     * The name of the substitute method.
      */
     private final String substituteName;
+
     /**
-     * The name of the original and substitute method.
+     * The name of the original method.
      */
     private final String originalName;
 
