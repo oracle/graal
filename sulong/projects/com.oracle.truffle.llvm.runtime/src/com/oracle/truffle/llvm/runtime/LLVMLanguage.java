@@ -44,6 +44,9 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -67,6 +70,13 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
                 characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
+
+    static class GlobalObjectType extends ObjectType {
+        private static final GlobalObjectType INSTANCE = new GlobalObjectType();
+    }
+
+    static final Layout GLOBAL_LAYOUT = Layout.createLayout();
+    Shape emptyGlobalShape = GLOBAL_LAYOUT.createShape(GlobalObjectType.INSTANCE);
 
     static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     static final String LLVM_BITCODE_EXTENSION = "bc";

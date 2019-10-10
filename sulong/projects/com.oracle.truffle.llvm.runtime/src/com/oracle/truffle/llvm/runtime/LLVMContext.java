@@ -65,6 +65,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -133,6 +134,7 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
     private final Map<LLVMGlobal, LLVMPointer> globalStorageMap = new IdentityHashMap<>();
+    private final DynamicObject globalStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -188,6 +190,7 @@ public final class LLVMContext {
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
         this.toolchain = toolchain;
+        this.globalStorage = language.emptyGlobalShape.newInstance();
 
         this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getCapability(PlatformCapability.class).getSulongDefaultLibraries()));
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
@@ -619,6 +622,10 @@ public final class LLVMContext {
     @TruffleBoundary
     public LLVMPointer getGlobalStorage(LLVMGlobal descriptor) {
         return globalStorageMap.get(descriptor);
+    }
+
+    public DynamicObject getGlobalStorage() {
+        return globalStorage;
     }
 
     @TruffleBoundary
