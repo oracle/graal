@@ -78,7 +78,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_FINAL_CHECK_ICON = "\uD83D\uDE09";
     private static final int STATUS_ICON_WIDTH = 2;
     private static final int STATUS_LABEL_WIDTH = 11;
-    public static final int DEFAULT_ASYNC_ITERATIONS = 50000;
+    public static final int DEFAULT_ASYNC_ITERATIONS = 100000;
 
     private Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
