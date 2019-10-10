@@ -41,6 +41,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NodeIntrinsificationProvider implements InjectionProvider {
 
+    public static final TargetDescription INJECTED_TARGET = null;
+
     private final MetaAccessProvider metaAccess;
     private final SnippetReflectionProvider snippetReflection;
     private final ForeignCallsProvider foreignCalls;

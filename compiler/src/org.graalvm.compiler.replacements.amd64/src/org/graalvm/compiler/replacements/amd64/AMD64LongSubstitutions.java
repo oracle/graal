@@ -26,9 +26,12 @@ package org.graalvm.compiler.replacements.amd64;
 
 // JaCoCo Exclude
 
+import static org.graalvm.compiler.replacements.NodeIntrinsificationProvider.INJECTED_TARGET;
+
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 
@@ -51,8 +54,9 @@ public class AMD64LongSubstitutions {
     }
 
     @MethodSubstitution
+    @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF_NONVIRTUAL", justification = "foldable method parameters are injected")
     public static int numberOfLeadingZeros(long i) {
-        if (lzcnt(null)) {
+        if (lzcnt(INJECTED_TARGET)) {
             return AMD64CountLeadingZerosNode.countLeadingZeros(i);
         }
         if (i == 0) {
@@ -62,8 +66,9 @@ public class AMD64LongSubstitutions {
     }
 
     @MethodSubstitution
+    @SuppressFBWarnings(value = "NP_NULL_PARAM_DEREF_NONVIRTUAL", justification = "foldable method parameters are injected")
     public static int numberOfTrailingZeros(long i) {
-        if (tzcnt(null)) {
+        if (tzcnt(INJECTED_TARGET)) {
             return AMD64CountTrailingZerosNode.countTrailingZeros(i);
         }
 
