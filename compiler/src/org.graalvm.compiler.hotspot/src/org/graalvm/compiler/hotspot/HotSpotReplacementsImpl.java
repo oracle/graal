@@ -113,7 +113,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             InvocationPlugin plugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
             if (plugin instanceof MethodSubstitutionPlugin) {
                 MethodSubstitutionPlugin msp = (MethodSubstitutionPlugin) plugin;
-                if (useEncodedGraphs) {
+                if (!IS_IN_NATIVE_IMAGE && useEncodedGraphs) {
+                    replacements.maybeInitializeEncoder(debug.getOptions());
                     replacements.registerMethodSubstitution(msp);
                 }
                 StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, StructuredGraph.AllowAssumptions.YES, cancellable, debug.getOptions());
@@ -133,6 +134,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             if (plugin instanceof MethodSubstitutionPlugin && (!plugin.inlineOnly() || invokeBci >= 0)) {
                 MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
                 if (!IS_IN_NATIVE_IMAGE && useEncodedGraphs) {
+                    maybeInitializeEncoder(options);
                     registerMethodSubstitution(msPlugin);
                 }
                 // This assumes the normal path creates the graph using
