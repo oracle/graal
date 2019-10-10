@@ -52,7 +52,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.LocalizationSupport;
+import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -81,7 +81,7 @@ public final class ResourcesFeature implements Feature {
 
         @Override
         public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationSupport.class).addBundleToCache(name);
+            ImageSingletons.lookup(LocalizationFeature.class).addBundleToCache(name);
         }
     }
 
