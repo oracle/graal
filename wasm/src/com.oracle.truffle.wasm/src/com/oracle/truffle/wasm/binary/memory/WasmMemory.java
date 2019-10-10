@@ -118,22 +118,31 @@ public abstract class WasmMemory implements TruffleObject {
         return chunk;
     }
 
+    String viewByte(long address) {
+        final int value = load_i32_8u(address);
+        String result = Integer.toHexString(value);
+        if (result.length() == 0) {
+            result = "0" + result;
+        }
+        return result;
+    }
+
     String hexView(long address, int length) {
         long[] chunk = view(address, length);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < chunk.length; i++) {
             sb.append("0x").append(hex(address + i * 8)).append(" | ");
-            sb.append(hexBatched(chunk[i])).append("\n");
+            for (int j = 0; j < 8; j++) {
+                sb.append(viewByte(address + i * 8 + j)).append(" ");
+            }
+            sb.append("| ");
+            sb.append(batch(hex(chunk[i]), 2)).append("\n");
         }
         return sb.toString();
     }
 
     private String hex(long value) {
         return pad(Long.toHexString(value), 16);
-    }
-
-    private String hexBatched(long value) {
-        return batch(pad(Long.toHexString(value), 16), 2);
     }
 
     private String batch(String s, int count) {

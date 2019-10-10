@@ -133,6 +133,23 @@ suite = {
     },
   },
 
+  "externalProjects": {
+    "resource.com.oracle.truffle.wasm.testcases": {
+      "type": "web",
+      "path": "src/com.oracle.truffle.wasm.testcases",
+      "source": [
+        "src",
+      ],
+    },
+    "mxbuild.com.oracle.truffle.wasm.testcases": {
+      "type": "web",
+      "path": "mxbuild/com.oracle.truffle.wasm.testcases",
+      "source": [
+        "test",
+      ],
+    },
+  },
+
   "distributions" : {
     "WASM" : {
       "moduleName" : "com.oracle.truffle.wasm",

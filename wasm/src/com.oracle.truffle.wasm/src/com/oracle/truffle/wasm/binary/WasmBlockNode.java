@@ -211,6 +211,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -224,6 +225,8 @@ import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
+import java.lang.reflect.InvocationTargetException;
 
 public class WasmBlockNode extends WasmNode implements RepeatingNode {
     private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
@@ -271,11 +274,16 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         logger.finest("block/if/loop EXECUTE");
+        debugCompiled();
         while (offset < startOffset + byteLength()) {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
             CompilerAsserts.partialEvaluationConstant(offset);
+            debugState();
+            if (offset == 1115) {
+                debugState();
+            }
             switch (opcode) {
                 case UNREACHABLE:
                     logger.finest("unreachable");
@@ -2247,6 +2255,49 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
         }
         return -1;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void debugCompiled() {
+        boolean isValid = false;
+        try {
+            isValid = (boolean) getRootNode().getCallTarget().getClass().getDeclaredMethod("isValid").invoke(getRootNode().getCallTarget());
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        if (codeEntry().functionIndex() == 12 && isValid) {
+            System.err.println("compiled");
+        }
+    }
+
+
+    @TruffleBoundary
+    private void debugState() {
+        boolean isValid = false;
+        try {
+            isValid = (boolean) getRootNode().getCallTarget().getClass().getDeclaredMethod("isValid").invoke(getRootNode().getCallTarget());
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        if (codeEntry().functionIndex() == 12 && isValid) {
+            if (WasmContext.getCurrent().memories().memory(0).load_i32(0xf90) == 0x4b8) {
+                System.err.println("Corrupted.");
+            }
+            if (WasmContext.getCurrent().memories().memory(0).load_i32(0xfa8) == 0xfa0) {
+                System.err.println("Corrupted 2.");
+            }
+            // if ((int) frame.getArguments()[1] != 4000) {
+            //     System.err.println("Unexpected argument: " + frame.getArguments()[1]);
+            // }
+        }
     }
 
     private boolean popCondition(VirtualFrame frame, int stackPointer) {

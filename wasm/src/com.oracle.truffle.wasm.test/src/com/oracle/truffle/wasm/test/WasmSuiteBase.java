@@ -194,16 +194,16 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
+            // runInContext(testCase, context, source, 3, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
             context = getInterpretedWithInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_INTERPRETER_ICON, "interpreter");
+            // runInContext(testCase, context, source, 3, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_SYNC_INLINE_ICON, "sync,inl");
+            // runInContext(testCase, context, source, 3, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
