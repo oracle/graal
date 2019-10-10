@@ -611,16 +611,22 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public void setGlobalStorage(LLVMGlobal descriptor, LLVMPointer value) {
+        assert descriptor != null;
+        assert value != null;
         globalStorageMap.put(descriptor, value);
     }
 
     @TruffleBoundary
     public void replaceGlobalStorage(LLVMGlobal descriptor, LLVMPointer oldValue, LLVMPointer newValue) {
+        assert descriptor != null;
+        assert oldValue != null;
+        assert newValue != null;
         globalStorageMap.replace(descriptor, oldValue, newValue);
     }
 
     @TruffleBoundary
     public LLVMPointer getGlobalStorage(LLVMGlobal descriptor) {
+        assert descriptor != null;
         return globalStorageMap.get(descriptor);
     }
 
