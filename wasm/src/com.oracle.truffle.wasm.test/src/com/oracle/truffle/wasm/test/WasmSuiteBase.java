@@ -75,7 +75,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_SYNC_INLINE_ICON = "\uD83D\uDD37";
     private static final String PHASE_ASYNC_ICON = "\uD83D\uDD36";
     private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
-    private static final String PHASE_FINAL_CHECK_ICON = "\uD83D\uDE09";
     private static final int STATUS_ICON_WIDTH = 2;
     private static final int STATUS_LABEL_WIDTH = 11;
     public static final int DEFAULT_ASYNC_ITERATIONS = 100000;
@@ -210,7 +209,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             context = getAsyncCompiled(contextBuilder);
             runInContext(testCase, context, source, DEFAULT_ASYNC_ITERATIONS, PHASE_ASYNC_ICON, "async,multi");
-            runInContext(testCase, context, source, 1, PHASE_FINAL_CHECK_ICON, "async,check");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
         } catch (PolyglotException e) {
