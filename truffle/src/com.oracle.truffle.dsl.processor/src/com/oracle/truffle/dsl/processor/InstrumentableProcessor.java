@@ -124,17 +124,17 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 }
                 try {
                     if (element.getKind() != ElementKind.CLASS) {
-                        emitError(element, String.format("Only classes can be annotated with %s.", types.GenerateWrapper.asElement().getSimpleName().toString()));
+                        emitError(element, String.format("Only classes can be annotated with %s.", types.GenerateWrapper.asElement().getSimpleName()));
                         continue;
                     }
 
                     if (createWrapper == null) {
-                        emitError(element, String.format("Fatal %s.%s not found.", types.InstrumentableNode.asElement().getSimpleName().toString(), CREATE_WRAPPER_NAME));
+                        emitError(element, String.format("Fatal %s.%s not found.", types.InstrumentableNode.asElement().getSimpleName(), CREATE_WRAPPER_NAME));
                         continue;
                     }
 
                     if (!ElementUtils.isAssignable(element.asType(), instrumentableNode)) {
-                        emitError(element, String.format("Classes annotated with @%s must implement %s.", types.GenerateWrapper.asElement().getSimpleName().toString(),
+                        emitError(element, String.format("Classes annotated with @%s must implement %s.", types.GenerateWrapper.asElement().getSimpleName(),
                                         types.InstrumentableNode.asElement().getSimpleName().toString()));
                         continue;
                     } else {
@@ -151,18 +151,18 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                                             "  @Override public %s createWrapper(%s probeNode) {%n" +
                                             "    return new %s(this, probeNode);%n" +
                                             "  }",
-                                            types.GenerateWrapper.asElement().getSimpleName().toString(),
-                                            types.InstrumentableNode.asElement().getSimpleName().toString(),
+                                            types.GenerateWrapper.asElement().getSimpleName(),
+                                            types.InstrumentableNode.asElement().getSimpleName(),
                                             CREATE_WRAPPER_NAME,
                                             createWrapperClassName((TypeElement) element),
-                                            types.InstrumentableNode_WrapperNode.asElement().getSimpleName().toString(),
-                                            types.ProbeNode.asElement().getSimpleName().toString(),
+                                            types.InstrumentableNode_WrapperNode.asElement().getSimpleName(),
+                                            types.ProbeNode.asElement().getSimpleName(),
                                             createWrapperClassName((TypeElement) element)));
                             continue;
                         }
                         if (!ElementUtils.isAssignable(element.asType(), types.Node)) {
-                            emitError(element, String.format("Classes annotated with @%s must extend %s.", types.GenerateWrapper.asElement().getSimpleName().toString(),
-                                            types.Node.asElement().getSimpleName().toString()));
+                            emitError(element, String.format("Classes annotated with @%s must extend %s.", types.GenerateWrapper.asElement().getSimpleName(),
+                                            types.Node.asElement().getSimpleName()));
                             continue;
                         }
                     }
@@ -447,7 +447,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         GeneratorUtils.addGeneratedBy(context, wrapperType, sourceType);
 
         wrapperType.add(createNodeChild(context, sourceType.asType(), FIELD_DELEGATE));
-        wrapperType.add(createNodeChild(context, context.getTypes().ProbeNode, FIELD_PROBE));
+        wrapperType.add(createNodeChild(context, types.ProbeNode, FIELD_PROBE));
 
         Set<Modifier> constructorModifiers;
         if (topLevelClass) {
@@ -484,7 +484,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             if (isExecuteMethod(method) && isOverridable(method)) {
                 VariableElement firstParam = method.getParameters().isEmpty() ? null : method.getParameters().get(0);
                 if (topLevelClass && (firstParam == null || !ElementUtils.isAssignable(firstParam.asType(), types.VirtualFrame))) {
-                    emitError(e, String.format("Wrapped execute method %s must have VirtualFrame as first parameter.", method.getSimpleName().toString()));
+                    emitError(e, String.format("Wrapped execute method %s must have VirtualFrame as first parameter.", method.getSimpleName()));
                     return null;
                 }
                 if (ElementUtils.isObject(method.getReturnType()) && method.getParameters().size() == 1 && genericExecuteDelegate == null) {
@@ -518,7 +518,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
 
             if (incomingConverter != null) {
                 if (incomingConverterMethod != null) {
-                    emitError(sourceType, String.format("Only one @%s method allowed, found multiple.", types.GenerateWrapper_IncomingConverter.asElement().getSimpleName().toString()));
+                    emitError(sourceType, String.format("Only one @%s method allowed, found multiple.", types.GenerateWrapper_IncomingConverter.asElement().getSimpleName()));
                     return null;
                 }
                 if (!verifyConverter(method, types.GenerateWrapper_IncomingConverter)) {
@@ -529,7 +529,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
 
             if (outgoingConverter != null) {
                 if (outgoingConverterMethod != null) {
-                    emitError(sourceType, String.format("Only one @%s method allowed, found multiple.", types.GenerateWrapper_OutgoingConverter.asElement().getSimpleName().toString()));
+                    emitError(sourceType, String.format("Only one @%s method allowed, found multiple.", types.GenerateWrapper_OutgoingConverter.asElement().getSimpleName()));
                     return null;
                 }
                 if (!verifyConverter(method, types.GenerateWrapper_OutgoingConverter)) {
@@ -802,7 +802,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         if (!valid) {
             emitError(method, String.format("Invalid @%s method signature. Must be either " +
                             "Object converter(Object) or Object converter(%s, Object)", ElementUtils.getSimpleName(annotationClass),
-                            context.getTypes().VirtualFrame.asElement().getSimpleName().toString()));
+                            context.getTypes().VirtualFrame.asElement().getSimpleName()));
             return false;
         }
 
