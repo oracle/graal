@@ -42,36 +42,57 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Collection;
 
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
+/**
+ * A NFA that corresponds to the subtree of one {@link RegexASTSubtreeRootNode}.
+ */
+public class PureNFA {
 
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
+    @CompilationFinal(dimensions = 1) private final PureNFAState[] states;
+    @CompilationFinal(dimensions = 1) private final PureNFATransition[] transitions;
+
+    public PureNFA(Collection<PureNFAState> states,
+                    Counter.ThresholdCounter stateIDCounter,
+                    Counter.ThresholdCounter transitionIDCounter) {
+        this.states = new PureNFAState[stateIDCounter.getCount()];
+        this.transitions = new PureNFATransition[transitionIDCounter.getCount()];
+        for (PureNFAState s : states) {
+            assert this.states[s.getId()] == null;
+            this.states[s.getId()] = s;
+            if (s.getTransitions() == null) {
+                continue;
+            }
+            for (PureNFATransition t : s.getTransitions()) {
+                assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
+                this.transitions[t.getId()] = t;
+            }
+        }
     }
 
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
+    public PureNFAState getDummyInitialState() {
+        return states[0];
     }
 
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
+    public int getNumberOfEntryPoints() {
+        return getDummyInitialState().getTransitions().length / 2;
     }
 
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
+    public PureNFATransition getAnchoredEntry(int i) {
+        return getDummyInitialState().getTransitions()[i];
     }
 
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+    public PureNFATransition getUnAnchoredEntry(int i) {
+        return getDummyInitialState().getTransitions()[getNumberOfEntryPoints() + i];
     }
 
-    @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    public PureNFAState[] getStates() {
+        return states;
+    }
+
+    public PureNFATransition[] getTransitions() {
+        return transitions;
     }
 }

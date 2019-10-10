@@ -40,38 +40,40 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Collection;
-
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
+/**
+ * Contains a full mapping of every {@link RegexASTSubtreeRootNode} in a {@link RegexAST} to a
+ * {@link PureNFA}.
+ */
+public class PureNFAMap {
 
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
-    }
+    private final RegexAST ast;
+    private final PureNFA root;
+    private final PureNFA[] lookAheads;
+    private final PureNFA[] lookBehinds;
 
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
-    }
-
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
-    }
-
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
+    public PureNFAMap(RegexAST ast, PureNFA root, PureNFA[] lookAheads, PureNFA[] lookBehinds) {
+        this.ast = ast;
+        this.root = root;
+        this.lookAheads = lookAheads;
+        this.lookBehinds = lookBehinds;
     }
 
     public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+        return ast;
     }
 
-    @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    public PureNFA getRoot() {
+        return root;
+    }
+
+    public PureNFA[] getLookAheads() {
+        return lookAheads;
+    }
+
+    public PureNFA[] getLookBehinds() {
+        return lookBehinds;
     }
 }

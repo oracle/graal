@@ -38,50 +38,74 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.ast.visitors;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
-import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
-import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 
 /**
- * This visitor will set the {@link RegexASTNode#getMinPath()} - property of children of an AST in
- * the following manner:
+ * This visitor computes various properties of {@link RegexAST} and its {@link RegexASTNode}s, in
+ * two passes.
+ *
+ * <ul>
+ * <li>{@link RegexASTNode#getMinPath()}:
  * <ul>
  * <li>The minPath of {@link LookBehindAssertion} and {@link LookAheadAssertion} nodes is the
  * minimum number of CharacterClass nodes that need to be traversed in order to reach the node.</li>
  * <li>The minPath of {@link BackReference}, {@link PositionAssertion} and {@link MatchFound} nodes
- * is undefined (or is always 0). Their minPath is never set by {@link CalcMinPathsVisitor}.</li>
+ * is undefined (or is always 0). Their minPath is never set by {@link CalcASTPropsVisitor}.</li>
  * <li>The minPath of {@link Sequence} and {@link Group} nodes is the minimum number of
- * {@link CharacterClass} nodes that need to be traversed in order to reach the end of the node. The
- * minPath field of {@link Sequence} nodes is used as a mutable iteration variable when traversing
- * their children (see {@link #visit(CharacterClass)}). The resulting value after the traversal
- * holds the minimum number of {@link CharacterClass} nodes that need to be traversed to reach the
- * end of the Sequence. The same holds for {@link Group} nodes.</li>
+ * {@link CharacterClass} nodes that need to be traversed (starting at the AST root) in order to
+ * reach the end of the node. The minPath field of {@link Sequence} nodes is used as a mutable
+ * iteration variable when traversing their children (see {@link #visit(CharacterClass)}). The
+ * resulting value after the traversal holds the minimum number of {@link CharacterClass} nodes that
+ * need to be traversed to reach the end of the Sequence. The same holds for {@link Group}
+ * nodes.</li>
+ * <li>The contents of {@link LookAroundAssertion}s are treated separately, so their minPath values
+ * have nothing to do with their parent expression.</li>
  * </ul>
- * {@link CalcMinPathsVisitor} will also set {@link RegexASTNode#getMaxPath()}, analogous to
- * {@link RegexASTNode#getMinPath()}, but without taking loops ({@link Group#isLoop()}) into
- * account. {@link CalcMinPathsVisitor} will simultaneously mark {@link PositionAssertion}s (type
+ * </li>
+ * <li>{@link RegexASTNode#getMaxPath()} is set analogous to {@link RegexASTNode#getMinPath()}, but
+ * without taking loops ({@link Group#isLoop()}) into account.</li>
+ * <li>{@link RegexASTNode#isDead()}: The following nodes are marked as dead:
+ * <ul>
+ * <li>{@link PositionAssertion}s whose minimum path is greater than zero (type
  * {@link com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion.Type#CARET} in forward mode
  * and {@link com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion.Type#DOLLAR} in backward
- * mode) whose minimum path is greater than zero as dead. Note that this algorithm will e.g. not
- * mark the dollar assertion in {@code /(?=a$)bc/} as dead, since it has a (reverse) minimum path of
- * 0 inside the look-ahead assertion. The visitor will also mark all {@link Sequence} nodes that
- * start with a caret {@link PositionAssertion} or end with a dollar {@link PositionAssertion} with
- * the {@link RegexASTNode#startsWithCaret()}/{@link RegexASTNode#endsWithDollar()} flags, and
- * likewise for all {@link Group}s where all child {@link Sequence}s start with a caret or end with
- * a dollar. The visitor is intended to be run on an AST once in reverse, and then once in forward
- * direction. The results of the forward run will be used by {@link RegexAST#createPrefix()}.
+ * mode). Note that this algorithm will e.g. not mark the dollar assertion in {@code /(?=a$)bc/} as
+ * dead, since it has a (reverse) minimum path of 0 inside the look-ahead assertion.</li>
+ * <li>{@link CharacterClass}es that don't match anything ({@link CharSet#matchesNothing()}).</li>
+ * <li>{@link Sequence}s that contain a dead node.</li>
+ * <li>{@link Group}s where all alternatives are dead.</li>
+ * <li>{@link RegexASTSubtreeRootNode}s whose child group is dead.</li>
+ * </ul>
+ * </li>
+ * <li>{@link RegexASTNode#startsWithCaret()}/{@link RegexASTNode#endsWithDollar()}:
+ * <ul>
+ * <li>{@link Sequence}s that start with a caret {@link PositionAssertion} / end with a dollar
+ * {@link PositionAssertion}.</li>
+ * <li>{@link Group}s where all alternatives start with a caret / end with a dollar.</li>
+ * </ul>
+ * </li>
+ * <li>{@link RegexASTNode#hasCaret()}/{@link RegexASTNode#hasDollar()}:
+ * <ul>
+ * <li>{@link Sequence}s that contain a caret / dollar {@link PositionAssertion}.</li>
+ * <li>{@link Group}s where any alternatives contains a caret / dollar
+ * {@link PositionAssertion}.</li>
+ * </ul>
+ * </li>
+ * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
+ * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
+ * <li>{@link RegexAST#getLookAheads()}/{@link RegexAST#getLookBehinds()}: all reachable
+ * {@link LookAroundAssertion}s are added to these lists.</li>
+ * </ul>
  *
+ * @see RegexAST#getReachableCarets()
+ * @see RegexAST#getReachableDollars()
+ * @see RegexAST#getLookAheads()
+ * @see RegexAST#getLookBehinds()
+ * @see RegexASTNode#hasCaret()
+ * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
  * @see RegexASTNode#endsWithDollar()
  * @see RegexASTNode#getMinPath()
@@ -89,7 +113,31 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
  * @see RegexASTNode#isDead()
  * @see RegexAST#createPrefix()
  */
-public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
+public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+    /**
+     * When processing a {@link Group}, these flags will be set in the group iff they are set in
+     * <em>all</em> of its alternatives.
+     */
+    private static final short AND_FLAGS = RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR | RegexASTNode.FLAG_DEAD;
+    /**
+     * When processing a {@link Group}, these flags will be set in the group iff they are set in
+     * <em>any</em> of its alternatives.
+     */
+    private static final short OR_FLAGS = RegexASTNode.FLAG_HAS_CARET | RegexASTNode.FLAG_HAS_DOLLAR | RegexASTNode.FLAG_HAS_LOOPS;
+    private static final short CHANGED_FLAGS = (short) (AND_FLAGS | OR_FLAGS);
+
+    private final RegexAST ast;
+
+    public CalcASTPropsVisitor(RegexAST ast) {
+        this.ast = ast;
+    }
+
+    public static void run(RegexAST ast) {
+        CalcASTPropsVisitor visitor = new CalcASTPropsVisitor(ast);
+        visitor.runReverse(ast.getRoot());
+        visitor.run(ast.getRoot());
+    }
 
     @Override
     protected void init(RegexASTNode runRoot) {
@@ -120,25 +168,18 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
         int minPath = Short.MAX_VALUE;
         int maxPath = 0;
-        boolean caret = true;
-        boolean dollar = true;
-        boolean hasLoops = group.isLoop();
-        boolean isDead = true;
+        int flags = (group.isLoop() ? RegexASTNode.FLAG_HAS_LOOPS : 0) | AND_FLAGS;
         for (Sequence s : group.getAlternatives()) {
-            isDead &= s.isDead();
             if (s.isDead()) {
                 continue;
             }
-            caret &= s.startsWithCaret();
-            dollar &= s.endsWithDollar();
-            hasLoops |= s.hasLoops();
+            flags = (flags & (s.getFlags(AND_FLAGS) | ~AND_FLAGS)) | s.getFlags(OR_FLAGS);
             minPath = Math.min(minPath, s.getMinPath());
             maxPath = Math.max(maxPath, s.getMaxPath());
         }
         if (group.hasQuantifier()) {
             if (group.getQuantifier().getMin() == 0) {
-                caret = false;
-                dollar = false;
+                flags &= ~(RegexASTNode.FLAG_STARTS_WITH_CARET | RegexASTNode.FLAG_ENDS_WITH_DOLLAR);
             }
             // group.minPath and group.maxPath are summed up from the beginning of the regex to the
             // beginning of the group.
@@ -146,17 +187,12 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             // the group, so sequence.minPath - group.minPath == the sequence's "own" minPath
             minPath = group.getMinPath() + ((minPath - group.getMinPath()) * group.getQuantifier().getMin());
             if (group.getQuantifier().isInfiniteLoop()) {
-                hasLoops = true;
+                flags |= RegexASTNode.FLAG_HAS_LOOPS;
             } else {
                 maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
             }
         }
-        group.setStartsWithCaret(caret);
-        group.setEndsWithDollar(dollar);
-        group.setHasLoops(hasLoops);
-        if (isDead) {
-            group.markAsDead();
-        }
+        group.setFlags((short) flags, CHANGED_FLAGS);
         group.setMinPath(minPath);
         group.setMaxPath(maxPath);
         if (group.getParent() instanceof Sequence) {
@@ -164,18 +200,7 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             group.getParent().setMaxPath(maxPath);
         }
         if (group.getParent() != null) {
-            if (caret) {
-                group.getParent().setStartsWithCaret();
-            }
-            if (dollar) {
-                group.getParent().setEndsWithDollar();
-            }
-            if (hasLoops) {
-                group.getParent().setHasLoops();
-            }
-            if (isDead) {
-                group.getParent().markAsDead();
-            }
+            group.getParent().setFlags((short) (group.getParent().getFlags(CHANGED_FLAGS) | flags), CHANGED_FLAGS);
         }
     }
 
@@ -190,20 +215,24 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         switch (assertion.type) {
             case CARET:
                 if (!isReverse()) {
+                    assertion.getParent().setHasCaret();
                     if (assertion.getParent().getMinPath() > 0) {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
+                        ast.getReachableCarets().add(assertion);
                         assertion.getParent().setStartsWithCaret();
                     }
                 }
                 break;
             case DOLLAR:
                 if (isReverse()) {
+                    assertion.getParent().setHasDollar();
                     if (assertion.getParent().getMinPath() > 0) {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
+                        ast.getReachableDollars().add(assertion);
                         assertion.getParent().setEndsWithDollar();
                     }
                 }
@@ -219,6 +248,9 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookBehindAssertion assertion) {
+        if (!isReverse() && !assertion.isDead()) {
+            ast.getLookBehinds().add(assertion);
+        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -230,22 +262,14 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
+        if (!isReverse() && !assertion.isDead()) {
+            ast.getLookAheads().add(assertion);
+        }
         leaveLookAroundAssertion(assertion);
     }
 
     public void leaveLookAroundAssertion(LookAroundAssertion assertion) {
-        if (assertion.startsWithCaret()) {
-            assertion.getParent().setStartsWithCaret();
-        }
-        if (assertion.endsWithDollar()) {
-            assertion.getParent().setEndsWithDollar();
-        }
-        if (assertion.hasLoops()) {
-            assertion.getParent().setHasLoops();
-        }
-        if (assertion.isDead()) {
-            assertion.getParent().markAsDead();
-        }
+        assertion.getParent().setFlags((short) (assertion.getFlags(CHANGED_FLAGS) | assertion.getParent().getFlags(CHANGED_FLAGS)), CHANGED_FLAGS);
     }
 
     @Override
@@ -268,10 +292,5 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             characterClass.markAsDead();
             characterClass.getParent().markAsDead();
         }
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        throw new IllegalStateException();
     }
 }

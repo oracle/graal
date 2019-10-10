@@ -57,6 +57,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
@@ -69,9 +70,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.CalcMinPathsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.DeleteVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
@@ -123,7 +123,7 @@ public final class RegexParser {
     private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
     private final CopyVisitor copyVisitor;
-    private final DeleteVisitor deleteVisitor;
+    private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
 
     private Sequence curSequence;
@@ -142,7 +142,7 @@ public final class RegexParser {
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
-        this.deleteVisitor = new DeleteVisitor(ast);
+        this.countVisitor = new NodeCountVisitor();
         this.setSourceSectionVisitor = options.isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
     }
@@ -154,12 +154,6 @@ public final class RegexParser {
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
-        for (LookBehindAssertion lb : ast.getLookBehinds()) {
-            if (!lb.isLiteral()) {
-                properties.setNonLiteralLookBehindAssertions();
-                break;
-            }
-        }
         return ast;
     }
 
@@ -167,10 +161,13 @@ public final class RegexParser {
         if (properties.hasQuantifiers() && !properties.hasLargeCountedRepetitions()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(this, ast.getRoot());
         }
-        final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
-        calcMinPathsVisitor.runReverse(ast.getRoot());
-        calcMinPathsVisitor.run(ast.getRoot());
-        ast.removeUnreachablePositionAssertions();
+        CalcASTPropsVisitor.run(ast);
+        for (LookBehindAssertion lb : ast.getLookBehinds()) {
+            if (!lb.isLiteral()) {
+                properties.setNonLiteralLookBehindAssertions();
+                break;
+            }
+        }
         if (!properties.hasNonLiteralLookBehindAssertions()) {
             ast.createPrefix();
             InitIDVisitor.init(ast);
@@ -709,7 +706,7 @@ public final class RegexParser {
     }
 
     private void removeCurTerm() {
-        deleteVisitor.run(curSequence.getLastTerm());
+        ast.getNodeCount().dec(countVisitor.count(curSequence.getLastTerm()));
         curSequence.removeLastTerm();
         if (!curSequence.isEmpty()) {
             curTerm = curSequence.getLastTerm();
@@ -830,7 +827,7 @@ public final class RegexParser {
                             prefixSeq.add(t);
                         } else {
                             ast.addSourceSections(prefixSeq.getTerms().get(j), ast.getSourceSections(t));
-                            deleteVisitor.run(t);
+                            ast.getNodeCount().dec(countVisitor.count(t));
                         }
                     }
                     // merge successive single-character-class alternatives

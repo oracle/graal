@@ -40,38 +40,52 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Collection;
+import java.util.Arrays;
 
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Term;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
+public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisitor {
 
-    public ASTNodeSet(RegexAST ast) {
+    private final PureNFAGenerator nfaGen;
+    private final ObjectArrayBuffer transitionBuffer = new ObjectArrayBuffer(8);
+
+    public PureNFATransitionGenerator(RegexAST ast, PureNFAGenerator nfaGen) {
         super(ast);
+        this.nfaGen = nfaGen;
     }
 
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
-    }
-
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
-    }
-
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
-    }
-
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+    public PureNFATransition[] generateTransitions(Term root) {
+        setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
+        transitionBuffer.clear();
+        run(root);
+        return transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]);
     }
 
     @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    protected void visit(RegexASTNode target) {
+        PureNFAState targetState;
+        if (target instanceof MatchFound) {
+            targetState = dollarsOnPath() ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
+        } else {
+            targetState = nfaGen.getOrCreateState((Term) target);
+        }
+        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(), targetState, getGroupBoundaries(),
+                        getLookAroundsOnPath().isEmpty() ? nfaGen.getEmptyLookArounds() : getLookAroundsOnPath().copy(),
+                        getQuantifierGuardsOnPath().length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(getQuantifierGuardsOnPath(), getQuantifierGuardsOnPath().length)));
+    }
+
+    @Override
+    protected void enterLookAhead(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected void leaveLookAhead(LookAheadAssertion assertion) {
     }
 }

@@ -45,84 +45,60 @@ import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 
 /**
- * A visitor used to maintain the state of cached {@link RegexAST} fields when removing parts of the
- * AST.
- * <p>
- * Nodes can be removed from the AST simply by mutating the parent/child pointers. However, there
- * are some cached values stored in {@link RegexAST} which would no longer have valid values. The
- * {@link DeleteVisitor} is something you can run on nodes that you are removing from the AST in
- * order to update the relevant fields of {@link RegexAST}.
- *
- * @see RegexAST#getNodeCount()
- * @see RegexAST#getReachableCarets()
- * @see RegexAST#getReachableDollars()
- * @see RegexAST#getLookBehinds()
+ * Counts the total number of child nodes of a given node.
  */
-public class DeleteVisitor extends DepthFirstTraversalRegexASTVisitor {
+public class NodeCountVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    private final RegexAST ast;
+    private int count = 0;
 
-    public DeleteVisitor(RegexAST ast) {
-        this.ast = ast;
+    public int count(RegexASTNode runRoot) {
+        count = 0;
+        run(runRoot);
+        return count;
     }
 
     @Override
     protected void visit(BackReference backReference) {
-        ast.getNodeCount().dec();
+        count++;
     }
 
     @Override
     protected void visit(Group group) {
-        ast.getNodeCount().dec();
+        count++;
         if (group.getParent() instanceof RegexASTSubtreeRootNode) {
-            // account for the MatchNode
-            ast.getNodeCount().dec();
+            // account for the NFA helper nodes
+            count += 4;
         }
     }
 
     @Override
     protected void visit(Sequence sequence) {
-        ast.getNodeCount().dec();
+        count++;
     }
 
     @Override
     protected void visit(PositionAssertion assertion) {
-        ast.getNodeCount().dec();
-        switch (assertion.type) {
-            case CARET:
-                ast.getReachableCarets().remove(assertion);
-                break;
-            case DOLLAR:
-                ast.getReachableDollars().remove(assertion);
-                break;
-        }
+        count++;
     }
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        ast.getNodeCount().dec();
-        ast.getLookBehinds().remove(assertion);
+        count++;
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        ast.getNodeCount().dec();
+        count++;
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        ast.getNodeCount().dec();
-    }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-        throw new IllegalStateException();
+        count++;
     }
 }

@@ -88,6 +88,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     private Group wrappedRoot;
     private Group[] captureGroups;
+    private final List<LookAheadAssertion> lookAheads = new ArrayList<>();
     private final List<LookBehindAssertion> lookBehinds = new ArrayList<>();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
@@ -197,9 +198,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public int getWrappedPrefixLength() {
         if (rootIsWrapped()) {
             // The single alternative in the wrappedRoot is composed of N non-optional prefix
-            // matchers, 1 group of optional matchers, 1 original root and 1 MatchFound node. By
-            // taking size() - 3, we get the number of non-optional prefix matchers.
-            return wrappedRoot.getAlternatives().get(0).size() - 3;
+            // matchers, 1 group of optional matchers and the original root. By
+            // taking size() - 2, we get the number of non-optional prefix matchers.
+            return wrappedRoot.getAlternatives().get(0).size() - 2;
         }
         return 0;
     }
@@ -213,6 +214,18 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             return wrappedRoot.getAlternatives().get(0).getTerms().get(getWrappedPrefixLength());
         }
         return wrappedRoot;
+    }
+
+    public boolean hasLookAheads() {
+        return !lookAheads.isEmpty();
+    }
+
+    public List<LookAheadAssertion> getLookAheads() {
+        return lookAheads;
+    }
+
+    public boolean hasLookBehinds() {
+        return !lookBehinds.isEmpty();
     }
 
     public List<LookBehindAssertion> getLookBehinds() {
@@ -237,7 +250,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public RegexASTRootNode createRootNode() {
         final RegexASTRootNode node = new RegexASTRootNode();
-        createEndPoint(node);
+        createNFAHelperNodes(node);
         return node;
     }
 
@@ -259,20 +272,26 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public LookAheadAssertion createLookAheadAssertion(boolean negated) {
         final LookAheadAssertion assertion = new LookAheadAssertion(negated);
-        createEndPoint(assertion);
+        createNFAHelperNodes(assertion);
         return register(assertion);
     }
 
     public LookBehindAssertion createLookBehindAssertion(boolean negated) {
         final LookBehindAssertion assertion = new LookBehindAssertion(negated);
-        createEndPoint(assertion);
+        createNFAHelperNodes(assertion);
         return register(assertion);
     }
 
-    public void createEndPoint(RegexASTSubtreeRootNode assertion) {
-        nodeCount.inc();
+    public void createNFAHelperNodes(RegexASTSubtreeRootNode rootNode) {
+        nodeCount.inc(4);
+        PositionAssertion anchored = new PositionAssertion(PositionAssertion.Type.CARET);
+        rootNode.setAnchoredInitialState(anchored);
+        MatchFound unAnchored = new MatchFound();
+        rootNode.setUnAnchoredInitialState(unAnchored);
         MatchFound end = new MatchFound();
-        assertion.setMatchFound(end);
+        rootNode.setMatchFound(end);
+        PositionAssertion anchoredEnd = new PositionAssertion(PositionAssertion.Type.DOLLAR);
+        rootNode.setAnchoredFinalState(anchoredEnd);
     }
 
     public PositionAssertion createPositionAssertion(PositionAssertion.Type type) {
@@ -325,7 +344,6 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             negativeLookbehinds++;
             properties.setNegativeLookBehindAssertions();
         }
-        lookBehinds.add(lookBehindAssertion);
         return lookBehindAssertion;
     }
 
@@ -349,10 +367,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         nodeCount.inc();
         switch (positionAssertion.type) {
             case CARET:
-                reachableCarets.add(positionAssertion);
                 break;
             case DOLLAR:
-                reachableDollars.add(positionAssertion);
                 break;
         }
         return positionAssertion;
@@ -361,11 +377,6 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public Sequence register(Sequence sequence) {
         nodeCount.inc();
         return sequence;
-    }
-
-    public void removeUnreachablePositionAssertions() {
-        reachableCarets.removeIf(RegexASTNode::isDead);
-        reachableDollars.removeIf(RegexASTNode::isDead);
     }
 
     public boolean isNFAInitialState(RegexASTNode node) {
@@ -470,10 +481,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
             prevOpt = opt;
         }
         root.getSubTreeParent().setGroup(wrapRoot);
-        final MatchFound matchFound = root.getSubTreeParent().getMatchFound();
         wrapRootSeq.add(prevOpt);
         wrapRootSeq.add(root);
-        wrapRootSeq.add(matchFound);
         wrappedRoot = wrapRoot;
     }
 

@@ -40,38 +40,80 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Collection;
-
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
+/**
+ * Represents a state of a {@link PureNFA}. All {@link PureNFAState}s correspond to a single
+ * {@link RegexASTNode}, referenced by {@link #getAstNodeId()}. Initial and final states correspond
+ * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
+ * to either {@link CharacterClass}es or {@link BackReference}s.
+ */
+public class PureNFAState {
 
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
+    private static final byte FLAG_FORWARD_ANCHORED_FINAL_STATE = 1 << 0;
+    private static final byte FLAG_FORWARD_UN_ANCHORED_FINAL_STATE = 1 << 1;
+
+    private final short id;
+    private final short astNodeId;
+    private byte flags;
+    private final CharSet charSet;
+    private PureNFATransition[] transitions;
+
+    public PureNFAState(short id, short astNodeId, CharSet charSet) {
+        this.id = id;
+        this.astNodeId = astNodeId;
+        this.charSet = charSet;
     }
 
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
+    public short getId() {
+        return id;
     }
 
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
+    public short getAstNodeId() {
+        return astNodeId;
     }
 
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
+    private boolean isFlagSet(byte flag) {
+        return (flags & flag) != 0;
     }
 
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+    private void setFlag(byte flag, boolean value) {
+        if (value) {
+            flags |= flag;
+        } else {
+            flags &= ~flag;
+        }
     }
 
-    @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    public boolean isAnchoredFinalState() {
+        return isFlagSet(FLAG_FORWARD_ANCHORED_FINAL_STATE);
+    }
+
+    public void setAnchoredFinalState() {
+        setFlag(FLAG_FORWARD_ANCHORED_FINAL_STATE, true);
+    }
+
+    public boolean isUnAnchoredFinalState() {
+        return isFlagSet(FLAG_FORWARD_UN_ANCHORED_FINAL_STATE);
+    }
+
+    public void setUnAnchoredFinalState() {
+        setFlag(FLAG_FORWARD_UN_ANCHORED_FINAL_STATE, true);
+    }
+
+    public CharSet getCharSet() {
+        return charSet;
+    }
+
+    public PureNFATransition[] getTransitions() {
+        return transitions;
+    }
+
+    public void setTransitions(PureNFATransition[] transitions) {
+        this.transitions = transitions;
     }
 }

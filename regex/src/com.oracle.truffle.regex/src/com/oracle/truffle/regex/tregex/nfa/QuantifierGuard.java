@@ -40,38 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.Collection;
+public class QuantifierGuard {
 
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
-
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
-    }
-
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
-    }
-
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
-    }
-
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
-    }
-
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
-    }
-
-    @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
-    }
+    public static final QuantifierGuard[] NO_GUARDS = new QuantifierGuard[0];
 }

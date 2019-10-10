@@ -85,7 +85,7 @@ public class LookBehindAssertion extends LookAroundAssertion {
      * Verifies that the contents of this assertion ({@link #getGroup()}) are in "literal" form.
      *
      * This means that there is only a single alternative which is composed of a sequence of
-     * {@link CharacterClass} nodes and terminated by a {@link MatchFound} node.
+     * {@link CharacterClass} nodes.
      */
     public boolean isLiteral() {
         if (getGroup().size() != 1) {
