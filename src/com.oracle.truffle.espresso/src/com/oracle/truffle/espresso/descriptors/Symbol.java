@@ -173,6 +173,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> name = StaticSymbols.putName("name");
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
         public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
+        public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
         public static final Symbol<Name> main = StaticSymbols.putName("main");
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");

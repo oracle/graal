@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.reflect.Array;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -62,6 +63,7 @@ public final class Target_sun_misc_Unsafe {
             java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             U = (Unsafe) f.get(null);
+            parkBlockerOffset = U.objectFieldOffset(Thread.class.getDeclaredField("parkBlocker"));
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -1028,9 +1030,20 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = self.getKlass().getContext();
         StaticObject thread = context.getCurrentThread();
         Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
+        Thread hostThread = Thread.currentThread();
+        Object blocker = LockSupport.getBlocker(hostThread);
+        Field parkBlocker = context.getMeta().Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.Object);
+        StaticObject guestBlocker = thread.getField(parkBlocker);
+        // LockSupport.park(/* guest blocker */);
+        if (!StaticObject.isNull(guestBlocker)) {
+            U.putObject(hostThread, parkBlockerOffset, guestBlocker);
+        }
         U.park(isAbsolute, time);
         Target_java_lang_Thread.toRunnable(thread, context.getMeta(), State.RUNNABLE);
+        U.putObject(hostThread, parkBlockerOffset, blocker);
     }
+
+    private static final long parkBlockerOffset;
 
     /**
      * Unblock the given thread blocked on <tt>park</tt>, or, if it is not blocked, cause the

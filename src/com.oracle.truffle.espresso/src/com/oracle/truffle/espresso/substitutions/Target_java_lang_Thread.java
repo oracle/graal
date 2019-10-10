@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -58,6 +59,15 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
+    private static final java.lang.reflect.Method isInterrupted;
+    static {
+        try {
+            isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
+            isInterrupted.setAccessible(true);
+        } catch (Throwable e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
     public enum State {
         NEW(0),
         RUNNABLE(4),
@@ -71,6 +81,7 @@ public final class Target_java_lang_Thread {
         State(int value) {
             this.value = value;
         }
+
     }
 
     public static void fromRunnable(StaticObject self, Meta meta, State state) {
@@ -126,6 +137,7 @@ public final class Target_java_lang_Thread {
         return EspressoLanguage.getCurrentContext().getCurrentThread();
     }
 
+    @TruffleBoundary
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
@@ -176,6 +188,9 @@ public final class Target_java_lang_Thread {
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             hostThread.setPriority(self.getIntField(meta.Thread_priority));
+            if (isInterrupted(self, false)) {
+                hostThread.interrupt();
+            }
             context.registerThread(hostThread, self);
             hostThread.start();
         } else {
@@ -267,6 +282,14 @@ public final class Target_java_lang_Thread {
     public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
+            Thread host = getHostFromGuestThread(self);
+            if (host != null) {
+                try {
+                    isInterrupted.invoke(host, true);
+                } catch (Throwable e) {
+                    throw EspressoError.shouldNotReachHere();
+                }
+            }
             setInterrupt(self, false);
         }
         return result;
