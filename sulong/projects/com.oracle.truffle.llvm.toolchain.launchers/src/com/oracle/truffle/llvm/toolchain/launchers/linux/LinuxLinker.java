@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.linux;
 
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
 import java.util.ArrayList;
@@ -37,19 +38,28 @@ import java.util.List;
 
 public final class LinuxLinker extends Driver {
 
-    public LinuxLinker() {
-        super("ld.lld");
+    public static final String LLD = "ld.lld";
+
+    private LinuxLinker() {
+        super(LLD);
     }
 
     public static List<String> getLinkerFlags() {
         return Arrays.asList("--mllvm=-lto-embed-bitcode=all", "--lto-O0");
     }
 
-    public void link(String[] args) {
+    public static void link(String[] args) {
+        new LinuxLinker().doLink(args);
+    }
+
+    private void doLink(String[] args) {
         List<String> sulongArgs = new ArrayList<>();
         sulongArgs.add(exe);
-        sulongArgs.add("-Wl," + String.join(",", LinuxLinker.getLinkerFlags()));
-        runDriver(sulongArgs, Arrays.asList(args), false, false, false);
+        sulongArgs.add("-L" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
+        sulongArgs.addAll(LinuxLinker.getLinkerFlags());
+        List<String> userArgs = Arrays.asList(args);
+        boolean verbose = userArgs.contains("-v");
+        runDriver(sulongArgs, userArgs, verbose, false, false);
     }
 
 }

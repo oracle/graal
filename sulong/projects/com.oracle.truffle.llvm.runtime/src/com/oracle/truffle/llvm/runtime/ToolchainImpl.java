@@ -56,6 +56,8 @@ public final class ToolchainImpl implements Toolchain {
                     return null;
                 }
                 return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
+            case "LD":
+                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-ld");
             default:
                 return null;
         }

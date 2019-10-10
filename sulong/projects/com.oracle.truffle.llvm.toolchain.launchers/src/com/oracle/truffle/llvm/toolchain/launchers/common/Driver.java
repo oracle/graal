@@ -133,7 +133,11 @@ public class Driver {
 
     public static final String VERSIION = getVersion();
 
-    protected void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+    public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+        runDriverExit(sulongArgs, userArgs, verbose, help, earlyExit);
+    }
+
+    public final void runDriverExit(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
         try {
             System.exit(runDriverReturn(sulongArgs, userArgs, verbose, help, earlyExit));
         } catch (IOException e) {
@@ -144,7 +148,7 @@ public class Driver {
         }
     }
 
-    protected int runDriverReturn(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) throws Exception {
+    public final int runDriverReturn(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) throws Exception {
         ArrayList<String> toolArgs = new ArrayList<>(sulongArgs.size() + userArgs.size());
         // add custom sulong flags
         toolArgs.addAll(sulongArgs);
