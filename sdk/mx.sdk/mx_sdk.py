@@ -90,7 +90,9 @@ def _sdk_gate_runner(args, tasks):
     with Task('SDK UnitTests', tasks, tags=['test']) as t:
         if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Check Copyrights', tasks) as t:
-        if t: mx.checkcopyrights(['--primary'])
+        if t:
+            if mx.checkcopyrights(['--primary']) != 0:
+                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
 mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
 
