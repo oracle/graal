@@ -48,8 +48,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
@@ -73,7 +71,7 @@ public final class LibraryMessage extends MessageContainer {
     }
 
     public boolean hasUnexpectedValue() {
-        TypeMirror unexpectedType = ProcessorContext.getInstance().getType(UnexpectedResultException.class);
+        TypeMirror unexpectedType = types.UnexpectedResultException;
         for (TypeMirror thrownType : executable.getThrownTypes()) {
             if (ElementUtils.typeEquals(thrownType, unexpectedType)) {
                 return true;

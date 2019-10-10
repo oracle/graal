@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.TypeCast;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
@@ -79,7 +77,7 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return TypeCast.class;
+    public DeclaredType getAnnotationType() {
+        return types.TypeCast;
     }
 }

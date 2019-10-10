@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
@@ -64,8 +62,8 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return ImplicitCast.class;
+    public DeclaredType getAnnotationType() {
+        return types.ImplicitCast;
     }
 
     @Override
@@ -88,11 +86,11 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
         TypeMirror sourceType = source.getType();
 
         if (ElementUtils.typeEquals(targetType, sourceType)) {
-            method.addError("Target type and source type of an @%s must not be the same type.", ImplicitCast.class.getSimpleName());
+            method.addError("Target type and source type of an @%s must not be the same type.", types.ImplicitCast.asElement().getSimpleName().toString());
         }
 
         if (!method.getMethod().getModifiers().contains(Modifier.STATIC)) {
-            method.addError("@%s annotated method %s must be static.", ImplicitCast.class.getSimpleName(), method.getMethodName());
+            method.addError("@%s annotated method %s must be static.", types.ImplicitCast.asElement().getSimpleName().toString(), method.getMethodName());
         }
 
         return new ImplicitCastData(method, sourceType, targetType);

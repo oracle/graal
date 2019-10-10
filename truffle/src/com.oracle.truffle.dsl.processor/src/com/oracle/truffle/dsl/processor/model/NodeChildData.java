@@ -111,8 +111,8 @@ public class NodeChildData extends MessageContainer {
         return childNode.findExecutableType(targetType, getExecuteWith().size());
     }
 
-    public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
-        return childNode.findGenericExecutableTypes(context, getExecuteWith().size());
+    public List<ExecutableTypeData> findGenericExecutableTypes() {
+        return childNode.findGenericExecutableTypes(getExecuteWith().size());
     }
 
     public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context) {

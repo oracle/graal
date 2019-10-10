@@ -45,21 +45,22 @@ import java.io.Writer;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-@SuppressWarnings("deprecation")
 final class WriteGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_WRITE = 3; // TruffleObject receiver,
                                                   // Object identifier, Object value
     private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
 
-    WriteGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+    WriteGenerator(ProcessingEnvironment processingEnv, AnnotationMirror resolveAnnotation, AnnotationMirror messageResolutionAnnotation,
                     TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
@@ -106,7 +107,8 @@ final class WriteGenerator extends MessageGenerator {
         final List<? extends VariableElement> params = method.getParameters();
         boolean hasFrameArgument = false;
         if (params.size() >= 1) {
-            hasFrameArgument = ElementUtils.areTypesCompatible(params.get(0).asType(), Utils.getTypeMirror(processingEnv, VirtualFrame.class));
+            TruffleTypes types = ProcessorContext.getInstance().getTypes();
+            hasFrameArgument = ElementUtils.areTypesCompatible(params.get(0).asType(), types.VirtualFrame);
         }
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();
 

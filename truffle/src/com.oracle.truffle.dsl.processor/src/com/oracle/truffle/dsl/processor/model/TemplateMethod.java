@@ -337,11 +337,11 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public List<TypeMirror> getDynamicTypes() {
-        List<TypeMirror> types = new ArrayList<>();
+        List<TypeMirror> foundTypes = new ArrayList<>();
         for (Parameter param : getDynamicParameters()) {
-            types.add(param.getType());
+            foundTypes.add(param.getType());
         }
-        return types;
+        return foundTypes;
     }
 
     public static class TypeSignature implements Iterable<TypeMirror> {
