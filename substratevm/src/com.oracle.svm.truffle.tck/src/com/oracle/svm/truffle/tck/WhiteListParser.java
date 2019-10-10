@@ -98,6 +98,8 @@ final class WhiteListParser extends ConfigurationParser {
             Object value = entry.getValue();
             if (name.equals("name")) {
                 /* Already handled. */
+            } else if (name.equals("justification")) {
+                /* Used only to document the whitelist file. */
             } else if (name.equals("allDeclaredConstructors")) {
                 if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
                     registerDeclaredConstructors(clazz);
@@ -110,7 +112,7 @@ final class WhiteListParser extends ConfigurationParser {
                 parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
             } else {
                 throw new JSONParserException("Unknown attribute '" + name +
-                                "' (supported attributes: allDeclaredConstructors, allDeclaredMethods, methods) in defintion of class " + className);
+                                "' (supported attributes: allDeclaredConstructors, allDeclaredMethods, methods, justification) in defintion of class " + className);
             }
         }
     }
@@ -128,11 +130,14 @@ final class WhiteListParser extends ConfigurationParser {
             String propertyName = entry.getKey();
             if (propertyName.equals("name")) {
                 methodName = castProperty(entry.getValue(), String.class, "name");
+            } else if (propertyName.equals("justification")) {
+                /* Used only to document the whitelist file. */
             } else if (propertyName.equals("parameterTypes")) {
                 methodParameterTypes = parseTypes(castList(entry.getValue(), "Attribute 'parameterTypes' must be a list of type names"));
             } else {
                 throw new JSONParserException(
-                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes') in definition of method for class '" + clazz.toJavaName() + "'");
+                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes', 'justification') in definition of method for class '" + clazz.toJavaName() +
+                                                "'");
             }
         }
 
@@ -144,7 +149,7 @@ final class WhiteListParser extends ConfigurationParser {
         boolean found;
         if (methodParameterTypes != null) {
             if (isConstructor) {
-                found = registerMethod(clazz, CONSTRUCTOR_NAME, methodParameterTypes);
+                found = registerConstructor(clazz, methodParameterTypes);
             } else {
                 found = registerMethod(clazz, methodName, methodParameterTypes);
             }
@@ -196,6 +201,15 @@ final class WhiteListParser extends ConfigurationParser {
 
     private boolean registerAllMethodsWithName(AnalysisType type, String name) {
         Set<AnalysisMethod> methods = PermissionsFeature.findMethods(bigBang, type, (m) -> name.equals(m.getName()));
+        for (AnalysisMethod method : methods) {
+            whiteList.add(method);
+        }
+        return !methods.isEmpty();
+    }
+
+    private boolean registerConstructor(AnalysisType type, List<AnalysisType> formalParameters) {
+        Predicate<ResolvedJavaMethod> p = new SignaturePredicate(type, formalParameters, bigBang);
+        Set<AnalysisMethod> methods = PermissionsFeature.findConstructors(bigBang, type, p);
         for (AnalysisMethod method : methods) {
             whiteList.add(method);
         }
