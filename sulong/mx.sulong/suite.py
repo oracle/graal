@@ -309,7 +309,7 @@ suite = {
       ],
       "javaProperties" : {
         "llvm.bin.dir" : "<path:SULONG_LLVM_ORG>/bin",
-        "llvm.home": "<path:SULONG_LIBS>",
+        "llvm.home": "<sulong_home>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
