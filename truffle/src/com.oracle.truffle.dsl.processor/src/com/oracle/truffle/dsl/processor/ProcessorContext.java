@@ -112,7 +112,7 @@ public class ProcessorContext {
     }
 
     public DeclaredType getDeclaredTypeOptional(String element) {
-        TypeElement type = environment.getElementUtils().getTypeElement(element);
+        TypeElement type = ElementUtils.getTypeElement(environment, element);
         if (type == null) {
             return null;
         }
@@ -120,7 +120,7 @@ public class ProcessorContext {
     }
 
     public DeclaredType getDeclaredType(String element) {
-        TypeElement type = environment.getElementUtils().getTypeElement(element);
+        TypeElement type = ElementUtils.getTypeElement(environment, element);
         if (type == null) {
             throw new IllegalArgumentException("Processor requested type " + element + " but was not on the classpath.");
         }
