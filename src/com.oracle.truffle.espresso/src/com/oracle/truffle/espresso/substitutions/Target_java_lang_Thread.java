@@ -74,11 +74,13 @@ public final class Target_java_lang_Thread {
     }
 
     public static void fromRunnable(StaticObject self, Meta meta, State state) {
+        assert self.getIntField(meta.Thread_threadStatus) == State.RUNNABLE.value;
         setState(self, meta, state);
         checkDeprecatedState(meta, self);
     }
 
     public static void toRunnable(StaticObject self, Meta meta, State state) {
+        assert state == State.RUNNABLE;
         try {
             checkDeprecatedState(meta, self);
         } finally {
@@ -92,6 +94,7 @@ public final class Target_java_lang_Thread {
 
     public static void checkDeprecatedState(Meta meta, StaticObject thread) {
         EspressoContext context = meta.getContext();
+        assert thread == context.getCurrentThread();
         if (context.shouldCheckStop()) {
             KillStatus status = getKillStatus(thread);
             switch (status) {
@@ -205,8 +208,6 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = getHostFromGuestThread(self);
-        // If hostThread is null, start hasn't been called yet -> NEW state.
         Meta meta = self.getKlass().getMeta();
         return (StaticObject) meta.VM_toThreadState.invokeDirect(null, self.getIntField(meta.Thread_threadStatus));
     }

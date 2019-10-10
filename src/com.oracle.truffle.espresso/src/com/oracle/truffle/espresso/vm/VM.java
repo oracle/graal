@@ -368,7 +368,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } finally {
-            Target_java_lang_Thread.toRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.RUNNABLE));
+            Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
         }
     }
 

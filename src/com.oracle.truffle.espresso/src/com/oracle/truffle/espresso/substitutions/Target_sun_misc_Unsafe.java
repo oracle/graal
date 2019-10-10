@@ -46,6 +46,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+
 import sun.misc.Unsafe;
 
 @EspressoSubstitutions
@@ -1023,7 +1025,11 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time) {
+        EspressoContext context = self.getKlass().getContext();
+        StaticObject thread = context.getCurrentThread();
+        Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
         U.park(isAbsolute, time);
+        Target_java_lang_Thread.toRunnable(thread, context.getMeta(), State.RUNNABLE);
     }
 
     /**
