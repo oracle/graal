@@ -1433,16 +1433,12 @@ public final class Context implements AutoCloseable {
                     engineBuilder.logHandler((OutputStream) customLogHandler);
                 }
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
-                Runnable[] finishInitializationWhenContextIsReady = {null};
-                engineBuilder.setBoundEngine(finishInitializationWhenContextIsReady);
+                engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
                 Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
-                if (finishInitializationWhenContextIsReady[0] != null) {
-                    finishInitializationWhenContextIsReady[0].run();
-                }
                 return ctx;
             } else {
                 if (messageTransport != null) {

@@ -169,7 +169,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, Runnable[] boundEngine, MessageTransport messageInterceptor,
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream,
                     HostAccess conf) {
         if (TruffleOptions.AOT) {
@@ -184,7 +184,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         logHandler = logHandler != null ? logHandler : PolyglotLogHandler.createStreamHandler(resolvedErr, false, true);
         ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
 
-        PolyglotEngineImpl impl = boundEngine != null ? preInitializedEngineRef.getAndSet(null) : null;
+        PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
             if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, options, useSystemProperties, allowExperimentalOptions, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
@@ -192,8 +192,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         if (impl == null) {
-            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, options, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine != null,
-                            messageInterceptor,
+            impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, options, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
                             logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);

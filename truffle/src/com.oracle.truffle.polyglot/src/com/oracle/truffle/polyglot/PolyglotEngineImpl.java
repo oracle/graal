@@ -278,9 +278,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     boolean patch(DispatchOutputStream newOut, DispatchOutputStream newErr, InputStream newIn, Map<String, String> newOptions,
                     boolean newUseSystemProperties, boolean newAllowExperimentalOptions,
-                    ClassLoader newContextClassLoader, Runnable[] initBoundEngine, Handler newLogHandler) {
+                    ClassLoader newContextClassLoader, boolean newBoundEngine, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
-        boolean newBoundEngine = initBoundEngine != null;
         if (this.boundEngine != newBoundEngine) {
             return false;
         }
@@ -305,16 +304,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
         }
 
-        if (initBoundEngine != null) {
-            initBoundEngine[0] = new Runnable() {
-                @Override
-                public void run() {
-                    createInstruments(instrumentsOptions, newAllowExperimentalOptions);
-                }
-            };
-        } else {
-            createInstruments(instrumentsOptions, newAllowExperimentalOptions);
-        }
+        createInstruments(instrumentsOptions, newAllowExperimentalOptions);
         registerShutDownHook();
         return true;
     }
@@ -713,17 +703,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             for (PolyglotLanguageContext lc : context.contexts) {
                 LanguageInfo language = lc.language.info;
                 if (lc.eventsEnabled && lc.env != null) {
-                    Object prev = context.truffleContext.enter();
-                    try {
-                        listener.onLanguageContextCreated(context.truffleContext, language);
-                        if (lc.isInitialized()) {
-                            listener.onLanguageContextInitialized(context.truffleContext, language);
-                            if (lc.finalized) {
-                                listener.onLanguageContextFinalized(context.truffleContext, language);
-                            }
+                    listener.onLanguageContextCreated(context.truffleContext, language);
+                    if (lc.isInitialized()) {
+                        listener.onLanguageContextInitialized(context.truffleContext, language);
+                        if (lc.finalized) {
+                            listener.onLanguageContextFinalized(context.truffleContext, language);
                         }
-                    } finally {
-                        context.truffleContext.leave(prev);
                     }
                 }
             }
