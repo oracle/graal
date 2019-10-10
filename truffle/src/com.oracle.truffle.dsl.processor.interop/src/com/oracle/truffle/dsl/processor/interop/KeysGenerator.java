@@ -52,7 +52,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 class KeysGenerator extends MessageGenerator {
@@ -113,7 +113,7 @@ class KeysGenerator extends MessageGenerator {
         boolean hasFrameArgument = false;
         boolean hasInternalArgument = false;
         if (params.size() >= 1) {
-            RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+            TruffleTypes types = ProcessorContext.getInstance().getTypes();
             hasFrameArgument = ElementUtils.areTypesCompatible(params.get(0).asType(), types.VirtualFrame);
             int lastIndex = params.size() - 1;
             hasInternalArgument = ElementUtils.areTypesCompatible(params.get(lastIndex).asType(), processingEnv.getTypeUtils().getPrimitiveType(TypeKind.BOOLEAN));

@@ -57,10 +57,10 @@ import javax.tools.Diagnostic;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-@SupportedAnnotationTypes(RefectiveTypes.CompilerDirectives_CompilationFinal_Name)
+@SupportedAnnotationTypes(TruffleTypes.CompilerDirectives_CompilationFinal_Name)
 public class VerifyCompilationFinalProcessor extends AbstractProcessor {
 
     @Override
@@ -75,7 +75,7 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
         }
         ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
-            RefectiveTypes types = context.getTypes();
+            TruffleTypes types = context.getTypes();
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_CompilationFinal))) {
                 if (!element.getKind().isField()) {
                     emitError(element, String.format("Only fields can be annotated with %s.", types.CompilerDirectives_CompilationFinal.asElement().getSimpleName().toString()));
@@ -93,7 +93,7 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
     }
 
     private boolean checkDimensions(final VariableElement field) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         final AnnotationMirror compFin = ElementUtils.findAnnotationMirror(field, types.CompilerDirectives_CompilationFinal);
         if (compFin != null) {
             final int compFinDimensions = ElementUtils.getAnnotationValue(Integer.class, compFin, "dimensions");

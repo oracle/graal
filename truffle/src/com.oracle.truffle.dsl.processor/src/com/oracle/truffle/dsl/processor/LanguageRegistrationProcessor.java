@@ -68,7 +68,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
-@SupportedAnnotationTypes(RefectiveTypes.TruffleLanguage_Registration_Name)
+@SupportedAnnotationTypes(TruffleTypes.TruffleLanguage_Registration_Name)
 public final class LanguageRegistrationProcessor extends AbstractRegistrationProcessor {
 
     // also update list in PolyglotEngineImpl#RESERVED_IDS
@@ -87,7 +87,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             emitError("Registered language inner-class must be static", annotatedElement);
             return false;
         }
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(types.TruffleLanguage);
         TypeMirror truffleLangProvider = types.TruffleLanguage_Provider;
         boolean processingTruffleLanguage;
@@ -193,14 +193,14 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
 
     @Override
     DeclaredType getProviderClass() {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         return types.TruffleLanguage_Provider;
     }
 
     @Override
     Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement) {
         List<AnnotationMirror> result = new ArrayList<>(2);
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleLanguage_Registration;
         AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
                         new Predicate<ExecutableElement>() {
@@ -220,7 +220,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     @Override
     void implementMethod(TypeElement annotatedElement, CodeExecutableElement methodToImplement) {
         ProcessorContext context = ProcessorContext.getInstance();
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
         CodeTreeBuilder builder = methodToImplement.createBuilder();
         switch (methodToImplement.getSimpleName().toString()) {
             case "create":
@@ -285,7 +285,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     @SuppressWarnings("deprecation")
     void storeRegistrations(Properties into, Iterable<? extends TypeElement> annotatedElements) {
         int cnt = 0;
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         for (TypeElement annotatedElement : annotatedElements) {
             String prefix = "language" + ++cnt + ".";
             AnnotationMirror annotation = ElementUtils.findAnnotationMirror(annotatedElement, types.TruffleLanguage_Registration);

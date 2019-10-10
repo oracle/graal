@@ -66,13 +66,13 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes({
-                RefectiveTypes.CompilerDirectives_TruffleBoundary_Name,
-                RefectiveTypes.Node_Child_Name,
-                RefectiveTypes.Node_Children_Name})
+                TruffleTypes.CompilerDirectives_TruffleBoundary_Name,
+                TruffleTypes.Node_Child_Name,
+                TruffleTypes.Node_Children_Name})
 public class VerifyTruffleProcessor extends AbstractProcessor {
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -130,7 +130,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
 
         ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
-            RefectiveTypes types = context.getTypes();
+            TruffleTypes types = context.getTypes();
             TypeElement virtualFrameType = ElementUtils.castTypeElement(types.VirtualFrame);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_TruffleBoundary))) {

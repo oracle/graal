@@ -53,7 +53,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -66,7 +66,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
 
     protected final ProcessorContext context;
     protected final ProcessingEnvironment processingEnv;
-    protected final RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+    protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     protected final Log log;
 

@@ -101,7 +101,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
@@ -352,7 +352,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes, boolean emitSharingWarnings) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         Map<SharableCache, Collection<CacheExpression>> groups = computeSharableCaches(nodes);
         // compute unnecessary sharing.
 
@@ -641,7 +641,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private static void initializeFallbackReachability(NodeData node) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         List<SpecializationData> specializations = node.getSpecializations();
         SpecializationData fallback = null;
         for (int i = specializations.size() - 1; i >= 0; i--) {

@@ -64,7 +64,7 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 /**
@@ -99,7 +99,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
-        annotations.add(RefectiveTypes.MessageResolution_Name);
+        annotations.add(TruffleTypes.MessageResolution_Name);
         return annotations;
     }
 
@@ -137,7 +137,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
         if (e.getKind() != ElementKind.CLASS) {
             return;
         }
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         AnnotationMirror messageImplementations = ElementUtils.findAnnotationMirror(e, types.MessageResolution);
         if (messageImplementations == null) {
             return;
@@ -226,7 +226,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     private boolean processLanguageCheck(AnnotationMirror messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator factoryGenerator) {
         LanguageCheckGenerator generator = new LanguageCheckGenerator(processingEnv, messageResolutionAnnotation, element, factoryGenerator);
 
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         if (!ElementUtils.typeEquals(element.getSuperclass(), types.Node)) {
             emitError(ElementUtils.getQualifiedName(element) + " must extend com.oracle.truffle.api.nodes.Node.", element);
             return false;
@@ -268,7 +268,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
                     ForeignAccessFactoryGenerator factoryGenerator) {
         MessageGenerator currentGenerator = MessageGenerator.getGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, factoryGenerator);
 
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         if (currentGenerator == null) {
             emitError("Unknown message type: " + ElementUtils.getAnnotationValue(String.class, resolveAnnotation, "message"), element);
             return false;
@@ -364,7 +364,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     }
 
     private boolean isInstanceHasWrongSignature(String receiverTypeFullClassName) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         for (Element elem : ElementUtils.getTypeElement(this.processingEnv, receiverTypeFullClassName).getEnclosedElements()) {
             if (elem.getKind().equals(ElementKind.METHOD)) {
                 ExecutableElement method = (ExecutableElement) elem;

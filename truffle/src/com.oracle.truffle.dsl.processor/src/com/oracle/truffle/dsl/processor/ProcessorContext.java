@@ -68,7 +68,7 @@ public class ProcessorContext {
 
     private final ProcessCallback callback;
     private final Log log;
-    private RefectiveTypes types;
+    private TruffleTypes types;
 
     public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
@@ -77,7 +77,7 @@ public class ProcessorContext {
         this.log = new Log(environment, emitWarnings);
     }
 
-    public RefectiveTypes getTypes() {
+    public TruffleTypes getTypes() {
         return types;
     }
 
@@ -201,7 +201,7 @@ public class ProcessorContext {
         instance.set(context);
         if (context != null && context.types == null) {
             try {
-                context.types = new RefectiveTypes();
+                context.types = new TruffleTypes();
             } catch (IllegalArgumentException e) {
                 TruffleProcessor.handleThrowable(null, e, null);
                 throw e;

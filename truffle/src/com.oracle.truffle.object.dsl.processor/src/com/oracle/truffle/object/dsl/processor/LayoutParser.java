@@ -55,7 +55,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
 import com.oracle.truffle.object.dsl.processor.model.NameUtils;
@@ -80,7 +80,7 @@ public class LayoutParser {
     private final List<String> constructorProperties = new ArrayList<>();
     private final Map<String, PropertyBuilder> properties = new HashMap<>();
     private List<VariableElement> implicitCasts = new ArrayList<>();
-    private final RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+    private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     public LayoutParser(LayoutProcessor processor) {
         this.processor = processor;

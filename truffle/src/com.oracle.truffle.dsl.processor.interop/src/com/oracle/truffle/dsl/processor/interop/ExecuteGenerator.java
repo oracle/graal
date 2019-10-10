@@ -51,7 +51,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 final class ExecuteGenerator extends MessageGenerator {
@@ -134,7 +134,7 @@ final class ExecuteGenerator extends MessageGenerator {
         final List<? extends VariableElement> params = method.getParameters();
         boolean hasFrameArgument = false;
         if (params.size() >= 1) {
-            RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+            TruffleTypes types = ProcessorContext.getInstance().getTypes();
             hasFrameArgument = ElementUtils.typeEquals(params.get(0).asType(), types.VirtualFrame);
         }
         int expectedNumberOfArguments = hasFrameArgument ? getParameterCount() + 1 : getParameterCount();

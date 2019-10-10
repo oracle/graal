@@ -68,7 +68,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
-@SupportedAnnotationTypes(RefectiveTypes.TruffleInstrument_Registration_Name)
+@SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
     private static final int NUMBER_OF_PROPERTIES_PER_ENTRY = 4;
@@ -83,7 +83,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             emitError("Registered instrument inner-class must be static", annotatedElement);
             return false;
         }
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         TypeMirror truffleInstrument = types.TruffleInstrument;
         TypeMirror truffleInstrumentProvider = types.TruffleInstrument_Provider;
         boolean processingTruffleInstrument;
@@ -101,13 +101,13 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
 
     @Override
     DeclaredType getProviderClass() {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         return types.TruffleInstrument_Provider;
     }
 
     @Override
     Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleInstrument_Registration;
         AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
                         new Predicate<ExecutableElement>() {
@@ -163,7 +163,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
 
     @Override
     void storeRegistrations(Properties into, Iterable<? extends TypeElement> instruments) {
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         int numInstruments = loadIfFileAlreadyExists(getRegistrationFileName(), into);
         for (TypeElement l : instruments) {
             AnnotationMirror annotation = ElementUtils.findAnnotationMirror(l, types.TruffleInstrument_Registration);

@@ -158,17 +158,17 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
-        annotations.add(RefectiveTypes.Specialization_Name);
-        annotations.add(RefectiveTypes.Fallback_Name);
-        annotations.add(RefectiveTypes.TypeSystemReference_Name);
-        annotations.add(RefectiveTypes.Executed_Name);
-        annotations.add(RefectiveTypes.NodeChild_Name);
-        annotations.add(RefectiveTypes.NodeChildren_Name);
-        annotations.add(RefectiveTypes.TypeSystem_Name);
-        annotations.add(RefectiveTypes.GenerateLibrary_Name);
-        annotations.add(RefectiveTypes.ExportLibrary_Name);
-        annotations.add(RefectiveTypes.ExportMessage_Name);
-        annotations.add(RefectiveTypes.ExportLibrary_Repeat_Name);
+        annotations.add(TruffleTypes.Specialization_Name);
+        annotations.add(TruffleTypes.Fallback_Name);
+        annotations.add(TruffleTypes.TypeSystemReference_Name);
+        annotations.add(TruffleTypes.Executed_Name);
+        annotations.add(TruffleTypes.NodeChild_Name);
+        annotations.add(TruffleTypes.NodeChildren_Name);
+        annotations.add(TruffleTypes.TypeSystem_Name);
+        annotations.add(TruffleTypes.GenerateLibrary_Name);
+        annotations.add(TruffleTypes.ExportLibrary_Name);
+        annotations.add(TruffleTypes.ExportMessage_Name);
+        annotations.add(TruffleTypes.ExportLibrary_Repeat_Name);
         return annotations;
     }
 

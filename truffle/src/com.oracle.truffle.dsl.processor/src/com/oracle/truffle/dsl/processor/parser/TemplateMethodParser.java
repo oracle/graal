@@ -54,7 +54,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -65,7 +65,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
     protected final T template;
     private final ProcessorContext context;
     private final MethodSpecParser parser;
-    protected final RefectiveTypes types;
+    protected final TruffleTypes types;
 
     public TemplateMethodParser(ProcessorContext context, T template) {
         this.template = template;

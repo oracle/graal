@@ -56,7 +56,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames;
@@ -71,7 +71,7 @@ public class NodeFactoryFactory {
     private final ProcessorContext context;
     private final NodeData node;
     private final CodeTypeElement createdFactoryElement;
-    private final RefectiveTypes types;
+    private final TruffleTypes types;
 
     NodeFactoryFactory(ProcessorContext context, NodeData node, CodeTypeElement createdClass) {
         this.context = context;

@@ -103,7 +103,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -156,7 +156,7 @@ public class FlatNodeGenFactory {
     private static final String VARARGS_NAME = "args";
 
     private final ProcessorContext context;
-    private final RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+    private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
     private final NodeData node;
     private final TypeSystemData typeSystem;
     private final TypeMirror genericType;

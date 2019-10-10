@@ -88,7 +88,7 @@ import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
  * for each top level class containing at least one such field. The name of the generated class for
  * top level class {@code com.foo.Bar} is {@code com.foo.Bar_OptionDescriptors}.
  */
-@SupportedAnnotationTypes({RefectiveTypes.Option_Name, RefectiveTypes.Option_Group_Name})
+@SupportedAnnotationTypes({TruffleTypes.Option_Name, TruffleTypes.Option_Group_Name})
 public class OptionProcessor extends AbstractProcessor {
 
     @Override
@@ -105,7 +105,7 @@ public class OptionProcessor extends AbstractProcessor {
         }
         ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
-            RefectiveTypes types = context.getTypes();
+            TruffleTypes types = context.getTypes();
             Map<Element, OptionsInfo> map = new HashMap<>();
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Option))) {
                 if (!processed.contains(element)) {
@@ -175,7 +175,7 @@ public class OptionProcessor extends AbstractProcessor {
 
     private boolean processElement(Element element, AnnotationMirror elementAnnotation, OptionsInfo info) {
         ProcessorContext context = ProcessorContext.getInstance();
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
 
         if (!element.getModifiers().contains(Modifier.STATIC)) {
             error(element, elementAnnotation, "Option field must be static");
@@ -347,7 +347,7 @@ public class OptionProcessor extends AbstractProcessor {
     }
 
     private static CodeTypeElement generateDescriptors(ProcessorContext context, Element element, OptionsInfo model) {
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
         String optionsClassName = ElementUtils.getSimpleName(element.asType()) + types.OptionDescriptors.asElement().getSimpleName().toString();
         TypeElement sourceType = (TypeElement) model.type;
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
@@ -430,7 +430,7 @@ public class OptionProcessor extends AbstractProcessor {
 
     private static CodeTree createBuildOptionDescriptor(ProcessorContext context, OptionInfo info) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
         builder.startStaticCall(types.OptionDescriptor, "newBuilder");
         VariableElement var = info.field;
         builder.staticReference(var.getEnclosingElement().asType(), var.getSimpleName().toString());

@@ -82,8 +82,8 @@ import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 
 @SupportedAnnotationTypes({
-                RefectiveTypes.Instrumentable_Name,
-                RefectiveTypes.GenerateWrapper_Name})
+                TruffleTypes.Instrumentable_Name,
+                TruffleTypes.GenerateWrapper_Name})
 public final class InstrumentableProcessor extends AbstractProcessor {
 
     // configuration
@@ -114,7 +114,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
         ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
-            RefectiveTypes types = context.getTypes();
+            TruffleTypes types = context.getTypes();
             DeclaredType instrumentableNode = types.InstrumentableNode;
             ExecutableElement createWrapper = ElementUtils.findExecutableElement(instrumentableNode, CREATE_WRAPPER_NAME);
 
@@ -201,7 +201,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
      * TO BE REMOVED WITH DEPRECATIONS
      */
     private void processLegacyInstrumentable(RoundEnvironment roundEnv, ProcessorContext context) {
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
         for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Instrumentable))) {
             if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                 continue;
@@ -296,7 +296,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
 
     @SuppressWarnings("deprecation")
     private static CodeTypeElement generateFactory(ProcessorContext context, Element e, CodeTypeElement wrapper) {
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
         TypeElement sourceType = (TypeElement) e;
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
         Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.PUBLIC, Modifier.FINAL);
@@ -371,7 +371,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             emitError(e, "Inner class must be static to generate a wrapper.");
             return null;
         }
-        RefectiveTypes types = context.getTypes();
+        TruffleTypes types = context.getTypes();
 
         TypeElement sourceType = (TypeElement) e;
 

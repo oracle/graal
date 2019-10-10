@@ -56,7 +56,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.RefectiveTypes;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 final class LanguageCheckGenerator extends InteropNodeGenerator {
@@ -103,7 +103,7 @@ final class LanguageCheckGenerator extends InteropNodeGenerator {
     @SuppressWarnings("static-method")
     public String checkSignature(ExecutableElement method) {
         final List<? extends VariableElement> params = method.getParameters();
-        RefectiveTypes types = ProcessorContext.getInstance().getTypes();
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         boolean hasFrameArgument = false;
         if (params.size() >= 1) {
             hasFrameArgument = ElementUtils.typeEquals(params.get(0).asType(), types.VirtualFrame);

@@ -56,7 +56,7 @@ import javax.tools.Diagnostic.Kind;
 
 public class ExpectError {
 
-    private static final String[] EXPECT_ERROR_TYPES = new String[]{RefectiveTypes.EXPECT_ERROR_CLASS_NAME1, RefectiveTypes.EXPECT_ERROR_CLASS_NAME2};
+    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
 
     public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
         for (String errorType : EXPECT_ERROR_TYPES) {

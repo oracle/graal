@@ -42,7 +42,7 @@ package com.oracle.truffle.dsl.processor;
 
 import javax.lang.model.type.DeclaredType;
 
-public class RefectiveTypes {
+public class TruffleTypes {
 
     private final ProcessorContext c = ProcessorContext.getInstance();
 
