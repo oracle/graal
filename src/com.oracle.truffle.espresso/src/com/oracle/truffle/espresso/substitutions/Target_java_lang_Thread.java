@@ -26,10 +26,10 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 // @formatter:off
@@ -58,26 +58,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
-
-    private static int stateToInt(Thread.State state) {
-        switch (state) {
-            case NEW:
-                return 0;
-            case RUNNABLE:
-                return 4;
-            case BLOCKED:
-                return 1024;
-            case WAITING:
-                return 16;
-            case TIMED_WAITING:
-                return 32;
-            case TERMINATED:
-                return 2;
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
     public enum State {
         NEW(0),
         RUNNABLE(4),
@@ -91,7 +71,51 @@ public final class Target_java_lang_Thread {
         State(int value) {
             this.value = value;
         }
+    }
 
+    public static void fromRunnable(StaticObject self, Meta meta, State state) {
+        setState(self, meta, state);
+        checkDeprecatedState(meta, self);
+    }
+
+    public static void toRunnable(StaticObject self, Meta meta, State state) {
+        try {
+            checkDeprecatedState(meta, self);
+        } finally {
+            setState(self, meta, state);
+        }
+    }
+
+    private static void setState(StaticObject self, Meta meta, State state) {
+        self.setIntField(meta.Thread_threadStatus, state.value);
+    }
+
+    public static void checkDeprecatedState(Meta meta, StaticObject thread) {
+        EspressoContext context = meta.getContext();
+        if (context.shouldCheckStop()) {
+            KillStatus status = getKillStatus(thread);
+            switch (status) {
+                case NORMAL:
+                case EXITING:
+                case KILLED:
+                    break;
+                case KILL:
+                    if (context.isClosing()) {
+                        // Give some leeway during closing.
+                        setThreadStop(thread, KillStatus.KILLED);
+                    } else {
+                        setThreadStop(thread, KillStatus.NORMAL);
+                    }
+                    throw meta.throwEx(ThreadDeath.class);
+                case DISSIDENT:
+                    // This thread refuses to stop. Send a host exception.
+                    // throw getMeta().throwEx(ThreadDeath.class);
+                    throw new EspressoExitException(0);
+            }
+        }
+        if (context.shouldCheckSuspend()) {
+            trySuspend(thread);
+        }
     }
 
     @Substitution
@@ -146,7 +170,6 @@ public final class Target_java_lang_Thread {
             });
 
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
-            self.setIntField(meta.Thread_state, State.RUNNABLE.value);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             hostThread.setPriority(self.getIntField(meta.Thread_priority));
@@ -184,7 +207,8 @@ public final class Target_java_lang_Thread {
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
         Thread hostThread = getHostFromGuestThread(self);
         // If hostThread is null, start hasn't been called yet -> NEW state.
-        return (StaticObject) self.getKlass().getMeta().VM_toThreadState.invokeDirect(null, hostThread == null ? State.NEW.value : (hostThread.getState()));
+        Meta meta = self.getKlass().getMeta();
+        return (StaticObject) meta.VM_toThreadState.invokeDirect(null, self.getIntField(meta.Thread_threadStatus));
     }
 
     @SuppressWarnings("unused")
@@ -205,11 +229,16 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @Substitution
     public static void sleep(long millis) {
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        StaticObject thread = context.getCurrentThread();
         try {
+            fromRunnable(thread, context.getMeta(), State.TIMED_WAITING);
             Thread.sleep(millis);
         } catch (InterruptedException | IllegalArgumentException e) {
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            Meta meta = context.getMeta();
             throw meta.throwExWithMessage(e.getClass(), e.getMessage());
+        } finally {
+            toRunnable(thread, context.getMeta(), State.RUNNABLE);
         }
     }
 
@@ -250,8 +279,8 @@ public final class Target_java_lang_Thread {
         if (lock == null) {
             return;
         }
-        lock.shouldSuspend = false;
         synchronized (lock) {
+            lock.shouldSuspend = false;
             lock.notifyAll();
         }
     }
@@ -268,7 +297,7 @@ public final class Target_java_lang_Thread {
             }
             lock = initSuspendLock(self);
         }
-        suspendHandshake(lock, self.getKlass().getMeta());
+        suspendHandshake(lock, self.getKlass().getMeta(), self);
     }
 
     @TruffleBoundary
@@ -338,10 +367,10 @@ public final class Target_java_lang_Thread {
     }
 
     public static class SuspendLock {
-        private boolean shouldSuspend;
-
         private Object notifier = new Object();
-        private boolean threadSuspended;
+
+        private volatile boolean shouldSuspend;
+        private volatile boolean threadSuspended;
 
         public boolean shouldSuspend() {
             return shouldSuspend;
@@ -373,31 +402,39 @@ public final class Target_java_lang_Thread {
         return getSuspendLock(self).shouldSuspend();
     }
 
+    @TruffleBoundary
     public static void trySuspend(StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             return;
         }
-        while (lock.shouldSuspend()) {
-            synchronized (lock.notifier) {
-                lock.threadSuspended = true;
-                lock.notifier.notifyAll();
-            }
-            try {
-                synchronized (lock) {
-                    lock.wait();
+        synchronized (lock) {
+            if (lock.shouldSuspend()) {
+                synchronized (lock.notifier) {
+                    lock.threadSuspended = true;
+                    lock.notifier.notifyAll();
                 }
-            } catch (InterruptedException e) {
+            }
+            while (lock.shouldSuspend()) {
+                try {
+                    lock.wait();
+
+                } catch (InterruptedException e) {
+                }
             }
         }
         lock.threadSuspended = false;
     }
 
-    private static void suspendHandshake(SuspendLock lock, Meta meta) {
+    @TruffleBoundary
+    private static void suspendHandshake(SuspendLock lock, Meta meta, StaticObject self) {
         Object notifier = lock.notifier;
         boolean wasInterrupted = false;
         while (!lock.targetThreadIsSuspended()) {
             lock.shouldSuspend = true;
+            if (self.getIntField(meta.Thread_threadStatus) != State.RUNNABLE.value) {
+                break;
+            }
             try {
                 synchronized (notifier) {
                     notifier.wait();

@@ -1093,21 +1093,21 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
     }
 
-    private void monitorExit(VirtualFrame frame, Object monitor) {
+    private void monitorExit(VirtualFrame frame, StaticObject monitor) {
         unregisterMonitor(frame, monitor);
         InterpreterToVM.monitorExit(monitor);
     }
 
-    private void unregisterMonitor(VirtualFrame frame, Object monitor) {
+    private void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
         getMonitorStack(frame).exit(monitor, this);
     }
 
-    private void monitorEnter(VirtualFrame frame, Object monitor) {
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
         registerMonitor(frame, monitor);
         InterpreterToVM.monitorEnter(monitor);
     }
 
-    private void registerMonitor(VirtualFrame frame, Object monitor) {
+    private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
         getMonitorStack(frame).enter(monitor);
     }
 
@@ -1124,18 +1124,18 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private static class MonitorStack {
         private static int DEFAULT_CAPACITY = 4;
 
-        private Object[] monitors = new Object[DEFAULT_CAPACITY];
+        private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
         private int top = 0;
         private int capacity = DEFAULT_CAPACITY;
 
-        private void enter(Object monitor) {
+        private void enter(StaticObject monitor) {
             if (top >= capacity) {
                 monitors = Arrays.copyOf(monitors, capacity <<= 1);
             }
             monitors[top++] = monitor;
         }
 
-        private void exit(Object monitor, BytecodeNode node) {
+        private void exit(StaticObject monitor, BytecodeNode node) {
             Object topMonitor = monitors[top - 1];
             if (monitor == topMonitor) {
                 // Balanced locking: simply pop.
@@ -1157,7 +1157,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
         private void abort() {
             for (int i = 0; i < top; i++) {
-                Object monitor = monitors[i];
+                StaticObject monitor = monitors[i];
                 try {
                     InterpreterToVM.monitorExit(monitor);
                 } catch (Throwable e) {
@@ -1209,34 +1209,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private void checkStopping(int curBCI, int targetBCI) {
-        if (getContext().shouldCheckStop()) {
+        if (getContext().shouldCheckDeprecationStatus()) {
             if (targetBCI <= curBCI) {
-                StaticObject thread = getContext().getCurrentThread();
-                Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
-                switch (status) {
-                    case NORMAL:
-                    case EXITING:
-                    case KILLED:
-                        break;
-                    case KILL:
-                        if (getContext().isClosing()) {
-                            // Give some leeway during closing.
-                            Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.KILLED);
-                        } else {
-                            Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.NORMAL);
-                        }
-                        throw getMeta().throwEx(ThreadDeath.class);
-                    case DISSIDENT:
-                        // This thread refuses to stop. Send a host exception.
-                        // throw getMeta().throwEx(ThreadDeath.class);
-                        throw new EspressoExitException(0);
-                }
-            }
-        }
-        if (getContext().shouldCheckSuspend()) {
-            if (targetBCI <= curBCI) {
-                StaticObject thread = getContext().getCurrentThread();
-                Target_java_lang_Thread.trySuspend(thread);
+                Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
             }
         }
     }

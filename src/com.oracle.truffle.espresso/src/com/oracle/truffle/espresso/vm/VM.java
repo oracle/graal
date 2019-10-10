@@ -47,6 +47,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -359,10 +361,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(@Host(Object.class) StaticObject self, long timeout) {
+        StaticObject currentThread = getMeta().getContext().getCurrentThread();
         try {
+            Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
             self.wait(timeout);
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } finally {
+            Target_java_lang_Thread.toRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.RUNNABLE));
         }
     }
 
@@ -995,7 +1001,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             /**
              * Injects the frame ID in the frame. Spawns a new frame slot in the frame descriptor of
              * the corresponding RootNode if needed.
-             * 
+             *
              * @param frame the current privileged frame.
              * @return the frame ID of the frame.
              */

@@ -101,6 +101,7 @@ public final class EspressoContext {
     // Set on calling guest Therad.stop0(), or when closing context.
     @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
     @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
     private boolean isClosing = false;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
@@ -408,6 +409,7 @@ public final class EspressoContext {
     }
 
     public void invalidateNoThreadStop(String message) {
+        noThreadDeprecationCalled.invalidate();
         noThreadStop.invalidate(message);
     }
 
@@ -416,7 +418,12 @@ public final class EspressoContext {
     }
 
     public void invalidateNoSuspend(String message) {
+        noThreadDeprecationCalled.invalidate();
         noSuspend.invalidate(message);
+    }
+
+    public boolean shouldCheckDeprecationStatus() {
+        return !noThreadDeprecationCalled.isValid();
     }
 
     public boolean shouldCheckSuspend() {
