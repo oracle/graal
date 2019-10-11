@@ -32,36 +32,11 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-public class FileIterable implements ComponentIterable {
-    private final CommandInput input;
-    private final Feedback feedback;
-    private boolean verifyJars;
-
+public class FileIterable extends AbstractIterable {
     public FileIterable(CommandInput input, Feedback fb) {
-        this.input = input;
-        this.feedback = fb;
-    }
-
-    public boolean isVerifyJars() {
-        return verifyJars;
-    }
-
-    @Override
-    public void setVerifyJars(boolean verifyJars) {
-        this.verifyJars = verifyJars;
-    }
-
-    @Override
-    public ComponentIterable matchVersion(Version.Match m) {
-        return this;
-    }
-
-    @Override
-    public ComponentIterable allowIncompatible() {
-        return this;
+        super(input, fb);
     }
 
     private File getFile(String pathSpec) {
@@ -82,14 +57,9 @@ public class FileIterable implements ComponentIterable {
 
             @Override
             public ComponentParam next() {
-                return new FileComponent(getFile(input.requiredParameter()), verifyJars, feedback);
+                return new FileComponent(getFile(input.requiredParameter()), isVerifyJars(), feedback);
             }
         };
-    }
-
-    @Override
-    public ComponentParam createParam(String cmdString, ComponentInfo info) {
-        return null;
     }
 
     public static class FileComponent implements ComponentParam {

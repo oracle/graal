@@ -27,9 +27,13 @@ package org.graalvm.component.installer.persist;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.DependencyException;
 import java.util.Map;
+import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.TestBase;
+import org.graalvm.component.installer.Version;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,6 +50,10 @@ public class HeaderParserTest extends TestBase {
 
     private HeaderParser c(String content) {
         return new HeaderParser(BundleConstants.BUNDLE_PROVIDED, content, withBundle(HeaderParser.class));
+    }
+
+    private HeaderParser d(String content) {
+        return new HeaderParser(BundleConstants.BUNDLE_DEPENDENCY, content, withBundle(HeaderParser.class));
     }
 
     private static void assertHeader(MetadataException ex) {
@@ -192,6 +200,78 @@ public class HeaderParserTest extends TestBase {
     }
 
     @Test
+    public void testBadProvideCapabilitySyntax() {
+        try {
+            r("org.graalvm; = \"CE\"; native_version:Version=\"19.3").parseProvidedCapabilities();
+            fail("Should fail on invalid capability");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_InvalidCapabilityName", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition := \"CE\"").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_InvalidCapabilitySyntax", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition :;").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_InvalidCapabilitySyntax", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition : #=\"2\";").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_InvalidCapabilitySyntax", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition:Unknown=\"2\";").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_UnsupportedCapabilityType", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_InvalidCapabilitySyntax", ex.getMessage());
+        }
+    }
+
+    @Test
+    public void testReadCapabilities() {
+        Map<String, Object> caps = r("org.graalvm; edition = \"CE\"; native_version:Version=\"19.3\"").parseProvidedCapabilities();
+        assertEquals(2, caps.size());
+        assertEquals("CE", caps.get("edition"));
+        assertNotNull(caps.get("native_version"));
+        Version v = (Version) caps.get("native_version");
+        assertEquals(Version.fromString("19.3"), v);
+    }
+
+    @Test
+    public void testBadCapabilityUnsupportedType() {
+        try {
+            r("org.graalvm; edition:long=\"2\";").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_UnsupportedCapabilityType", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition:double=\"2\";").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_UnsupportedCapabilityType", ex.getMessage());
+        }
+        try {
+            r("org.graalvm; edition:list=\"2\";").parseProvidedCapabilities();
+            fail("Should fail on invalid capability syntax");
+        } catch (MetadataException ex) {
+            assertEquals("ERROR_UnsupportedCapabilityType", ex.getMessage());
+        }
+    }
+
+    @Test
     public void testBadFilterSyntax() {
         try {
             r("org.graalvm; filter := \"()\"").parseRequiredCapabilities();
@@ -308,5 +388,28 @@ public class HeaderParserTest extends TestBase {
         exc.expect(MetadataException.class);
         exc.expectMessage("ERROR_InvalidCapabilitySyntax");
         c("org.graalvm; edition; graalvm_version=ff").parseProvidedCapabilities();
+    }
+
+    @Test
+    public void testSimpleDependency() {
+        assertTrue(d("").parseDependencies().isEmpty());
+        Set<String> s = d("org.graalvm.llvm-toolchain").parseDependencies();
+        assertEquals(1, s.size());
+        assertEquals("org.graalvm.llvm-toolchain", s.iterator().next());
+    }
+
+    @Test
+    public void testMultipleDependencies() {
+        Set<String> s = d("org.graalvm.llvm-toolchain, org.graalvm.native-image").parseDependencies();
+        assertEquals(2, s.size());
+        assertTrue(s.contains("org.graalvm.llvm-toolchain"));
+        assertTrue(s.contains("org.graalvm.native-image"));
+    }
+
+    @Test
+    public void testRejectVersionedDependency() {
+        exc.expect(MetadataException.class);
+        exc.expectMessage("ERROR_DependencyParametersNotSupported");
+        d("org.graalvm.llvm-toolchain; bundle-version=19.3").parseDependencies();
     }
 }

@@ -34,25 +34,15 @@ import org.graalvm.component.installer.FileIterable.FileComponent;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-public class DownloadURLIterable implements ComponentIterable {
-    private final Feedback feedback;
-    private final CommandInput input;
-    private boolean verifyJars;
+public class DownloadURLIterable extends AbstractIterable {
 
     public DownloadURLIterable(Feedback feedback, CommandInput input) {
-        this.feedback = feedback.withBundle(DownloadURLIterable.class);
-        this.input = input;
-        this.verifyJars = false;
+        super(input, feedback);
     }
 
     @Override
     public Iterator<ComponentParam> iterator() {
         return new It();
-    }
-
-    @Override
-    public void setVerifyJars(boolean verify) {
-        verifyJars = verify;
     }
 
     @Override
@@ -83,14 +73,9 @@ public class DownloadURLIterable implements ComponentIterable {
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
             RemoteComponentParam p = new DownloadURLParam(u, s, s, feedback, progress);
-            p.setVerifyJars(verifyJars);
+            p.setVerifyJars(isVerifyJars());
             return p;
         }
-    }
-
-    @Override
-    public ComponentParam createParam(String cmdString, ComponentInfo info) {
-        return null;
     }
 
     static class DownloadURLParam extends RemoteComponentParam {
@@ -101,7 +86,6 @@ public class DownloadURLIterable implements ComponentIterable {
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            // cowardly use autodetection developed for local files.
             FileComponent fc = new FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
             return fc.createFileLoader();
         }

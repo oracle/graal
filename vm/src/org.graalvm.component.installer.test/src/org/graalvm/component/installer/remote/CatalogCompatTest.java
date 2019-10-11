@@ -31,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
@@ -50,12 +50,12 @@ import org.junit.Test;
 public class CatalogCompatTest extends CommandTestBase {
     @Rule public ProxyResource proxyResource = new ProxyResource();
 
-    ComponentCollection openCatalog(SoftwareChannel ch) throws IOException {
+    ComponentCatalog openCatalog(SoftwareChannel ch) throws IOException {
         return openCatalog(ch, getLocalRegistry().getGraalVersion());
     }
 
-    ComponentCollection openCatalog(SoftwareChannel ch, Version v) throws IOException {
-        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
+    ComponentCatalog openCatalog(SoftwareChannel ch, Version v) throws IOException {
+        ComponentCatalog cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
         cc.getComponentIDs();
         return cc;
     }

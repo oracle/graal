@@ -304,4 +304,10 @@ public class ComponentPackageLoaderTest extends TestBase {
         assertEquals(4, lines.length);
     }
 
+    @Test
+    public void testFastr() throws Exception {
+        info = info();
+        assertEquals(1, info.getDependencies().size());
+        assertEquals("org.graalvm.llvm-toolchain", info.getDependencies().iterator().next());
+    }
 }
