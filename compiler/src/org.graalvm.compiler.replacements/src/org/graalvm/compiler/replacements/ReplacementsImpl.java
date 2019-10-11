@@ -269,8 +269,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options) {
+    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin) {
         // No initialization needed as method substitutions are parsed by the BytecodeParser.
+    }
+
+    @Override
+    public void registerConditionalPlugin(InvocationPlugin plugin) {
     }
 
     @Override
