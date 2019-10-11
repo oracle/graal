@@ -787,37 +787,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return false;
     }
 
-    private static Method getCallerMethod(int depth) {
-        // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
-        // Non-Espresso frames (e.g TruffleNFI) are ignored.
-        // The call stack should look like this:
-        // 2 : the @CallerSensitive annotated method.
-        // ... : skipped non-Espresso frames.
-        // 1 : getCallerClass method.
-        // ... :
-        // 0 : the callee.
-        //
-        // JVM_CALLER_DEPTH => the caller.
-        int callerDepth = (depth == JVM_CALLER_DEPTH) ? 2 : depth + 1;
-
-        final int[] depthCounter = new int[]{callerDepth};
-        Method target = Truffle.getRuntime().iterateFrames(
-                        new FrameInstanceVisitor<Method>() {
-                            @Override
-                            public Method visitFrame(FrameInstance frameInstance) {
-                                Method m = getMethodFromFrame(frameInstance);
-                                if (m != null && --depthCounter[0] < 0) {
-                                    return m;
-                                }
-                                return null;
-                            }
-                        });
-        if (target != null) {
-            return target;
-        }
-        throw EspressoError.shouldNotReachHere();
-    }
-
     private static FrameInstance getCallerFrame(int depth) {
         // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
         // Non-Espresso frames (e.g TruffleNFI) are ignored.
@@ -849,12 +818,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere();
     }
 
-    @VmImpl
-    @JniImpl
-    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
-        return getCallerMethod(depth).getDeclaringKlass().mirror();
-    }
-
     private static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
         if (frameInstance.getCallTarget() instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
@@ -872,6 +835,24 @@ public final class VM extends NativeEnv implements ContextAccess {
             return root.getMethod();
         }
         return null;
+    }
+
+    private static Method getCallerMethod(int depth) {
+        FrameInstance callerFrame = getCallerFrame(depth);
+        if (callerFrame == null) {
+            return null;
+        }
+        return getMethodFromFrame(callerFrame);
+    }
+
+    @VmImpl
+    @JniImpl
+    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+        Method callerMethod = getCallerMethod(depth);
+        if (callerMethod == null) {
+            return null;
+        }
+        return callerMethod.getDeclaringKlass().mirror();
     }
 
     @VmImpl
