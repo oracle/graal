@@ -121,7 +121,7 @@ public abstract class WasmMemory implements TruffleObject {
     String viewByte(long address) {
         final int value = load_i32_8u(address);
         String result = Integer.toHexString(value);
-        if (result.length() == 0) {
+        if (result.length() == 1) {
             result = "0" + result;
         }
         return result;
