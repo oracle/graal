@@ -30,9 +30,12 @@ from __future__ import print_function
 
 import mx
 import mx_gate
-import mx_sdk_vm
+import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
+
+import os
+from os.path import join, relpath
 
 
 _suite = mx.suite('vm')
@@ -97,3 +100,71 @@ mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
 
 def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
+
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    """
+    :type register_project: (mx.Project) -> None
+    :type register_distribution: (mx.Distribution) -> None
+    """
+    if register_project:
+        register_project(GraalVmSymlinks())
+
+
+class GraalVmSymlinks(mx.Project):
+    def __init__(self, **kw_args):
+        super(GraalVmSymlinks, self).__init__(_suite, 'vm-symlinks', subDir=None, srcDirs=[], deps=['sdk:' + mx_sdk_vm_impl.graalvm_dist_name()], workingSets=None, d=_suite.dir, theLicense=None, testProject=False, **kw_args)
+        self.links = []
+        sdk_suite = mx.suite('sdk')
+        for link_name in 'latest_graalvm', 'latest_graalvm_home':
+            self.links += [(relpath(join(sdk_suite.dir, link_name), _suite.dir), join(_suite.dir, link_name))]
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        raise mx.abort("Project '{}' cannot be archived".format(self.name))
+
+    def getBuildTask(self, args):
+        return GraalVmSymLinksBuildTask(args, 1, self)
+
+
+class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
+    """
+    For backward compatibility, maintain `latest_graalvm` and `latest_graalvm_home` symlinks in the `vm` suite
+    """
+    def needsBuild(self, newestInput):
+        sup = super(GraalVmSymLinksBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        if mx.get_os() != 'windows':
+            for src, dest in self.subject.links:
+                if not os.path.lexists(dest):
+                    return True, '{} does not exist'.format(dest)
+                link_file = mx.TimeStampFile(dest, False)
+                if link_file.isOlderThan(newestInput):
+                    return True, '{} is older than {}'.format(dest, newestInput)
+                if src != os.readlink(dest):
+                    return True, '{} points to the wrong file'.format(dest)
+        return False, None
+
+    def build(self):
+        if mx.get_os() == 'windows':
+            mx.warn('Skip adding symlinks to the latest GraalVM (Platform Windows)')
+            return
+        self.rm_links()
+        self.add_links()
+
+    def clean(self, forBuild=False):
+        self.rm_links()
+
+    def add_links(self):
+        for src, dest in self.subject.links:
+            os.symlink(src, dest)
+
+    def rm_links(self):
+        if mx.get_os() == 'windows':
+            return
+        for _, dest in self.subject.links:
+            if os.path.lexists(dest):
+                os.unlink(dest)
+
+    def __str__(self):
+        return "Generating GraalVM symlinks in the vm suite"
