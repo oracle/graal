@@ -162,7 +162,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             additionalPreOptions.add("-arch");
             if (Platform.includedIn(Platform.AMD64.class)) {
                 additionalPreOptions.add("x86_64");
-            } else if (Platform.includedIn(Platform.AArch64.class)) {
+            } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
         }

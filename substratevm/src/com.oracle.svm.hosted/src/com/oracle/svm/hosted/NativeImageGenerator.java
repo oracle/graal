@@ -352,7 +352,7 @@ public class NativeImageGenerator {
             }
         } else if (hostedArchitecture instanceof AArch64) {
             if (OS.getCurrent() == OS.LINUX) {
-                return new DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64();
+                return new DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
             }
@@ -404,7 +404,7 @@ public class NativeImageGenerator {
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
-        } else if (includedIn(platform, Platform.AArch64.class)) {
+        } else if (includedIn(platform, Platform.AARCH64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
                 architecture = GraalAccess.getOriginalTarget().arch;
