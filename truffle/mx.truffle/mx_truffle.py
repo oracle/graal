@@ -785,6 +785,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
+        'truffle:LOCATOR',
     ],
 ))
 
@@ -812,18 +813,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT']
-))
-
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='GraalVM Locator',
-    short_name='loc',
-    dir_name='truffle',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    jvmci_parent_jars=['truffle:LOCATOR'],
 ))
 
 

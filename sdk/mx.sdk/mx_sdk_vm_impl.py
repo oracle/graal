@@ -109,7 +109,7 @@ _lib_prefix = mx.add_lib_prefix("")
 _graalvm_base_name = 'GraalVM'
 
 
-default_components = ['gvm', 'loc']
+default_components = []
 
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
