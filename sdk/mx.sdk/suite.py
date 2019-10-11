@@ -196,6 +196,17 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
+    "org.graalvm.home.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.home",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -255,6 +266,7 @@ suite = {
         "org.graalvm.collections.test",
         "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
+        "org.graalvm.home.test",
       ],
       "distDependencies" : [
         "GRAAL_SDK",
