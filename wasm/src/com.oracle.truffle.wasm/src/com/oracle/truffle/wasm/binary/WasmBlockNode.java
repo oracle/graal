@@ -273,16 +273,11 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         logger.finest("block/if/loop EXECUTE");
-        debugCompiled();
         while (offset < startOffset + byteLength()) {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
             CompilerAsserts.partialEvaluationConstant(offset);
-            debugState();
-            if (offset == 1112) {
-                debugState();
-            }
             switch (opcode) {
                 case UNREACHABLE:
                     logger.finest("unreachable");
@@ -719,9 +714,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.I32_TYPE: {
                             int address = module().symbolTable().globalAddress(index);
                             int value = context.globals().loadAsInt(address);
-                            if (CompilerDirectives.inCompiledCode()) {
-                                debugGlobalGet(offset, index, value);
-                            }
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
                             logger.finest(() -> String.format("global.get %d, value = 0x%08X (%d) [i32]", index, value, value));
@@ -774,9 +766,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
-                            if (CompilerDirectives.inCompiledCode()) {
-                                debugGlobalSet(offset, index, value);
-                            }
                             int address = module().symbolTable().globalAddress(index);
                             context.globals().storeInt(address, value);
                             logger.finest(() -> String.format("global.set %d, value = 0x%08X (%d) [i32]", index, value, value));
@@ -844,9 +833,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             case I32_LOAD: {
                                 memory.validateAddress(address, 32);
                                 int value = memory.load_i32(address);
-                                if (CompilerDirectives.inCompiledCode()) {
-                                    debugLoad(offset, address, memOffset);
-                                }
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
@@ -964,9 +950,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
-                                if (CompilerDirectives.inCompiledCode()) {
-                                    debugStore(offset, address, value);
-                                }
                                 memory.validateAddress(address, 32);
                                 memory.store_i32(address, value);
                                 break;
@@ -2266,83 +2249,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
         }
         return -1;
-    }
-
-    @TruffleBoundary
-    private void debugGlobalGet(int offset, int index, int value) {
-        if (offset > 1087 && offset < 1120) {
-            System.err.println("global get in 1087-1120 was " + value);
-        }
-    }
-
-    @TruffleBoundary
-    private void debugGlobalSet(int offset, int index, int value) {
-        if (offset > 1087 && offset < 1120) {
-            System.err.println("global set in 1087-1120 to " + value);
-        }
-        if (value == 0xf90) {
-            System.err.println("global set to " + value);
-        }
-    }
-
-    @TruffleBoundary
-    private void debugLoad(int offset, int address, int memOffset) {
-        if (memOffset == 28) {
-            System.err.println("Load with offset 28, final address: " + address);
-        }
-    }
-
-    @TruffleBoundary
-    private void debugStore(int offset, int address, int value) {
-        if (address == 0xf90) {
-            System.err.println("Storing address.");
-        }
-        if (address == 0x41c) {
-            System.err.println("Write to 41c.");
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private void debugCompiled() {
-        boolean isValid = false;
-        try {
-            isValid = (boolean) getRootNode().getCallTarget().getClass().getDeclaredMethod("isValid").invoke(getRootNode().getCallTarget());
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
-        if (codeEntry().functionIndex() == 12 && isValid) {
-            System.err.println("compiled");
-        }
-    }
-
-
-    @TruffleBoundary
-    private void debugState() {
-        boolean isValid = false;
-        try {
-            isValid = (boolean) getRootNode().getCallTarget().getClass().getDeclaredMethod("isValid").invoke(getRootNode().getCallTarget());
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
-        if (codeEntry().functionIndex() == 12 && isValid) {
-            if (WasmContext.getCurrent().memories().memory(0).load_i32(0xf90) == 0x4b8) {
-                System.err.println("Corrupted.");
-            }
-            if (WasmContext.getCurrent().memories().memory(0).load_i32(0xfa8) == 0xfa0) {
-                System.err.println("Corrupted 2.");
-            }
-            // if ((int) frame.getArguments()[1] != 4000) {
-            //     System.err.println("Unexpected argument: " + frame.getArguments()[1]);
-            // }
-        }
     }
 
     private boolean popCondition(VirtualFrame frame, int stackPointer) {

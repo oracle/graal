@@ -39,7 +39,7 @@ public class Globals {
     // Such an assumption can be invalidated if the late-linking causes this array
     // to be replaced with a larger array.
     // TODO: Fix this - dimensions should be 0.
-    @CompilationFinal(dimensions = 1) private long[] globals;
+    @CompilationFinal(dimensions = 0) private long[] globals;
     private int numGlobals;
 
     public Globals() {
