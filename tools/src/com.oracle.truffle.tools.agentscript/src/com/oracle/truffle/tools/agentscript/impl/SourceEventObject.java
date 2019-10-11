@@ -46,33 +46,49 @@ final class SourceEventObject implements TruffleObject {
         return true;
     }
 
+    enum Members {
+        characters,
+        name,
+        language,
+        mimeType,
+        uri;
+    }
+
     @ExportMessage
     static Object getMembers(SourceEventObject obj, boolean includeInternal) {
-        return new Object[0];
+        return ArrayObject.wrap(Members.values());
+    }
+
+    @ExportMessage
+    static boolean isMemberReadable(SourceEventObject obj, String member) {
+        try {
+            return Members.valueOf(member) != null;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static Object readMember(SourceEventObject obj, String member) throws UnknownIdentifierException {
-        switch (member) {
-            case "characters":
-                return obj.source.getCharacters().toString();
-            case "name":
-                return obj.source.getName();
-            case "language":
-                return obj.source.getLanguage();
-            case "mimeType":
-                return NullObject.nullCheck(obj.source.getMimeType());
-            case "uri":
-                return obj.source.getURI().toASCIIString();
-            default:
-                throw UnknownIdentifierException.create(member);
+        final Members existingMember;
+        try {
+            existingMember = Members.valueOf(member);
+        } catch (IllegalArgumentException ex) {
+            throw UnknownIdentifierException.create(member);
         }
+        switch (existingMember) {
+            case characters:
+                return obj.source.getCharacters().toString();
+            case name:
+                return obj.source.getName();
+            case language:
+                return obj.source.getLanguage();
+            case mimeType:
+                return NullObject.nullCheck(obj.source.getMimeType());
+            case uri:
+                return obj.source.getURI().toASCIIString();
+        }
+        throw new IllegalArgumentException(member);
     }
-
-    @ExportMessage
-    static boolean isMemberReadable(SourceEventObject obj, String member) {
-        return true;
-    }
-
 }

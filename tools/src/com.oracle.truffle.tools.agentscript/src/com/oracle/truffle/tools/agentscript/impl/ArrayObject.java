@@ -34,14 +34,21 @@ import java.util.Collection;
 @ExportLibrary(InteropLibrary.class)
 final class ArrayObject implements TruffleObject {
     private final Object[] arr;
+    private final boolean convertToString;
 
-    private ArrayObject(Object[] arr) {
+    private ArrayObject(Object[] arr, boolean convertToString) {
         this.arr = arr;
+        this.convertToString = convertToString;
     }
 
     @ExportMessage
     Object readArrayElement(long index) {
-        return arr[(int) index];
+        Object value = arr[(int) index];
+        if (convertToString) {
+            return value.toString();
+        } else {
+            return value;
+        }
     }
 
     @ExportMessage
@@ -60,7 +67,11 @@ final class ArrayObject implements TruffleObject {
         return arr.length;
     }
 
-    public static ArrayObject wrap(Collection<?> arr) {
-        return new ArrayObject(arr.toArray());
+    static ArrayObject wrap(Collection<?> arr) {
+        return new ArrayObject(arr.toArray(), false);
+    }
+
+    static ArrayObject wrap(Enum<?>[] arr) {
+        return new ArrayObject(arr, true);
     }
 }
