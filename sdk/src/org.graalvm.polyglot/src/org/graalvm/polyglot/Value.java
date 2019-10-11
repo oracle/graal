@@ -1195,9 +1195,10 @@ public final class Value {
      * <code>null</code> if the value was created using {@link Value#asValue(Object)} and no current
      * context was {@link Context#enter() entered} at the time.
      * <p>
-     * The returned context can <b>not</b> be used to {@link #enter() enter} , {@link #leave()
-     * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
-     * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
+     * The returned context can <b>not</b> be used to {@link Context#enter() enter} ,
+     * {@link Context#leave() leave} or {@link Context#close() close} the context or
+     * {@link Context#getEngine() engine}. Invoking such methods will cause an
+     * {@link IllegalStateException} to be thrown. This ensures that only the
      * {@link Context#create(String...) creator} of a context is allowed to enter, leave or close a
      * context and that a context is not closed while it is still active.
      *
