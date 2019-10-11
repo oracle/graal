@@ -27,35 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.spi;
+#include <stdlib.h>
+#include <polyglot.h>
 
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
-import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
+void get_types(void (*ret)(polyglot_typeid typeid)) {
+  ret(polyglot_array_typeid(polyglot_i8_typeid(), 0));
+  ret(polyglot_array_typeid(polyglot_i16_typeid(), 0));
+  ret(polyglot_array_typeid(polyglot_i32_typeid(), 0));
+  ret(polyglot_array_typeid(polyglot_i64_typeid(), 0));
+  ret(polyglot_array_typeid(polyglot_float_typeid(), 0));
+  ret(polyglot_array_typeid(polyglot_double_typeid(), 0));
+}
 
-/**
- * Library for objects that want to simulate the behavior of native memory. If an object implements
- * this interface, raw memory access to this object will simulate the layout of the given type.
- */
-@GenerateLibrary
-@DefaultExport(LegacyLibrary.class)
-public abstract class NativeTypeLibrary extends Library {
-
-    @Abstract
-    public boolean hasNativeType(@SuppressWarnings("unused") Object receiver) {
-        return false;
-    }
-
-    @Abstract
-    public Object getNativeType(@SuppressWarnings("unused") Object receiver) {
-        return null;
-    }
-
-    private static final LibraryFactory<NativeTypeLibrary> FACTORY = LibraryFactory.resolve(NativeTypeLibrary.class);
-
-    public static LibraryFactory<NativeTypeLibrary> getFactory() {
-        return FACTORY;
-    }
+void do_memmove(void *target, void *source, size_t n) {
+  memmove(target, source, n);
 }
