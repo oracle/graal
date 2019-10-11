@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -153,13 +154,20 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         }
     }
 
-    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
+    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?>... clazzes) {
         for (Node node : graph.getNodes()) {
-            if (clazz.isInstance(node)) {
-                return graph;
+            for (Class<?> clazz : clazzes) {
+                if (clazz.isInstance(node)) {
+                    return graph;
+                }
             }
         }
-        fail("Graph does not contain a node of class " + clazz.getName());
+        if (clazzes.length == 1) {
+            fail("Graph does not contain a node of class " + clazzes[0].getName());
+        } else {
+            fail("Graph does not contain a node of one these classes class " + Arrays.toString(clazzes));
+
+        }
         return graph;
     }
 
