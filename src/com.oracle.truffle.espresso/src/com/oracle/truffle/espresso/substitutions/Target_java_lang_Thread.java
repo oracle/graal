@@ -68,6 +68,7 @@ public final class Target_java_lang_Thread {
             throw EspressoError.shouldNotReachHere();
         }
     }
+
     public enum State {
         NEW(0),
         RUNNABLE(4),
@@ -283,7 +284,7 @@ public final class Target_java_lang_Thread {
         boolean result = checkInterrupt(self);
         if (clear) {
             Thread host = getHostFromGuestThread(self);
-            if (host != null) {
+            if (host != null && host.isInterrupted()) {
                 try {
                     isInterrupted.invoke(host, true);
                 } catch (Throwable e) {
