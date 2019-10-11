@@ -67,6 +67,10 @@ final class ArrayObject implements TruffleObject {
         return arr.length;
     }
 
+    static ArrayObject array(String... arr) {
+        return new ArrayObject(arr, false);
+    }
+
     static ArrayObject wrap(Collection<?> arr) {
         return new ArrayObject(arr.toArray(), false);
     }

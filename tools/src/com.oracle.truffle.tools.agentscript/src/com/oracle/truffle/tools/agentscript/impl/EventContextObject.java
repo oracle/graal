@@ -49,7 +49,7 @@ final class EventContextObject implements TruffleObject {
 
     @ExportMessage
     static Object getMembers(EventContextObject obj, boolean includeInternal) {
-        return new Object[0];
+        return ArrayObject.array("name");
     }
 
     @ExportMessage
@@ -68,7 +68,7 @@ final class EventContextObject implements TruffleObject {
 
     @ExportMessage
     static boolean isMemberReadable(EventContextObject obj, String member) {
-        return true;
+        return "name".equals(member);
     }
 
 }
