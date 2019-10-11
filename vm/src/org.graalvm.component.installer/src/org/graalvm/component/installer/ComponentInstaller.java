@@ -145,7 +145,7 @@ public final class ComponentInstaller {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle"); // NOI18N
 
-    private static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel.Factory> callback) {
+    public static void forSoftwareChannels(boolean report, Consumer<SoftwareChannel.Factory> callback) {
         ServiceLoader<SoftwareChannel.Factory> channels = ServiceLoader.load(SoftwareChannel.Factory.class);
         for (Iterator<SoftwareChannel.Factory> it = channels.iterator(); it.hasNext();) {
             try {
