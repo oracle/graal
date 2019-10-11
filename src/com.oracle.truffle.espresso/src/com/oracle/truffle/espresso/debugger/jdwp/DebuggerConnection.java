@@ -286,7 +286,7 @@ public class DebuggerConnection implements JDWPCommands {
                     case JDWP.ObjectReference.ID: {
                         switch (packet.cmd) {
                             case JDWP.ObjectReference.REFERENCE_TYPE.ID:
-                                reply = JDWP.ObjectReference.REFERENCE_TYPE.createReply(packet);
+                                reply = JDWP.ObjectReference.REFERENCE_TYPE.createReply(packet, controller.getContext());
                                 break;
                             case JDWP.ObjectReference.GET_VALUES.ID:
                                 reply = JDWP.ObjectReference.GET_VALUES.createReply(packet);

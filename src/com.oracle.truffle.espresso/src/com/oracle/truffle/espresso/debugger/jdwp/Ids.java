@@ -22,13 +22,18 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import java.lang.ref.WeakReference;
 
 public class Ids {
 
     private static volatile long uniqueID = 1;
     private static WeakReference[] objects = new WeakReference[1];
-    public static Object UNKNOWN = new Object();
+
+    static {
+        // initialize with StaticObject.NULL
+        getIdAsLong(StaticObject.NULL);
+    }
 
     public static long getIdAsLong(Object object) {
         // lookup in cache
@@ -36,6 +41,7 @@ public class Ids {
             // really slow lookup path
             Object obj = objects[i].get();
             if (obj == object) {
+                //System.out.println("returning ID: " + i + " from cache for object: " + object);
                 return i;
             }
         }
@@ -47,8 +53,9 @@ public class Ids {
         WeakReference ref = objects[id];
         Object o = ref.get();
         if (o == null) {
-            return UNKNOWN;
+            return StaticObject.NULL;
         } else {
+            //System.out.println("getting object: " + o + " from ID: " + id);
             return o;
         }
     }
@@ -61,6 +68,7 @@ public class Ids {
         System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
+        //System.out.println("ID: " + id + " for object: " + object);
         return id;
     }
 }
