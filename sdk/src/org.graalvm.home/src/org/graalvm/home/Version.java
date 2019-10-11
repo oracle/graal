@@ -254,7 +254,6 @@ public final class Version implements Comparable<Version> {
      * Parses a GraalVM version from its String raw format. Throws {@link IllegalArgumentException}
      * if the passed string is not a valid GraalVM version.
      *
-     * @see Version format specification
      * @since 19.3
      */
     public static Version parse(String versionString) throws IllegalArgumentException {
@@ -262,11 +261,19 @@ public final class Version implements Comparable<Version> {
         return new Version(versionString);
     }
 
+    /**
+     * Constructs a new GraalVM version from a list of version numbers. The versions must not be
+     * <code>null</code> and none of the version numbers must be negative. At least one version
+     * number must be non-zero.
+     *
+     * @see #compareTo(int...)
+     * @since 19.3
+     */
     public static Version create(int... versions) throws IllegalArgumentException {
         Objects.requireNonNull(versions);
         int[] useVersions = trimTrailingZeros(versions);
         if (useVersions.length == 0) {
-            throw new IllegalArgumentException("At least one non-zero version must e specified.");
+            throw new IllegalArgumentException("At least one non-zero version must be specified.");
         }
         for (int i = 0; i < useVersions.length; i++) {
             if (useVersions[i] < 0) {
