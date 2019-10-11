@@ -46,9 +46,9 @@ import java.util.Objects;
 /**
  * A version utility to canonicalize and compare GraalVM versions. The GraalVM version string is not
  * standardized and may change without notice. This class is designed to evolve with GraalVM to
- * cover all used version formats in use. It allows create, validate and compare GraalVM versions.
- * Do not rely on the format of the raw version string or the result of {@link #toString()}, only
- * use it to produce output for humans.
+ * cover all used version formats in use. It allows to create, validate and compare GraalVM
+ * versions. Do not rely on the format of the raw version string or the result of
+ * {@link #toString()}, only use it to produce output for humans.
  * <p>
  * To create version instances of a particular version use the {@link #create(int...)} factory
  * method. Use {@link #getCurrent()} to lookup the current GraalVM version or {@link #parse(String)}
