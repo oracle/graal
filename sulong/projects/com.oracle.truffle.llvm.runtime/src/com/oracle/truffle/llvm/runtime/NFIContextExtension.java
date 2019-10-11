@@ -185,10 +185,10 @@ public final class NFIContextExtension implements ContextExtension {
              */
             String libName = LLVMInfo.SYSNAME.toLowerCase().contains("mac") ? "libc++.dylib" : "libc++.so.1";
             TruffleFile tf = DefaultLibraryLocator.locateGlobal(context, libName);
-            if (tf != null) {
-                libName = tf.getPath();
+            if (tf == null) {
+                throw new UnsatisfiedLinkError("Library '" + libName + "' not found in the llvm home.");
             }
-            TruffleObject cxxlib = loadLibrary(libName, false, null, context);
+            TruffleObject cxxlib = loadLibrary(tf.getPath(), false, null, context);
             libraryHandles.put(lib, cxxlib);
             return true;
         } else {
