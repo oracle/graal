@@ -7,6 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 
 const INSTALL_GRAALVM_RUBY_COMPONENT: string = 'Install GraalVM Ruby Component';
 
@@ -24,13 +25,13 @@ export function deactivate() {}
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (graalVMHome) {
-		const executable: string = graalVMHome + '/bin/ruby';
+		const executable: string = path.join(graalVMHome, 'bin', 'ruby');
 		if (!fs.existsSync(executable)) {
 			vscode.window.showInformationMessage('Ruby component is not installed in your GraalVM.', INSTALL_GRAALVM_RUBY_COMPONENT).then(value => {
 				switch (value) {
 					case INSTALL_GRAALVM_RUBY_COMPONENT:
 						vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'ruby');
-						const watcher:fs.FSWatcher = fs.watch(graalVMHome + '/bin', () => {
+						const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
 							setConfig('interpreter.commandPath', executable);
 							watcher.close();
 						});

@@ -223,4 +223,12 @@ public class CatalogContentsTest extends CommandTestBase {
         v = coll.findComponent("r", vm).getVersion();
         assertEquals("1.1.0.1", v.toString());
     }
+
+    /**
+     * 
+     */
+    @Test
+    public void testFindDependentComponents() {
+
+    }
 }

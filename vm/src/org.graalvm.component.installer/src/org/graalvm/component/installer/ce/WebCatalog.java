@@ -24,13 +24,18 @@
  */
 package org.graalvm.component.installer.ce;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
 import org.graalvm.component.installer.BundleConstants;
@@ -55,20 +60,29 @@ public class WebCatalog implements SoftwareChannel {
     private Feedback feedback;
     private ComponentRegistry local;
     private ComponentStorage storage;
+    private RuntimeException savedException;
 
     public WebCatalog(String u, SoftwareChannelSource source) {
         this.urlString = u;
         this.source = source;
     }
 
-    protected static boolean acceptURLScheme(String scheme) {
+    protected static boolean acceptURLScheme(String scheme, String urlSpec) {
         switch (scheme) {
             case "http":    // NOI18N
             case "https":   // NOI18N
             case "ftp":     // NOI18N
             case "ftps":    // NOI18N
-            case "file":
                 return true;
+            case "file":    // NOI18N
+                // accept only regular files
+                try {
+                    Path p = new File(new URI(urlSpec)).toPath();
+                    return Files.isRegularFile(p) && Files.isReadable(p);
+                } catch (URISyntaxException ex) {
+                    // cannot be converted to file, bail out
+                    break;
+                }
         }
         return false;
     }
@@ -103,22 +117,29 @@ public class WebCatalog implements SoftwareChannel {
         Properties props = new Properties();
         // create the storage. If the init fails, but process will not terminate, the storage will
         // serve no components on the next call.
-        storage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
+        RemotePropertiesStorage newStorage = new RemotePropertiesStorage(feedback, local, props, sb.toString(), null, catalogURL);
 
         Properties loadProps = new Properties();
         FileDownloader dn;
         try {
+            // avoid duplicate (failed) downloads
+            if (savedException != null) {
+                throw savedException;
+            }
             catalogURL = new URL(urlString);
             String l = source.getLabel();
             dn = new FileDownloader(feedback.l10n(l == null || l.isEmpty() ? "REMOTE_CatalogLabel2" : "REMOTE_CatalogLabel", l), catalogURL, feedback);
             dn.download();
         } catch (NoRouteToHostException | ConnectException ex) {
-            throw feedback.failure("REMOTE_ErrorDownloadCatalogProxy", ex, catalogURL, ex.getLocalizedMessage());
+            throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalogProxy", ex, catalogURL, ex.getLocalizedMessage());
         } catch (FileNotFoundException ex) {
-            throw feedback.failure("REMOTE_ErrorDownloadCatalogNotFound", ex, catalogURL);
+            throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalogNotFound", ex, catalogURL);
         } catch (IOException ex) {
-            throw feedback.failure("REMOTE_ErrorDownloadCatalog", ex, catalogURL, ex.getLocalizedMessage());
+            throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalog", ex, catalogURL, ex.getLocalizedMessage());
         }
+        // download is successful; if the processing fails after download, next call will report an
+        // empty catalog.
+        this.storage = newStorage;
 
         StringBuilder oldGraalPref = new StringBuilder(BundleConstants.GRAAL_COMPONENT_ID);
         oldGraalPref.append('.');
@@ -164,7 +185,7 @@ public class WebCatalog implements SoftwareChannel {
             }
         }
         props.putAll(loadProps);
-        return storage;
+        return newStorage;
     }
 
     @Override
@@ -183,7 +204,7 @@ public class WebCatalog implements SoftwareChannel {
                 return null;
             }
             String scheme = urlSpec.toLowerCase().substring(0, schColon);
-            if (acceptURLScheme(scheme)) {
+            if (acceptURLScheme(scheme, urlSpec)) {
                 WebCatalog c = new WebCatalog(urlSpec, src);
                 c.init(in, fb);
                 return c;

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.239.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -959,6 +959,18 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": "./lib/<lib:c++>*",
+            "dereference" : "never",
+          },
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": "./lib/<lib:c++abi>*",
+            "dereference" : "never",
+          },
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"

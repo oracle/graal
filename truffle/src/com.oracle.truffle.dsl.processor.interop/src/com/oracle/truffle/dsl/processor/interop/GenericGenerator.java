@@ -45,15 +45,15 @@ import java.io.Writer;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
-@SuppressWarnings("deprecation")
 final class GenericGenerator extends MessageGenerator {
 
     private final String targetableExecuteNode;
 
-    GenericGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.Resolve resolveAnnotation, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation,
+    GenericGenerator(ProcessingEnvironment processingEnv, AnnotationMirror resolveAnnotation, AnnotationMirror messageResolutionAnnotation,
                     TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);

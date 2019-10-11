@@ -10,6 +10,7 @@ This page is intended to keep track of the growing number of Truffle language im
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
+* [GraalSqueak](https://github.com/hpi-swa/graalsqueak/), a Squeak/Smalltalk bytecode interpreter with support for the Smalltalk programming environment.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
