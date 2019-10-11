@@ -617,7 +617,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, CRC32.class, replacements);
-        r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
+        r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "update", int.class, int.class);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
             r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
