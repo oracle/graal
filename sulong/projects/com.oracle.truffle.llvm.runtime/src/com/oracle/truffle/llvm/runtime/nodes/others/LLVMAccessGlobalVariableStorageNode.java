@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -49,11 +48,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
     protected final LLVMGlobal descriptor;
-    private final LLVMContext context;
 
-    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor, LLVMContext context) {
+    public LLVMAccessGlobalVariableStorageNode(LLVMGlobal descriptor) {
         this.descriptor = descriptor;
-        this.context = context;
     }
 
     public LLVMGlobal getDescriptor() {
@@ -61,7 +58,6 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
     }
 
     @Specialization
-<<<<<<< HEAD
     Object doAccess(
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached ReadDynamicObjectHelper helper) {
@@ -137,9 +133,5 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
         protected Object readIndirect(DynamicObject dynamicObject, LLVMGlobal descriptor) {
             return dynamicObject.get(descriptor);
         }
-=======
-    public Object accessGlobal() {
-        return context.getGlobalStorage(descriptor);
->>>>>>> LLVMAccessGlobalVariableStorageNode is a now an abstract class and now takes a context to access the global storage.
     }
 }

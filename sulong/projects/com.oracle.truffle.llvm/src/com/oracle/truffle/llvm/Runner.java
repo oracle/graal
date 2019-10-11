@@ -456,7 +456,7 @@ final class Runner {
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
                     initGlobal.execute(descriptor, ref);
-                    ctx.registerGlobalReverseMap(descriptor, ref);
+                   ctx.registerGlobalReverseMap(descriptor, ref);
                 }
             }
         }
