@@ -75,6 +75,7 @@ def _with_metaclass(meta, *bases):
 
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
+_vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
     ('jvm-la-inline', [], ['--jvm', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 30),
@@ -382,6 +383,20 @@ def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority
     :type priority: int
     """
     _graalvm_hostvm_configs.append((name, java_args, launcher_args, priority))
+
+
+def register_vm_config(config_name, components, suite, dist_name=None, env_file=None):
+    """
+    :type config_name: str
+    :type components: list[str]
+    :type suite: mx.Suite
+    :type dist_name: str
+    :type env_file: str or None
+    """
+    assert config_name is not None
+    assert components is not None and len(components)
+    _dist_name = dist_name or config_name
+    _vm_configs.append((_dist_name, config_name, components, suite, env_file))
 
 
 def get_graalvm_hostvm_configs():

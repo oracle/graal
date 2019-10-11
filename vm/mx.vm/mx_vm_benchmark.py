@@ -28,7 +28,7 @@
 import pipes
 
 import mx, mx_benchmark
-import mx_vm, mx_sdk_vm
+import mx_sdk_vm, mx_sdk_vm_impl
 import os
 from os.path import dirname
 
@@ -71,7 +71,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         """Run 'java' workloads."""
-        return mx.run([os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', 'java')] + args, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+        return mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')] + args, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def run_lang(self, cmd, args, cwd):
         """Deprecated. Call 'run_launcher' instead."""
@@ -82,7 +82,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         out = mx.TeeOutputCapture(mx.OutputCapture())
         args = self.post_process_launcher_command_line_args(args)
         mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), args))
-        code = mx.run([os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
+        code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
         return code, out, dims
@@ -237,7 +237,7 @@ class NativeImageVM(GraalVm):
                 super(NativeImageVM, self).run_java(hotspot_args,
                                                     out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
-            base_image_build_args = [os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
+            base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             base_image_build_args += ['--no-fallback']
             base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
             base_image_build_args += system_properties
@@ -288,7 +288,7 @@ class NativeImageVM(GraalVm):
 
 class NativeImageBuildVm(GraalVm):
     def run(self, cwd, args):
-        default_args = ['--no-server'] if mx_vm.has_svm_launcher('svm') else []
+        default_args = ['--no-server'] if mx_sdk_vm_impl.has_svm_launcher('svm') else []
         return self.run_launcher('native-image', default_args + args, cwd)
 
 
@@ -353,18 +353,18 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={
 
 
 def register_graalvm_vms():
-    default_host_vm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
+    default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
     host_vm_names = ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else []) + [default_host_vm_name]
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
-        if mx_vm.has_component('svm'):
+        if mx_sdk_vm_impl.has_component('svm'):
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
-        if any(component.short_name == short_name for component in mx_vm.registered_graalvm_components(stage1=False)):
+        if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False, False), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-' + config_suffix, None, None, 1, False, False), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot-' + config_suffix, None, None, 0, True, False), _suite, 10)
@@ -374,8 +374,8 @@ def register_graalvm_vms():
             break
 
 # Add VMs for libgraal
-    if mx_vm.has_component('LibGraal'):
-        libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
+    if mx_sdk_vm_impl.has_component('LibGraal'):
+        libgraal_location = mx_sdk_vm_impl.get_native_image_locations('LibGraal', 'jvmcicompiler')
         if libgraal_location is not None:
             import mx_graal_benchmark
             mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',

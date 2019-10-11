@@ -52,6 +52,7 @@ import mx_benchmark
 import mx_gate
 import mx_native
 import mx_sdk
+import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
@@ -770,7 +771,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
@@ -788,7 +789,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle Macro',
     short_name='tflm',
@@ -800,7 +801,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
@@ -811,6 +812,18 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT']
+))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='GraalVM Locator',
+    short_name='loc',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jvmci_parent_jars=['truffle:LOCATOR'],
 ))
 
 

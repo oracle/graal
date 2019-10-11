@@ -44,6 +44,7 @@ from __future__ import print_function
 import mx
 import mx_gate
 import mx_sdk_vm
+import mx_sdk_vm_impl
 import datetime
 
 from mx_gate import Task
@@ -93,6 +94,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=['sdk:LAUNCHER_COMMON'],
     boot_jars=['sdk:GRAAL_SDK']
 ))
+
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
+
+
+def mx_post_parse_cmd_line(args):
+    mx_sdk_vm_impl.mx_post_parse_cmd_line(args)
 
 
 mx.update_commands(_suite, {

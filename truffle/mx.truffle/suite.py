@@ -714,6 +714,17 @@ suite = {
       "workingSets" : "Truffle,SimpleLanguage",
       "testProject" : True,
     },
+
+    "com.oracle.graalvm.locator": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "TRUFFLE_API",
+      ],
+      "javaCompliance" : "1.8+",
+      "checkstyleVersion" : "8.8",
+      "workingSets" : "Truffle",
+    },
    },
 
   "licenses" : {
@@ -1119,6 +1130,21 @@ suite = {
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
+      "maven" : False,
+    },
+
+    "LOCATOR": {
+      "subDir": "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.locator",
+        "exports" : [
+          "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+        ],
+      },
+      "dependencies": ["com.oracle.graalvm.locator"],
+      "distDependencies": [
+        "truffle:TRUFFLE_API",
+      ],
       "maven" : False,
     },
   },
