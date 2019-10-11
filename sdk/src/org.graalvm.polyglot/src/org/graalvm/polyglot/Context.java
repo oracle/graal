@@ -680,7 +680,7 @@ public final class Context implements AutoCloseable {
      * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
      * </ul>
      * <p>
-     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * The returned context can <b>not</b> be used to {@link #enter() enter} , {@link #leave()
      * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
      * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
@@ -1222,7 +1222,7 @@ public final class Context implements AutoCloseable {
          *
          * @return the {@link Builder}
          * @see ZoneId#systemDefault()
-         * @since 20.0.0 beta 2
+         * @since 19.2.0
          */
         public Builder timeZone(final ZoneId zone) {
             this.zone = zone;

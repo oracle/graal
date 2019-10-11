@@ -54,7 +54,7 @@ import org.graalvm.polyglot.Value;
  *
  * @see Proxy
  * @see Value
- * @since 20.0.0 beta 2
+ * @since 19.2.0
  */
 public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
 
@@ -71,7 +71,7 @@ public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
      * assert ZonedDateTime.of(date, time, zone).equals(proxy.getInstant());
      * </pre>
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     Instant asInstant();
 
@@ -81,7 +81,7 @@ public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
      * The invariant specified in {@link #asInstant()} must always hold for proxy instant values.
      *
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     default LocalDate asDate() {
         return asInstant().atZone(ProxyInstantConstants.UTC).toLocalDate();
@@ -93,7 +93,7 @@ public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
      * The invariant specified in {@link #asInstant()} must always hold for proxy instant values.
      *
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     default LocalTime asTime() {
         return asInstant().atZone(ProxyInstantConstants.UTC).toLocalTime();
@@ -105,7 +105,7 @@ public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
      * The invariant specified in {@link #asInstant()} must always hold for proxy instant values.
      *
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     default ZoneId asTimeZone() {
         return ProxyInstantConstants.UTC;
@@ -114,7 +114,7 @@ public interface ProxyInstant extends ProxyDate, ProxyTime, ProxyTimeZone {
     /**
      * Creates a new proxy instant from a Java instant value.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     static ProxyInstant from(Instant instant) {
         Objects.requireNonNull(instant);
