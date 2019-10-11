@@ -66,23 +66,23 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
     }
 
     abstract static class WriteDynamicObjectHelper extends LLVMNode {
-        
+
         public abstract void execute(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value);
 
         static Location getLocationOrNull(Property property) {
             return property == null ? null : property.getLocation();
         }
-        
+
         @SuppressWarnings("unused")
         @Specialization(limit = "3", //
                         guards = {
-                            "object.getShape() == cachedShape",
-                            "loc != null",
-                            "loc.canSet(value)"
+                                        "object.getShape() == cachedShape",
+                                        "loc != null",
+                                        "loc.canSet(value)"
                         }, //
                         assumptions = {
-                            "layoutAssumption"
-                                        
+                                        "layoutAssumption"
+
                         })
         protected void doDirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value,
                         @Cached("object.getShape()") Shape cachedShape,
@@ -97,17 +97,17 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
                 throw new RuntimeException("Location.canSet is inconsistent with Location.set");
             }
         }
-        
+
         @SuppressWarnings("unused")
         @Specialization(limit = "3", //
                         guards = {
-                            "object.getShape() == cachedShape",
-                            "loc == null || !loc.canSet(value)",
-                            "newLoc.canSet(value)"
+                                        "object.getShape() == cachedShape",
+                                        "loc == null || !loc.canSet(value)",
+                                        "newLoc.canSet(value)"
                         }, //
                         assumptions = {
-                            "layoutAssumption",
-                            "newLayoutAssumption"
+                                        "layoutAssumption",
+                                        "newLayoutAssumption"
                         })
         protected void defineDirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value,
                         @Cached("object.getShape()") Shape cachedShape,
@@ -125,15 +125,15 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
                 throw new RuntimeException("Location.canSet is inconsistent with Location.set");
             }
         }
-        
+
         @TruffleBoundary
         @Specialization(guards = {
-            "object.getShape().isValid()"
+                        "object.getShape().isValid()"
         }, replaces = {"doDirect", "defineDirect"})
         protected static void doIndirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value) {
             object.define(descriptor, value);
         }
-        
+
         @Specialization(guards = "!object.getShape().isValid()")
         protected static void defineDirect2(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value) {
             CompilerDirectives.transferToInterpreter();

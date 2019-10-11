@@ -65,7 +65,7 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
     }
 
     abstract static class ReadDynamicObjectHelper extends LLVMNode {
-        
+
         protected abstract Object execute(DynamicObject object, LLVMGlobal descriptor);
 
         /*
@@ -74,17 +74,17 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
         protected static boolean checkShape(@SuppressWarnings("unused") DynamicObject dynamicObject, DynamicObject cachedObject, Shape cachedShape) {
             return cachedObject.getShape() == cachedShape;
         }
-        
+
         @SuppressWarnings("unused")
         @Specialization(limit = "1", //
                         guards = {
-                            "dynamicObject == cachedDynamicObject",
-                            "checkShape(dynamicObject, cachedDynamicObject, cachedShape)",
-                            "loc.isAssumedFinal()",
+                                        "dynamicObject == cachedDynamicObject",
+                                        "checkShape(dynamicObject, cachedDynamicObject, cachedShape)",
+                                        "loc.isAssumedFinal()",
                         }, //
                         assumptions = {
-                            "layoutAssumption",
-                            "finalAssumption"
+                                        "layoutAssumption",
+                                        "finalAssumption"
                         })
         protected Object readDirectFinal(DynamicObject dynamicObject, LLVMGlobal descriptor,
                         @Cached("dynamicObject") DynamicObject cachedDynamicObject,
@@ -96,14 +96,14 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
             CompilerAsserts.partialEvaluationConstant(descriptor);
             return cachedValue;
         }
-        
+
         @SuppressWarnings("unused")
         @Specialization(limit = "3", //
                         guards = {
-                            "dynamicObject.getShape() == cachedShape",
+                                        "dynamicObject.getShape() == cachedShape",
                         }, //
                         assumptions = {
-                            "layoutAssumption"
+                                        "layoutAssumption"
                         }, //
                         replaces = "readDirectFinal")
         protected Object readDirect(DynamicObject dynamicObject, LLVMGlobal descriptor,
@@ -113,11 +113,11 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
             CompilerAsserts.partialEvaluationConstant(descriptor);
             return loc.get(dynamicObject, cachedShape);
         }
-        
+
         @SuppressWarnings("unused")
         @Specialization(guards = {
-            "object.getShape() == cachedShape",
-            "!layoutAssumption.isValid()"
+                        "object.getShape() == cachedShape",
+                        "!layoutAssumption.isValid()"
         })
         protected Object updateShapeAndRead(DynamicObject object, LLVMGlobal descriptor,
                         @Cached("object.getShape()") Shape cachedShape,
@@ -127,7 +127,7 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
             object.updateShape();
             return nextNode.execute(object, descriptor);
         }
-        
+
         @TruffleBoundary
         @Specialization(replaces = {"readDirect", "readDirectFinal", "updateShapeAndRead"})
         protected Object readIndirect(DynamicObject dynamicObject, LLVMGlobal descriptor) {

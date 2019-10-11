@@ -288,8 +288,8 @@ final class Runner {
         abstract void execute(LLVMGlobal descriptor, LLVMPointer value);
 
         @Specialization(guards = "descriptor == cachedDescriptor")
-        void doCached(LLVMGlobal descriptor, LLVMPointer value,
-                        @Cached("descriptor") LLVMGlobal cachedDescriptor,
+        void doCached(@SuppressWarnings("unused") LLVMGlobal descriptor, LLVMPointer value,
+                        @SuppressWarnings("unused") @Cached("descriptor") LLVMGlobal cachedDescriptor,
                         @Cached("create(cachedDescriptor)") LLVMWriteGlobalVariableStorageNode write) {
             write.execute(value);
         }
@@ -456,7 +456,7 @@ final class Runner {
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
                     initGlobal.execute(descriptor, ref);
-                   ctx.registerGlobalReverseMap(descriptor, ref);
+                    ctx.registerGlobalReverseMap(descriptor, ref);
                 }
             }
         }
@@ -782,6 +782,7 @@ final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
+                // TODO Change to use dyanmicObject here
                 ctx.setGlobalStorage(global, LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
