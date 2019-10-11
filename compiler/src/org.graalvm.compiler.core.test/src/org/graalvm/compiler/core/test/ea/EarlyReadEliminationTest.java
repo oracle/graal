@@ -27,6 +27,9 @@ package org.graalvm.compiler.core.test.ea;
 import java.util.List;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -46,6 +49,50 @@ import org.junit.Test;
 public class EarlyReadEliminationTest extends GraalCompilerTest {
 
     public static Object staticField;
+
+    static void cfgSnippet() {
+        if (staticField != null) {
+            staticField = 12;
+            if (staticField != null) {
+                staticField = 12;
+            }
+            if (staticField != null) {
+                staticField = 12;
+            }
+            if (staticField != null) {
+                staticField = 12;
+            }
+            if (staticField != null) {
+                staticField = 12;
+            }
+        } else {
+            if (staticField != null) {
+                staticField = 12;
+            } else {
+                if (staticField != null) {
+                    staticField = 12;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testDeadBranches() {
+        StructuredGraph graph = parseEager(getResolvedJavaMethod("cfgSnippet"), AllowAssumptions.NO);
+        HighTierContext context = getDefaultHighTierContext();
+        int index = 0;
+        boolean[] conditions = new boolean[]{true, false, false, true, true, true, false};
+        /*
+         * Create a graph with "dead" branches in the beginning.
+         */
+        for (Node n : graph.getNodes()) {
+            if (n instanceof IfNode) {
+                IfNode ifNode = (IfNode) n;
+                ifNode.setCondition(LogicConstantNode.forBoolean(conditions[index++], graph));
+            }
+        }
+        new EarlyReadEliminationPhase(new CanonicalizerPhase()).apply(graph, context);
+    }
 
     public static class TestObject {
 
