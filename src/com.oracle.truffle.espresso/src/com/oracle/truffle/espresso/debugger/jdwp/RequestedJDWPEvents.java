@@ -67,17 +67,16 @@ public class RequestedJDWPEvents {
 
     public PacketStream registerEvent(Packet packet, JDWPCommands callback) {
         PacketStream reply = null;
-        PacketStream stream = new PacketStream(packet);
+        PacketStream input = new PacketStream(packet);
 
-        byte eventKind = stream.readByte();
-        byte suspendPolicy = stream.readByte();
-        int modifiers = stream.readInt();
+        byte eventKind = input.readByte();
+        byte suspendPolicy = input.readByte();
+        int modifiers = input.readInt();
 
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
-
         for (int i = 0; i < modifiers; i++) {
-            byte modCount = stream.readByte();
-            handleModCount(filter, stream, modCount, suspendPolicy, callback);
+            byte modCount = input.readByte();
+            handleModCount(filter, input, modCount, suspendPolicy, callback);
         }
 
         switch (eventKind) {

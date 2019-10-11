@@ -201,4 +201,12 @@ public class SocketConnection implements Runnable {
             }
         }
     }
+
+    public boolean isAvailable() {
+        try {
+            return socketInput.available() > 0;
+        } catch (IOException e) {
+            return false;
+        }
+    }
 }

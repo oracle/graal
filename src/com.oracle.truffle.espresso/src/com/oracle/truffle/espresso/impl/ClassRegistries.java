@@ -78,6 +78,11 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
+    public Klass[] getLoadedClassesByLoader(StaticObject classLoader) {
+        return registries.get(classLoader).getLoadedKlasses();
+    }
+
+    @TruffleBoundary
     public Klass[] findLoadedClassAny(Symbol<Type> type) {
         ArrayList<Klass> klasses = new ArrayList<>();
         for (StaticObject classLoader : classLoaders) {

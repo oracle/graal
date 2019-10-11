@@ -49,6 +49,14 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         try {
             if (controller.shouldWaitForAttach()) {
                 doConnect();
+                // take all initial commands from the debugger before resuming to main thread
+                synchronized (JDWP.suspenStartupLock) {
+                    try {
+                        JDWP.suspenStartupLock.wait();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("JDWP connection interrupted");
+                    }
+                }
             }
             else {
                 // don't suspend until debugger attaches, so fire up deamon thread
@@ -64,7 +72,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     private void doConnect() throws IOException {
         SocketConnection socketConnection = JDWPHandshakeController.createSocketConnection(controller.getListeningPort());
         // connection established with handshake. Prepare to process commands from debugger
-        new DebuggerConnection(socketConnection, controller).doProcessCommands();
+        new DebuggerConnection(socketConnection, controller).doProcessCommands(controller.shouldWaitForAttach());
     }
 
     @Override
