@@ -105,6 +105,32 @@ export async function selectInstalledGraalVM(storagePath: string | undefined): P
     }
 }
 
+export function getGraalVMVersion(homeFolder: string): string | undefined {
+    let version: string | undefined;
+    if (homeFolder && fs.existsSync(homeFolder)) {
+        const executable: string | undefined = utils.findExecutable('gu', homeFolder);
+        if (executable) {
+            const out = cp.execFileSync(executable, ['list'], { encoding: 'utf8' });
+            if (out) {
+                let header: boolean = true;
+                out.split('\n').forEach(line => {
+                    if (header) {
+                        if (line.startsWith('-----')) {
+                            header = false;
+                        }
+                    } else if (!version) {
+                        const info: string[] | null = line.match(/\S+/g);
+                        if (info && info.length >= 3 && info[0] === 'graalvm') {
+                            version = info[1];
+                        }
+                    }
+                });
+            }
+        }
+    }
+    return version;
+}
+
 async function getLatestGraalVMRelease(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
         https.get(GRAALVM_RELEASES_URL, res => {
@@ -249,26 +275,9 @@ function findGraalVMsIn(folder: string, vms: vscode.QuickPickItem[]) {
 
 function addGraalVMInfo(folder: string, vms: vscode.QuickPickItem[]) {
     if (!vms.find(vm => vm.detail === folder)) {
-        if (fs.existsSync(folder)) {
-            const executable: string | undefined = utils.findExecutable('gu', folder);
-            if (executable) {
-                const out = cp.execFileSync(executable, ['list'], { encoding: 'utf8' });
-                if (out) {
-                    let header: boolean = true;
-                    out.split('\n').forEach(line => {
-                        if (header) {
-                            if (line.startsWith('-----')) {
-                                header = false;
-                            }
-                        } else {
-                            const info: string[] | null = line.match(/\S+/g);
-                            if (info && info.length >= 3 && info[0] === 'graalvm') {
-                                vms.push({ label: 'GraalVM Version ' + info[1], detail: folder });
-                            }
-                        }
-                    });
-                }
-            }
+        let version = getGraalVMVersion(folder);
+        if (version) {
+            vms.push({ label: 'GraalVM Version ' + version, detail: folder });
         }
     }
 }

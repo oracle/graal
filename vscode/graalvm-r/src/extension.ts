@@ -7,6 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 
 const INSTALL_GRAALVM_R_COMPONENT: string = 'Install GraalVM R Component';
 
@@ -25,13 +26,13 @@ export function deactivate() {}
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (graalVMHome) {
-		const executable: string = graalVMHome + '/bin/R';
+		const executable: string = path.join(graalVMHome, 'bin', 'R');
 		if (!fs.existsSync(executable)) {
 			vscode.window.showInformationMessage('R component is not installed in your GraalVM.', INSTALL_GRAALVM_R_COMPONENT).then(value => {
 				switch (value) {
 					case INSTALL_GRAALVM_R_COMPONENT:
 						vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'R');
-						const watcher:fs.FSWatcher = fs.watch(graalVMHome + '/bin', () => {
+						const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
 							setConfig('rterm.linux', executable);
 							watcher.close();
 						});
