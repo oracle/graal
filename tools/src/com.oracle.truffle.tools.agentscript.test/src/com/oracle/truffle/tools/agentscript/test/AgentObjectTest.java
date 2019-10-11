@@ -27,11 +27,13 @@ package com.oracle.truffle.tools.agentscript.test;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScript;
+import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.Set;
+import java.util.TreeSet;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
@@ -129,7 +131,7 @@ public class AgentObjectTest {
                 }
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, createConfig(false, false, true, null));
+            }, AgentObjectFactory.createConfig(false, false, true, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -161,7 +163,7 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ctx, frame) -> {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, createConfig(false, false, true, (name) -> "foo".equals(name)));
+            }, AgentObjectFactory.createConfig(false, false, true, (name) -> "foo".equals(name)));
             agentAPI.on("close", () -> {
                 finished[0] = true;
             });
@@ -201,7 +203,7 @@ public class AgentObjectTest {
                 Object index = frame.get("loopIndex0");
                 assertTrue("Number as expected: " + index, index instanceof Number);
                 loopIndexSum[0] += ((Number) index).intValue();
-            }, createConfig(false, true, false, null));
+            }, AgentObjectFactory.createConfig(false, true, false, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -230,7 +232,7 @@ public class AgentObjectTest {
             int[] expressionCounter = {0};
             agentAPI.on("enter", (ev, frame) -> {
                 expressionCounter[0]++;
-            }, createConfig(true, false, false, null));
+            }, AgentObjectFactory.createConfig(true, false, false, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -258,7 +260,7 @@ public class AgentObjectTest {
 
             String[][] max = {new String[0]};
             LinkedList<String> stack = new LinkedList<>();
-            final AgentScriptAPI.OnConfig allRoots = createConfig(false, false, true, null);
+            final AgentScriptAPI.OnConfig allRoots = AgentObjectFactory.createConfig(false, false, true, null);
             agentAPI.on("enter", (ev, frame) -> {
                 stack.push(ev.name());
                 if (stack.size() > max[0].length) {
@@ -295,14 +297,36 @@ public class AgentObjectTest {
         }
     }
 
-    private static AgentScriptAPI.OnConfig createConfig(
-                    boolean expressions, boolean statements, boolean roots,
-                    Predicate<String> rootNameFilter) {
-        AgentScriptAPI.OnConfig config = new AgentScriptAPI.OnConfig();
-        config.expressions = expressions;
-        config.statements = statements;
-        config.roots = roots;
-        config.rootNameFilter = rootNameFilter;
-        return config;
+    @Test
+    public void accessFrameVariables() throws Exception {
+        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(mul,\n" +
+                "    ARGUMENT(a),\n" +
+                "    ARGUMENT(b),\n" +
+                "    EXPRESSION\n" +
+                "  ),\n" +
+                "  CALL(mul, CONSTANT(6), CONSTANT(7))\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+
+            Set<String> names = new TreeSet<>();
+            agentAPI.on("enter", (ctx, frame) -> {
+                names.addAll(frame.keySet());
+            }, createConfig(true, false, false, (name) -> "mul".equals(name)));
+
+            c.eval(sampleScript);
+
+            Assert.assertArrayEquals("THIS, a and b found", new Object[]{"THIS", "a", "b"}, names.toArray());
+        }
     }
+
 }

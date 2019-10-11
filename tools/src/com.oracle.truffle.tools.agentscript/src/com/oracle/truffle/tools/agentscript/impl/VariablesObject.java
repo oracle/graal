@@ -35,6 +35,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Set;
+import java.util.TreeSet;
 
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
@@ -55,9 +57,27 @@ final class VariablesObject implements TruffleObject {
         return true;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @ExportMessage
-    static Object getMembers(VariablesObject obj, boolean includeInternal) {
-        return new Object[0];
+    Object getMembers(boolean includeInternal) {
+        Set<String> names = new TreeSet<>();
+        InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+        for (Scope scope : env.findLocalScopes(where, frame)) {
+            try {
+                if (scope == null) {
+                    continue;
+                }
+                final String receiverName = scope.getReceiverName();
+                if (receiverName != null) {
+                    names.add(receiverName);
+                }
+                readMemberNames(names, scope.getVariables(), iop);
+                readMemberNames(names, scope.getArguments(), iop);
+            } catch (InteropException ex) {
+                throw AgentException.raise(ex);
+            }
+        }
+        return ArrayObject.wrap(names);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -92,6 +112,19 @@ final class VariablesObject implements TruffleObject {
             }
         }
         return null;
+    }
+
+    private static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {
+        if (iop.hasMembers(map)) {
+            Object members = iop.getMembers(map);
+            long size = iop.getArraySize(members);
+            for (long i = 0; i < size; i++) {
+                Object at = iop.readArrayElement(members, i);
+                if (at instanceof String) {
+                    names.add((String) at);
+                }
+            }
+        }
     }
 
     @ExportMessage

@@ -112,7 +112,7 @@ final class AgentObject implements TruffleObject {
             return obj;
         }
     }
-    
+
     @CompilerDirectives.TruffleBoundary
     private Object importExported(String name) {
         final Object v = env.getExportedSymbols().get(name);

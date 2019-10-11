@@ -37,11 +37,21 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;
 import com.oracle.truffle.tools.agentscript.AgentScript;
+import java.util.function.Predicate;
 import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
 
 final class AgentObjectFactory extends ProxyLanguage {
     private static TruffleObject agentObject;
+
+    static AgentScriptAPI.OnConfig createConfig(boolean expressions, boolean statements, boolean roots, Predicate<String> rootNameFilter) {
+        AgentScriptAPI.OnConfig config = new AgentScriptAPI.OnConfig();
+        config.expressions = expressions;
+        config.statements = statements;
+        config.roots = roots;
+        config.rootNameFilter = rootNameFilter;
+        return config;
+    }
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
