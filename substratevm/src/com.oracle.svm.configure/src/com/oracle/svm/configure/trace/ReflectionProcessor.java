@@ -34,6 +34,7 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import org.graalvm.compiler.phases.common.LazyValue;
 
 class ReflectionProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -83,7 +84,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnore(() -> callerClass)) {
+        if (advisor.shouldIgnore(new LazyValue<>(() -> callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;

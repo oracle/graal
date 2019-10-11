@@ -31,6 +31,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberKind;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.TypeConfiguration;
 
+import org.graalvm.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
@@ -60,7 +61,8 @@ class JniProcessor extends AbstractProcessor {
         String declaringClass = (String) entry.get("declaring_class");
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
-        if (advisor.shouldIgnore(() -> callerClass)) {
+        LazyValue<String> callerClassLazyValue = new LazyValue<>(() -> callerClass);
+        if (advisor.shouldIgnore(callerClassLazyValue)) {
             return;
         }
         String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
@@ -80,8 +82,10 @@ class JniProcessor extends AbstractProcessor {
                 if (name.charAt(0) != '[') {
                     name = "L" + name + ";";
                 }
-                name = MetaUtil.internalNameToJava(name, true, false);
-                config.getOrCreateType(name);
+                String qualifiedJavaName = MetaUtil.internalNameToJava(name, true, false);
+                if (!advisor.shouldIgnoreJniClassLookup(new LazyValue<>(() -> qualifiedJavaName), callerClassLazyValue)) {
+                    config.getOrCreateType(qualifiedJavaName);
+                }
                 break;
             }
             case "GetStaticMethodID":
@@ -89,7 +93,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
+                if (!advisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> clazz), new LazyValue<>(() -> name), new LazyValue<>(() -> signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 }
                 break;
@@ -105,7 +109,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 1); // exception message, ignore
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
-                if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
+                if (!advisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> clazz), new LazyValue<>(() -> name), new LazyValue<>(() -> signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 }
                 break;
