@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -65,6 +64,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -188,9 +188,10 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) { /* Don't fail if we are not supposed to link */
+            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                /* Fail if we will statically link JDK libraries but do not have them available */
                 String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
-                        "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
+                                "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
                 if (hint != null) {
                     message += "\n" + hint;
                 }
