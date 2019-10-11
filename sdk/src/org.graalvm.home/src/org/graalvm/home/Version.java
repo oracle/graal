@@ -144,7 +144,7 @@ public final class Version implements Comparable<Version> {
     }
 
     /**
-     * Returns <code>true</code> if this is a support release build of GraalVM else
+     * Returns <code>true</code> if this is a supported release build of GraalVM else
      * <code>false</code>. Use this for implementation assertions that verify that only releases are
      * deployed to production.
      *
@@ -156,7 +156,7 @@ public final class Version implements Comparable<Version> {
     }
 
     /**
-     * Returns <code>true</code> if this is a support release build of GraalVM else
+     * Returns <code>true</code> if this is an unsupported snapshot build of GraalVM else
      * <code>false</code>. Use this for implementation assertions that verify that only releases are
      * deployed to production.
      *
