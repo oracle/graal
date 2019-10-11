@@ -588,6 +588,10 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
+        public Context getContext() {
+            return null;
+        }
+
         public Set<String> getMemberKeys(Object receiver) {
             return Collections.emptySet();
         }
