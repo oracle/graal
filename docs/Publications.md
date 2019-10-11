@@ -55,6 +55,23 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
+### 2019
+
+- Fabio Niephaus, Tim Felgentreff, and Robert Hirschfeld [**GraalSqueak: Toward a Smalltalk-based Tooling Platform for Polyglot Programming**](https://doi.org/10.1145/3357390.3361024)
+In _Proceedings of the International Conference on Managed Programming Languages and Runtimes (MPLR) 2019_
+
+- Daniel Stolpe, Tim Felgentreff, Christian Humer, Fabio Niephaus, and Robert Hirschfeld [**Language-independent Development Environment Support for Dynamic Runtimes**](https://doi.org/10.1145/3359619.3359746)
+In _Proceedings of the Dynamic Languages Symposium (DLS) 2019_
+
+- Fabio Niephaus, Tim Felgentreff, Tobias Pape, and Robert Hirschfeld [**Efficient Implementation of Smalltalk Activation Records in Language Implementation Frameworks**](https://doi.org/10.1145/3328433.3328440)
+In _Proceedings of the Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs) 2019, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
+- Fabio Niephaus, Eva Krebs, Christian Flach, Jens Lincke, and Robert Hirschfeld [**PolyJuS: A Squeak/Smalltalk-based Polyglot Notebook System for the GraalVM**](https://doi.org/10.1145/3328433.3328434)
+In _Proceedings of the Programming Experience 2019 (PX/19) Workshop, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
+- Fabio Niephaus, Tim Felgentreff, and Robert Hirschfeld [**Towards Polyglot Adapters for the GraalVM**](https://doi.org/10.1145/3328433.3328458)
+In _Proceedings of the Interconnecting Code Workshop (ICW) 2019, companion volume to International Conference on the Art, Science, and Engineering of Programming (‹Programming›)_
+
 ### 2018
 
 - Kevin Menard, Chris Seaton, Benoit Daloze [**Specializing Ropes for Ruby**](https://chrisseaton.com/truffleruby/ropes-manlang.pdf)
@@ -71,6 +88,9 @@ In _Proceedings of the 2018 International Symposium on Code Generation and Optim
 
 - Matthias Grimmer, Roland Schatz, Chris Seaton, Thomas Wuerthinger, Mikel Lujan [**Cross-Language Interoperability in a Multi-Language Runtime**](https://chrisseaton.com/truffleruby/cross-language-interop.pdf)
 In _ACM Transactions on Programming Languages and Systems (TOPLAS), Vol. 40, No. 2, 2018_
+
+- Fabio Niephaus, Tim Felgentreff, and Robert Hirschfeld [**GraalSqueak: A Fast Smalltalk Bytecode Interpreter Written in an AST Interpreter Framework**](https://doi.org/10.1145/3242947.3242948)
+In _Proceedings of the Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs, and Systems (ICOOOLPS) 2018_
 
 - Manuel Rigger, Roland Schatz, Jacob Kreindl, Christian Haeubl, Hanspeter Moessenboeck [**Sulong, and Thanks for All the Fish**](http://ssw.jku.at/General/Staff/ManuelRigger/MoreVMs18.pdf)
 _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs 2018)_
@@ -192,6 +212,13 @@ Describes the design of self-optimizing and self-specializing interpreter, and t
 
 ## GraalVM Compiler Papers
 
+### 2019
+
+- Aleksandar Prokopec, Gilles Duboscq, David Leopoldseder, Thomas Wuerthinger [**An Optimization-Driven Incremental Inline Substitution Algorithm for Just-In-Time Compilers**](https://dl.acm.org/citation.cfm?id=3314893)
+In _Proceedings of the 2019 International Symposium on Code Generation and Optimization (CGO 2019)_
+
+- Aleksandar Prokopec, Andrea Rosà, David Leopoldseder, Gilles Duboscq, Petr Tůma, Martin Studener, Lubomír Bulej, Yudi Zheng, Alex Villazón, Doug Simon, Thomas Würthinger, Walter Binder [**Renaissance: benchmarking suite for parallel applications on the JVM**](https://dl.acm.org/citation.cfm?id=3314637)
+In Proceedings of the 40th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2019)
 
 ### 2018
 
