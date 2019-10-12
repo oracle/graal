@@ -125,7 +125,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         // First, we execute the main function (exported as "_main").
         // Then, we execute a special function, which resets the globals to their initial values.
         Value mainFunction = context.getBindings("wasm").getMember("_main");
-        Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
+        Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_MODULE);
         Value initializeModule = context.getBindings("wasm").getMember(TestutilModule.Names.INITIALIZE_MODULE);
 
         Value result = null;
@@ -231,7 +231,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private static void validateThrown(String expectedErrorMessage, PolyglotException e) throws PolyglotException{
         if (expectedErrorMessage != null) {
-            if (!expectedErrorMessage.equals(e.getMessage())){
+            if (!expectedErrorMessage.equals(e.getMessage())) {
                 throw e;
             }
         } else {

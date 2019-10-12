@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.binary.constants;
 
-public final class Sections {
+public final class Section {
     public static final int CUSTOM = 0x00;
     public static final int TYPE = 0x01;
     public static final int IMPORT = 0x02;

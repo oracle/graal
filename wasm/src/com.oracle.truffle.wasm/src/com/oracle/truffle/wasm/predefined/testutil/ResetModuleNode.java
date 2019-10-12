@@ -38,8 +38,8 @@ import com.oracle.truffle.wasm.binary.WasmVoidResult;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class ResetGlobalsNode extends WasmPredefinedRootNode {
-    public ResetGlobalsNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+public class ResetModuleNode extends WasmPredefinedRootNode {
+    public ResetModuleNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
         super(language, codeEntry, memory);
     }
 
@@ -51,13 +51,13 @@ public class ResetGlobalsNode extends WasmPredefinedRootNode {
 
     @Override
     public String name() {
-        return TestutilModule.Names.RESET_GLOBALS;
+        return TestutilModule.Names.RESET_MODULE;
     }
 
     @CompilerDirectives.TruffleBoundary
     private void resetGlobals() {
         // TODO: Reset globals in all modules of the context.
         WasmModule module = contextReference().get().modules().get("test");
-        contextReference().get().linker().resetGlobalState(module, module.data());
+        contextReference().get().linker().resetModuleState(module, module.data());
     }
 }
