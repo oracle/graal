@@ -435,7 +435,6 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ThreadSubstitutions.class, "isInterrupted", Receiver.class, boolean.class);
     }
 
-
     public static final String reflectionClass;
     public static final String constantPoolClass;
 
@@ -472,7 +471,7 @@ public class HotSpotGraphBuilderPlugins {
         }
         return false;
     }
-    
+
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
@@ -482,15 +481,15 @@ public class HotSpotGraphBuilderPlugins {
             String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
 
-            String cbcEncryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining" , "implEncrypt" , "encrypt");
-            String cbcDecryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining" , "implDecrypt" , "decrypt");
+            String cbcEncryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
+            String cbcDecryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
-                  
-            String aesEncryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt" , "implEncryptBlock" , "encryptBlock");
-            String aesDecryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt" , "implDecryptBlock" , "decryptBlock");
+
+            String aesEncryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
+            String aesDecryptName = lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
 
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
@@ -529,12 +528,12 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
-        if (isIntrinsicName(config, "sun.security.provider.DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512)) {
+        if (isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512)) {
             Registration r = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
             r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
 
-        String implCompressName = lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress" , "implCompress0");
+        String implCompressName = lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress", "implCompress0");
         if (useSha1) {
             assert config.sha1ImplCompress != 0L;
             Registration r = new Registration(plugins, "sun.security.provider.SHA", bytecodeProvider);

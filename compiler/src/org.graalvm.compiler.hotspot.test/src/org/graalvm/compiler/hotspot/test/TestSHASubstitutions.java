@@ -72,7 +72,7 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha1() {
         if (getConfig().useSHA1Intrinsics()) {
-            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0" , "implCompress");
+            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
             testWithInstalledIntrinsic("sun.security.provider.SHA", implCompressName, "testDigest", "SHA-1", getData());
         }
     }
@@ -106,7 +106,7 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha256() {
         if (getConfig().useSHA256Intrinsics()) {
-            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0" , "implCompress");
+            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
             testWithInstalledIntrinsic("sun.security.provider.SHA2", implCompressName, "testDigest", "SHA-256", getData());
         }
     }
@@ -114,7 +114,7 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha512() {
         if (getConfig().useSHA512Intrinsics()) {
-            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0" , "implCompress");
+            String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
             testWithInstalledIntrinsic("sun.security.provider.SHA5", implCompressName, "testDigest", "SHA-512", getData());
         }
     }
