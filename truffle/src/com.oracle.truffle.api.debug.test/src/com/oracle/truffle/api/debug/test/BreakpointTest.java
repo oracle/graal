@@ -1081,6 +1081,88 @@ public class BreakpointTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testMisplacedLineBreakpoints2() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    R1-9_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1, LOOP(1,\n" +
+                        "    R10-25_STATEMENT)),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedLineBreakpointsComplex() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  EXPRESSION,\n" +
+                        "  EXPRESSION(\n" +
+                        "    R1-4_STATEMENT,\n" +
+                        "    EXPRESSION,\n" +       // 5
+                        "    R5-7_STATEMENT,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  R8-9_STATEMENT,\n" +
+                        "  LOOP(1,\n" +             // 10
+                        "    EXPRESSION,\n" +
+                        "    LOOP(1,\n" +
+                        "      R10-14_STATEMENT),\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +                      // 15
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +
+                        "      EXPRESSION)),\n" +
+                        "  EXPRESSION(\n" +
+                        "    LOOP(1,\n" +           // 20
+                        "      R15-21_STATEMENT,\n" +
+                        "      LOOP(1,\n" +
+                        "        EXPRESSION,\n" +
+                        "        R22-24_STATEMENT,\n" +
+                        "        EXPRESSION(\n" +   // 25
+                        "          R25-29_STATEMENT),\n" +
+                        "        EXPRESSION),\n" +
+                        "      EXPRESSION),\n" +
+                        "    EXPRESSION),\n" +
+                        "  EXPRESSION,\n" +         // 30
+                        "  LOOP(1,\n" +
+                        "    R30-32_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +           // 35
+                        "      EXPRESSION(\n" +
+                        "        R33-37_STATEMENT),\n" +
+                        "      R38_STATEMENT),\n" +
+                        "    R39-43_STATEMENT),\n" +
+                        "\n" +                      // 40
+                        "  LOOP(1,\n" +
+                        "    EXPRESSION)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
     public void testMisplacedBreakpointPositions() throws Exception {
         String source = " B1_{} R1-2_{S B2_}B3_\n" +
                         "R3_[SFB ]\n" +
