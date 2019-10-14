@@ -26,7 +26,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -44,12 +44,12 @@ final class VariablesObject implements TruffleObject {
 
     private final TruffleInstrument.Env env;
     private final Node where;
-    private final VirtualFrame frame;
+    private final Frame frame;
 
-    VariablesObject(TruffleInstrument.Env env, Node where, VirtualFrame frame) {
+    VariablesObject(TruffleInstrument.Env env, Node where, Frame frame) {
         this.env = env;
         this.where = where;
-        this.frame = frame;
+        this.frame = frame.materialize();
     }
 
     @ExportMessage
