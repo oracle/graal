@@ -45,7 +45,7 @@ public class ResetModuleNode extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        resetGlobals();
+        resetModuleState();
         return WasmVoidResult.getInstance();
     }
 
@@ -55,7 +55,7 @@ public class ResetModuleNode extends WasmPredefinedRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void resetGlobals() {
+    private void resetModuleState() {
         // TODO: Reset globals in all modules of the context.
         WasmModule module = contextReference().get().modules().get("test");
         contextReference().get().linker().resetModuleState(module, module.data());

@@ -1571,7 +1571,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     void resetMemoryState() {
         if (tryJumpToSection(DATA)) {
-
+            readDataSection();
         }
     }
 }
