@@ -8,6 +8,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added [HomeFinder](http://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html), a utility class to find various paths of the running GraalVM.
 * Contexts can now be closed if they are still explicitly entered using `Context.enter` on the current thread. This allows for simpler error recovery code.
 * Added `Value.getContext()` to access the context a value is associated with.
+* Added `org.graalvm.home.Version` version utility that allows to create, validate and compare GraalVM versions.
 
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot
