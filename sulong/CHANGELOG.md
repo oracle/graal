@@ -9,6 +9,9 @@ New features:
 
 * Added preliminary support for parsing bitcode produced by LLVM 9.
 
+* We are now shipping native `libc++` and `libc++abi` libraries with the LLVM runtime,
+  so users no longer need to install them manually.
+
 Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
