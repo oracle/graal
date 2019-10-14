@@ -45,6 +45,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.wasm.utils.WasmInitialization;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -395,7 +396,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Object mainContent = WasmResource.getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
             String resultContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
             String initContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
-            WasmTestInitialization initializer = testInitialization(initContent);
+            WasmInitialization initializer = WasmInitialization.create(initContent);
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);
             String resultType = resultTypeValue[0];
@@ -444,11 +445,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmStringTestCase(name, data, program, null);
     }
 
-    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program, WasmTestInitialization initializer) {
+    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer) {
         return new WasmStringTestCase(name, data, program, initializer);
     }
 
-    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary, WasmTestInitialization initializer) {
+    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer) {
         return new WasmBinaryTestCase(name, data, binary, initializer);
     }
 
@@ -472,79 +473,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestCaseData(expectedErrorMessage);
     }
 
-    protected WasmTestInitialization testInitialization(String initContent) {
-        if (initContent == null) {
-            return null;
-        }
-
-        final String[] lines = initContent.split("\n");
-        Map<String, Long> globals = new LinkedHashMap<>();
-        Map<String, String> memory = new LinkedHashMap<>();
-        for (String line : lines) {
-            if (line.startsWith("[")) {
-                // Memory store.
-                String[] parts = line.split("=");
-                String address = parts[0].substring(1, parts[0].length() - 1);
-                String value = parts[1];
-                memory.put(address, value);
-            } else {
-                // Global store.
-                String[] parts = line.split("=");
-                String name = parts[0];
-                Long value = Long.parseLong(parts[1]);
-                globals.put(name, value);
-            }
-        }
-        return new WasmTestInitialization(globals, memory);
-    }
-
-    protected static class WasmTestInitialization implements Consumer<WasmContext>, TruffleObject {
-        private final Map<String, Long> globalValues;
-        private final Map<String, String> memoryValues;
-
-        public WasmTestInitialization(Map<String, Long> globalValues, Map<String, String> memoryValues) {
-            this.globalValues = globalValues;
-            this.memoryValues = memoryValues;
-        }
-
-        public void accept(WasmContext context) {
-            try {
-                final WasmModule module = context.modules().get("env");
-                for (Map.Entry<String, Long> entry : globalValues.entrySet()) {
-                    final String name = entry.getKey();
-                    final Long value = entry.getValue();
-                    if (!module.isLinked() || module.global(name).isMutable()) {
-                        module.writeMember(name, value);
-                    }
-                }
-                final WasmMemory memory = (WasmMemory) module.readMember("memory");
-                for (Map.Entry<String, String> entry : memoryValues.entrySet()) {
-                    final String addressGlobal = entry.getKey();
-                    final long address = getValue(addressGlobal);
-                    final String valueGlobal = entry.getValue();
-                    final long value = getValue(valueGlobal);
-                    memory.writeArrayElement(address, value);
-                }
-            } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private long getValue(String s) {
-            if (Character.isDigit(s.charAt(0))) {
-                return Integer.parseInt(s);
-            } else {
-                return globalValues.get(s);
-            }
-        }
-    }
-
     protected static abstract class WasmTestCase {
         private final String name;
         private final WasmTestCaseData data;
-        private final WasmTestInitialization initialization;
+        private final WasmInitialization initialization;
 
-        WasmTestCase(String name, WasmTestCaseData data, WasmTestInitialization initialization) {
+        WasmTestCase(String name, WasmTestCaseData data, WasmInitialization initialization) {
             this.name = name;
             this.data = data;
             this.initialization = initialization;
@@ -552,7 +486,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
         public abstract byte[] createBinary() throws IOException, InterruptedException;
 
-        public WasmTestInitialization initialization() {
+        public WasmInitialization initialization() {
             return initialization;
         }
     }
@@ -560,7 +494,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     protected static class WasmStringTestCase extends WasmTestCase {
         private String program;
 
-        WasmStringTestCase(String name, WasmTestCaseData data, String program, WasmTestInitialization initializer) {
+        WasmStringTestCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer) {
             super(name, data, initializer);
             this.program = program;
         }
@@ -574,7 +508,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     protected static class WasmBinaryTestCase extends WasmTestCase {
         private final byte[] binary;
 
-        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary, WasmTestInitialization initializer) {
+        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer) {
             super(name, data, initializer);
             this.binary = binary;
         }
