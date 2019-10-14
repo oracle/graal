@@ -47,9 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -59,6 +56,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -850,7 +850,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
         Method callerMethod = getCallerMethod(depth);
         if (callerMethod == null) {
-            return null;
+            return StaticObject.NULL;
         }
         return callerMethod.getDeclaringKlass().mirror();
     }
@@ -1121,14 +1121,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                 Method m = getMethodFromFrame(frameInstance);
                 if (m != null) {
                     Klass holder = m.getDeclaringKlass();
-                        Meta meta = holder.getMeta();
-                        // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
-                        if (meta.MethodAccessorImpl.isAssignableFrom(holder) || meta.ConstructorAccessorImpl.isAssignableFrom(holder)) {
-                            return null;
-                        }
+                    Meta meta = holder.getMeta();
+                    // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
+                    if (meta.MethodAccessorImpl.isAssignableFrom(holder) || meta.ConstructorAccessorImpl.isAssignableFrom(holder)) {
+                        return null;
+                    }
 
-                        StaticObject loader = holder.getDefiningClassLoader();
-                        // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
+                    StaticObject loader = holder.getDefiningClassLoader();
+                    // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
                     if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
                         return loader;
                     }
