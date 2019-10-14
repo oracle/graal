@@ -1,9 +1,90 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang.Object>
+cons protected init()
+innr public abstract interface static !annotation Registration
+innr public abstract interface static Provider
+innr public abstract static ContextReference
+innr public abstract static LanguageReference
+innr public final static !enum ContextPolicy
+innr public final static Env
+innr public final static InlineParsingRequest
+innr public final static ParsingRequest
+meth protected abstract boolean isObjectOfLanguage(java.lang.Object)
+meth protected abstract {com.oracle.truffle.api.TruffleLanguage%0} createContext(com.oracle.truffle.api.TruffleLanguage$Env)
+meth protected boolean areOptionsCompatible(org.graalvm.options.OptionValues,org.graalvm.options.OptionValues)
+meth protected boolean initializeMultiContext()
+ anno 0 java.lang.Deprecated()
+meth protected boolean isThreadAccessAllowed(java.lang.Thread,boolean)
+meth protected boolean isVisible({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected boolean patchContext({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.TruffleLanguage$Env)
+meth protected com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.TruffleLanguage$ParsingRequest) throws java.lang.Exception
+meth protected com.oracle.truffle.api.nodes.ExecutableNode parse(com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest) throws java.lang.Exception
+meth protected com.oracle.truffle.api.source.SourceSection findSourceLocation({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected final java.lang.String getLanguageHome()
+meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
+meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
+ anno 0 java.lang.Deprecated()
+meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
+ anno 0 java.lang.Deprecated()
+meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
+meth protected static <%0 extends com.oracle.truffle.api.TruffleLanguage<?>> {%%0} getCurrentLanguage(java.lang.Class<{%%0}>)
+meth protected static <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> {%%0} getCurrentContext(java.lang.Class<{%%1}>)
+meth protected void disposeContext({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void disposeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
+meth protected void finalizeContext({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}) throws java.lang.Exception
+meth protected void initializeMultiThreading({com.oracle.truffle.api.TruffleLanguage%0})
+meth protected void initializeMultipleContexts()
+meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
+meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
+ anno 0 java.lang.Deprecated()
+supr java.lang.Object
+hfds languageInfo,reference,vmObject
+
+CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
+ outer com.oracle.truffle.api.TruffleLanguage
+meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
+meth public abstract java.lang.String getLanguageClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
+ outer com.oracle.truffle.api.TruffleLanguage
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean interactive()
+meth public abstract !hasdefault boolean internal()
+meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
+meth public abstract !hasdefault java.lang.Class<?>[] services()
+meth public abstract !hasdefault java.lang.String defaultMimeType()
+meth public abstract !hasdefault java.lang.String id()
+meth public abstract !hasdefault java.lang.String implementationName()
+meth public abstract !hasdefault java.lang.String version()
+meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
+meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
+meth public abstract !hasdefault java.lang.String[] dependentLanguages()
+meth public abstract !hasdefault java.lang.String[] mimeType()
+ anno 0 java.lang.Deprecated()
+meth public abstract java.lang.String name()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String methodName()
+meth public abstract java.lang.Class<?> value()
+
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
 cons public init(org.graalvm.polyglot.Context$Builder)
+innr public abstract interface static PositionPredicate
 intf java.lang.AutoCloseable
 meth public !varargs com.oracle.truffle.api.debug.DebuggerSession startSession(com.oracle.truffle.api.debug.SourceElement[])
 meth public com.oracle.truffle.api.debug.Debugger getDebugger()
@@ -15,7 +96,9 @@ meth public java.lang.Thread getEvalThread()
 meth public java.lang.Throwable expectThrowable()
 meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalvm.polyglot.Source)
 meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
+meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source,com.oracle.truffle.tck.DebuggerTester$PositionPredicate)
 meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
+meth public void assertLineBreakpointsResolution(java.lang.String,com.oracle.truffle.tck.DebuggerTester$PositionPredicate,java.lang.String,java.lang.String)
 meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String)
 meth public void close()
 meth public void closeEngine()
@@ -25,6 +108,11 @@ meth public void startEval(org.graalvm.polyglot.Source)
 supr java.lang.Object
 hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
 hcls ExecutingLoop,ExecutingSource
+
+CLSS public abstract interface static com.oracle.truffle.tck.DebuggerTester$PositionPredicate
+ outer com.oracle.truffle.tck.DebuggerTester
+meth public abstract boolean testLine(int)
+meth public abstract boolean testLineColumn(int,int)
 
 CLSS public final com.oracle.truffle.tck.TruffleRunner
 cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
@@ -70,6 +158,15 @@ CLSS public abstract interface static !annotation com.oracle.truffle.tck.Truffle
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract int value()
+
+CLSS public com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
+cons public init()
+intf com.oracle.truffle.api.TruffleLanguage$Provider
+meth public com.oracle.truffle.api.TruffleLanguage<?> create()
+meth public java.lang.String getLanguageClassName()
+meth public java.util.Collection<java.lang.String> getServicesClassNames()
+meth public java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
+supr java.lang.Object
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception

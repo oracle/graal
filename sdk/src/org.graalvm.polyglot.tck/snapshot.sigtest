@@ -80,12 +80,14 @@ meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Sni
 meth public abstract java.util.Collection<? extends org.graalvm.polyglot.tck.Snippet> createValueConstructors(org.graalvm.polyglot.Context)
 meth public abstract org.graalvm.polyglot.Value createIdentityFunction(org.graalvm.polyglot.Context)
 meth public java.util.Collection<? extends org.graalvm.polyglot.tck.InlineSnippet> createInlineScripts(org.graalvm.polyglot.Context)
+meth public org.graalvm.polyglot.tck.Snippet createIdentityFunctionSnippet(org.graalvm.polyglot.Context)
 
 CLSS public abstract interface org.graalvm.polyglot.tck.ResultVerifier
 innr public final static SnippetRun
 intf java.util.function.Consumer<org.graalvm.polyglot.tck.ResultVerifier$SnippetRun>
 meth public abstract void accept(org.graalvm.polyglot.tck.ResultVerifier$SnippetRun)
 meth public static org.graalvm.polyglot.tck.ResultVerifier getDefaultResultVerifier()
+meth public static org.graalvm.polyglot.tck.ResultVerifier getIdentityFunctionDefaultResultVerifier()
 
 CLSS public final static org.graalvm.polyglot.tck.ResultVerifier$SnippetRun
  outer org.graalvm.polyglot.tck.ResultVerifier
@@ -121,6 +123,8 @@ CLSS public final org.graalvm.polyglot.tck.TypeDescriptor
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor ARRAY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor BOOLEAN
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor DATE
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor DURATION
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor EXECUTABLE_ANY
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor HOST_OBJECT
@@ -131,6 +135,8 @@ fld public final static org.graalvm.polyglot.tck.TypeDescriptor NULL
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor NUMBER
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor OBJECT
 fld public final static org.graalvm.polyglot.tck.TypeDescriptor STRING
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor TIME
+fld public final static org.graalvm.polyglot.tck.TypeDescriptor TIME_ZONE
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,boolean,org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor executable(org.graalvm.polyglot.tck.TypeDescriptor,org.graalvm.polyglot.tck.TypeDescriptor[])
 meth public !varargs static org.graalvm.polyglot.tck.TypeDescriptor instantiable(org.graalvm.polyglot.tck.TypeDescriptor,boolean,org.graalvm.polyglot.tck.TypeDescriptor[])
