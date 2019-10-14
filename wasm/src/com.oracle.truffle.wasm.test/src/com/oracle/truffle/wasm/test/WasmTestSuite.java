@@ -29,6 +29,12 @@
  */
 package com.oracle.truffle.wasm.test;
 
+import com.oracle.truffle.wasm.test.suites.control.IfThenElseSuite;
+import com.oracle.truffle.wasm.test.suites.memory.MemorySuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.EmscriptenSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.IssueSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.MultipleFunctionsSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.SpecSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -52,6 +58,11 @@ import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
         BlockWithLocalsSuite.class,
         BranchBlockSuite.class,
         LoopBlockSuite.class,
+        IfThenElseSuite.class,
+        MemorySuite.class,
+        IssueSuite.class,
+        MultipleFunctionsSuite.class,
+        EmscriptenSuite.class,
 })
 public class WasmTestSuite {
     @Test
