@@ -90,7 +90,7 @@ public final class CoverageTest {
 
     @Test
     public void testBasic() {
-        try(Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build()) {
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build()) {
             context.eval(defaultSource);
             final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
             final SourceCoverage[] coverage = tracker.getCoverage();
