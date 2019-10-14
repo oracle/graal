@@ -5,11 +5,6 @@ hello
 sum
 issue-18450-full
 
-# sulong generated tests - to be removed
-sulong-binarytrees.gcc
-sulong-meteor.cint
-sulong-richards
-
 # same as the hello test, with some extra debug symbols
 hello-debug
 
