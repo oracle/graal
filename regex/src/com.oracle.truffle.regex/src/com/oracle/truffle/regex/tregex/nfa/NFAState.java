@@ -40,11 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -52,6 +49,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -60,6 +58,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -93,7 +92,7 @@ public class NFAState implements JsonConvertible {
     @CompilationFinal(dimensions = 1) private NFAStateTransition[] next;
     @CompilationFinal(dimensions = 1) private NFAStateTransition[] prev;
     private short prevLength = 0;
-    private List<Integer> possibleResults;
+    private CompilationFinalBitSet possibleResults;
     private final CharSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
@@ -119,7 +118,7 @@ public class NFAState implements JsonConvertible {
                     byte flags,
                     NFAStateTransition[] next,
                     NFAStateTransition[] prev,
-                    List<Integer> possibleResults,
+                    CompilationFinalBitSet possibleResults,
                     CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this.id = id;
@@ -384,9 +383,9 @@ public class NFAState implements JsonConvertible {
      * priority, so when a single 'a' is encountered when searching for a match, the pre-calculated
      * result corresponding to capture group 1 must be preferred.
      */
-    public List<Integer> getPossibleResults() {
+    public CompilationFinalBitSet getPossibleResults() {
         if (possibleResults == null) {
-            return Collections.emptyList();
+            return CompilationFinalBitSet.getEmptyInstance();
         }
         return possibleResults;
     }
@@ -397,12 +396,9 @@ public class NFAState implements JsonConvertible {
 
     public void addPossibleResult(int index) {
         if (possibleResults == null) {
-            possibleResults = new ArrayList<>();
+            possibleResults = new CompilationFinalBitSet(TRegexOptions.TRegexTraceFinderMaxNumberOfResults);
         }
-        int searchResult = Collections.binarySearch(possibleResults, index);
-        if (searchResult < 0) {
-            possibleResults.add((searchResult + 1) * -1, index);
-        }
+        possibleResults.set(index);
     }
 
     public boolean isDead(boolean forward) {

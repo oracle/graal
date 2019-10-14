@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -52,11 +54,6 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 public final class DFAStateNodeBuilder implements JsonConvertible {
 
     private static final byte FLAG_INITIAL_STATE = 1;
@@ -64,7 +61,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     private static final byte FLAG_FINAL_STATE_SUCCESSOR = 1 << 2;
     private static final byte FLAG_BACKWARD_PREFIX_STATE = 1 << 3;
 
-    private static final List<DFACaptureGroupTransitionBuilder> NODE_SPLIT_TAINTED = new ArrayList<>();
+    private static final DFACaptureGroupTransitionBuilder[] EMPTY_PRECEDING_TRANSITIONS = new DFACaptureGroupTransitionBuilder[0];
+    private static final DFACaptureGroupTransitionBuilder[] NODE_SPLIT_TAINTED = new DFACaptureGroupTransitionBuilder[0];
     private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
     private final short id;
@@ -72,7 +70,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     private NFATransitionSet nfaTransitionSet;
     private short backwardPrefixState = -1;
     private DFAStateTransitionBuilder[] transitions;
-    private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
+    private int nPrecedingTransitions = 0;
+    private DFACaptureGroupTransitionBuilder[] precedingTransitions;
     private NFAStateTransition anchoredFinalStateTransition;
     private NFAStateTransition unAnchoredFinalStateTransition;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
@@ -239,24 +238,27 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         return -1;
     }
 
-    public void addPrecedingTransition(DFACaptureGroupTransitionBuilder transitionBuilder) {
-        if (precedingTransitions == NODE_SPLIT_TAINTED) {
-            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
-        }
-        if (precedingTransitions == null) {
-            precedingTransitions = new ArrayList<>();
-        }
-        precedingTransitions.add(transitionBuilder);
+    public void incPrecedingTransitions() {
+        nPrecedingTransitions++;
     }
 
-    public List<DFACaptureGroupTransitionBuilder> getPrecedingTransitions() {
+    public DFACaptureGroupTransitionBuilder[] getPrecedingTransitions() {
         if (precedingTransitions == NODE_SPLIT_TAINTED) {
             throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
         }
         if (precedingTransitions == null) {
-            return Collections.emptyList();
+            return EMPTY_PRECEDING_TRANSITIONS;
         }
         return precedingTransitions;
+    }
+
+    public void linkPrecedingTransition(DFAStateTransitionBuilder t) {
+        // null is allowed for initialCGTransition
+        assert t.getTarget() == this || t.getTarget() == null;
+        if (precedingTransitions == null) {
+            precedingTransitions = new DFACaptureGroupTransitionBuilder[nPrecedingTransitions];
+        }
+        precedingTransitions[--nPrecedingTransitions] = (DFACaptureGroupTransitionBuilder) t;
     }
 
     public boolean hasBackwardPrefixState() {
@@ -335,12 +337,12 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
                 for (NFAStateTransition t2 : target.getNext(forward)) {
                     NFAState target2 = t2.getTarget(forward);
                     if (target2.isAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
-                        updatePreCalcAnchoredResult(target2.getPossibleResults().get(0));
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                        updatePreCalcAnchoredResult(target2.getPossibleResults().iterator().nextInt());
                     }
                     if (target2.isUnAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
-                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().get(0));
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().iterator().nextInt());
                     }
                 }
             }

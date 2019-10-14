@@ -365,11 +365,11 @@ public final class DFAGenerator implements JsonConvertible {
         if (lookup == null) {
             lookup = createState(transition.getTransitionSet(), false, true);
             lookup.updateFinalStateData(this);
+            if (isGenericCG()) {
+                lookup.incPrecedingTransitions();
+            }
         }
         transition.setTarget(lookup);
-        if (isGenericCG()) {
-            lookup.addPrecedingTransition(initialCGTransition);
-        }
         return lookup;
     }
 
@@ -425,7 +425,7 @@ public final class DFAGenerator implements JsonConvertible {
             transition.setTarget(successorState);
             successorState.updateFinalStateData(this);
             if (isGenericCG()) {
-                transition.getTarget().addPrecedingTransition((DFACaptureGroupTransitionBuilder) transition);
+                transition.getTarget().incPrecedingTransitions();
             }
             if (state.isFinalState() && !(successorState.isFinalState() || successorState.isAnchoredFinalState())) {
                 simpleCGMustCopy = true;
@@ -778,6 +778,16 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private DFAAbstractStateNode[] createDFAExecutorStates() {
+        if (isGenericCG()) {
+            for (DFAStateNodeBuilder s : stateMap.values()) {
+                if (s.isInitialState()) {
+                    s.linkPrecedingTransition(initialCGTransition);
+                }
+                for (DFAStateTransitionBuilder t : s.getTransitions()) {
+                    t.getTarget().linkPrecedingTransition(t);
+                }
+            }
+        }
         DFAAbstractStateNode[] ret = new DFAAbstractStateNode[stateMap.values().size() + 1];
         for (DFAStateNodeBuilder s : stateMap.values()) {
             DFAAbstractStateNode replacement = getReplacement(s.getId());
@@ -828,12 +838,11 @@ public final class DFAGenerator implements JsonConvertible {
             short[] cgPrecedingTransitions = null;
             if (isGenericCG()) {
                 cgTransitions = new short[s.getTransitions().length];
-                List<DFACaptureGroupTransitionBuilder> precedingTransitions = s.getPrecedingTransitions();
-                assert !precedingTransitions.isEmpty();
-                cgPrecedingTransitions = new short[precedingTransitions.size()];
-                for (int i = 0; i < precedingTransitions.size(); i++) {
-                    DFACaptureGroupTransitionBuilder transitionBuilder = precedingTransitions.get(i);
-                    cgPrecedingTransitions[i] = transitionBuilder.toLazyTransition(compilationBuffer).getId();
+                DFACaptureGroupTransitionBuilder[] precedingTransitions = s.getPrecedingTransitions();
+                assert precedingTransitions.length != 0;
+                cgPrecedingTransitions = new short[precedingTransitions.length];
+                for (int i = 0; i < precedingTransitions.length; i++) {
+                    cgPrecedingTransitions[i] = precedingTransitions[i].toLazyTransition(compilationBuffer).getId();
                 }
             }
             char[] indexOfChars = null;

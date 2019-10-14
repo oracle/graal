@@ -230,7 +230,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         return lazyTransition;
     }
 
-    public int getStateIndex(int[] stateIndexMap, NFAState state) {
+    private static int getStateIndex(int[] stateIndexMap, NFAState state) {
         int ret = Arrays.binarySearch(stateIndexMap, state.getId());
         assert ret >= 0;
         return ret;
