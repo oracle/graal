@@ -53,7 +53,6 @@ public abstract class LLVMCheckGlobalVariableStorageNode extends LLVMNode {
 
     public abstract boolean execute();
 
-
     @Specialization
     boolean doCheck(
                     @CachedContext(LLVMLanguage.class) LLVMContext context,

@@ -292,9 +292,9 @@ final class Runner {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "descriptor == cachedDescriptor")
-        void doCached( LLVMGlobal descriptor, LLVMPointer value,
-                       @Cached("descriptor") LLVMGlobal cachedDescriptor,
-                       @Cached("create(cachedDescriptor)") LLVMWriteGlobalVariableStorageNode write) {
+        void doCached(LLVMGlobal descriptor, LLVMPointer value,
+                        @Cached("descriptor") LLVMGlobal cachedDescriptor,
+                        @Cached("create(cachedDescriptor)") LLVMWriteGlobalVariableStorageNode write) {
             write.execute(value);
         }
 
@@ -313,8 +313,8 @@ final class Runner {
         @SuppressWarnings("unused")
         @Specialization(guards = "descriptor == cachedDescriptor")
         boolean doCached(LLVMGlobal descriptor,
-                         @Cached("descriptor") LLVMGlobal cachedDescriptor,
-                         @Cached("create(cachedDescriptor)") LLVMCheckGlobalVariableStorageNode check) {
+                        @Cached("descriptor") LLVMGlobal cachedDescriptor,
+                        @Cached("create(cachedDescriptor)") LLVMCheckGlobalVariableStorageNode check) {
             return check.execute();
         }
 
