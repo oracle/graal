@@ -163,6 +163,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 resetContext.execute();
 
                 validateResult(testCase.data.resultValidator, result, capturedStdout);
+            } catch (Throwable t) {
+                final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
+                e.setStackTrace(new StackTraceElement[0]);
+                throw e;
             } finally {
                 System.setOut(oldOut);
             }
