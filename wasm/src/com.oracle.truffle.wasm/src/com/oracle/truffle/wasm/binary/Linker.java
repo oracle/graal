@@ -110,10 +110,10 @@ public class Linker {
      *
      * The intent is to use this functionality only in the test suite and the benchmark suite.
      */
-    public void resetModuleState(WasmModule module, byte[] data) {
+    public void resetModuleState(WasmModule module, byte[] data, boolean zeroMemory) {
         final BinaryReader reader = new BinaryReader(language, module, data);
         reader.resetGlobalState();
-        reader.resetMemoryState();
+        reader.resetMemoryState(zeroMemory);
     }
 
     int importGlobal(WasmModule module, int index, String importedModuleName, String importedGlobalName, int valueType, int mutability) {

@@ -49,7 +49,8 @@ public class ResetContextNode extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        resetModuleState();
+        boolean zeroMemory = (boolean) frame.getArguments()[0];
+        resetModuleState(zeroMemory);
         return WasmVoidResult.getInstance();
     }
 
@@ -59,9 +60,9 @@ public class ResetContextNode extends WasmPredefinedRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void resetModuleState() {
+    private void resetModuleState(boolean zeroMemory) {
         // TODO: Reset globals and the memory in all modules of the context.
         WasmModule module = contextReference().get().modules().get("test");
-        contextReference().get().linker().resetModuleState(module, module.data());
+        contextReference().get().linker().resetModuleState(module, module.data(), zeroMemory);
     }
 }

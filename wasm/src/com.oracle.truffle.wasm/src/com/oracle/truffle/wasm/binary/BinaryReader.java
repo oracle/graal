@@ -1570,7 +1570,11 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    void resetMemoryState() {
+    void resetMemoryState(boolean zeroMemory) {
+        final WasmMemory memory = module.symbolTable().memory();
+        if (memory != null && zeroMemory) {
+            memory.clear();
+        }
         if (tryJumpToSection(DATA)) {
             readDataSection();
         }
