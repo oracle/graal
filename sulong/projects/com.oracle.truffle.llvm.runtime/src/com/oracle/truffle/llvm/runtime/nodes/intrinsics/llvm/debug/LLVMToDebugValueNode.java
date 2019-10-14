@@ -220,7 +220,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
         LLVMContext context = value.getContext();
-        Object target = context.getGlobalStorage(global);
+        Object target = context.getGlobalStorage().get(global);
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);

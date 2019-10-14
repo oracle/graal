@@ -165,13 +165,13 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         if (isInNative()) {
-            return new LLDBMemoryValue(LLVMNativePointer.cast(context.getGlobalStorage(global)));
+            return new LLDBMemoryValue(LLVMNativePointer.cast(context.getGlobalStorage().get(global)));
         } else {
-            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(context.getGlobalStorage(global));
+            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(context.getGlobalStorage().get(global));
         }
     }
 
     private boolean isInNative() {
-        return LLVMNativePointer.isInstance(context.getGlobalStorage(global));
+        return LLVMNativePointer.isInstance(context.getGlobalStorage().get(global));
     }
 }

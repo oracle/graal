@@ -102,7 +102,7 @@ public final class LLVMDebuggerScopeFactory {
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
                 final LLVMGlobal global = symbol.asGlobalVariable();
-                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getGlobalStorage(global), dataLayout);
+                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getGlobalStorage().get(global), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -113,7 +113,7 @@ public final class LLVMDebuggerScopeFactory {
     private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getGlobalStorage(global), dataLayout);
+            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getGlobalStorage().get(global), dataLayout);
             entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
         }
         return entries;
