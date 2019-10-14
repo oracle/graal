@@ -133,7 +133,6 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    private final Map<LLVMGlobal, LLVMPointer> globalStorageMap = new IdentityHashMap<>();
     private final DynamicObject globalStorage;
 
     // signals
@@ -602,40 +601,6 @@ public final class LLVMContext {
 
     public LLVMScope getGlobalScope() {
         return globalScope;
-    }
-
-    @TruffleBoundary
-    public boolean globalExists(LLVMGlobal descriptor) {
-        return globalStorageMap.containsKey(descriptor) && globalStorageMap.get(descriptor) != null;
-    }
-
-    @TruffleBoundary
-    public void setGlobalStorage(LLVMGlobal descriptor, LLVMPointer value) {
-        synchronized (globalStorageMap) {
-            assert descriptor != null;
-            assert value != null;
-            globalStorageMap.put(descriptor, value);
-        }
-    }
-
-    @TruffleBoundary
-    public void replaceGlobalStorage(LLVMGlobal descriptor, LLVMPointer oldValue, LLVMPointer newValue) {
-        synchronized (globalStorageMap) {
-            assert descriptor != null;
-            assert oldValue != null;
-            assert newValue != null;
-            globalStorageMap.replace(descriptor, oldValue, newValue);
-        }
-    }
-
-    @TruffleBoundary
-    public LLVMPointer getGlobalStorage(LLVMGlobal descriptor) {
-        synchronized (globalStorageMap) {
-            assert descriptor != null;
-            assert globalStorageMap.containsKey(descriptor);
-            LLVMPointer value = globalStorageMap.get(descriptor);
-            return value;
-        }
     }
 
     public DynamicObject getGlobalStorage() {

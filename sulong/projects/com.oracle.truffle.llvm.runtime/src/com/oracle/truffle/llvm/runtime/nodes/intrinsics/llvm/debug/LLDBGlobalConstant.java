@@ -56,7 +56,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
-        return context.globalExists(global) && currentValue != null && currentValue.canRead(bitOffset, bits);
+        return context.getGlobalStorage().containsKey(global) && currentValue != null && currentValue.canRead(bitOffset, bits);
     }
 
     private Object doRead(long offset, int size, String kind, Function<LLVMDebugValue, Object> readOperation) {
