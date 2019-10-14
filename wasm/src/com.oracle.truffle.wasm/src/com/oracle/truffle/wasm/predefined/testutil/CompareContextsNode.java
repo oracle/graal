@@ -64,22 +64,11 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void compareContexts(ContextState firstState, ContextState lastState) {
-        final WasmMemory firstMemory = firstState.memory();
-        final WasmMemory lastMemory = lastState.memory();
-        if (firstMemory.byteSize() != lastMemory.byteSize()) {
-            throw new WasmExecutionException(this, "Mismatch in memory lengths: " + firstMemory.byteSize() + " vs " +
-                            lastMemory.byteSize());
-        }
-        for (int ptr = 0; ptr < firstMemory.byteSize(); ptr++) {
-            byte first = (byte) firstMemory.load_i32_8s(ptr);
-            byte last = (byte) lastMemory.load_i32_8s(ptr);
-            if (first != last) {
-                long from = (ptr - 100) / 8 * 8;
-                throw new WasmExecutionException(this, "Memory mismatch.\n" +
-                                "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
-                                "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");
-            }
-        }
+        compareMemories(firstState, lastState);
+        compareGlobals(firstState, lastState);
+    }
+
+    private void compareGlobals(ContextState firstState, ContextState lastState) {
         final Globals firstGlobals = firstState.globals();
         final Globals lastGlobals = lastState.globals();
         if (firstGlobals.count() != lastGlobals.count()) {
@@ -89,8 +78,30 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
             long first = firstGlobals.loadAsLong(address);
             long last = lastGlobals.loadAsLong(address);
             if (first != last) {
-                throw new WasmExecutionException(this, "Mismatch in global at " + address +  ". " +
-                                "Reference " + first + ", actual " + last);
+                throw new WasmExecutionException(this, "Mismatch in global at " + address + ". " +
+                        "Reference " + first + ", actual " + last);
+            }
+        }
+    }
+
+    private void compareMemories(ContextState firstState, ContextState lastState) {
+        final WasmMemory firstMemory = firstState.memory();
+        final WasmMemory lastMemory = lastState.memory();
+        if (firstMemory == null && lastMemory == null) {
+            return;
+        }
+        if (firstMemory.byteSize() != lastMemory.byteSize()) {
+            throw new WasmExecutionException(this, "Mismatch in memory lengths: " + firstMemory.byteSize() + " vs " +
+                    lastMemory.byteSize());
+        }
+        for (int ptr = 0; ptr < firstMemory.byteSize(); ptr++) {
+            byte first = (byte) firstMemory.load_i32_8s(ptr);
+            byte last = (byte) lastMemory.load_i32_8s(ptr);
+            if (first != last) {
+                long from = (ptr - 100) / 8 * 8;
+                throw new WasmExecutionException(this, "Memory mismatch.\n" +
+                        "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
+                        "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");
             }
         }
     }

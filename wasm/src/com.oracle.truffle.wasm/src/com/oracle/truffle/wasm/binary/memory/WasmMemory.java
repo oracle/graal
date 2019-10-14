@@ -41,12 +41,9 @@ import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
     int PAGE_SIZE = 1 << 16;
-    int INT_SIZE = 4;
     int LONG_SIZE = 8;
 
     public abstract void validateAddress(long address, int size);
-
-    public abstract long startAddress();
 
     public abstract void memcopy(long src, long dst, long n);
 

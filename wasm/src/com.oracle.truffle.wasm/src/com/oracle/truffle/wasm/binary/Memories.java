@@ -51,7 +51,7 @@ public class Memories {
         }
     }
 
-    public int memoryCount() {
+    public int count() {
         return numMemories;
     }
 
