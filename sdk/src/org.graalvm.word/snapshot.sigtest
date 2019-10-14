@@ -231,3 +231,5 @@ meth public static <%0 extends org.graalvm.word.UnsignedWord> {%%0} unsigned(lon
 meth public static <%0 extends org.graalvm.word.WordBase> {%%0} zero()
 supr java.lang.Object
 
+CLSS abstract interface org.graalvm.word.package-info
+

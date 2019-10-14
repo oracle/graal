@@ -19,6 +19,8 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.object.dsl.Vol
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
 
+CLSS abstract interface com.oracle.truffle.api.object.dsl.package-info
+
 CLSS public abstract interface java.lang.annotation.Annotation
 meth public abstract boolean equals(java.lang.Object)
 meth public abstract int hashCode()
