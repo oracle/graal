@@ -1002,7 +1002,7 @@ final class Runner {
             final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
+            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final SymbolImpl prioritySymbol = structorDefinition.getElement(0);

@@ -280,7 +280,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                result = nodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, false));
+                result = CommonNodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, false));
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
                 // If it did not provide a source location, the debugger may not be able to show the
@@ -381,7 +381,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             } else {
                 final LLVMExpressionNode function = symbols.resolve(target);
                 final FunctionType functionType = new FunctionType(call.getType(), argsType, false);
-                node = nodeFactory.createFunctionCall(function, args, functionType);
+                node = CommonNodeFactory.createFunctionCall(function, args, functionType);
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
                 // If it did not provide a source location, the debugger may not be able to show the
