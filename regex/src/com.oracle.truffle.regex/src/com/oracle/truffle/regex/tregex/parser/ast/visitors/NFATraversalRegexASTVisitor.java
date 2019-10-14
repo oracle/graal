@@ -46,8 +46,8 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -123,7 +123,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * alternation we should visit when back-tracking to find the next successor.
      */
     private final LongArrayBuffer curPath = new LongArrayBuffer(8);
-    private final ASTNodeSet<Group> insideEmptyGuardGroup;
+    private final StateSet<Group> insideEmptyGuardGroup;
     /**
      * insideLoops is the set of looping groups that we are currently inside of. We need to maintain
      * this in order to detect infinite loops in the NFA traversal. If we enter a looping group,
@@ -136,7 +136,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * infinite loop, which causes us to backtrack and choose the second alternative in the inner
      * loop, leading us to the CharacterClass node [a].
      */
-    private final ASTNodeSet<Group> insideLoops;
+    private final StateSet<Group> insideLoops;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
@@ -149,10 +149,10 @@ public abstract class NFATraversalRegexASTVisitor {
      * {@link PositionAssertion dollar-assertions} and {@link LookAroundAssertion}s, and their final
      * {@link CharacterClass} / {@link MatchFound} node is the same.
      */
-    private final EconomicMap<ASTNodeSet<RegexASTNode>, ASTNodeSet<RegexASTNode>> targetDeduplicationMap = EconomicMap.create();
-    private final ASTNodeSet<RegexASTNode> lookAroundsOnPath;
-    private final ASTNodeSet<RegexASTNode> dollarsOnPath;
-    private final ASTNodeSet<RegexASTNode> targetsVisited;
+    private final EconomicMap<StateSet<RegexASTNode>, StateSet<RegexASTNode>> targetDeduplicationMap = EconomicMap.create();
+    private final StateSet<RegexASTNode> lookAroundsOnPath;
+    private final StateSet<RegexASTNode> dollarsOnPath;
+    private final StateSet<RegexASTNode> targetsVisited;
     private final int[] nodeVisitCount;
     private int deduplicatedTargets = 0;
 
@@ -161,11 +161,11 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
-        this.insideEmptyGuardGroup = new ASTNodeSet<>(ast);
-        this.insideLoops = new ASTNodeSet<>(ast);
-        this.targetsVisited = new ASTNodeSet<>(ast);
-        this.lookAroundsOnPath = new ASTNodeSet<>(ast);
-        this.dollarsOnPath = new ASTNodeSet<>(ast);
+        this.insideEmptyGuardGroup = StateSet.create(ast);
+        this.insideLoops = StateSet.create(ast);
+        this.targetsVisited = StateSet.create(ast);
+        this.lookAroundsOnPath = StateSet.create(ast);
+        this.dollarsOnPath = StateSet.create(ast);
         this.nodeVisitCount = new int[ast.getNumberOfStates()];
         this.captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
@@ -237,8 +237,30 @@ public abstract class NFATraversalRegexASTVisitor {
         return QuantifierGuard.NO_GUARDS;
     }
 
-    protected ASTNodeSet<RegexASTNode> getLookAroundsOnPath() {
-        return lookAroundsOnPath;
+    protected StateSet<LookAheadAssertion> getLookAheadsOnPath() {
+        StateSet<LookAheadAssertion> ret = ast.getLookAheads().getEmptySet();
+        for (RegexASTNode n : lookAroundsOnPath) {
+            if (n instanceof LookAheadAssertion) {
+                if (ret.isEmpty()) {
+                    ret = StateSet.create(ast.getLookAheads());
+                }
+                ret.add((LookAheadAssertion) n);
+            }
+        }
+        return ret;
+    }
+
+    protected StateSet<LookBehindAssertion> getLookBehindsOnPath() {
+        StateSet<LookBehindAssertion> ret = ast.getLookBehinds().getEmptySet();
+        for (RegexASTNode n : lookAroundsOnPath) {
+            if (n instanceof LookBehindAssertion) {
+                if (ret.isEmpty()) {
+                    ret = StateSet.create(ast.getLookBehinds());
+                }
+                ret.add((LookBehindAssertion) n);
+            }
+        }
+        return ret;
     }
 
     protected PositionAssertion getLastDollarOnPath() {
@@ -353,12 +375,12 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    private void addToVisitedSet(ASTNodeSet<RegexASTNode> visitedSet) {
+    private void addToVisitedSet(StateSet<RegexASTNode> visitedSet) {
         nodeVisitCount[cur.getId()]++;
         visitedSet.add(cur);
     }
 
-    private boolean advanceDedupRelevantTerm(ASTNodeSet<RegexASTNode> visitedSet) {
+    private boolean advanceDedupRelevantTerm(StateSet<RegexASTNode> visitedSet) {
         addToVisitedSet(visitedSet);
         return advanceTerm((Term) cur);
     }
@@ -443,7 +465,7 @@ public abstract class NFATraversalRegexASTVisitor {
         return false;
     }
 
-    private void removeFromVisitedSet(long pathElement, ASTNodeSet<RegexASTNode> visitedSet) {
+    private void removeFromVisitedSet(long pathElement, StateSet<RegexASTNode> visitedSet) {
         if (--nodeVisitCount[pathGetNodeId(pathElement)] == 0) {
             visitedSet.remove(pathGetNode(pathElement));
         }
@@ -454,7 +476,7 @@ public abstract class NFATraversalRegexASTVisitor {
         if (dollarsOnPath.isEmpty() && lookAroundsOnPath.isEmpty()) {
             isDuplicate = !targetsVisited.add(cur);
         } else {
-            ASTNodeSet<RegexASTNode> key = lookAroundsOnPath.copy();
+            StateSet<RegexASTNode> key = lookAroundsOnPath.copy();
             key.addAll(dollarsOnPath);
             key.add(cur);
             isDuplicate = targetDeduplicationMap.put(key, key) != null;

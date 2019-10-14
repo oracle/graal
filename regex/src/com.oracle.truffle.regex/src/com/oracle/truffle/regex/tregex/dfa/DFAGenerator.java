@@ -60,6 +60,7 @@ import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CharRangesBuffer;
@@ -68,7 +69,6 @@ import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -564,13 +564,13 @@ public final class DFAGenerator implements JsonConvertible {
             Sequence rootSeq = nfa.getAst().getRoot().getAlternatives().get(0);
 
             // find all parser tree nodes of the prefix
-            ASTNodeSet<RegexASTNode> prefixAstNodes = new ASTNodeSet<>(nfa.getAst());
+            StateSet<RegexASTNode> prefixAstNodes = StateSet.create(nfa.getAst());
             for (int i = 0; i < literalStart; i++) {
                 AddToSetVisitor.addCharacterClasses(prefixAstNodes, rootSeq.getTerms().get(i));
             }
 
             // find NFA states of the prefix and the beginning and end of the literal
-            NFAStateSet prefixNFAStates = new NFAStateSet(nfa);
+            StateSet<NFAState> prefixNFAStates = StateSet.create(nfa);
             prefixNFAStates.add(nfa.getUnAnchoredInitialState());
             NFAState literalFirstState = null;
             NFAState literalLastState = null;
@@ -616,7 +616,7 @@ public final class DFAGenerator implements JsonConvertible {
                             continue;
                         }
                         visited.set(target.getId());
-                        NFAStateSet targetStateSet = target.getNfaTransitionSet().getTargetStateSet();
+                        StateSet<NFAState> targetStateSet = target.getNfaTransitionSet().getTargetStateSet();
                         if (literalFirstDFAState == null && targetStateSet.contains(literalFirstState)) {
                             literalFirstDFAState = target;
                         }
@@ -737,12 +737,12 @@ public final class DFAGenerator implements JsonConvertible {
         }
     }
 
-    private boolean innerLiteralMatchesPrefix(NFAStateSet prefixNFAStates) {
+    private boolean innerLiteralMatchesPrefix(StateSet<NFAState> prefixNFAStates) {
         int literalEnd = nfa.getAst().getProperties().getInnerLiteralEnd();
         int literalStart = nfa.getAst().getProperties().getInnerLiteralStart();
         Sequence rootSeq = nfa.getAst().getRoot().getAlternatives().get(0);
-        NFAStateSet curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
-        NFAStateSet nextState = new NFAStateSet(nfa);
+        StateSet<NFAState> curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
+        StateSet<NFAState> nextState = StateSet.create(nfa);
         for (int i = literalStart; i < literalEnd; i++) {
             CharSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getCharSet();
             for (NFAState s : curState) {
@@ -758,7 +758,7 @@ public final class DFAGenerator implements JsonConvertible {
             if (nextState.isEmpty()) {
                 return false;
             }
-            NFAStateSet tmp = curState;
+            StateSet<NFAState> tmp = curState;
             curState = nextState;
             nextState = tmp;
             nextState.clear();

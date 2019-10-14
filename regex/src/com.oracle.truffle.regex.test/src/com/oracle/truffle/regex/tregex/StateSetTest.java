@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex;
 
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +47,9 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 
 public class StateSetTest {
 
@@ -69,7 +69,7 @@ public class StateSetTest {
     }
 
     private StateSet<ShortState> bitSet(int... elems) {
-        StateSet<ShortState> result = new StateSet<>(index);
+        StateSet<ShortState> result = StateSet.create(index);
 
         // force the use of a bit set instead of a state list
         result.addAll(tooManyForStateList);
@@ -83,7 +83,7 @@ public class StateSetTest {
     }
 
     private StateSet<ShortState> stateList(int... elems) {
-        StateSet<ShortState> result = new StateSet<>(index);
+        StateSet<ShortState> result = StateSet.create(index);
 
         assert elems.length <= SWITCH_TO_BITSET_THRESHOLD;
 
@@ -104,7 +104,7 @@ public class StateSetTest {
         Assert.assertEquals("hash codes of equal StateSets should be equal", usingBitSet.hashCode(), usingStateList.hashCode());
     }
 
-    private static class ShortState implements IndexedState {
+    private static class ShortState {
 
         private final short id;
 
@@ -112,7 +112,6 @@ public class StateSetTest {
             this.id = (short) id;
         }
 
-        @Override
         public short getId() {
             return id;
         }
@@ -130,6 +129,11 @@ public class StateSetTest {
         @Override
         public int getNumberOfStates() {
             return index.length;
+        }
+
+        @Override
+        public short getId(ShortState state) {
+            return state.getId();
         }
 
         @Override

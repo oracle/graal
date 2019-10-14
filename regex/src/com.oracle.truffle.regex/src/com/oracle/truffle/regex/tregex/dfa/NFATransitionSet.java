@@ -40,20 +40,21 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAState;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class represents a set of NFA transitions leading to a set of NFA states. The uniqueness of
@@ -72,7 +73,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     private static final byte FLAG_HASH_COMPUTED = 1 << 2;
 
     private final NFA nfa;
-    private final NFAStateSet targetStateSet;
+    private final StateSet<NFAState> targetStateSet;
     private byte flags = 0;
     private short[] transitions;
     private short size = 0;
@@ -80,7 +81,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
 
     NFATransitionSet(NFA nfa, boolean forward) {
         this.nfa = nfa;
-        targetStateSet = new NFAStateSet(nfa);
+        targetStateSet = StateSet.create(nfa);
         if (forward) {
             flags |= FLAG_FORWARD;
         }
@@ -176,7 +177,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
         return nfa.getTransitions()[transitions[i]];
     }
 
-    public NFAStateSet getTargetStateSet() {
+    public StateSet<NFAState> getTargetStateSet() {
         return targetStateSet;
     }
 
@@ -238,7 +239,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     /**
      * Returns the hash code value for this set.
      *
-     * The hash is equal to the hashcode of a {@link NFAStateSet} containing all <em>target
+     * The hash is equal to the hashcode of a {@link StateSet} containing all <em>target
      * states</em> of the transitions in this transition set.
      */
     @Override

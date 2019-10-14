@@ -52,8 +52,9 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CharSet;
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -69,7 +70,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  * matches both the 'a' in the lookahead assertion as well as following 'a' in the expression, and
  * therefore will have a state set containing two AST nodes.
  */
-public class NFAState implements IndexedState, JsonConvertible {
+public class NFAState implements JsonConvertible {
 
     private static final byte FLAGS_NONE = 0;
     private static final byte FLAG_HAS_PREFIX_STATES = 1;
@@ -83,7 +84,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     private static final NFAStateTransition[] EMPTY_TRANSITIONS = new NFAStateTransition[0];
 
     private final short id;
-    private final ASTNodeSet<? extends RegexASTNode> stateSet;
+    private final StateSet<? extends RegexASTNode> stateSet;
     @CompilationFinal private byte flags;
     @CompilationFinal private short transitionToAnchoredFinalState = -1;
     @CompilationFinal private short transitionToUnAnchoredFinalState = -1;
@@ -97,7 +98,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
     public NFAState(short id,
-                    ASTNodeSet<? extends RegexASTNode> stateSet,
+                    StateSet<? extends RegexASTNode> stateSet,
                     CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates) {
@@ -106,7 +107,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     private NFAState(short id,
-                    ASTNodeSet<? extends RegexASTNode> stateSet,
+                    StateSet<? extends RegexASTNode> stateSet,
                     byte flags,
                     CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
@@ -114,7 +115,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     private NFAState(short id,
-                    ASTNodeSet<? extends RegexASTNode> stateSet,
+                    StateSet<? extends RegexASTNode> stateSet,
                     byte flags,
                     NFAStateTransition[] next,
                     NFAStateTransition[] prev,
@@ -143,7 +144,7 @@ public class NFAState implements IndexedState, JsonConvertible {
         return finishedLookBehinds;
     }
 
-    public ASTNodeSet<? extends RegexASTNode> getStateSet() {
+    public StateSet<? extends RegexASTNode> getStateSet() {
         return stateSet;
     }
 
@@ -371,7 +372,6 @@ public class NFAState implements IndexedState, JsonConvertible {
         return forward ? prev : next;
     }
 
-    @Override
     public short getId() {
         return id;
     }
@@ -432,7 +432,7 @@ public class NFAState implements IndexedState, JsonConvertible {
 
     @TruffleBoundary
     private JsonArray sourceSectionsToJson() {
-        return Json.array(getStateSet().stream().map(x -> getStateSet().getAst().getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream).map(x -> Json.obj(
+        return Json.array(getStateSet().stream().map(x -> ((RegexAST) getStateSet().getStateIndex()).getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream).map(x -> Json.obj(
                         Json.prop("start", x.getCharIndex()),
                         Json.prop("end", x.getCharEndIndex()))));
     }

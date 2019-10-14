@@ -40,19 +40,18 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.charset.CharSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * A {@link Term} that matches characters belonging to a specified set of characters.
@@ -72,7 +71,7 @@ public class CharacterClass extends Term {
 
     private CharSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private ASTNodeSet<Group> lookBehindEntries;
+    private StateSet<Group> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
@@ -123,7 +122,7 @@ public class CharacterClass extends Term {
 
     public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = new ASTNodeSet<>(ast);
+            lookBehindEntries = StateSet.create(ast);
         }
         lookBehindEntries.add(lookBehindEntry);
     }

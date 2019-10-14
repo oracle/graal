@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -67,17 +67,17 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
  */
 public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
 
-    private ASTNodeSet<CharacterClass> curEntriesFound;
-    private ASTNodeSet<CharacterClass> newEntriesFound;
-    private ASTNodeSet<LookAheadAssertion> curLookAheadBoundariesHit;
-    private ASTNodeSet<LookAheadAssertion> newLookAheadBoundariesHit;
+    private StateSet<CharacterClass> curEntriesFound;
+    private StateSet<CharacterClass> newEntriesFound;
+    private StateSet<LookAheadAssertion> curLookAheadBoundariesHit;
+    private StateSet<LookAheadAssertion> newLookAheadBoundariesHit;
 
     public MarkLookBehindEntriesVisitor(RegexAST ast) {
         super(ast);
-        curEntriesFound = new ASTNodeSet<>(ast);
-        newEntriesFound = new ASTNodeSet<>(ast);
-        curLookAheadBoundariesHit = new ASTNodeSet<>(ast);
-        newLookAheadBoundariesHit = new ASTNodeSet<>(ast);
+        curEntriesFound = StateSet.create(ast);
+        newEntriesFound = StateSet.create(ast);
+        curLookAheadBoundariesHit = StateSet.create(ast);
+        newLookAheadBoundariesHit = StateSet.create(ast);
         setCanTraverseCaret(false);
         setReverse();
     }
@@ -103,7 +103,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
                 // equal to 1, 2, 3 and 4. Therefore, the 'm' node will be marked as a possible
                 // beginning of the look-behind.
                 curDepth++;
-                ASTNodeSet<CharacterClass> tmp = curEntriesFound;
+                StateSet<CharacterClass> tmp = curEntriesFound;
                 curEntriesFound = newEntriesFound;
                 newEntriesFound = tmp;
                 newEntriesFound.clear();
@@ -124,7 +124,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
 
     private void movePastLookAheadBoundaries() {
         while (!newLookAheadBoundariesHit.isEmpty()) {
-            ASTNodeSet<LookAheadAssertion> tmp = curLookAheadBoundariesHit;
+            StateSet<LookAheadAssertion> tmp = curLookAheadBoundariesHit;
             curLookAheadBoundariesHit = newLookAheadBoundariesHit;
             newLookAheadBoundariesHit = tmp;
             newLookAheadBoundariesHit.clear();

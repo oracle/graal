@@ -220,6 +220,11 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     @Override
+    public short getId(NFAState state) {
+        return state.getId();
+    }
+
+    @Override
     public NFAState getState(int id) {
         return states[id];
     }

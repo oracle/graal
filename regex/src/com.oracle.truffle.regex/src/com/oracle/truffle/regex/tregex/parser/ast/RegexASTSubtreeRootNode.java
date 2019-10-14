@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
 
+    private short subTreeId = -1;
     private Group group;
     private PositionAssertion anchoredInitialState;
     private MatchFound unAnchoredInitialState;
@@ -69,6 +70,18 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
             setGroup(copy.group.copy(ast, true));
         }
         ast.createNFAHelperNodes(this);
+    }
+
+    public boolean subTreeIdInitialized() {
+        return subTreeId >= 0;
+    }
+
+    public short getSubTreeId() {
+        return subTreeId;
+    }
+
+    public void setSubTreeId(short subTreeId) {
+        this.subTreeId = subTreeId;
     }
 
     @Override

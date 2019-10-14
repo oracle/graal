@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 
 /**
  * Represents a transition of a {@link PureNFA}.
@@ -52,14 +53,17 @@ public class PureNFATransition {
     private final short id;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
-    private final ASTNodeSet<RegexASTNode> traversedLookArounds;
+    private final StateSet<LookAheadAssertion> traversedLookAheads;
+    private final StateSet<LookBehindAssertion> traversedLookBehinds;
     private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState target, GroupBoundaries groupBoundaries, ASTNodeSet<RegexASTNode> traversedLookArounds, QuantifierGuard[] quantifierGuards) {
+    public PureNFATransition(short id, PureNFAState target, GroupBoundaries groupBoundaries, StateSet<LookAheadAssertion> traversedLookAheads, StateSet<LookBehindAssertion> traversedLookBehinds,
+                    QuantifierGuard[] quantifierGuards) {
         this.id = id;
         this.target = target;
         this.groupBoundaries = groupBoundaries;
-        this.traversedLookArounds = traversedLookArounds;
+        this.traversedLookAheads = traversedLookAheads;
+        this.traversedLookBehinds = traversedLookBehinds;
         this.quantifierGuards = quantifierGuards;
     }
 
@@ -79,16 +83,24 @@ public class PureNFATransition {
     }
 
     /**
-     * Set of {@link LookAroundAssertion}s traversed by this transition. All
-     * {@link LookAroundAssertion}s contained in this set must match in order for this transition to
+     * Set of {@link LookAheadAssertion}s traversed by this transition. All
+     * {@link LookAheadAssertion}s contained in this set must match in order for this transition to
      * be valid.<br>
-     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookArounds()} of the
+     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookAheads()} of the
      * transition from {@code a} to {@code [a-z]} will contain the look-ahead assertion
      * {@code (?=b)}, so the regex matcher must check {@code (?=b)} before continuing to
      * {@code [a-z]}.
      */
-    public ASTNodeSet<RegexASTNode> getTraversedLookArounds() {
-        return traversedLookArounds;
+    public StateSet<LookAheadAssertion> getTraversedLookAheads() {
+        return traversedLookAheads;
+    }
+
+    /**
+     * Set of {@link LookBehindAssertion}s traversed by this transition, analoguous to
+     * {@link #getTraversedLookAheads()}.
+     */
+    public StateSet<LookBehindAssertion> getTraversedLookBehinds() {
+        return traversedLookBehinds;
     }
 
     public QuantifierGuard[] getQuantifierGuards() {

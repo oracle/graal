@@ -66,12 +66,10 @@ public final class PureNFAGenerator {
     private PureNFAState unAnchoredFinalState;
     private final Deque<PureNFAState> expansionQueue = new ArrayDeque<>();
     private final Map<RegexASTNode, PureNFAState> nfaStates = new HashMap<>();
-    private final ASTNodeSet<RegexASTNode> emptyLookArounds;
     private final PureNFATransitionGenerator transitionGen;
 
     private PureNFAGenerator(RegexAST ast) {
         this.ast = ast;
-        emptyLookArounds = new ASTNodeSet<>(ast);
         transitionGen = new PureNFATransitionGenerator(ast, this);
     }
 
@@ -99,10 +97,6 @@ public final class PureNFAGenerator {
 
     public PureNFAState getUnAnchoredFinalState() {
         return unAnchoredFinalState;
-    }
-
-    public ASTNodeSet<RegexASTNode> getEmptyLookArounds() {
-        return emptyLookArounds;
     }
 
     public PureNFAState getOrCreateState(Term t) {
@@ -191,6 +185,7 @@ public final class PureNFAGenerator {
     }
 
     private PureNFATransition createEntryTransition(PureNFAState initialState) {
-        return new PureNFATransition((short) transitionID.inc(), initialState, GroupBoundaries.getEmptyInstance(), emptyLookArounds, QuantifierGuard.NO_GUARDS);
+        return new PureNFATransition((short) transitionID.inc(), initialState, GroupBoundaries.getEmptyInstance(), ast.getLookAheads().getEmptySet(), ast.getLookBehinds().getEmptySet(),
+                        QuantifierGuard.NO_GUARDS);
     }
 }

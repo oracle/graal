@@ -55,8 +55,9 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
@@ -88,12 +89,12 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     private Group wrappedRoot;
     private Group[] captureGroups;
-    private final List<LookAheadAssertion> lookAheads = new ArrayList<>();
-    private final List<LookBehindAssertion> lookBehinds = new ArrayList<>();
+    private final SimpleStateIndex<LookAheadAssertion> lookAheads = new SimpleStateIndex<>(RegexASTSubtreeRootNode::getSubTreeId, RegexASTSubtreeRootNode::setSubTreeId);
+    private final SimpleStateIndex<LookBehindAssertion> lookBehinds = new SimpleStateIndex<>(RegexASTSubtreeRootNode::getSubTreeId, RegexASTSubtreeRootNode::setSubTreeId);
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
-    private ASTNodeSet<PositionAssertion> nfaAnchoredInitialStates;
-    private ASTNodeSet<RegexASTNode> hardPrefixNodes;
+    private StateSet<PositionAssertion> nfaAnchoredInitialStates;
+    private StateSet<RegexASTNode> hardPrefixNodes;
     private final EconomicMap<GroupBoundaries, GroupBoundaries> groupBoundariesDeduplicationMap = EconomicMap.create();
 
     private int negativeLookaheads = 0;
@@ -184,6 +185,11 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     }
 
     @Override
+    public short getId(RegexASTNode state) {
+        return state.getId();
+    }
+
+    @Override
     public RegexASTNode getState(int id) {
         return nodes[id];
     }
@@ -220,7 +226,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return !lookAheads.isEmpty();
     }
 
-    public List<LookAheadAssertion> getLookAheads() {
+    public SimpleStateIndex<LookAheadAssertion> getLookAheads() {
         return lookAheads;
     }
 
@@ -228,7 +234,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return !lookBehinds.isEmpty();
     }
 
-    public List<LookBehindAssertion> getLookBehinds() {
+    public SimpleStateIndex<LookBehindAssertion> getLookBehinds() {
         return lookBehinds;
     }
 
@@ -240,11 +246,11 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return reachableDollars;
     }
 
-    public ASTNodeSet<PositionAssertion> getNfaAnchoredInitialStates() {
+    public StateSet<PositionAssertion> getNfaAnchoredInitialStates() {
         return nfaAnchoredInitialStates;
     }
 
-    public ASTNodeSet<RegexASTNode> getHardPrefixNodes() {
+    public StateSet<RegexASTNode> getHardPrefixNodes() {
         return hardPrefixNodes;
     }
 
@@ -387,8 +393,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         if (nfaAnchoredInitialStates != null) {
             return;
         }
-        hardPrefixNodes = new ASTNodeSet<>(this);
-        nfaAnchoredInitialStates = new ASTNodeSet<>(this);
+        hardPrefixNodes = StateSet.create(this);
+        nfaAnchoredInitialStates = StateSet.create(this);
         int nextID = 1;
         MatchFound mf = new MatchFound();
         initNodeId(mf, nextID++);

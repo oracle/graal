@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -49,7 +48,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public abstract class RegexASTNode implements IndexedState, JsonConvertible {
+public abstract class RegexASTNode implements JsonConvertible {
 
     static final short FLAG_PREFIX = 1;
     static final short FLAG_DEAD = 1 << 1;
@@ -100,7 +99,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         return id >= 0;
     }
 
-    @Override
     public short getId() {
         assert idInitialized();
         return id;
@@ -140,7 +138,11 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         return (short) (flags & mask);
     }
 
+    /**
+     * Update all flags denoted by {@code mask} with the values from {@code newFlags}.
+     */
     protected void setFlags(short newFlags, short mask) {
+        assert (newFlags & ~mask) == 0;
         flags = (short) (flags & ~mask | newFlags);
     }
 

@@ -40,20 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.regex.tregex.dfa.NFAStateSet;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAState;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import java.nio.file.StandardOpenOption;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
 public final class NFAExport {
 
@@ -155,7 +154,7 @@ public final class NFAExport {
     }
 
     private void exportLaTex() throws IOException {
-        NFAStateSet visited = new NFAStateSet(nfa);
+        StateSet<NFAState> visited = StateSet.create(nfa);
         writer.write("\\documentclass{standalone}\n" +
                         "\\usepackage[utf8]{inputenc}\n" +
                         "\\usepackage[T1]{fontenc}\n" +

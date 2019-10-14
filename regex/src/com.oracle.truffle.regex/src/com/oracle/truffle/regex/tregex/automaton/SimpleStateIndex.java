@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,40 +38,77 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.automaton;
 
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Iterator;
 
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+public class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
 
-public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
-
-    public ASTNodeSet(RegexAST ast) {
-        super(ast);
+    @FunctionalInterface
+    public interface IdGetter<T> {
+        short getId(T state);
     }
 
-    public ASTNodeSet(RegexAST ast, S node) {
-        super(ast);
-        add(node);
+    @FunctionalInterface
+    public interface IdSetter<T> {
+        void setId(T state, short id);
     }
 
-    public ASTNodeSet(RegexAST ast, Collection<S> initialNodes) {
-        super(ast);
-        addAll(initialNodes);
+    private final IdGetter<T> idGetter;
+    private final IdSetter<T> idSetter;
+    private final ArrayList<T> states = new ArrayList<>();
+    private StateSet<T> emptySet;
+
+    public SimpleStateIndex(IdGetter<T> idGetter, IdSetter<T> idSetter) {
+        this.idGetter = idGetter;
+        this.idSetter = idSetter;
     }
 
-    private ASTNodeSet(ASTNodeSet<S> copy) {
-        super(copy);
-    }
-
-    public RegexAST getAst() {
-        return (RegexAST) getStateIndex();
+    public void add(T rootNode) {
+        assert !states.contains(rootNode);
+        idSetter.setId(rootNode, (short) states.size());
+        states.add(rootNode);
     }
 
     @Override
-    public ASTNodeSet<S> copy() {
-        return new ASTNodeSet<>(this);
+    public int getNumberOfStates() {
+        return states.size();
+    }
+
+    @Override
+    public short getId(T state) {
+        short id = idGetter.getId(state);
+        assert states.get(id) == state;
+        return id;
+    }
+
+    @Override
+    public T getState(int id) {
+        return states.get(id);
+    }
+
+    public StateSet<T> getEmptySet() {
+        if (emptySet == null) {
+            emptySet = StateSet.create(this);
+        }
+        return emptySet;
+    }
+
+    public boolean isEmpty() {
+        return states.isEmpty();
+    }
+
+    public int size() {
+        return states.size();
+    }
+
+    public T get(int i) {
+        return states.get(i);
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return states.iterator();
     }
 }
