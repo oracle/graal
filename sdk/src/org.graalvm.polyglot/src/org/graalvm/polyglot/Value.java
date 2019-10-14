@@ -1211,9 +1211,9 @@ public final class Value {
     /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
-     * The value is bound the {@link Context#getCurrent() current} context when created. If there
-     * was not context available when the value was constructed then Values constructed with this
-     * method may return <code>null</code> for {@link #getContext()}.
+     * The value is bound the {@link Context#getCurrent() current} context when created. If there is
+     * no context available when the value was constructed then Values constructed with this method
+     * may return <code>null</code> for {@link #getContext()}.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
