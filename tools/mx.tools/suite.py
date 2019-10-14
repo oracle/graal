@@ -327,8 +327,8 @@ suite = {
             "maven" : {
               "artifactId" : "coverage",
             },
+            "description" : "Truffle code coverage tool.",
             "javadocType" : "api",
-            "description" : "Tests for the truffle coverage tool.",
         },
         "TRUFFLE_COVERAGE_TEST": {
             "subDir": "src",
@@ -339,7 +339,7 @@ suite = {
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "TRUFFLE_COVERAGE",
             ],
-            "description" : "",
+            "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
         },
         "VISUALVM_GRAALVM_SUPPORT": {
