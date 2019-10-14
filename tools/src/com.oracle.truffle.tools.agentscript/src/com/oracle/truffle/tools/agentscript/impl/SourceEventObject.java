@@ -54,11 +54,13 @@ final class SourceEventObject implements TruffleObject {
         uri;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static Object getMembers(SourceEventObject obj, boolean includeInternal) {
         return ArrayObject.wrap(Members.values());
     }
 
+    @CompilerDirectives.TruffleBoundary
     @ExportMessage
     static boolean isMemberReadable(SourceEventObject obj, String member) {
         try {
