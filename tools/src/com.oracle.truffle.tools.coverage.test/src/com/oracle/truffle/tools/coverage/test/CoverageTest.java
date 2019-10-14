@@ -25,12 +25,16 @@
 package com.oracle.truffle.tools.coverage.test;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,7 +82,11 @@ public final class CoverageTest {
     }
 
     private static SourceCoverage[] execInServiceAndGetCoverage(Context context, ExecutorService executorService, CoverageTracker tracker) throws InterruptedException, ExecutionException {
-        executorService.submit(() -> context.eval(defaultSource)).get();
+        List<Future<Value>> tasks = new ArrayList<>(2);
+        tasks.add(executorService.submit(() -> context.eval(defaultSource)));
+        for (Future<Value> task : tasks) {
+            task.get();
+        }
         return tracker.getCoverage();
     }
 
@@ -118,7 +126,7 @@ public final class CoverageTest {
     @Test
     public void testMultiThreaded() throws InterruptedException, ExecutionException {
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).build()) {
-            ExecutorService executorService = Executors.newFixedThreadPool(1);
+            ExecutorService executorService = Executors.newFixedThreadPool(2);
             final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
             // Is the coverage empty when not tracking?
             Assert.assertEquals(0, execInServiceAndGetCoverage(context, executorService, tracker).length);
