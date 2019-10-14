@@ -200,6 +200,15 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // ('\u003c'), then the name must be the special name <init>, representing an instance
             // initialization method (§2.9). The return type of such a method must be void.
             pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
+            Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+            if (name.equals(Name.INIT)) {
+                Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
+                int len = descriptor.length();
+                // descriptor.endsWith(")V");
+                if (len <= 2 || (descriptor.byteAt(len - 2) != ')' || descriptor.byteAt(len - 1) != 'V')) {
+                    throw ConstantPool.classFormatError("<init> method should have ()V signature");
+                }
+            }
         }
     }
 

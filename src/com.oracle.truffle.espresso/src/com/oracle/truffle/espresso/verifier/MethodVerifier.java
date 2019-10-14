@@ -270,6 +270,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -521,9 +522,7 @@ public final class MethodVerifier implements ContextAccess {
      */
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
-        if ((m.isAbstract() || m.isNative()) && codeAttribute != null) {
-            throw new ClassFormatError("Abstract method has code: " + m);
-        }
+        assert !((m.isAbstract() || m.isNative()) && codeAttribute != null) : "Abstract method has code: " + m;
         if (codeAttribute == null) {
             if (m.isAbstract() || m.isNative()) {
                 return;
@@ -1638,9 +1637,7 @@ public final class MethodVerifier implements ContextAccess {
 
         // Check and pop arguments
         Operand[] parsedSig = getOperandSig(idc.getSignature(pool));
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("No return descriptor for method");
-        }
+        assert parsedSig.length > 0 : "Empty descriptor for method";
         for (int i = parsedSig.length - 2; i >= 0; i--) {
             stack.pop(parsedSig[i]);
         }
@@ -1659,8 +1656,8 @@ public final class MethodVerifier implements ContextAccess {
         }
         pc.validate(pool);
         ClassConstant cc = (ClassConstant) pc;
+        assert Validation.validClassNameEntry(cc.getName(pool));
         Symbol<Type> type = getTypes().fromName(cc.getName(pool));
-        Types.verify(type);
         return type;
     }
 
@@ -1780,15 +1777,15 @@ public final class MethodVerifier implements ContextAccess {
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
+        assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> fieldDesc = frc.getType(pool);
-        Types.verify(fieldDesc);
         Operand toPut = stack.pop(kindToOperand(fieldDesc));
 
         checkInit(toPut);
         if (curOpcode == PUTFIELD) {
             // Pop and check verifier
+            assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
-            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             if (receiver.isArrayType()) {
@@ -1810,12 +1807,12 @@ public final class MethodVerifier implements ContextAccess {
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
+        assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> type = frc.getType(pool);
-        Types.verify(type);
         if (curOpcode == GETFIELD) {
             // Pop and check receiver
+            assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
-            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
@@ -1938,10 +1935,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
-        // Check signature is well formed.
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("Method ref with no return value !");
-        }
+        assert parsedSig.length >= 0 : "Method ref with no return value !";
 
         // Pop arguments
         for (int i = parsedSig.length - 2; i >= 0; i--) {
@@ -1976,9 +1970,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
         // Check signature is well formed.
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("Method ref with no return value !");
-        }
+        assert parsedSig.length >= 0 : "Method ref with no return value !";
 
         // Pop arguments
         // Check signature conforms with count argument
@@ -1998,8 +1990,9 @@ public final class MethodVerifier implements ContextAccess {
             throw new VerifyError("Inconsistent redundant argument count for INVOKEINTERFACE.");
         }
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         checkInit(stack.popRef(methodHolderOp));
@@ -2021,9 +2014,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         // Only INVOKESPECIAL can call <init>
         if (isInstanceInit(calledMethodName)) {
@@ -2031,8 +2022,7 @@ public final class MethodVerifier implements ContextAccess {
         }
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
-        Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
 
         if (!(returnOp == Void)) {
             stack.push(returnOp);
@@ -2050,20 +2040,15 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         if (isInstanceInit(calledMethodName)) {
-            if (returnOp != Void) {
-                throw new ClassFormatError("<init> method with non-void return type.");
-            }
             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
                 if (methodName != Name.INIT) {
@@ -2120,9 +2105,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         // Only INVOKESPECIAL can call <init>
         if (isInstanceInit(calledMethodName)) {
@@ -2131,8 +2114,9 @@ public final class MethodVerifier implements ContextAccess {
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+
         Operand methodHolderOp = kindToOperand(methodHolder);
         Operand stackOp = checkInit(stack.popRef(methodHolderOp));
 
