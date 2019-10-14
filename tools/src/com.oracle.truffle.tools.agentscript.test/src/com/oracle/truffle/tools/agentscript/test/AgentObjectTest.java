@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -47,10 +46,9 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class AgentObjectTest {
-
     @Test
     public void versionOfTheAgent() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -61,7 +59,7 @@ public class AgentObjectTest {
 
     @Test
     public void onSourceCallback() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -88,7 +86,7 @@ public class AgentObjectTest {
 
     @Test
     public void nullMimeType() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -116,7 +114,7 @@ public class AgentObjectTest {
 
     @Test
     public void onEnterCallback() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -154,7 +152,7 @@ public class AgentObjectTest {
     @Test
     public void onEnterCallbackWithFilterOnRootName() throws Exception {
         boolean[] finished = {false};
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -193,7 +191,7 @@ public class AgentObjectTest {
 
     @Test
     public void onStatementCallback() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -224,7 +222,7 @@ public class AgentObjectTest {
 
     @Test
     public void onExpressionCallback() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -253,7 +251,7 @@ public class AgentObjectTest {
 
     @Test
     public void onEnterAndReturn() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
@@ -299,7 +297,7 @@ public class AgentObjectTest {
 
     @Test
     public void accessFrameVariables() throws Exception {
-        try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);

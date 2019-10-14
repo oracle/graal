@@ -39,6 +39,7 @@ import static org.junit.Assert.assertNotNull;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Assert;
 
 final class AgentObjectFactory extends ProxyLanguage {
@@ -51,6 +52,10 @@ final class AgentObjectFactory extends ProxyLanguage {
         config.roots = roots;
         config.rootNameFilter = rootNameFilter;
         return config;
+    }
+
+    static Context newContext() {
+        return Context.newBuilder().allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).build();
     }
 
     @Override
