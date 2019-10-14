@@ -339,12 +339,11 @@ public class NativeImageGenerator {
 
         final Architecture hostedArchitecture = GraalAccess.getOriginalTarget().arch;
         final OS currentOs = OS.getCurrent();
-        boolean isJava8 = JavaVersionUtil.JAVA_SPEC == 8;
         if (hostedArchitecture instanceof AMD64) {
             if (currentOs == OS.LINUX) {
-                return isJava8 ? new Platform.LINUX_AMD64() : new DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64();
+                return new Platform.LINUX_AMD64();
             } else if (currentOs == OS.DARWIN) {
-                return isJava8 ? new Platform.DARWIN_AMD64() : new DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64();
+                return new Platform.DARWIN_AMD64();
             } else if (currentOs == OS.WINDOWS) {
                 return new Platform.WINDOWS_AMD64();
             } else {
