@@ -400,7 +400,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
                     int[] table = codeEntry().branchTable(branchTableOffset);
-                    index = index >= table.length ? table.length - 1 : index;
+                    index = index < 0 || index >= (table.length - 1) / 2 ? (table.length - 1) / 2 - 1 : index;
                     // Technically, we should increment the branchTableOffset at this point,
                     // but since we are returning, it does not really matter.
 
