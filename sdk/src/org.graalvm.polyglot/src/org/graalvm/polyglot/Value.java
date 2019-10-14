@@ -1025,7 +1025,7 @@ public final class Value {
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asDate()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isDate() {
         return impl.isDate(receiver);
@@ -1041,7 +1041,7 @@ public final class Value {
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #isDate()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public LocalDate asDate() {
         return impl.asDate(receiver);
@@ -1054,7 +1054,7 @@ public final class Value {
      *
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asTime()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isTime() {
         return impl.isTime(receiver);
@@ -1070,7 +1070,7 @@ public final class Value {
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #isTime()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public LocalTime asTime() {
         return impl.asTime(receiver);
@@ -1092,7 +1092,7 @@ public final class Value {
      * @see #isTime()
      * @see #isInstant()
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isInstant() {
         return isDate() && isTime() && isTimeZone();
@@ -1120,7 +1120,7 @@ public final class Value {
      * @see #isDate()
      * @see #isTime()
      * @see #isTimeZone()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public Instant asInstant() {
         return impl.asInstant(receiver);
@@ -1144,7 +1144,7 @@ public final class Value {
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asTimeZone()
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isTimeZone() {
         return impl.isTimeZone(receiver);
@@ -1158,7 +1158,7 @@ public final class Value {
      * @throws IllegalStateException if the underlying context is already closed.
      * @throws NullPointerException if the target type is null.
      * @see #isTimeZone()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public ZoneId asTimeZone() {
         return impl.asTimeZone(receiver);
@@ -1170,7 +1170,7 @@ public final class Value {
      * @throws IllegalStateException if the underlying context is already closed.
      * @see Duration
      * @see #asDate()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isDuration() {
         return impl.isDuration(receiver);
@@ -1184,15 +1184,36 @@ public final class Value {
      * @throws IllegalStateException if the underlying context is already closed.
      * @throws NullPointerException if the target type is null.
      * @see #isDuration()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public Duration asDuration() {
         return impl.asDuration(receiver);
     }
 
     /**
+     * Returns the context this value was created with. The returned context may be
+     * <code>null</code> if the value was created using {@link Value#asValue(Object)} and no current
+     * context was {@link Context#enter() entered} at the time.
+     * <p>
+     * The returned context can <b>not</b> be used to {@link Context#enter() enter} ,
+     * {@link Context#leave() leave} or {@link Context#close() close} the context or
+     * {@link Context#getEngine() engine}. Invoking such methods will cause an
+     * {@link IllegalStateException} to be thrown. This ensures that only the
+     * {@link Context#create(String...) creator} of a context is allowed to enter, leave or close a
+     * context and that a context is not closed while it is still active.
+     *
+     * @since 19.3.0
+     */
+    public Context getContext() {
+        return impl.getContext();
+    }
+
+    /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
+     * The value is bound the {@link Context#getCurrent() current} context when created. If there is
+     * no context available when the value was constructed then Values constructed with this method
+     * may return <code>null</code> for {@link #getContext()}.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.

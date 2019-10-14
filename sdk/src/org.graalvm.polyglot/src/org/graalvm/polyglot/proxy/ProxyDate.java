@@ -49,21 +49,21 @@ import org.graalvm.polyglot.Value;
  *
  * @see Proxy
  * @see Value
- * @since 20.0.0 beta 2
+ * @since 19.2.0
  */
 public interface ProxyDate extends Proxy {
 
     /**
      * Returns the date information. The returned value must not be <code>null</code>.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     LocalDate asDate();
 
     /**
      * Creates a proxy date from a local date.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     static ProxyDate from(LocalDate date) {
         return new ProxyDate() {

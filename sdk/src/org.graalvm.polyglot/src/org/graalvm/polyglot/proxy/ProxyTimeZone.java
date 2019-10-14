@@ -50,21 +50,21 @@ import org.graalvm.polyglot.Value;
  *
  * @see Proxy
  * @see Value
- * @since 20.0.0 beta 2
+ * @since 19.2.0
  */
 public interface ProxyTimeZone extends Proxy {
 
     /**
      * Returns the timezone information. The returned value must not be <code>null</code>.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     ZoneId asTimeZone();
 
     /**
      * Creates a proxy timezone from a ZoneId.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     static ProxyTimeZone from(ZoneId timeZone) {
         Objects.requireNonNull(timeZone);
