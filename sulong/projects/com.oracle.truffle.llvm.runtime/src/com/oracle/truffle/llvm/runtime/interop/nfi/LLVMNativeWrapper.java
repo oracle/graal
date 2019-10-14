@@ -62,7 +62,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
     private final LLVMFunctionDescriptor function;
 
     public LLVMNativeWrapper(LLVMFunctionDescriptor function) {
-        assert function.isLLVMIRFunction() || function.isIntrinsicFunction();
+        assert function.isLLVMIRFunction() || function.isIntrinsicFunctionSlowPath();
         this.function = function;
     }
 
@@ -121,9 +121,9 @@ public final class LLVMNativeWrapper implements TruffleObject {
         DirectCallNode createCallNode(LLVMFunctionDescriptor function) {
             CallTarget callTarget;
             if (function.isLLVMIRFunction()) {
-                callTarget = function.getLLVMIRFunction();
-            } else if (function.isIntrinsicFunction()) {
-                callTarget = function.getIntrinsic().cachedCallTarget(function.getType());
+                callTarget = function.getLLVMIRFunctionSlowPath();
+            } else if (function.isIntrinsicFunctionSlowPath()) {
+                callTarget = function.getIntrinsicSlowPath().cachedCallTarget(function.getType());
             } else {
                 throw new IllegalStateException("unexpected function: " + function.toString());
             }
