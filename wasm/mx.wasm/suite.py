@@ -75,6 +75,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.wasm",
         "truffle:TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",
