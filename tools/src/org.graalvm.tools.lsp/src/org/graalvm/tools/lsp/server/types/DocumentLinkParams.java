@@ -67,8 +67,8 @@ public class DocumentLinkParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 67 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 3;
+        hash = 31 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

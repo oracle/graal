@@ -80,8 +80,8 @@ public class Location {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 41 * hash + Objects.hashCode(this.getUri());
-        hash = 41 * hash + Objects.hashCode(this.getRange());
+        hash = 97 * hash + Objects.hashCode(this.getUri());
+        hash = 97 * hash + Objects.hashCode(this.getRange());
         return hash;
     }
 

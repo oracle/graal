@@ -97,10 +97,10 @@ public class ParameterInformation {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 23 * hash + Objects.hashCode(this.getLabel());
+        int hash = 7;
+        hash = 11 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 11 * hash + Objects.hashCode(this.getDocumentation());
         }
         return hash;
     }

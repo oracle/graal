@@ -105,13 +105,13 @@ public class CodeLens {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 17 * hash + Objects.hashCode(this.getRange());
+        int hash = 5;
+        hash = 73 * hash + Objects.hashCode(this.getRange());
         if (this.getCommand() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getCommand());
+            hash = 73 * hash + Objects.hashCode(this.getCommand());
         }
         if (this.getData() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getData());
+            hash = 73 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }

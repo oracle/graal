@@ -50,7 +50,7 @@ public class ColorProviderOptions {
 
     @Override
     public int hashCode() {
-        int hash = 3;
+        int hash = 5;
         return hash;
     }
 

@@ -107,9 +107,9 @@ public class WorkspaceFoldersChangeEvent {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 89 * hash + Objects.hashCode(this.getAdded());
-        hash = 89 * hash + Objects.hashCode(this.getRemoved());
+        int hash = 7;
+        hash = 41 * hash + Objects.hashCode(this.getAdded());
+        hash = 41 * hash + Objects.hashCode(this.getRemoved());
         return hash;
     }
 

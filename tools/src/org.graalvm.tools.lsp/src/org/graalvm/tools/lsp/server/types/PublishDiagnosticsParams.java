@@ -99,8 +99,8 @@ public class PublishDiagnosticsParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.getUri());
-        hash = 97 * hash + Objects.hashCode(this.getDiagnostics());
+        hash = 29 * hash + Objects.hashCode(this.getUri());
+        hash = 29 * hash + Objects.hashCode(this.getDiagnostics());
         return hash;
     }
 

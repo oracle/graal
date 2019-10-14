@@ -86,7 +86,7 @@ public class TextEdit {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 3;
         hash = 83 * hash + Objects.hashCode(this.getRange());
         hash = 83 * hash + Objects.hashCode(this.getNewText());
         return hash;

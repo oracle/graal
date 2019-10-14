@@ -91,9 +91,9 @@ public class CodeActionOptions {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 3;
         if (this.getCodeActionKinds() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getCodeActionKinds());
+            hash = 53 * hash + Objects.hashCode(this.getCodeActionKinds());
         }
         return hash;
     }

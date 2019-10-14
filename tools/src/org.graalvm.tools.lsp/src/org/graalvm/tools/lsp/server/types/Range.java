@@ -89,9 +89,9 @@ public class Range {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 47 * hash + Objects.hashCode(this.getStart());
-        hash = 47 * hash + Objects.hashCode(this.getEnd());
+        int hash = 5;
+        hash = 71 * hash + Objects.hashCode(this.getStart());
+        hash = 71 * hash + Objects.hashCode(this.getEnd());
         return hash;
     }
 

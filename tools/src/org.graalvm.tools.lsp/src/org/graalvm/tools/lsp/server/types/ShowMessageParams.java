@@ -85,9 +85,9 @@ public class ShowMessageParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 89 * hash + Objects.hashCode(this.getType());
-        hash = 89 * hash + Objects.hashCode(this.getMessage());
+        int hash = 2;
+        hash = 37 * hash + Objects.hashCode(this.getType());
+        hash = 37 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

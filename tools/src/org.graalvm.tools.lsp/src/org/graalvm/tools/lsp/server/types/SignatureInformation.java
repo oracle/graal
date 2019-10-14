@@ -127,13 +127,13 @@ public class SignatureInformation {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 97 * hash + Objects.hashCode(this.getLabel());
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 67 * hash + Objects.hashCode(this.getDocumentation());
         }
         if (this.getParameters() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getParameters());
+            hash = 67 * hash + Objects.hashCode(this.getParameters());
         }
         return hash;
     }

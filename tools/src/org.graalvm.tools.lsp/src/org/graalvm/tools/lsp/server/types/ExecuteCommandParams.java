@@ -101,9 +101,9 @@ public class ExecuteCommandParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getCommand());
+        hash = 41 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getArguments());
+            hash = 41 * hash + Objects.hashCode(this.getArguments());
         }
         return hash;
     }

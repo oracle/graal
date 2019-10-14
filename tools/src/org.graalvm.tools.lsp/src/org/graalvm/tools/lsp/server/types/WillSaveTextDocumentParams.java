@@ -86,8 +86,8 @@ public class WillSaveTextDocumentParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 79 * hash + Objects.hashCode(this.getReason());
+        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 37 * hash + Objects.hashCode(this.getReason());
         return hash;
     }
 

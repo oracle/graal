@@ -25,6 +25,7 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
 /**
  * Rename options.
@@ -41,7 +42,7 @@ public class RenameOptions {
      * Renames should be checked and tested before being executed.
      */
     public Boolean getPrepareProvider() {
-        return jsonData.optBoolean("prepareProvider");
+        return jsonData.has("prepareProvider") ? jsonData.getBoolean("prepareProvider") : null;
     }
 
     public RenameOptions setPrepareProvider(Boolean prepareProvider) {
@@ -61,7 +62,7 @@ public class RenameOptions {
             return false;
         }
         RenameOptions other = (RenameOptions) obj;
-        if (this.getPrepareProvider() != other.getPrepareProvider()) {
+        if (!Objects.equals(this.getPrepareProvider(), other.getPrepareProvider())) {
             return false;
         }
         return true;
@@ -71,7 +72,7 @@ public class RenameOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getPrepareProvider() != null) {
-            hash = 97 * hash + Boolean.hashCode(this.getPrepareProvider());
+            hash = 11 * hash + Boolean.hashCode(this.getPrepareProvider());
         }
         return hash;
     }

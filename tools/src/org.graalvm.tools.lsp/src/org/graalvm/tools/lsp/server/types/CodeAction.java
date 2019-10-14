@@ -64,7 +64,7 @@ public class CodeAction {
      * Used to filter code actions.
      */
     public CodeActionKind getKind() {
-        return CodeActionKind.get(jsonData.optString("kind"));
+        return CodeActionKind.get(jsonData.optString("kind", null));
     }
 
     public CodeAction setKind(CodeActionKind kind) {
@@ -155,19 +155,19 @@ public class CodeAction {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 71 * hash + Objects.hashCode(this.getTitle());
+        int hash = 3;
+        hash = 47 * hash + Objects.hashCode(this.getTitle());
         if (this.getKind() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getKind());
+            hash = 47 * hash + Objects.hashCode(this.getKind());
         }
         if (this.getDiagnostics() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getDiagnostics());
+            hash = 47 * hash + Objects.hashCode(this.getDiagnostics());
         }
         if (this.getEdit() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getEdit());
+            hash = 47 * hash + Objects.hashCode(this.getEdit());
         }
         if (this.getCommand() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getCommand());
+            hash = 47 * hash + Objects.hashCode(this.getCommand());
         }
         return hash;
     }

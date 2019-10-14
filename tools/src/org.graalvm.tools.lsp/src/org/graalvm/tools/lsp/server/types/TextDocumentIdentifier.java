@@ -70,8 +70,8 @@ public class TextDocumentIdentifier {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 67 * hash + Objects.hashCode(this.getUri());
+        int hash = 7;
+        hash = 59 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 

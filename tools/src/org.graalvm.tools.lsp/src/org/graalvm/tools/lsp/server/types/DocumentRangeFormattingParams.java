@@ -97,10 +97,10 @@ public class DocumentRangeFormattingParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 41 * hash + Objects.hashCode(this.getRange());
-        hash = 41 * hash + Objects.hashCode(this.getOptions());
+        int hash = 5;
+        hash = 31 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 31 * hash + Objects.hashCode(this.getRange());
+        hash = 31 * hash + Objects.hashCode(this.getOptions());
         return hash;
     }
 

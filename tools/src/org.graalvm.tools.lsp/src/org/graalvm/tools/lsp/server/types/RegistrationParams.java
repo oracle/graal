@@ -78,7 +78,7 @@ public class RegistrationParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 73 * hash + Objects.hashCode(this.getRegistrations());
+        hash = 59 * hash + Objects.hashCode(this.getRegistrations());
         return hash;
     }
 

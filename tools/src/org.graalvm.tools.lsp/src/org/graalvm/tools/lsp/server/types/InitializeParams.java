@@ -61,7 +61,7 @@ public class InitializeParams {
      */
     @Deprecated
     public String getRootPath() {
-        return jsonData.optString("rootPath");
+        return jsonData.optString("rootPath", null);
     }
 
     public InitializeParams setRootPath(String rootPath) {
@@ -110,7 +110,7 @@ public class InitializeParams {
      * The initial trace setting. If omitted trace is disabled ('off').
      */
     public String getTrace() {
-        return jsonData.optString("trace");
+        return jsonData.optString("trace", null);
     }
 
     public InitializeParams setTrace(String trace) {
@@ -185,20 +185,20 @@ public class InitializeParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Integer.hashCode(this.getProcessId());
+        hash = 97 * hash + Integer.hashCode(this.getProcessId());
         if (this.getRootPath() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getRootPath());
+            hash = 97 * hash + Objects.hashCode(this.getRootPath());
         }
-        hash = 67 * hash + Objects.hashCode(this.getRootUri());
-        hash = 67 * hash + Objects.hashCode(this.getCapabilities());
+        hash = 97 * hash + Objects.hashCode(this.getRootUri());
+        hash = 97 * hash + Objects.hashCode(this.getCapabilities());
         if (this.getInitializationOptions() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getInitializationOptions());
+            hash = 97 * hash + Objects.hashCode(this.getInitializationOptions());
         }
         if (this.getTrace() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getTrace());
+            hash = 97 * hash + Objects.hashCode(this.getTrace());
         }
         if (this.getWorkspaceFolders() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getWorkspaceFolders());
+            hash = 97 * hash + Objects.hashCode(this.getWorkspaceFolders());
         }
         return hash;
     }

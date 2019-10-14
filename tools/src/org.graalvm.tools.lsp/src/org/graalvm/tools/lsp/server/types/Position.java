@@ -95,9 +95,9 @@ public class Position {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Integer.hashCode(this.getLine());
-        hash = 37 * hash + Integer.hashCode(this.getCharacter());
+        int hash = 7;
+        hash = 23 * hash + Integer.hashCode(this.getLine());
+        hash = 23 * hash + Integer.hashCode(this.getCharacter());
         return hash;
     }
 

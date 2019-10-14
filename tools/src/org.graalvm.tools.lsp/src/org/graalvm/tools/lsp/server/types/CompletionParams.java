@@ -77,10 +77,10 @@ public class CompletionParams extends TextDocumentPositionParams {
     public int hashCode() {
         int hash = 7;
         if (this.getContext() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getContext());
+            hash = 17 * hash + Objects.hashCode(this.getContext());
         }
-        hash = 47 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 47 * hash + Objects.hashCode(this.getPosition());
+        hash = 17 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 17 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

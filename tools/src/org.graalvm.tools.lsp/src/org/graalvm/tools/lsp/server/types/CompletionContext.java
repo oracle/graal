@@ -55,7 +55,7 @@ public class CompletionContext {
      * `triggerKind !== CompletionTriggerKind.TriggerCharacter`
      */
     public String getTriggerCharacter() {
-        return jsonData.optString("triggerCharacter");
+        return jsonData.optString("triggerCharacter", null);
     }
 
     public CompletionContext setTriggerCharacter(String triggerCharacter) {
@@ -86,10 +86,10 @@ public class CompletionContext {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 17 * hash + Objects.hashCode(this.getTriggerKind());
+        int hash = 7;
+        hash = 71 * hash + Objects.hashCode(this.getTriggerKind());
         if (this.getTriggerCharacter() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getTriggerCharacter());
+            hash = 71 * hash + Objects.hashCode(this.getTriggerCharacter());
         }
         return hash;
     }

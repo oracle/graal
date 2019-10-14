@@ -101,10 +101,10 @@ public class Registration {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 59 * hash + Objects.hashCode(this.getId());
-        hash = 59 * hash + Objects.hashCode(this.getMethod());
+        hash = 53 * hash + Objects.hashCode(this.getId());
+        hash = 53 * hash + Objects.hashCode(this.getMethod());
         if (this.getRegisterOptions() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getRegisterOptions());
+            hash = 53 * hash + Objects.hashCode(this.getRegisterOptions());
         }
         return hash;
     }

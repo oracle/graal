@@ -55,7 +55,7 @@ public class DidSaveTextDocumentParams {
      * was requested.
      */
     public String getText() {
-        return jsonData.optString("text");
+        return jsonData.optString("text", null);
     }
 
     public DidSaveTextDocumentParams setText(String text) {
@@ -86,10 +86,10 @@ public class DidSaveTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 43 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.getTextDocument());
         if (this.getText() != null) {
-            hash = 43 * hash + Objects.hashCode(this.getText());
+            hash = 97 * hash + Objects.hashCode(this.getText());
         }
         return hash;
     }

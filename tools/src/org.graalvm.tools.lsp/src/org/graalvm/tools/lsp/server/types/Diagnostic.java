@@ -60,7 +60,7 @@ public class Diagnostic {
      * diagnostics as error, warning, info or hint.
      */
     public DiagnosticSeverity getSeverity() {
-        return DiagnosticSeverity.get(jsonData.optInt("severity"));
+        return DiagnosticSeverity.get(jsonData.has("severity") ? jsonData.getInt("severity") : null);
     }
 
     public Diagnostic setSeverity(DiagnosticSeverity severity) {
@@ -85,7 +85,7 @@ public class Diagnostic {
      * lint'. It usually appears in the user interface.
      */
     public String getSource() {
-        return jsonData.optString("source");
+        return jsonData.optString("source", null);
     }
 
     public Diagnostic setSource(String source) {
@@ -167,20 +167,20 @@ public class Diagnostic {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 59 * hash + Objects.hashCode(this.getRange());
+        int hash = 7;
+        hash = 11 * hash + Objects.hashCode(this.getRange());
         if (this.getSeverity() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getSeverity());
+            hash = 11 * hash + Objects.hashCode(this.getSeverity());
         }
         if (this.getCode() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getCode());
+            hash = 11 * hash + Objects.hashCode(this.getCode());
         }
         if (this.getSource() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getSource());
+            hash = 11 * hash + Objects.hashCode(this.getSource());
         }
-        hash = 59 * hash + Objects.hashCode(this.getMessage());
+        hash = 11 * hash + Objects.hashCode(this.getMessage());
         if (this.getRelatedInformation() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getRelatedInformation());
+            hash = 11 * hash + Objects.hashCode(this.getRelatedInformation());
         }
         return hash;
     }

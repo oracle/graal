@@ -85,9 +85,9 @@ public class LogMessageParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 47 * hash + Objects.hashCode(this.getType());
-        hash = 47 * hash + Objects.hashCode(this.getMessage());
+        int hash = 2;
+        hash = 43 * hash + Objects.hashCode(this.getType());
+        hash = 43 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

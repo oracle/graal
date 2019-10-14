@@ -71,10 +71,10 @@ public class ReferenceParams extends TextDocumentPositionParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 29 * hash + Objects.hashCode(this.getContext());
-        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 29 * hash + Objects.hashCode(this.getPosition());
+        int hash = 7;
+        hash = 37 * hash + Objects.hashCode(this.getContext());
+        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 37 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

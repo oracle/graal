@@ -101,9 +101,9 @@ public class DidChangeTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 37 * hash + Objects.hashCode(this.getContentChanges());
+        int hash = 5;
+        hash = 41 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 41 * hash + Objects.hashCode(this.getContentChanges());
         return hash;
     }
 

@@ -121,9 +121,9 @@ public class CodeActionContext {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getDiagnostics());
+        hash = 29 * hash + Objects.hashCode(this.getDiagnostics());
         if (this.getOnly() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getOnly());
+            hash = 29 * hash + Objects.hashCode(this.getOnly());
         }
         return hash;
     }

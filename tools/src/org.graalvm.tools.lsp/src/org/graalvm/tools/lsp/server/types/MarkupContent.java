@@ -96,7 +96,7 @@ public class MarkupContent {
 
     @Override
     public int hashCode() {
-        int hash = 3;
+        int hash = 5;
         hash = 97 * hash + Objects.hashCode(this.getKind());
         hash = 97 * hash + Objects.hashCode(this.getValue());
         return hash;

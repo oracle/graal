@@ -51,12 +51,15 @@ public class ServerCapabilities {
         if (obj instanceof JSONObject) {
             return new TextDocumentSyncOptions((JSONObject) obj);
         }
-        return obj;
+        TextDocumentSyncKind kind = obj instanceof Integer ? TextDocumentSyncKind.get((Integer) obj) : null;
+        return kind != null ? kind : obj;
     }
 
     public ServerCapabilities setTextDocumentSync(Object textDocumentSync) {
         if (textDocumentSync instanceof TextDocumentSyncOptions) {
             jsonData.put("textDocumentSync", ((TextDocumentSyncOptions) textDocumentSync).jsonData);
+        } else if (textDocumentSync instanceof TextDocumentSyncKind) {
+            jsonData.put("textDocumentSync", ((TextDocumentSyncKind) textDocumentSync).getIntValue());
         } else {
             jsonData.putOpt("textDocumentSync", textDocumentSync);
         }
@@ -67,7 +70,7 @@ public class ServerCapabilities {
      * The server provides hover support.
      */
     public Boolean getHoverProvider() {
-        return jsonData.optBoolean("hoverProvider");
+        return jsonData.has("hoverProvider") ? jsonData.getBoolean("hoverProvider") : null;
     }
 
     public ServerCapabilities setHoverProvider(Boolean hoverProvider) {
@@ -103,7 +106,7 @@ public class ServerCapabilities {
      * The server provides goto definition support.
      */
     public Boolean getDefinitionProvider() {
-        return jsonData.optBoolean("definitionProvider");
+        return jsonData.has("definitionProvider") ? jsonData.getBoolean("definitionProvider") : null;
     }
 
     public ServerCapabilities setDefinitionProvider(Boolean definitionProvider) {
@@ -139,7 +142,7 @@ public class ServerCapabilities {
      * The server provides find references support.
      */
     public Boolean getReferencesProvider() {
-        return jsonData.optBoolean("referencesProvider");
+        return jsonData.has("referencesProvider") ? jsonData.getBoolean("referencesProvider") : null;
     }
 
     public ServerCapabilities setReferencesProvider(Boolean referencesProvider) {
@@ -151,7 +154,7 @@ public class ServerCapabilities {
      * The server provides document highlight support.
      */
     public Boolean getDocumentHighlightProvider() {
-        return jsonData.optBoolean("documentHighlightProvider");
+        return jsonData.has("documentHighlightProvider") ? jsonData.getBoolean("documentHighlightProvider") : null;
     }
 
     public ServerCapabilities setDocumentHighlightProvider(Boolean documentHighlightProvider) {
@@ -163,7 +166,7 @@ public class ServerCapabilities {
      * The server provides document symbol support.
      */
     public Boolean getDocumentSymbolProvider() {
-        return jsonData.optBoolean("documentSymbolProvider");
+        return jsonData.has("documentSymbolProvider") ? jsonData.getBoolean("documentSymbolProvider") : null;
     }
 
     public ServerCapabilities setDocumentSymbolProvider(Boolean documentSymbolProvider) {
@@ -175,7 +178,7 @@ public class ServerCapabilities {
      * The server provides workspace symbol support.
      */
     public Boolean getWorkspaceSymbolProvider() {
-        return jsonData.optBoolean("workspaceSymbolProvider");
+        return jsonData.has("workspaceSymbolProvider") ? jsonData.getBoolean("workspaceSymbolProvider") : null;
     }
 
     public ServerCapabilities setWorkspaceSymbolProvider(Boolean workspaceSymbolProvider) {
@@ -220,7 +223,7 @@ public class ServerCapabilities {
      * The server provides document formatting.
      */
     public Boolean getDocumentFormattingProvider() {
-        return jsonData.optBoolean("documentFormattingProvider");
+        return jsonData.has("documentFormattingProvider") ? jsonData.getBoolean("documentFormattingProvider") : null;
     }
 
     public ServerCapabilities setDocumentFormattingProvider(Boolean documentFormattingProvider) {
@@ -232,7 +235,7 @@ public class ServerCapabilities {
      * The server provides document range formatting.
      */
     public Boolean getDocumentRangeFormattingProvider() {
-        return jsonData.optBoolean("documentRangeFormattingProvider");
+        return jsonData.has("documentRangeFormattingProvider") ? jsonData.getBoolean("documentRangeFormattingProvider") : null;
     }
 
     public ServerCapabilities setDocumentRangeFormattingProvider(Boolean documentRangeFormattingProvider) {
@@ -388,7 +391,7 @@ public class ServerCapabilities {
         if (!Objects.equals(this.getTextDocumentSync(), other.getTextDocumentSync())) {
             return false;
         }
-        if (this.getHoverProvider() != other.getHoverProvider()) {
+        if (!Objects.equals(this.getHoverProvider(), other.getHoverProvider())) {
             return false;
         }
         if (!Objects.equals(this.getCompletionProvider(), other.getCompletionProvider())) {
@@ -397,7 +400,7 @@ public class ServerCapabilities {
         if (!Objects.equals(this.getSignatureHelpProvider(), other.getSignatureHelpProvider())) {
             return false;
         }
-        if (this.getDefinitionProvider() != other.getDefinitionProvider()) {
+        if (!Objects.equals(this.getDefinitionProvider(), other.getDefinitionProvider())) {
             return false;
         }
         if (!Objects.equals(this.getTypeDefinitionProvider(), other.getTypeDefinitionProvider())) {
@@ -406,16 +409,16 @@ public class ServerCapabilities {
         if (!Objects.equals(this.getImplementationProvider(), other.getImplementationProvider())) {
             return false;
         }
-        if (this.getReferencesProvider() != other.getReferencesProvider()) {
+        if (!Objects.equals(this.getReferencesProvider(), other.getReferencesProvider())) {
             return false;
         }
-        if (this.getDocumentHighlightProvider() != other.getDocumentHighlightProvider()) {
+        if (!Objects.equals(this.getDocumentHighlightProvider(), other.getDocumentHighlightProvider())) {
             return false;
         }
-        if (this.getDocumentSymbolProvider() != other.getDocumentSymbolProvider()) {
+        if (!Objects.equals(this.getDocumentSymbolProvider(), other.getDocumentSymbolProvider())) {
             return false;
         }
-        if (this.getWorkspaceSymbolProvider() != other.getWorkspaceSymbolProvider()) {
+        if (!Objects.equals(this.getWorkspaceSymbolProvider(), other.getWorkspaceSymbolProvider())) {
             return false;
         }
         if (!Objects.equals(this.getCodeActionProvider(), other.getCodeActionProvider())) {
@@ -424,10 +427,10 @@ public class ServerCapabilities {
         if (!Objects.equals(this.getCodeLensProvider(), other.getCodeLensProvider())) {
             return false;
         }
-        if (this.getDocumentFormattingProvider() != other.getDocumentFormattingProvider()) {
+        if (!Objects.equals(this.getDocumentFormattingProvider(), other.getDocumentFormattingProvider())) {
             return false;
         }
-        if (this.getDocumentRangeFormattingProvider() != other.getDocumentRangeFormattingProvider()) {
+        if (!Objects.equals(this.getDocumentRangeFormattingProvider(), other.getDocumentRangeFormattingProvider())) {
             return false;
         }
         if (!Objects.equals(this.getDocumentOnTypeFormattingProvider(), other.getDocumentOnTypeFormattingProvider())) {
@@ -464,76 +467,76 @@ public class ServerCapabilities {
     public int hashCode() {
         int hash = 7;
         if (this.getTextDocumentSync() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getTextDocumentSync());
+            hash = 83 * hash + Objects.hashCode(this.getTextDocumentSync());
         }
         if (this.getHoverProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getHoverProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getHoverProvider());
         }
         if (this.getCompletionProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getCompletionProvider());
+            hash = 83 * hash + Objects.hashCode(this.getCompletionProvider());
         }
         if (this.getSignatureHelpProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getSignatureHelpProvider());
+            hash = 83 * hash + Objects.hashCode(this.getSignatureHelpProvider());
         }
         if (this.getDefinitionProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getDefinitionProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getDefinitionProvider());
         }
         if (this.getTypeDefinitionProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getTypeDefinitionProvider());
+            hash = 83 * hash + Objects.hashCode(this.getTypeDefinitionProvider());
         }
         if (this.getImplementationProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getImplementationProvider());
+            hash = 83 * hash + Objects.hashCode(this.getImplementationProvider());
         }
         if (this.getReferencesProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getReferencesProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getReferencesProvider());
         }
         if (this.getDocumentHighlightProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getDocumentHighlightProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getDocumentHighlightProvider());
         }
         if (this.getDocumentSymbolProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getDocumentSymbolProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getDocumentSymbolProvider());
         }
         if (this.getWorkspaceSymbolProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getWorkspaceSymbolProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getWorkspaceSymbolProvider());
         }
         if (this.getCodeActionProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getCodeActionProvider());
+            hash = 83 * hash + Objects.hashCode(this.getCodeActionProvider());
         }
         if (this.getCodeLensProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getCodeLensProvider());
+            hash = 83 * hash + Objects.hashCode(this.getCodeLensProvider());
         }
         if (this.getDocumentFormattingProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getDocumentFormattingProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getDocumentFormattingProvider());
         }
         if (this.getDocumentRangeFormattingProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getDocumentRangeFormattingProvider());
+            hash = 83 * hash + Boolean.hashCode(this.getDocumentRangeFormattingProvider());
         }
         if (this.getDocumentOnTypeFormattingProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getDocumentOnTypeFormattingProvider());
+            hash = 83 * hash + Objects.hashCode(this.getDocumentOnTypeFormattingProvider());
         }
         if (this.getRenameProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getRenameProvider());
+            hash = 83 * hash + Objects.hashCode(this.getRenameProvider());
         }
         if (this.getDocumentLinkProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getDocumentLinkProvider());
+            hash = 83 * hash + Objects.hashCode(this.getDocumentLinkProvider());
         }
         if (this.getColorProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getColorProvider());
+            hash = 83 * hash + Objects.hashCode(this.getColorProvider());
         }
         if (this.getFoldingRangeProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getFoldingRangeProvider());
+            hash = 83 * hash + Objects.hashCode(this.getFoldingRangeProvider());
         }
         if (this.getDeclarationProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getDeclarationProvider());
+            hash = 83 * hash + Objects.hashCode(this.getDeclarationProvider());
         }
         if (this.getExecuteCommandProvider() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getExecuteCommandProvider());
+            hash = 83 * hash + Objects.hashCode(this.getExecuteCommandProvider());
         }
         if (this.getWorkspace() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getWorkspace());
+            hash = 83 * hash + Objects.hashCode(this.getWorkspace());
         }
         if (this.getExperimental() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getExperimental());
+            hash = 83 * hash + Objects.hashCode(this.getExperimental());
         }
         return hash;
     }
@@ -613,9 +616,9 @@ public class ServerCapabilities {
         @Override
         public int hashCode() {
             int hash = 5;
-            hash = 47 * hash + Objects.hashCode(this.getFirstTriggerCharacter());
+            hash = 89 * hash + Objects.hashCode(this.getFirstTriggerCharacter());
             if (this.getMoreTriggerCharacter() != null) {
-                hash = 47 * hash + Objects.hashCode(this.getMoreTriggerCharacter());
+                hash = 89 * hash + Objects.hashCode(this.getMoreTriggerCharacter());
             }
             return hash;
         }
@@ -658,9 +661,9 @@ public class ServerCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 7;
             if (this.getWorkspaceFolders() != null) {
-                hash = 53 * hash + Objects.hashCode(this.getWorkspaceFolders());
+                hash = 41 * hash + Objects.hashCode(this.getWorkspaceFolders());
             }
             return hash;
         }
@@ -677,7 +680,7 @@ public class ServerCapabilities {
              * The Server has support for workspace folders.
              */
             public Boolean getSupported() {
-                return jsonData.optBoolean("supported");
+                return jsonData.has("supported") ? jsonData.getBoolean("supported") : null;
             }
 
             public WorkspaceFoldersCapabilities setSupported(Boolean supported) {
@@ -713,7 +716,7 @@ public class ServerCapabilities {
                     return false;
                 }
                 WorkspaceFoldersCapabilities other = (WorkspaceFoldersCapabilities) obj;
-                if (this.getSupported() != other.getSupported()) {
+                if (!Objects.equals(this.getSupported(), other.getSupported())) {
                     return false;
                 }
                 if (!Objects.equals(this.getChangeNotifications(), other.getChangeNotifications())) {
@@ -726,10 +729,10 @@ public class ServerCapabilities {
             public int hashCode() {
                 int hash = 5;
                 if (this.getSupported() != null) {
-                    hash = 43 * hash + Boolean.hashCode(this.getSupported());
+                    hash = 71 * hash + Boolean.hashCode(this.getSupported());
                 }
                 if (this.getChangeNotifications() != null) {
-                    hash = 43 * hash + Objects.hashCode(this.getChangeNotifications());
+                    hash = 71 * hash + Objects.hashCode(this.getChangeNotifications());
                 }
                 return hash;
             }

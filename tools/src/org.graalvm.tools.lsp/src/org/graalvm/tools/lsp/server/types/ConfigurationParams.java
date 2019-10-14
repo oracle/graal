@@ -80,7 +80,7 @@ public class ConfigurationParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 2;
         hash = 89 * hash + Objects.hashCode(this.getItems());
         return hash;
     }

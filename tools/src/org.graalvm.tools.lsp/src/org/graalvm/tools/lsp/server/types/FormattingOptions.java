@@ -97,8 +97,8 @@ public class FormattingOptions {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Integer.hashCode(this.getTabSize());
-        hash = 53 * hash + Boolean.hashCode(this.isInsertSpaces());
+        hash = 83 * hash + Integer.hashCode(this.getTabSize());
+        hash = 83 * hash + Boolean.hashCode(this.isInsertSpaces());
         return hash;
     }
 

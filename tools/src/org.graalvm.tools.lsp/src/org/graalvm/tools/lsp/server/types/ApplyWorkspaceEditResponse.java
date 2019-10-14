@@ -56,7 +56,7 @@ public class ApplyWorkspaceEditResponse {
      * `failureHandlingStrategy` in its client capabilities.
      */
     public Integer getFailedChange() {
-        return jsonData.optInt("failedChange");
+        return jsonData.has("failedChange") ? jsonData.getInt("failedChange") : null;
     }
 
     public ApplyWorkspaceEditResponse setFailedChange(Integer failedChange) {
@@ -88,9 +88,9 @@ public class ApplyWorkspaceEditResponse {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 37 * hash + Boolean.hashCode(this.isApplied());
+        hash = 53 * hash + Boolean.hashCode(this.isApplied());
         if (this.getFailedChange() != null) {
-            hash = 37 * hash + Integer.hashCode(this.getFailedChange());
+            hash = 53 * hash + Integer.hashCode(this.getFailedChange());
         }
         return hash;
     }

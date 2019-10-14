@@ -68,7 +68,7 @@ public class MessageActionItem {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getTitle());
+        hash = 29 * hash + Objects.hashCode(this.getTitle());
         return hash;
     }
 

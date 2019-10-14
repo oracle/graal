@@ -66,7 +66,7 @@ public class SymbolInformation {
      * Indicates if this symbol is deprecated.
      */
     public Boolean getDeprecated() {
-        return jsonData.optBoolean("deprecated");
+        return jsonData.has("deprecated") ? jsonData.getBoolean("deprecated") : null;
     }
 
     public SymbolInformation setDeprecated(Boolean deprecated) {
@@ -98,7 +98,7 @@ public class SymbolInformation {
      * re-infer a hierarchy for the document symbols.
      */
     public String getContainerName() {
-        return jsonData.optString("containerName");
+        return jsonData.optString("containerName", null);
     }
 
     public SymbolInformation setContainerName(String containerName) {
@@ -124,7 +124,7 @@ public class SymbolInformation {
         if (this.getKind() != other.getKind()) {
             return false;
         }
-        if (this.getDeprecated() != other.getDeprecated()) {
+        if (!Objects.equals(this.getDeprecated(), other.getDeprecated())) {
             return false;
         }
         if (!Objects.equals(this.getLocation(), other.getLocation())) {
@@ -138,15 +138,15 @@ public class SymbolInformation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.getName());
-        hash = 97 * hash + Objects.hashCode(this.getKind());
+        int hash = 3;
+        hash = 13 * hash + Objects.hashCode(this.getName());
+        hash = 13 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 97 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 13 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 97 * hash + Objects.hashCode(this.getLocation());
+        hash = 13 * hash + Objects.hashCode(this.getLocation());
         if (this.getContainerName() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getContainerName());
+            hash = 13 * hash + Objects.hashCode(this.getContainerName());
         }
         return hash;
     }

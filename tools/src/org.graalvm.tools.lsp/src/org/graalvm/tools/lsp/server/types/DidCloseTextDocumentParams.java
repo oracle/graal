@@ -70,8 +70,8 @@ public class DidCloseTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 67 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 5;
+        hash = 11 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

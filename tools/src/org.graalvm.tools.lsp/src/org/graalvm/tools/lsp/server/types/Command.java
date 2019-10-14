@@ -120,11 +120,11 @@ public class Command {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getTitle());
-        hash = 53 * hash + Objects.hashCode(this.getCommand());
+        int hash = 2;
+        hash = 59 * hash + Objects.hashCode(this.getTitle());
+        hash = 59 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getArguments());
+            hash = 59 * hash + Objects.hashCode(this.getArguments());
         }
         return hash;
     }

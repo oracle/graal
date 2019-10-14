@@ -79,7 +79,7 @@ public class CompletionOptions {
      * The server provides support to resolve additional information for a completion item.
      */
     public Boolean getResolveProvider() {
-        return jsonData.optBoolean("resolveProvider");
+        return jsonData.has("resolveProvider") ? jsonData.getBoolean("resolveProvider") : null;
     }
 
     public CompletionOptions setResolveProvider(Boolean resolveProvider) {
@@ -102,7 +102,7 @@ public class CompletionOptions {
         if (!Objects.equals(this.getTriggerCharacters(), other.getTriggerCharacters())) {
             return false;
         }
-        if (this.getResolveProvider() != other.getResolveProvider()) {
+        if (!Objects.equals(this.getResolveProvider(), other.getResolveProvider())) {
             return false;
         }
         return true;
@@ -110,12 +110,12 @@ public class CompletionOptions {
 
     @Override
     public int hashCode() {
-        int hash = 2;
+        int hash = 7;
         if (this.getTriggerCharacters() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getTriggerCharacters());
+            hash = 41 * hash + Objects.hashCode(this.getTriggerCharacters());
         }
         if (this.getResolveProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 41 * hash + Boolean.hashCode(this.getResolveProvider());
         }
         return hash;
     }

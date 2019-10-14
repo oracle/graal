@@ -98,10 +98,10 @@ public class RenameParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 29 * hash + Objects.hashCode(this.getPosition());
-        hash = 29 * hash + Objects.hashCode(this.getNewName());
+        int hash = 2;
+        hash = 53 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 53 * hash + Objects.hashCode(this.getPosition());
+        hash = 53 * hash + Objects.hashCode(this.getNewName());
         return hash;
     }
 

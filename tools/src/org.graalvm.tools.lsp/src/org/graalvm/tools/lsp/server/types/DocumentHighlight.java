@@ -55,7 +55,7 @@ public class DocumentHighlight {
      * The highlight kind, default is [text](#DocumentHighlightKind.Text).
      */
     public DocumentHighlightKind getKind() {
-        return DocumentHighlightKind.get(jsonData.optInt("kind"));
+        return DocumentHighlightKind.get(jsonData.has("kind") ? jsonData.getInt("kind") : null);
     }
 
     public DocumentHighlight setKind(DocumentHighlightKind kind) {
@@ -86,10 +86,10 @@ public class DocumentHighlight {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 37 * hash + Objects.hashCode(this.getRange());
+        int hash = 7;
+        hash = 19 * hash + Objects.hashCode(this.getRange());
         if (this.getKind() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getKind());
+            hash = 19 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }

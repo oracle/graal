@@ -70,8 +70,8 @@ public class WorkspaceSymbolParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 13 * hash + Objects.hashCode(this.getQuery());
+        int hash = 3;
+        hash = 53 * hash + Objects.hashCode(this.getQuery());
         return hash;
     }
 

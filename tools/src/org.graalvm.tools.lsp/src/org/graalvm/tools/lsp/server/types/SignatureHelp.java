@@ -115,10 +115,10 @@ public class SignatureHelp {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 67 * hash + Objects.hashCode(this.getSignatures());
-        hash = 67 * hash + Integer.hashCode(this.getActiveSignature());
-        hash = 67 * hash + Integer.hashCode(this.getActiveParameter());
+        int hash = 7;
+        hash = 41 * hash + Objects.hashCode(this.getSignatures());
+        hash = 41 * hash + Integer.hashCode(this.getActiveSignature());
+        hash = 41 * hash + Integer.hashCode(this.getActiveParameter());
         return hash;
     }
 

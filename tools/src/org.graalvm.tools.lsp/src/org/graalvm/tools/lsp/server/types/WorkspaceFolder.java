@@ -82,9 +82,9 @@ public class WorkspaceFolder {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 13 * hash + Objects.hashCode(this.getUri());
-        hash = 13 * hash + Objects.hashCode(this.getName());
+        int hash = 7;
+        hash = 83 * hash + Objects.hashCode(this.getUri());
+        hash = 83 * hash + Objects.hashCode(this.getName());
         return hash;
     }
 

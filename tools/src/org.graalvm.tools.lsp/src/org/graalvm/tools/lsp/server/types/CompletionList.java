@@ -99,8 +99,8 @@ public class CompletionList {
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 61 * hash + Boolean.hashCode(this.isIncomplete());
-        hash = 61 * hash + Objects.hashCode(this.getItems());
+        hash = 83 * hash + Boolean.hashCode(this.isIncomplete());
+        hash = 83 * hash + Objects.hashCode(this.getItems());
         return hash;
     }
 

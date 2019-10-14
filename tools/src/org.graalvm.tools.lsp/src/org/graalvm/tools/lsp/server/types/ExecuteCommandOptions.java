@@ -83,8 +83,8 @@ public class ExecuteCommandOptions {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 83 * hash + Objects.hashCode(this.getCommands());
+        int hash = 5;
+        hash = 29 * hash + Objects.hashCode(this.getCommands());
         return hash;
     }
 

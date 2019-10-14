@@ -119,9 +119,9 @@ public class Hover {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 37 * hash + Objects.hashCode(this.getContents());
+        hash = 89 * hash + Objects.hashCode(this.getContents());
         if (this.getRange() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getRange());
+            hash = 89 * hash + Objects.hashCode(this.getRange());
         }
         return hash;
     }

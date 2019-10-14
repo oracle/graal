@@ -55,7 +55,7 @@ public class TextDocumentContentChangeEvent {
      * The length of the range that got replaced.
      */
     public Integer getRangeLength() {
-        return jsonData.optInt("rangeLength");
+        return jsonData.has("rangeLength") ? jsonData.getInt("rangeLength") : null;
     }
 
     public TextDocumentContentChangeEvent setRangeLength(Integer rangeLength) {
@@ -103,12 +103,12 @@ public class TextDocumentContentChangeEvent {
     public int hashCode() {
         int hash = 7;
         if (this.getRange() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getRange());
+            hash = 41 * hash + Objects.hashCode(this.getRange());
         }
         if (this.getRangeLength() != null) {
-            hash = 53 * hash + Integer.hashCode(this.getRangeLength());
+            hash = 41 * hash + Integer.hashCode(this.getRangeLength());
         }
-        hash = 53 * hash + Objects.hashCode(this.getText());
+        hash = 41 * hash + Objects.hashCode(this.getText());
         return hash;
     }
 

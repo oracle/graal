@@ -47,7 +47,7 @@ public class WorkspaceClientCapabilities {
      * 'workspace/applyEdit'.
      */
     public Boolean getApplyEdit() {
-        return jsonData.optBoolean("applyEdit");
+        return jsonData.has("applyEdit") ? jsonData.getBoolean("applyEdit") : null;
     }
 
     public WorkspaceClientCapabilities setApplyEdit(Boolean applyEdit) {
@@ -119,7 +119,7 @@ public class WorkspaceClientCapabilities {
      * The client has support for workspace folders.
      */
     public Boolean getWorkspaceFolders() {
-        return jsonData.optBoolean("workspaceFolders");
+        return jsonData.has("workspaceFolders") ? jsonData.getBoolean("workspaceFolders") : null;
     }
 
     public WorkspaceClientCapabilities setWorkspaceFolders(Boolean workspaceFolders) {
@@ -131,7 +131,7 @@ public class WorkspaceClientCapabilities {
      * The client supports `workspace/configuration` requests.
      */
     public Boolean getConfiguration() {
-        return jsonData.optBoolean("configuration");
+        return jsonData.has("configuration") ? jsonData.getBoolean("configuration") : null;
     }
 
     public WorkspaceClientCapabilities setConfiguration(Boolean configuration) {
@@ -151,7 +151,7 @@ public class WorkspaceClientCapabilities {
             return false;
         }
         WorkspaceClientCapabilities other = (WorkspaceClientCapabilities) obj;
-        if (this.getApplyEdit() != other.getApplyEdit()) {
+        if (!Objects.equals(this.getApplyEdit(), other.getApplyEdit())) {
             return false;
         }
         if (!Objects.equals(this.getWorkspaceEdit(), other.getWorkspaceEdit())) {
@@ -169,10 +169,10 @@ public class WorkspaceClientCapabilities {
         if (!Objects.equals(this.getExecuteCommand(), other.getExecuteCommand())) {
             return false;
         }
-        if (this.getWorkspaceFolders() != other.getWorkspaceFolders()) {
+        if (!Objects.equals(this.getWorkspaceFolders(), other.getWorkspaceFolders())) {
             return false;
         }
-        if (this.getConfiguration() != other.getConfiguration()) {
+        if (!Objects.equals(this.getConfiguration(), other.getConfiguration())) {
             return false;
         }
         return true;
@@ -182,28 +182,28 @@ public class WorkspaceClientCapabilities {
     public int hashCode() {
         int hash = 7;
         if (this.getApplyEdit() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getApplyEdit());
+            hash = 41 * hash + Boolean.hashCode(this.getApplyEdit());
         }
         if (this.getWorkspaceEdit() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getWorkspaceEdit());
+            hash = 41 * hash + Objects.hashCode(this.getWorkspaceEdit());
         }
         if (this.getDidChangeConfiguration() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getDidChangeConfiguration());
+            hash = 41 * hash + Objects.hashCode(this.getDidChangeConfiguration());
         }
         if (this.getDidChangeWatchedFiles() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
+            hash = 41 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
         }
         if (this.getSymbol() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getSymbol());
+            hash = 41 * hash + Objects.hashCode(this.getSymbol());
         }
         if (this.getExecuteCommand() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getExecuteCommand());
+            hash = 41 * hash + Objects.hashCode(this.getExecuteCommand());
         }
         if (this.getWorkspaceFolders() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getWorkspaceFolders());
+            hash = 41 * hash + Boolean.hashCode(this.getWorkspaceFolders());
         }
         if (this.getConfiguration() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getConfiguration());
+            hash = 41 * hash + Boolean.hashCode(this.getConfiguration());
         }
         return hash;
     }
@@ -225,7 +225,7 @@ public class WorkspaceClientCapabilities {
          * The client supports versioned document changes in `WorkspaceEdit`s.
          */
         public Boolean getDocumentChanges() {
-            return jsonData.optBoolean("documentChanges");
+            return jsonData.has("documentChanges") ? jsonData.getBoolean("documentChanges") : null;
         }
 
         public WorkspaceEditCapabilities setDocumentChanges(Boolean documentChanges) {
@@ -264,7 +264,7 @@ public class WorkspaceClientCapabilities {
          * The failure handling strategy of a client if applying the workspace edit failes.
          */
         public FailureHandlingKind getFailureHandling() {
-            return FailureHandlingKind.get(jsonData.optString("failureHandling"));
+            return FailureHandlingKind.get(jsonData.optString("failureHandling", null));
         }
 
         public WorkspaceEditCapabilities setFailureHandling(FailureHandlingKind failureHandling) {
@@ -284,7 +284,7 @@ public class WorkspaceClientCapabilities {
                 return false;
             }
             WorkspaceEditCapabilities other = (WorkspaceEditCapabilities) obj;
-            if (this.getDocumentChanges() != other.getDocumentChanges()) {
+            if (!Objects.equals(this.getDocumentChanges(), other.getDocumentChanges())) {
                 return false;
             }
             if (!Objects.equals(this.getResourceOperations(), other.getResourceOperations())) {
@@ -300,13 +300,13 @@ public class WorkspaceClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDocumentChanges() != null) {
-                hash = 41 * hash + Boolean.hashCode(this.getDocumentChanges());
+                hash = 97 * hash + Boolean.hashCode(this.getDocumentChanges());
             }
             if (this.getResourceOperations() != null) {
-                hash = 41 * hash + Objects.hashCode(this.getResourceOperations());
+                hash = 97 * hash + Objects.hashCode(this.getResourceOperations());
             }
             if (this.getFailureHandling() != null) {
-                hash = 41 * hash + Objects.hashCode(this.getFailureHandling());
+                hash = 97 * hash + Objects.hashCode(this.getFailureHandling());
             }
             return hash;
         }
@@ -324,7 +324,7 @@ public class WorkspaceClientCapabilities {
          * Did change configuration notification supports dynamic registration.
          */
         public Boolean getDynamicRegistration() {
-            return jsonData.optBoolean("dynamicRegistration");
+            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
 
         public DidChangeConfigurationCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
@@ -344,7 +344,7 @@ public class WorkspaceClientCapabilities {
                 return false;
             }
             DidChangeConfigurationCapabilities other = (DidChangeConfigurationCapabilities) obj;
-            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
                 return false;
             }
             return true;
@@ -354,7 +354,7 @@ public class WorkspaceClientCapabilities {
         public int hashCode() {
             int hash = 5;
             if (this.getDynamicRegistration() != null) {
-                hash = 67 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 31 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -372,7 +372,7 @@ public class WorkspaceClientCapabilities {
          * Did change watched files notification supports dynamic registration.
          */
         public Boolean getDynamicRegistration() {
-            return jsonData.optBoolean("dynamicRegistration");
+            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
 
         public DidChangeWatchedFilesCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
@@ -392,7 +392,7 @@ public class WorkspaceClientCapabilities {
                 return false;
             }
             DidChangeWatchedFilesCapabilities other = (DidChangeWatchedFilesCapabilities) obj;
-            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
                 return false;
             }
             return true;
@@ -400,9 +400,9 @@ public class WorkspaceClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 23 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -420,7 +420,7 @@ public class WorkspaceClientCapabilities {
          * Symbol request supports dynamic registration.
          */
         public Boolean getDynamicRegistration() {
-            return jsonData.optBoolean("dynamicRegistration");
+            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
 
         public SymbolCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
@@ -452,7 +452,7 @@ public class WorkspaceClientCapabilities {
                 return false;
             }
             SymbolCapabilities other = (SymbolCapabilities) obj;
-            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
                 return false;
             }
             if (!Objects.equals(this.getSymbolKind(), other.getSymbolKind())) {
@@ -465,10 +465,10 @@ public class WorkspaceClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 37 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 47 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getSymbolKind() != null) {
-                hash = 37 * hash + Objects.hashCode(this.getSymbolKind());
+                hash = 47 * hash + Objects.hashCode(this.getSymbolKind());
             }
             return hash;
         }
@@ -532,9 +532,9 @@ public class WorkspaceClientCapabilities {
 
             @Override
             public int hashCode() {
-                int hash = 7;
+                int hash = 5;
                 if (this.getValueSet() != null) {
-                    hash = 79 * hash + Objects.hashCode(this.getValueSet());
+                    hash = 41 * hash + Objects.hashCode(this.getValueSet());
                 }
                 return hash;
             }
@@ -553,7 +553,7 @@ public class WorkspaceClientCapabilities {
          * Execute command supports dynamic registration.
          */
         public Boolean getDynamicRegistration() {
-            return jsonData.optBoolean("dynamicRegistration");
+            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
 
         public ExecuteCommandCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
@@ -573,7 +573,7 @@ public class WorkspaceClientCapabilities {
                 return false;
             }
             ExecuteCommandCapabilities other = (ExecuteCommandCapabilities) obj;
-            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
                 return false;
             }
             return true;
@@ -581,9 +581,9 @@ public class WorkspaceClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 7;
+            int hash = 3;
             if (this.getDynamicRegistration() != null) {
-                hash = 67 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 89 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }

@@ -25,6 +25,7 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
 /**
  * Document link options.
@@ -41,7 +42,7 @@ public class DocumentLinkOptions {
      * Document links have a resolve provider as well.
      */
     public Boolean getResolveProvider() {
-        return jsonData.optBoolean("resolveProvider");
+        return jsonData.has("resolveProvider") ? jsonData.getBoolean("resolveProvider") : null;
     }
 
     public DocumentLinkOptions setResolveProvider(Boolean resolveProvider) {
@@ -61,7 +62,7 @@ public class DocumentLinkOptions {
             return false;
         }
         DocumentLinkOptions other = (DocumentLinkOptions) obj;
-        if (this.getResolveProvider() != other.getResolveProvider()) {
+        if (!Objects.equals(this.getResolveProvider(), other.getResolveProvider())) {
             return false;
         }
         return true;
@@ -69,9 +70,9 @@ public class DocumentLinkOptions {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         if (this.getResolveProvider() != null) {
-            hash = 29 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 67 * hash + Boolean.hashCode(this.getResolveProvider());
         }
         return hash;
     }

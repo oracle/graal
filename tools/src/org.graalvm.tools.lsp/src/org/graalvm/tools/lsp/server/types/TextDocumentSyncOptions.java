@@ -39,7 +39,7 @@ public class TextDocumentSyncOptions {
      * Open and close notifications are sent to the server.
      */
     public Boolean getOpenClose() {
-        return jsonData.optBoolean("openClose");
+        return jsonData.has("openClose") ? jsonData.getBoolean("openClose") : null;
     }
 
     public TextDocumentSyncOptions setOpenClose(Boolean openClose) {
@@ -52,7 +52,7 @@ public class TextDocumentSyncOptions {
      * TextDocumentSyncKind.Full and TextDocumentSyncKind.Incremental.
      */
     public TextDocumentSyncKind getChange() {
-        return TextDocumentSyncKind.get(jsonData.optInt("change"));
+        return TextDocumentSyncKind.get(jsonData.has("change") ? jsonData.getInt("change") : null);
     }
 
     public TextDocumentSyncOptions setChange(TextDocumentSyncKind change) {
@@ -64,7 +64,7 @@ public class TextDocumentSyncOptions {
      * Will save notifications are sent to the server.
      */
     public Boolean getWillSave() {
-        return jsonData.optBoolean("willSave");
+        return jsonData.has("willSave") ? jsonData.getBoolean("willSave") : null;
     }
 
     public TextDocumentSyncOptions setWillSave(Boolean willSave) {
@@ -76,7 +76,7 @@ public class TextDocumentSyncOptions {
      * Will save wait until requests are sent to the server.
      */
     public Boolean getWillSaveWaitUntil() {
-        return jsonData.optBoolean("willSaveWaitUntil");
+        return jsonData.has("willSaveWaitUntil") ? jsonData.getBoolean("willSaveWaitUntil") : null;
     }
 
     public TextDocumentSyncOptions setWillSaveWaitUntil(Boolean willSaveWaitUntil) {
@@ -108,16 +108,16 @@ public class TextDocumentSyncOptions {
             return false;
         }
         TextDocumentSyncOptions other = (TextDocumentSyncOptions) obj;
-        if (this.getOpenClose() != other.getOpenClose()) {
+        if (!Objects.equals(this.getOpenClose(), other.getOpenClose())) {
             return false;
         }
         if (this.getChange() != other.getChange()) {
             return false;
         }
-        if (this.getWillSave() != other.getWillSave()) {
+        if (!Objects.equals(this.getWillSave(), other.getWillSave())) {
             return false;
         }
-        if (this.getWillSaveWaitUntil() != other.getWillSaveWaitUntil()) {
+        if (!Objects.equals(this.getWillSaveWaitUntil(), other.getWillSaveWaitUntil())) {
             return false;
         }
         if (!Objects.equals(this.getSave(), other.getSave())) {
@@ -130,19 +130,19 @@ public class TextDocumentSyncOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getOpenClose() != null) {
-            hash = 23 * hash + Boolean.hashCode(this.getOpenClose());
+            hash = 13 * hash + Boolean.hashCode(this.getOpenClose());
         }
         if (this.getChange() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getChange());
+            hash = 13 * hash + Objects.hashCode(this.getChange());
         }
         if (this.getWillSave() != null) {
-            hash = 23 * hash + Boolean.hashCode(this.getWillSave());
+            hash = 13 * hash + Boolean.hashCode(this.getWillSave());
         }
         if (this.getWillSaveWaitUntil() != null) {
-            hash = 23 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
+            hash = 13 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
         }
         if (this.getSave() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getSave());
+            hash = 13 * hash + Objects.hashCode(this.getSave());
         }
         return hash;
     }

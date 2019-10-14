@@ -41,28 +41,28 @@ public class Color {
      * The red component of this color in the range [0-1].
      */
     public double getRed() {
-        return jsonData.getInt("red");
+        return jsonData.getDouble("red");
     }
 
     /**
      * The green component of this color in the range [0-1].
      */
     public double getGreen() {
-        return jsonData.getInt("green");
+        return jsonData.getDouble("green");
     }
 
     /**
      * The blue component of this color in the range [0-1].
      */
     public double getBlue() {
-        return jsonData.getInt("blue");
+        return jsonData.getDouble("blue");
     }
 
     /**
      * The alpha component of this color in the range [0-1].
      */
     public double getAlpha() {
-        return jsonData.getInt("alpha");
+        return jsonData.getDouble("alpha");
     }
 
     @Override
@@ -95,10 +95,10 @@ public class Color {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 13 * hash + Double.hashCode(this.getRed());
-        hash = 13 * hash + Double.hashCode(this.getGreen());
-        hash = 13 * hash + Double.hashCode(this.getBlue());
-        hash = 13 * hash + Double.hashCode(this.getAlpha());
+        hash = 79 * hash + Double.hashCode(this.getRed());
+        hash = 79 * hash + Double.hashCode(this.getGreen());
+        hash = 79 * hash + Double.hashCode(this.getBlue());
+        hash = 79 * hash + Double.hashCode(this.getAlpha());
         return hash;
     }
 

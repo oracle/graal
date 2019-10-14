@@ -116,10 +116,10 @@ public class ShowMessageRequestParams {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 37 * hash + Objects.hashCode(this.getType());
-        hash = 37 * hash + Objects.hashCode(this.getMessage());
+        hash = 29 * hash + Objects.hashCode(this.getType());
+        hash = 29 * hash + Objects.hashCode(this.getMessage());
         if (this.getActions() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getActions());
+            hash = 29 * hash + Objects.hashCode(this.getActions());
         }
         return hash;
     }

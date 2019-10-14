@@ -82,8 +82,8 @@ public class InitializeResult {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 61 * hash + Objects.hashCode(this.getCapabilities());
+        int hash = 7;
+        hash = 47 * hash + Objects.hashCode(this.getCapabilities());
         return hash;
     }
 

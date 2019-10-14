@@ -25,6 +25,7 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
 /**
  * Save options.
@@ -41,7 +42,7 @@ public class SaveOptions {
      * The client is supposed to include the content on save.
      */
     public Boolean getIncludeText() {
-        return jsonData.optBoolean("includeText");
+        return jsonData.has("includeText") ? jsonData.getBoolean("includeText") : null;
     }
 
     public SaveOptions setIncludeText(Boolean includeText) {
@@ -61,7 +62,7 @@ public class SaveOptions {
             return false;
         }
         SaveOptions other = (SaveOptions) obj;
-        if (this.getIncludeText() != other.getIncludeText()) {
+        if (!Objects.equals(this.getIncludeText(), other.getIncludeText())) {
             return false;
         }
         return true;
@@ -69,9 +70,9 @@ public class SaveOptions {
 
     @Override
     public int hashCode() {
-        int hash = 2;
+        int hash = 5;
         if (this.getIncludeText() != null) {
-            hash = 61 * hash + Boolean.hashCode(this.getIncludeText());
+            hash = 73 * hash + Boolean.hashCode(this.getIncludeText());
         }
         return hash;
     }

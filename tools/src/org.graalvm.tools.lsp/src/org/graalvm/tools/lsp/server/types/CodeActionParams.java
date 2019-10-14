@@ -100,10 +100,10 @@ public class CodeActionParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 79 * hash + Objects.hashCode(this.getRange());
-        hash = 79 * hash + Objects.hashCode(this.getContext());
+        int hash = 5;
+        hash = 59 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 59 * hash + Objects.hashCode(this.getRange());
+        hash = 59 * hash + Objects.hashCode(this.getContext());
         return hash;
     }
 

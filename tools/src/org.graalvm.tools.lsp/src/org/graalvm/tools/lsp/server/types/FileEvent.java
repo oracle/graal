@@ -86,8 +86,8 @@ public class FileEvent {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 53 * hash + Objects.hashCode(this.getUri());
-        hash = 53 * hash + Objects.hashCode(this.getType());
+        hash = 37 * hash + Objects.hashCode(this.getUri());
+        hash = 37 * hash + Objects.hashCode(this.getType());
         return hash;
     }
 

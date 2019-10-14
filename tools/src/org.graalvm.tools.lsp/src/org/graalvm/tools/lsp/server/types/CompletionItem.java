@@ -60,7 +60,7 @@ public class CompletionItem {
      * The kind of this completion item. Based of the kind an icon is chosen by the editor.
      */
     public CompletionItemKind getKind() {
-        return CompletionItemKind.get(jsonData.optInt("kind"));
+        return CompletionItemKind.get(jsonData.has("kind") ? jsonData.getInt("kind") : null);
     }
 
     public CompletionItem setKind(CompletionItemKind kind) {
@@ -73,7 +73,7 @@ public class CompletionItem {
      * information.
      */
     public String getDetail() {
-        return jsonData.optString("detail");
+        return jsonData.optString("detail", null);
     }
 
     public CompletionItem setDetail(String detail) {
@@ -105,7 +105,7 @@ public class CompletionItem {
      * Indicates if this item is deprecated.
      */
     public Boolean getDeprecated() {
-        return jsonData.optBoolean("deprecated");
+        return jsonData.has("deprecated") ? jsonData.getBoolean("deprecated") : null;
     }
 
     public CompletionItem setDeprecated(Boolean deprecated) {
@@ -120,7 +120,7 @@ public class CompletionItem {
      * item that is. The rule is that the *first* item of those that match best is selected.
      */
     public Boolean getPreselect() {
-        return jsonData.optBoolean("preselect");
+        return jsonData.has("preselect") ? jsonData.getBoolean("preselect") : null;
     }
 
     public CompletionItem setPreselect(Boolean preselect) {
@@ -133,7 +133,7 @@ public class CompletionItem {
      * [label](#CompletionItem.label) is used.
      */
     public String getSortText() {
-        return jsonData.optString("sortText");
+        return jsonData.optString("sortText", null);
     }
 
     public CompletionItem setSortText(String sortText) {
@@ -146,7 +146,7 @@ public class CompletionItem {
      * [label](#CompletionItem.label) is used.
      */
     public String getFilterText() {
-        return jsonData.optString("filterText");
+        return jsonData.optString("filterText", null);
     }
 
     public CompletionItem setFilterText(String filterText) {
@@ -168,7 +168,7 @@ public class CompletionItem {
      */
     @Deprecated
     public String getInsertText() {
-        return jsonData.optString("insertText");
+        return jsonData.optString("insertText", null);
     }
 
     public CompletionItem setInsertText(String insertText) {
@@ -181,7 +181,7 @@ public class CompletionItem {
      * `newText` property of a provided `textEdit`.
      */
     public InsertTextFormat getInsertTextFormat() {
-        return InsertTextFormat.get(jsonData.optInt("insertTextFormat"));
+        return InsertTextFormat.get(jsonData.has("insertTextFormat") ? jsonData.getInt("insertTextFormat") : null);
     }
 
     public CompletionItem setInsertTextFormat(InsertTextFormat insertTextFormat) {
@@ -317,10 +317,10 @@ public class CompletionItem {
         if (!Objects.equals(this.getDocumentation(), other.getDocumentation())) {
             return false;
         }
-        if (this.getDeprecated() != other.getDeprecated()) {
+        if (!Objects.equals(this.getDeprecated(), other.getDeprecated())) {
             return false;
         }
-        if (this.getPreselect() != other.getPreselect()) {
+        if (!Objects.equals(this.getPreselect(), other.getPreselect())) {
             return false;
         }
         if (!Objects.equals(this.getSortText(), other.getSortText())) {
@@ -355,49 +355,49 @@ public class CompletionItem {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 17 * hash + Objects.hashCode(this.getLabel());
+        int hash = 3;
+        hash = 97 * hash + Objects.hashCode(this.getLabel());
         if (this.getKind() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getKind());
+            hash = 97 * hash + Objects.hashCode(this.getKind());
         }
         if (this.getDetail() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getDetail());
+            hash = 97 * hash + Objects.hashCode(this.getDetail());
         }
         if (this.getDocumentation() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 97 * hash + Objects.hashCode(this.getDocumentation());
         }
         if (this.getDeprecated() != null) {
-            hash = 17 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 97 * hash + Boolean.hashCode(this.getDeprecated());
         }
         if (this.getPreselect() != null) {
-            hash = 17 * hash + Boolean.hashCode(this.getPreselect());
+            hash = 97 * hash + Boolean.hashCode(this.getPreselect());
         }
         if (this.getSortText() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getSortText());
+            hash = 97 * hash + Objects.hashCode(this.getSortText());
         }
         if (this.getFilterText() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getFilterText());
+            hash = 97 * hash + Objects.hashCode(this.getFilterText());
         }
         if (this.getInsertText() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getInsertText());
+            hash = 97 * hash + Objects.hashCode(this.getInsertText());
         }
         if (this.getInsertTextFormat() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getInsertTextFormat());
+            hash = 97 * hash + Objects.hashCode(this.getInsertTextFormat());
         }
         if (this.getTextEdit() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getTextEdit());
+            hash = 97 * hash + Objects.hashCode(this.getTextEdit());
         }
         if (this.getAdditionalTextEdits() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getAdditionalTextEdits());
+            hash = 97 * hash + Objects.hashCode(this.getAdditionalTextEdits());
         }
         if (this.getCommitCharacters() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getCommitCharacters());
+            hash = 97 * hash + Objects.hashCode(this.getCommitCharacters());
         }
         if (this.getCommand() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getCommand());
+            hash = 97 * hash + Objects.hashCode(this.getCommand());
         }
         if (this.getData() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getData());
+            hash = 97 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }

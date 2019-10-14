@@ -43,7 +43,7 @@ public class ApplyWorkspaceEditParams {
      * example on an undo stack to undo the workspace edit.
      */
     public String getLabel() {
-        return jsonData.optString("label");
+        return jsonData.optString("label", null);
     }
 
     public ApplyWorkspaceEditParams setLabel(String label) {
@@ -86,11 +86,11 @@ public class ApplyWorkspaceEditParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getLabel() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getLabel());
+            hash = 17 * hash + Objects.hashCode(this.getLabel());
         }
-        hash = 11 * hash + Objects.hashCode(this.getEdit());
+        hash = 17 * hash + Objects.hashCode(this.getEdit());
         return hash;
     }
 

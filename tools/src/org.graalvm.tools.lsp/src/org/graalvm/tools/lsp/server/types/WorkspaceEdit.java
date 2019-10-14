@@ -139,12 +139,12 @@ public class WorkspaceEdit {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         if (this.getChanges() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getChanges());
+            hash = 89 * hash + Objects.hashCode(this.getChanges());
         }
         if (this.getDocumentChanges() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDocumentChanges());
+            hash = 89 * hash + Objects.hashCode(this.getDocumentChanges());
         }
         return hash;
     }

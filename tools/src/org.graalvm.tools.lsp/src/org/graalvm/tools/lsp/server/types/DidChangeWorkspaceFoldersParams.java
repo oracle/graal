@@ -71,7 +71,7 @@ public class DidChangeWorkspaceFoldersParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 11 * hash + Objects.hashCode(this.getEvent());
+        hash = 47 * hash + Objects.hashCode(this.getEvent());
         return hash;
     }
 

@@ -87,8 +87,8 @@ public class Unregistration {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 31 * hash + Objects.hashCode(this.getId());
-        hash = 31 * hash + Objects.hashCode(this.getMethod());
+        hash = 29 * hash + Objects.hashCode(this.getId());
+        hash = 29 * hash + Objects.hashCode(this.getMethod());
         return hash;
     }
 

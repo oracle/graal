@@ -84,7 +84,7 @@ public class DidChangeWatchedFilesParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 29 * hash + Objects.hashCode(this.getChanges());
+        hash = 71 * hash + Objects.hashCode(this.getChanges());
         return hash;
     }
 

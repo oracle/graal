@@ -87,9 +87,9 @@ public class DiagnosticRelatedInformation {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 23 * hash + Objects.hashCode(this.getLocation());
-        hash = 23 * hash + Objects.hashCode(this.getMessage());
+        int hash = 7;
+        hash = 37 * hash + Objects.hashCode(this.getLocation());
+        hash = 37 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

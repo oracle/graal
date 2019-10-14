@@ -74,9 +74,9 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 59 * hash + Integer.hashCode(this.getVersion());
-        hash = 59 * hash + Objects.hashCode(this.getUri());
+        int hash = 5;
+        hash = 97 * hash + Integer.hashCode(this.getVersion());
+        hash = 97 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 

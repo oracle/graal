@@ -70,8 +70,8 @@ public class DidChangeConfigurationParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Objects.hashCode(this.getSettings());
+        int hash = 2;
+        hash = 23 * hash + Objects.hashCode(this.getSettings());
         return hash;
     }
 

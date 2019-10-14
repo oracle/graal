@@ -55,7 +55,7 @@ public class DocumentLink {
      * The uri this link points to.
      */
     public String getTarget() {
-        return jsonData.optString("target");
+        return jsonData.optString("target", null);
     }
 
     public DocumentLink setTarget(String target) {
@@ -103,12 +103,12 @@ public class DocumentLink {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getRange());
+        hash = 29 * hash + Objects.hashCode(this.getRange());
         if (this.getTarget() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getTarget());
+            hash = 29 * hash + Objects.hashCode(this.getTarget());
         }
         if (this.getData() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getData());
+            hash = 29 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }

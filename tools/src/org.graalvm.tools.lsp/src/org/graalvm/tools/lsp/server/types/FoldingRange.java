@@ -55,7 +55,7 @@ public class FoldingRange {
      * to the length of the start line.
      */
     public Integer getStartCharacter() {
-        return jsonData.optInt("startCharacter");
+        return jsonData.has("startCharacter") ? jsonData.getInt("startCharacter") : null;
     }
 
     public FoldingRange setStartCharacter(Integer startCharacter) {
@@ -80,7 +80,7 @@ public class FoldingRange {
      * length of the end line.
      */
     public Integer getEndCharacter() {
-        return jsonData.optInt("endCharacter");
+        return jsonData.has("endCharacter") ? jsonData.getInt("endCharacter") : null;
     }
 
     public FoldingRange setEndCharacter(Integer endCharacter) {
@@ -94,7 +94,7 @@ public class FoldingRange {
      * [FoldingRangeKind](#FoldingRangeKind) for an enumeration of standardized kinds.
      */
     public String getKind() {
-        return jsonData.optString("kind");
+        return jsonData.optString("kind", null);
     }
 
     public FoldingRange setKind(String kind) {
@@ -134,17 +134,17 @@ public class FoldingRange {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 17 * hash + Integer.hashCode(this.getStartLine());
+        int hash = 5;
+        hash = 37 * hash + Integer.hashCode(this.getStartLine());
         if (this.getStartCharacter() != null) {
-            hash = 17 * hash + Integer.hashCode(this.getStartCharacter());
+            hash = 37 * hash + Integer.hashCode(this.getStartCharacter());
         }
-        hash = 17 * hash + Integer.hashCode(this.getEndLine());
+        hash = 37 * hash + Integer.hashCode(this.getEndLine());
         if (this.getEndCharacter() != null) {
-            hash = 17 * hash + Integer.hashCode(this.getEndCharacter());
+            hash = 37 * hash + Integer.hashCode(this.getEndCharacter());
         }
         if (this.getKind() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getKind());
+            hash = 37 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }

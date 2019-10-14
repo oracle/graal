@@ -39,7 +39,7 @@ public class ConfigurationItem {
      * The scope to get the configuration section for.
      */
     public String getScopeUri() {
-        return jsonData.optString("scopeUri");
+        return jsonData.optString("scopeUri", null);
     }
 
     public ConfigurationItem setScopeUri(String scopeUri) {
@@ -51,7 +51,7 @@ public class ConfigurationItem {
      * The configuration section asked for.
      */
     public String getSection() {
-        return jsonData.optString("section");
+        return jsonData.optString("section", null);
     }
 
     public ConfigurationItem setSection(String section) {
@@ -82,12 +82,12 @@ public class ConfigurationItem {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getScopeUri() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getScopeUri());
+            hash = 89 * hash + Objects.hashCode(this.getScopeUri());
         }
         if (this.getSection() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getSection());
+            hash = 89 * hash + Objects.hashCode(this.getSection());
         }
         return hash;
     }

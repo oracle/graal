@@ -85,9 +85,9 @@ public class TextDocumentPositionParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 83 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 83 * hash + Objects.hashCode(this.getPosition());
+        int hash = 7;
+        hash = 19 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 19 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

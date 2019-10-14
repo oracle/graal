@@ -69,8 +69,8 @@ public class ReferenceContext {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Boolean.hashCode(this.isIncludeDeclaration());
+        int hash = 7;
+        hash = 53 * hash + Boolean.hashCode(this.isIncludeDeclaration());
         return hash;
     }
 

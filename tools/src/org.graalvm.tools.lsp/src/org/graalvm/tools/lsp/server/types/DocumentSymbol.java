@@ -60,7 +60,7 @@ public class DocumentSymbol {
      * More detail for this symbol, e.g the signature of a function.
      */
     public String getDetail() {
-        return jsonData.optString("detail");
+        return jsonData.optString("detail", null);
     }
 
     public DocumentSymbol setDetail(String detail) {
@@ -84,7 +84,7 @@ public class DocumentSymbol {
      * Indicates if this symbol is deprecated.
      */
     public Boolean getDeprecated() {
-        return jsonData.optBoolean("deprecated");
+        return jsonData.has("deprecated") ? jsonData.getBoolean("deprecated") : null;
     }
 
     public DocumentSymbol setDeprecated(Boolean deprecated) {
@@ -166,7 +166,7 @@ public class DocumentSymbol {
         if (this.getKind() != other.getKind()) {
             return false;
         }
-        if (this.getDeprecated() != other.getDeprecated()) {
+        if (!Objects.equals(this.getDeprecated(), other.getDeprecated())) {
             return false;
         }
         if (!Objects.equals(this.getRange(), other.getRange())) {
@@ -183,19 +183,19 @@ public class DocumentSymbol {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 11 * hash + Objects.hashCode(this.getName());
+        int hash = 7;
+        hash = 53 * hash + Objects.hashCode(this.getName());
         if (this.getDetail() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getDetail());
+            hash = 53 * hash + Objects.hashCode(this.getDetail());
         }
-        hash = 11 * hash + Objects.hashCode(this.getKind());
+        hash = 53 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 11 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 53 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 11 * hash + Objects.hashCode(this.getRange());
-        hash = 11 * hash + Objects.hashCode(this.getSelectionRange());
+        hash = 53 * hash + Objects.hashCode(this.getRange());
+        hash = 53 * hash + Objects.hashCode(this.getSelectionRange());
         if (this.getChildren() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getChildren());
+            hash = 53 * hash + Objects.hashCode(this.getChildren());
         }
         return hash;
     }

@@ -88,9 +88,9 @@ public class SignatureHelpOptions {
 
     @Override
     public int hashCode() {
-        int hash = 3;
+        int hash = 5;
         if (this.getTriggerCharacters() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getTriggerCharacters());
+            hash = 17 * hash + Objects.hashCode(this.getTriggerCharacters());
         }
         return hash;
     }
