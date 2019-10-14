@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -47,17 +49,13 @@ public final class LLVMPThreadKeyIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
+    @ImportStatic({CommonNodeFactory.class, LLVMInteropType.ValueKind.class})
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
 
-        @Child private LLVMStoreNode store = null;
-
         @Specialization
-        protected int doIntrinsic(LLVMPointer key, LLVMPointer destructor, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            if (store == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = context.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I32);
-            }
-
+        protected int doIntrinsic(LLVMPointer key, LLVMPointer destructor,
+                        @Cached("createStoreNode(I32)") LLVMStoreNode store,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             // add new key-value to key-storage, which is a
             // hashmap(key-value->hashmap(thread-id->specific-value))
             final int keyId = context.getpThreadContext().createPThreadKey(destructor);

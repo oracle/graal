@@ -217,7 +217,7 @@ public final class LLVMPThreadContext {
             synchronized (callTargetLock) {
                 if (pthreadCallTarget == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode());
+                    pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode(context.getLanguage()));
                 }
             }
         }

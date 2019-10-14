@@ -30,15 +30,17 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -121,27 +123,33 @@ public final class LLVMPThreadStart {
         private final FrameSlot argSlot;
         private final FrameSlot spSlot;
 
+        @CompilationFinal ContextReference<LLVMContext> ctxRef;
+
         @TruffleBoundary
-        public LLVMPThreadFunctionRootNode() {
-            super(LLVMLanguage.getLanguage(), createFrameDescriptor());
+        public LLVMPThreadFunctionRootNode(LLVMLanguage language) {
+            super(language, createFrameDescriptor());
             final FrameDescriptor descriptor = getFrameDescriptor();
             this.functionSlot = descriptor.findFrameSlot("function");
             this.argSlot = descriptor.findFrameSlot("arg");
             this.spSlot = descriptor.findFrameSlot("sp");
 
-            final NodeFactory nodeFactory = LLVMLanguage.getLanguage().getNodeFactory();
-            this.callNode = nodeFactory.createFunctionCall(
-                            nodeFactory.createFrameRead(PointerType.VOID, functionSlot),
+            this.callNode = CommonNodeFactory.createFunctionCall(
+                            CommonNodeFactory.createFrameRead(PointerType.VOID, functionSlot),
                             new LLVMExpressionNode[]{
-                                            nodeFactory.createFrameRead(PointerType.VOID, spSlot),
-                                            nodeFactory.createFrameRead(PointerType.VOID, argSlot)
+                                            CommonNodeFactory.createFrameRead(PointerType.VOID, spSlot),
+                                            CommonNodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
                             new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            try (LLVMStack.StackPointer sp = LLVMLanguage.getLLVMContextReference().get().getThreadingStack().getStack().newFrame()) {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ctxRef = lookupContextReference(LLVMLanguage.class);
+            }
+
+            try (LLVMStack.StackPointer sp = ctxRef.get().getThreadingStack().getStack().newFrame()) {
 
                 // copy arguments to frame
                 final Object[] arguments = frame.getArguments();
