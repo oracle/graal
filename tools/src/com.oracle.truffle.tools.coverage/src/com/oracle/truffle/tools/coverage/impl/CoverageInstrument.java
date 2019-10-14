@@ -88,8 +88,8 @@ public class CoverageInstrument extends TruffleInstrument {
     static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to standard output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-    @Option(name = "StrictLines", help = "Consider a source code line covered only if covered in it's entirety. (default: true)", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Boolean> STRICT_LINES = new OptionKey<>(true);
+    @Option(help = "Consider a source code line covered only if covered in it's entirety. (default: true)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL)
+    static final OptionKey<Boolean> StrictLines = new OptionKey<>(true);
     // @formatter:on
 
     private static Function<Env, CoverageTracker> factory;
@@ -174,7 +174,7 @@ public class CoverageInstrument extends TruffleInstrument {
             PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
             SourceCoverage[] coverage = tracker.getCoverage();
             final OptionValues options = env.getOptions();
-            final boolean strictLines = STRICT_LINES.getValue(options);
+            final boolean strictLines = StrictLines.getValue(options);
             switch (OUTPUT.getValue(options)) {
                 case HISTOGRAM:
                     new CoverageCLI(out, coverage, strictLines).printHistogramOutput();
