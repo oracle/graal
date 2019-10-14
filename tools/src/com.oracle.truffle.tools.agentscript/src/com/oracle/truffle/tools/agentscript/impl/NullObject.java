@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.tools.agentscript.impl;
 
-/*
- @ApiInfo(
- group="Tools"
- )
- */
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-/**
- * Package containing classes implementing the Truffle Profiler.
- *
- * @since 0.30 or older
- */
-package com.oracle.truffle.tools.profiler;
+@SuppressWarnings({"static-method"})
+@ExportLibrary(InteropLibrary.class)
+final class NullObject implements TruffleObject {
+    private static final NullObject NULL = new NullObject();
+
+    private NullObject() {
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return true;
+    }
+
+    public static Object nullCheck(Object obj) {
+        return obj == null ? NULL : obj;
+    }
+}

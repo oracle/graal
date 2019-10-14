@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.tools.agentscript.impl;
 
-/*
- @ApiInfo(
- group="Tools"
- )
- */
+enum AgentType {
+    SOURCE,
+    ENTER,
+    RETURN,
+    CLOSE;
 
-/**
- * Package containing classes implementing the Truffle Profiler.
- *
- * @since 0.30 or older
- */
-package com.oracle.truffle.tools.profiler;
+    static AgentType find(String str) {
+        return valueOf(str.toUpperCase());
+    }
+}
