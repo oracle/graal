@@ -319,8 +319,7 @@ public final class DFAGenerator implements JsonConvertible {
         if (TRegexOptions.TRegexEnableNodeSplitter) {
             states = tryMakeReducible(states);
         }
-        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions,
-                        engineOptions.isStepExecution() ? new TRegexDFAExecutorDebugRecorder(this) : null);
+        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions, TRegexDFAExecutorDebugRecorder.create(engineOptions, this));
     }
 
     private void createInitialStatesForward() {

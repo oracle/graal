@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -105,7 +104,6 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
             locals.setLastTransition((short) 0);
         }
         if (executor.recordExecution()) {
-            CompilerAsserts.neverPartOfCompilation();
             executor.getDebugRecorder().setInitialIndex(locals.getIndex());
         }
     }
