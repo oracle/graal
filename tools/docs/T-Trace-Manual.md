@@ -1,14 +1,87 @@
-# T-Trace: Hacker's Handle to the Ultimate Tracing Framework
+# T-Trace: The Ultimate Tracing and Insights Gathering Platform
 
-[T-Trace](T-Trace.md) is a hacker friendly tool for tracing and
-instrumentation of scripts written in any language by scripts written
-in any (other) language. It allows a moderately skilled hacker to 
+**T-Trace** is multipurpose, flexible tool that greatly reduces 
+the effort of writing reliable microservices solutions. The dynamic nature
+of **T-Trace** helps everyone to selectively apply complex tracing
+pointcuts on already deployed applications running at full speed. 
+**T-Trace** further blurs the difference between various DevOps tasks -
+code once, apply your insights anytime, anywhere!
+
+## Tracing in any Language and any Framework
+
+The traditional tracing solution requires every developer to modify their own code 
+with manually added traces. **T-Trace** brings such experience to another 
+level by using the powerful instrumentation capabilities built 
+into any GraalVM language (JavaScript, Python, Ruby, R)
+and letting you dynamically apply the tracing when needed, without altering the
+original code of the application at all. All GraalVM languages and technologies 
+are designed with support for tracing in mind. 
+Apply the **T-Trace** insights to scripts running in *node.js* or
+*Ruby on Rails* or your *Python* big data computation pipeline. All of that
+is possible and ready to be explored.
+
+Every user can easily create own
+**T-Trace** insights in a language of one's choice. The insights are well
+crafted code that, when enabled, gets automatically spread around the codebase 
+of one's application and is applied at critical tracing pointcuts.
+The code is smoothly blended into bussiness code of the application 
+enriching the core functionality with additional cross cutting concerns
+(for example security).
+
+## Excellent for Research
+
+While existing GraalVM **T-Trace** insights scripts are primarily targeted
+towards ease of use in microservices area, the functionality of **T-Trace**
+pointcuts isn't limited to such area at all!
+
+**T-Trace** is an ideal tool for practicing *aspects oriented programming*
+in a completely language agnostic way. **T-Trace** insights allow detailed
+access to runtime behavior of a program at all possible pointcuts allowing one to
+inspect values, types at invocation or allocation sites, gathering useful information
+and collecting and presenting it in unrestricted ways. The **T-Trace** insights
+allow one to modify computed values, interrupt execution and 
+quickly experiment with behavioral changes without modifying the
+application code.
+
+The applicability of **T-Trace** isn't limited only to scripting
+languages. Any language written using Truffle API can be a target of
+**T-Trace** insights including static languages handled by Sulong
+(e.g. C, C++, Rust, Fortran, etc.). Enrich your static code behavior 
+by attaching your insights written in dynamic languages.
+
+**T-Trace** framework brings powerful cross-language yet language agnostic
+metaprogramming features into hands of every researcher and practitioner.
+
+## Running at Full Speed
+
+GraalVM languages are well known for running with excellent performance and **T-Trace** 
+makes no compromises to that! Your applications are inherently ready for
+tracing without giving up any speed. Launch your application 
+as you are used to. Let it run at full speed. When needed, connect to its GraalVM
+and enable requested **T-Trace** insights. Their code gets automatically
+blended into the code of your application, making them a natural part
+of surrounding code. There is no loss of performance compared to code that
+would be manually tweaked to contain the insights at appropriate places, but
+such modification doesn't have to be done in advance - it can be fully applied
+only when needed.
+
+The flexibility and the power of standard as well as hand written
+**T-Trace** insights makes them an excellent choice for vendors of cloud
+based offerings. There is no other system that could compete with the 
+multi-language offerings of GraalVM. The ability to create custom **T-Trace** 
+based insights in any language brings the combined offering to yet another level.
+GraalVM with **T-Trace** is the dream come true for anyone seeking security,
+embeddablity, configurability, robustness and performance at the cloud scale.
+
+## T-Trace: Hacker's Handle to the Ultimate Tracing Framework
+
+Any moderately skilled hacker can easily to 
 create so called **T-Trace** snippets and dynamically apply them to 
-the actual programs. That allows gathering of ultimate insights about 
-the execution and behavior without compromising the speed of the execution. 
-Let's get started with an obligatory Hello World example.
+the actual programs. That allows gathering ultimate insights about 
+execution and behavior of once application without compromising the speed 
+of the execution. Let's get started with an obligatory Hello World example.
 
-## Hello World!
+### Hello World!
 
 Create a simple `source-tracing.js` script with following content:
 
@@ -95,7 +168,7 @@ As such, whenever the *node.js* framework loaded internal or user script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
 
-## Histogram - Use Full Power of Your Language!
+### Histogram - Use Full Power of Your Language!
 
 Collecting the insights information isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
@@ -176,7 +249,7 @@ Object
 Table with names and counts of function invocations is printed out when the
 `node` process exists (requires fix of GR-18337).
 
-## Not Limited to Node
+### Not Limited to Node
 
 So far the examples used `node.js`, but the **T-Trace** system isn't tight
 to Node at all - it is available in all the environments GraalVM provides.
@@ -240,7 +313,7 @@ Hundred thousand prime numbers in 111 ms
 default `node` implementation, the lightweight `js` command line tool - 
 or your own application that decides to embedd GraalVM scripting capabilities!
 
-## Trully Polyglot - T-Trace any Language
+### Trully Polyglot - T-Trace any Language
 
 The previous examples were written in JavaScript, but due to the polyglot
 nature of GraalVM, we can take the same instrument and use it for example
@@ -274,7 +347,7 @@ It is necessary to start GraalVM's Ruby launcher with `--polyglot` parameter
 as the `source-tracing.js` script remains written in JavaScript. That's all
 fine - mixing languages has never been a problem for GraalVM!
 
-## Minimal Overhead
+### Minimal Overhead
 
 With all the power the **T-Trace** framework brings, it is fair to ask what's
 the overhead when the insights are applied? The overhead of course depends
@@ -329,7 +402,7 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **T-Trace** system gives you unlimited instrumentation power at no cost!
 
-## Trully Polyglot - T-Tracing with Ruby
+### Trully Polyglot - T-Tracing with Ruby
 
 Not only one can instrument any GraalVM language, but also the **T-Trace**
 scripts can be written in any GraalVM supported language. Take for example
@@ -535,7 +608,7 @@ Loading [eval]
 Write your **T-Trace** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
-## OpenTracing API on top of **T-Trace**
+### OpenTracing API on top of **T-Trace**
 
 It is possible to use the **T-Trace** system to implement smooth, declarative
 logging via standard OpenTracing API. Use the `npm` command to install
@@ -600,7 +673,7 @@ sources and other characteristics) and the OpenTracing will happen
 automatically and only on demand, without modifying the application code
 at all.
 
-## Compatibility of **T-Trace**
+### Compatibility of **T-Trace**
 
 Compatibility of the **T-Trace** API exposed via the `agent` interface
 is treated seriously. Future versions add new features, but whatever was
@@ -615,7 +688,7 @@ and act according to the obtain value.
 
 <!--
 
-## TODO:
+### TODO:
 
 GraalVM comes with a unified set of prepackaged high performance **T-Trace** 
 insights at your convenience. 
