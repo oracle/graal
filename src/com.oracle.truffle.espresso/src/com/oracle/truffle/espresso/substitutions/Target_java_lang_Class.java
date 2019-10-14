@@ -109,9 +109,22 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self) {
-        String name = self.getMirrorKlass().getType().toString();
+        Klass klass = self.getMirrorKlass();
+        String name = klass.getType().toString();
         // Conversion from internal form.
-        return self.getKlass().getMeta().toGuestString(MetaUtil.internalNameToJava(name, true, true));
+        String externalName = MetaUtil.internalNameToJava(name, true, true);
+
+        // Reflection relies on anonymous classes including a '/' on the name, to avoid generating
+        // (invalid) fast method accessors. See
+        // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
+        if (klass.isAnonymous()) {
+            // A small improvement over HotSpot here, which uses the class identity hash code.
+            externalName += "/" + klass.getID(); // VM.JVM_IHashCode(self);
+        }
+
+        // Class names must be interned.
+        Meta meta = klass.getMeta();
+        return meta.getStrings().intern(meta.toGuestString(externalName));
     }
 
     @Substitution(hasReceiver = true)
