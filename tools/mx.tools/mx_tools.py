@@ -195,6 +195,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Coverage',
+    short_name='cov',
+    dir_name='coverage',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:TRUFFLE_COVERAGE'],
+    support_distributions=['tools:TRUFFLE_COVERAGE_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',
