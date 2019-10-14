@@ -340,6 +340,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     /**
+     * Returns {@code true} if the type is an anonymous class.
+     */
+    public final boolean isAnonymous() {
+        return getHostClass() != null;
+    }
+
+    /**
      * Returns true if this type is exactly the type {@link java.lang.Object}.
      */
     public boolean isJavaLangObject() {
