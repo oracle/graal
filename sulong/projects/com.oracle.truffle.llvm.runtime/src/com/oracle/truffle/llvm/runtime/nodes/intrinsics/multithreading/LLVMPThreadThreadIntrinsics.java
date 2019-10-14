@@ -122,31 +122,6 @@ public final class LLVMPThreadThreadIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class, value = "onceControl")
-    @NodeChild(type = LLVMExpressionNode.class, value = "initRoutine")
-    public abstract static class LLVMPThreadOnce extends LLVMBuiltin {
-
-        @Specialization
-        protected int doIntrinsic(LLVMPointer onceControl, LLVMPointer initRoutine,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            // check if onceControl and initRoutine are invalid
-            if (onceControl.isNull() || initRoutine.isNull()) {
-                return LLVMAMD64Error.EINVAL;
-            }
-
-            // check if pthread_once was called before
-            if (!context.getpThreadContext().shouldExecuteOnce(onceControl)) {
-                return 0;
-            }
-
-            // execute the init routine
-            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(initRoutine, null, context, false);
-            init.run();
-
-            return 0;
-        }
-    }
-
     @NodeChild(type = LLVMExpressionNode.class, value = "thread1")
     @NodeChild(type = LLVMExpressionNode.class, value = "thread2")
     public abstract static class LLVMPThreadEqual extends LLVMBuiltin {
