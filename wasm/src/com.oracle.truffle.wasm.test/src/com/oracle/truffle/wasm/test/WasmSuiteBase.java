@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -164,6 +165,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 resetContext.execute(zeroMemory);
 
                 validateResult(testCase.data.resultValidator, result, capturedStdout);
+            } catch (PolyglotException e) {
+                // We cannot label the tests with polyglot errors, because they might be return values.
+                throw e;
             } catch (Throwable t) {
                 final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
                 e.setStackTrace(new StackTraceElement[0]);
