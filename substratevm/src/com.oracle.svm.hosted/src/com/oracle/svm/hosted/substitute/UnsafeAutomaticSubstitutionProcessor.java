@@ -941,7 +941,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 invoke.replaceWithInvoke();
             }
         }
-        new CanonicalizerPhase().apply(graph, context);
+        CanonicalizerPhase.create().apply(graph, context);
 
         return graph;
     }

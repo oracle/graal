@@ -523,7 +523,7 @@ public final class GraalFeature implements Feature {
                     return;
                 }
 
-                new CanonicalizerPhase().apply(graph, hostedProviders);
+                CanonicalizerPhase.create().apply(graph, hostedProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
@@ -641,7 +641,7 @@ public final class GraalFeature implements Feature {
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
 
         StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         for (CallTreeNode node : methods.values()) {
             StructuredGraph graph = node.graph;
             if (graph != null) {

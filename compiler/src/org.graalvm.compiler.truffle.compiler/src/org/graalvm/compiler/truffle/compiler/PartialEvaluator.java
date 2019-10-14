@@ -163,7 +163,7 @@ public abstract class PartialEvaluator {
                     KnownTruffleTypes knownFields) {
         this.providers = providers;
         this.architecture = architecture;
-        this.canonicalizer = new CanonicalizerPhase();
+        this.canonicalizer = CanonicalizerPhase.create();
         this.snippetReflection = snippetReflection;
         this.knownTruffleTypes = knownFields;
 

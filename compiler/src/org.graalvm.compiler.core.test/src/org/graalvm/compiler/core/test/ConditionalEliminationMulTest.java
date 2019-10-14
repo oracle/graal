@@ -78,7 +78,7 @@ public class ConditionalEliminationMulTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         new ConditionalEliminationPhase(false).apply(graph, context);
-        CanonicalizerPhase c = new CanonicalizerPhase();
+        CanonicalizerPhase c = createCanonicalizerPhase();
         c.apply(graph, context);
         new ConditionalEliminationPhase(false).apply(graph, context);
         c.apply(graph, context);

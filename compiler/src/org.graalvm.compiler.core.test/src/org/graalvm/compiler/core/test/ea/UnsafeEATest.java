@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -123,7 +122,7 @@ public class UnsafeEATest extends EATestBase {
         for (UnpackEndianHalfNode node : graph.getNodes().filter(UnpackEndianHalfNode.class)) {
             node.lower(getTarget().arch.getByteOrder());
         }
-        new CanonicalizerPhase().applyIncremental(graph, context, mark);
+        createCanonicalizerPhase().applyIncremental(graph, context, mark);
     }
 
     private boolean testingUnsafe;

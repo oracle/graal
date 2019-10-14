@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Assert;
@@ -291,10 +290,10 @@ public class InliningTest extends GraalCompilerTest {
                                 : getDefaultGraphBuilderSuite();
                 HighTierContext context = new HighTierContext(getProviders(), graphBuilderSuite, OptimisticOptimizations.ALL);
                 debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-                new CanonicalizerPhase().apply(graph, context);
+                createCanonicalizerPhase().apply(graph, context);
                 createInliningPhase().apply(graph, context);
                 debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-                new CanonicalizerPhase().apply(graph, context);
+                createCanonicalizerPhase().apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;
             }
