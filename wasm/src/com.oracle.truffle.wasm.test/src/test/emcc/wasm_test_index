@@ -5,9 +5,6 @@ hello
 sum
 issue-18450-full
 
-# same as the hello test, with some extra debug symbols
-hello-debug
-
 # disabled tests
 # fib
 # sum-table

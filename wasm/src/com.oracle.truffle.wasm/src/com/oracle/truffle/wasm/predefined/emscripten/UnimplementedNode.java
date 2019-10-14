@@ -48,7 +48,7 @@ public class UnimplementedNode extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return 0;
+        throw fail();
     }
 
     @Override
