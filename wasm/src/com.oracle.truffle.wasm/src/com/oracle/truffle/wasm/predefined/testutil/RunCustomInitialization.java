@@ -40,8 +40,14 @@ import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 import java.util.function.Consumer;
 
-public class InitializeModule extends WasmPredefinedRootNode {
-    public InitializeModule(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
+/**
+ * Initialize the module using the initialization object provided by the test suite.
+ * The initialization will set certain globals and memory locations to specific values.
+ * This is done because certain language backends emit non-WebAssembly code that is used
+ * to initialize parts of the memory.
+ */
+public class RunCustomInitialization extends WasmPredefinedRootNode {
+    public RunCustomInitialization(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
         super(language, codeEntry, memory);
     }
 
@@ -53,7 +59,7 @@ public class InitializeModule extends WasmPredefinedRootNode {
 
     @Override
     public String name() {
-        return TestutilModule.Names.INITIALIZE_MODULE;
+        return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
     }
 
     @SuppressWarnings("unchecked")

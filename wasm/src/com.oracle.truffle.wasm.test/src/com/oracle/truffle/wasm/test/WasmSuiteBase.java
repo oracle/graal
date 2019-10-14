@@ -77,7 +77,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
     private static final int STATUS_ICON_WIDTH = 2;
     private static final int STATUS_LABEL_WIDTH = 11;
-    public static final int DEFAULT_ASYNC_ITERATIONS = 100000;
+    private static final int DEFAULT_ASYNC_ITERATIONS = 100000;
+    private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
+    private static final int STATE_CHECK_PERIODICITY = 2000;
 
     private Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
@@ -125,22 +127,40 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         // First, we execute the main function (exported as "_main").
         // Then, we execute a special function, which resets the globals to their initial values.
         Value mainFunction = context.getBindings("wasm").getMember("_main");
-        Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_MODULE);
-        Value initializeModule = context.getBindings("wasm").getMember(TestutilModule.Names.INITIALIZE_MODULE);
+        Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
+        Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+        Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
+        Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
 
         Value result = null;
         resetStatus(oldOut, phaseIcon, phaseLabel);
         ByteArrayOutputStream capturedStdout = null;
+        Object firstIterationContextState = null;
         for (int i = 0; i != iterations; ++i) {
             try {
                 capturedStdout = new ByteArrayOutputStream();
                 System.setOut(new PrintStream(capturedStdout));
 
+                // Run custom initialization.
                 if (testCase.initialization() != null) {
-                    initializeModule.execute(testCase.initialization());
+                    customInitialize.execute(testCase.initialization());
                 }
+
+                // Execute benchmark.
                 result = mainFunction.execute();
-                resetGlobals.execute();
+
+                // Save context state, and check that it's consistent with the previous one.
+                if (i < INITIAL_STATE_CHECK_ITERATIONS || i % STATE_CHECK_PERIODICITY == 0) {
+                    Object contextState = saveContext.execute();
+                    if (firstIterationContextState == null) {
+                        firstIterationContextState = contextState;
+                    } else {
+                        compareContexts.execute(firstIterationContextState, contextState);
+                    }
+                }
+
+                // Reset context state.
+                resetContext.execute();
 
                 validateResult(testCase.data.resultValidator, result, capturedStdout);
             } finally {

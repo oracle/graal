@@ -46,7 +46,7 @@ public class Globals {
         this.numGlobals = 0;
     }
 
-    public int globalCount() {
+    public int count() {
         return numGlobals;
     }
 
@@ -104,5 +104,15 @@ public class Globals {
 
     public void storeDoubleWithLong(int address, long value) {
         globals[address] = value;
+    }
+
+    public Globals duplicate() {
+        final Globals other = new Globals();
+        for (int i = 0; i < numGlobals; i++) {
+            final int address = other.allocateGlobal();
+            final long value = this.loadAsLong(address);
+            other.storeLong(address, value);
+        }
+        return other;
     }
 }

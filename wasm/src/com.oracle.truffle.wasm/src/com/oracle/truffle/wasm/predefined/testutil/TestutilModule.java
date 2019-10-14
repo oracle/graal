@@ -36,15 +36,20 @@ import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
 public class TestutilModule extends PredefinedModule {
     public static class Names {
-        public static final String RESET_MODULE = "__testutil_reset_module";
-        public static final String INITIALIZE_MODULE = "__testutil_initialize_module";
+        public static final String RESET_CONTEXT = "__testutil_reset_context";
+        public static final String SAVE_CONTEXT = "__testutil_save_context";
+        public static final String COMPARE_CONTEXTS = "__testutil_compare_contexts";
+        public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
     }
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        // Note: the types are not important here, since these methods are not accessed by Wasm code.
         WasmModule module = new WasmModule(name, null);
-        defineFunction(module, Names.RESET_MODULE, types(), types(), new ResetModuleNode(language, null, null));
-        defineFunction(module, Names.INITIALIZE_MODULE, types(), types(), new InitializeModule(language, null, null));
+        defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, null, null));
+        defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, null, null));
+        defineFunction(module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, null, null));
+        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language, null, null));
         return module;
     }
 }
