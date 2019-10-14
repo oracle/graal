@@ -1,5 +1,9 @@
 # Version 19.3.0
 
+Changes:
+
+* The [Toolchain](docs/TOOLCHAIN.md) is no longer experimental.
+
 New features:
 
 * Added `mx extract-bitcode` command for extracting embedded bitcode.
