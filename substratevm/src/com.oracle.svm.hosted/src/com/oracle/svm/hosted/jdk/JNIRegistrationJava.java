@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.jdk;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -40,6 +39,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -91,7 +91,8 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
                 rerunClassInit(a, "java.lang.UNIXProcess");
             }
         } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl");
+            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl",
+                            "java.io.FilePermission");
         }
     }
 
