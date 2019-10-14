@@ -23,6 +23,10 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import java.io.IOException;
+import java.security.AccessControlContext;
+import java.security.CodeSource;
+import java.security.PermissionCollection;
+import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -159,6 +163,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");
         public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
         public static final Symbol<Name> initializeSystemClass = StaticSymbols.putName("initializeSystemClass");
+        public static final Symbol<Name> security = StaticSymbols.putName("security");
+        public static final Symbol<Name> impliesCreateAccessControlContext = StaticSymbols.putName("impliesCreateAccessControlContext");
+        public static final Symbol<Name> isAuthorized = StaticSymbols.putName("isAuthorized");
+        public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
+        public static final Symbol<Name> context = StaticSymbols.putName("context");
+        public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
         public static final Symbol<Name> name = StaticSymbols.putName("name");
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
@@ -183,6 +193,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
+        public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
         public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
@@ -285,6 +296,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> Throwable = StaticSymbols.putType(Throwable.class);
         public static final Symbol<Type> Exception = StaticSymbols.putType(Exception.class);
         public static final Symbol<Type> System = StaticSymbols.putType(System.class);
+        public static final Symbol<Type> ProtectionDomain = StaticSymbols.putType(ProtectionDomain.class);
+        public static final Symbol<Type> ProtectionDomain_array = StaticSymbols.putType(ProtectionDomain[].class);
+        public static final Symbol<Type> AccessControlContext = StaticSymbols.putType(AccessControlContext.class);
+        public static final Symbol<Type> SecurityManager = StaticSymbols.putType(SecurityManager.class);
+        public static final Symbol<Type> CodeSource = StaticSymbols.putType(CodeSource.class);
+        public static final Symbol<Type> PermissionCollection = StaticSymbols.putType(PermissionCollection.class);
+
         public static final Symbol<Type> ClassLoader = StaticSymbols.putType(java.lang.ClassLoader.class);
         public static final Symbol<Type> sun_misc_Launcher_ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
 
@@ -408,6 +426,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
+        public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
 
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.String);
@@ -456,6 +475,8 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);
         public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.Thread);
+
+        public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
 
     }
 }

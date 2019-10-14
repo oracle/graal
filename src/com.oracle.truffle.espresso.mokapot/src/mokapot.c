@@ -715,18 +715,18 @@ jobjectArray JVM_GetMethodParameters(JNIEnv *env, jobject method) {
 }
 
 jobject JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
-  UNIMPLEMENTED(JVM_DoPrivileged);
-  return NULL;
+  IMPLEMENTED(JVM_DoPrivileged);
+  return (*getEnv())->JVM_DoPrivileged(env, cls, action, context, wrapException);
 }
 
 jobject JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetInheritedAccessControlContext);
-  return NULL;
+  IMPLEMENTED(JVM_GetInheritedAccessControlContext);
+  return (*getEnv())->JVM_GetInheritedAccessControlContext(env, cls);
 }
 
 jobject JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetStackAccessControlContext);
-  return NULL;
+  IMPLEMENTED(JVM_GetStackAccessControlContext);
+  return (*getEnv())->JVM_GetStackAccessControlContext(env, cls);
 }
 
 void *JVM_RegisterSignal(jint sig, void *handler) {
