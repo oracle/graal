@@ -671,9 +671,10 @@ public class BinaryReader extends BinaryStreamReader {
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
-                        branchTable[1 + 2 * i] = readLabelIndex();
-                        branchTable[1 + 2 * i + 1] = state.getStackState(branchTable[i]);
-                        final int blockReturnLength = state.getBlockReturnLength(branchTable[i]);
+                        final int targetLabel = readLabelIndex();
+                        branchTable[1 + 2 * i + 0] = targetLabel;
+                        branchTable[1 + 2 * i + 1] = state.getStackState(targetLabel);
+                        final int blockReturnLength = state.getBlockReturnLength(targetLabel);
                         if (returnLength == -1) {
                             returnLength = blockReturnLength;
                         } else {
