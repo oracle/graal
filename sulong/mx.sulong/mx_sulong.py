@@ -820,7 +820,7 @@ class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
-        "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "ld64"],
+        "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "ld64"],
     }
 
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
