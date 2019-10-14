@@ -831,8 +831,6 @@ meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
-CLSS abstract interface org.graalvm.nativeimage.hosted.package-info
-
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static DARWIN_JNI_AND_SUBSTITUTIONS
 innr public abstract interface static LINUX_JNI_AND_SUBSTITUTIONS
