@@ -67,7 +67,8 @@ public class EmscriptenBenchmark extends WasmBenchmark {
 
         @TearDown(Level.Iteration)
         public void teardownIteration() {
-            resetContext.execute();
+            // Reset context and zero out memory.
+            resetContext.execute(true);
         }
     }
 
