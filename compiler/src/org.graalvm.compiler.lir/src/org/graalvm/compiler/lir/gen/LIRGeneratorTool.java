@@ -57,6 +57,9 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
 public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
     /**
@@ -358,4 +361,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default void emitZeroMemory(Value address, Value length, boolean isAligned) {
         throw GraalError.unimplemented("Bulk zeroing is not implemented on this architecture");
     }
+
+    Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues);
+
+    Variable emitPack(LIRKind resultKind, List<Value> values);
+
+    Variable emitExtract(LIRKind vectorKind, Value vector, int index);
 }

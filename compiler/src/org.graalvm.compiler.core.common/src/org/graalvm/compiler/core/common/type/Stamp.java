@@ -147,6 +147,17 @@ public abstract class Stamp implements SpeculationContextObject {
     }
 
     /**
+     * If this stamp represents a value that can be vectorized, the method returns a vector stamp
+     * with the requested element count.
+     * @param elementCount The number of elements in the vector.
+     * @return the vector primitive stamp with elementCount elements containing this stamp, null
+     *         if this type cannot be vectorized or is already a vector.
+     */
+    public VectorPrimitiveStamp asVector(int elementCount) {
+        return null;
+    }
+
+    /**
      * Read a value of this stamp from memory.
      *
      * @return the value read or null if the value can't be read for some reason.

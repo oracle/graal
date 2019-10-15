@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.core.common;
 
-import java.util.List;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 
-import org.graalvm.compiler.core.common.VectorDescription;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+public abstract class VectorDescription {
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+    /**
+     * Returns the maximum number of elements with the given stamp that can be packed into a vector
+     * on the current architecture.
+     *
+     * @param stamp
+     * @return max vector width in elements
+     */
+    public final int maxVectorWidth(Stamp stamp) {
+        if (stamp instanceof PrimitiveStamp) {
+            return maxVectorWidth((PrimitiveStamp) stamp);
+        }
 
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
+        return 1;
+    }
 
-    boolean shouldFullUnroll(LoopEx loop);
-
-    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
-
-    boolean shouldTryUnswitch(LoopEx loop);
-
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    protected abstract int maxVectorWidth(PrimitiveStamp stamp);
 }

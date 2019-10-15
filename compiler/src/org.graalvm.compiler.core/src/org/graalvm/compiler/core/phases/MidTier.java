@@ -24,18 +24,6 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
-import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
-import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
-import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
-import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.GuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
-
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
@@ -59,6 +47,18 @@ import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+
+import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
+import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
+import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
+import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
+import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
+import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.GuardTargets;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
+import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 
 public class MidTier extends PhaseSuite<MidTierContext> {
 

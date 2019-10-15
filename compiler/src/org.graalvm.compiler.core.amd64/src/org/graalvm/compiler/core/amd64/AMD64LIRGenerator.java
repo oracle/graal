@@ -25,23 +25,10 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -97,6 +84,8 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorCompareOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -117,6 +106,23 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
+
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -669,6 +675,64 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        Variable result = newVariable(resultKind);
+        append(new AMD64Packing.PackConstantsOp(asAllocatable(result), serializedValues));
+        return result;
+    }
+
+    @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
+        Variable result = newVariable(resultKind);
+        append(new AMD64Packing.PackStackOp(this, result, values.stream().map(this::asAllocatable).collect(Collectors.toList())));
+        return result;
+    }
+
+    @Override
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
+        final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
+        final Variable result = newVariable(toRegisterKind(LIRKind.value(scalarKind)));
+
+        final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
+
+        AllocatableValue src = asAllocatable(vector);
+
+        if (index >= xmmLengthInElements) {
+            final int extractDepth = index / xmmLengthInElements;
+            index %= xmmLengthInElements;
+
+            final AllocatableValue temp = asAllocatable(newVariable(vectorKind));
+            append(new AMD64VectorShuffle.Extract128Op(temp, src, extractDepth));
+            src = temp;
+        } else {
+            src = asAllocatable(vector);
+        }
+
+        switch (scalarKind) {
+            case BYTE:
+                append(new AMD64VectorShuffle.ExtractByteOp(result, src, index));
+                break;
+            case WORD:
+                append(new AMD64VectorShuffle.ExtractShortOp(result, src, index));
+                break;
+            case DWORD:
+                append(new AMD64VectorShuffle.ExtractIntOp(result, src, index));
+                break;
+            case QWORD:
+                append(new AMD64VectorShuffle.ExtractLongOp(result, src, index));
+                break;
+            case SINGLE:
+                append(new AMD64VectorShuffle.ExtractFloatOp(result, src, index));
+                break;
+            case DOUBLE:
+                append(new AMD64VectorShuffle.ExtractDoubleOp(result, src, index));
+                break;
+        }
+
+        return result;
     }
 
     @Override

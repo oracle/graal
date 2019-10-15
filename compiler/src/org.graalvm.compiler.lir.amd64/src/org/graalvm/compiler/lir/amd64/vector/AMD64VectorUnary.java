@@ -24,15 +24,8 @@
  */
 package org.graalvm.compiler.lir.amd64.vector;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
@@ -44,9 +37,20 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPANDN;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPCMPEQB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
+import static org.graalvm.compiler.asm.amd64.AVXKind.getRegisterSize;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
 public class AMD64VectorUnary {
 
@@ -74,6 +78,56 @@ public class AMD64VectorUnary {
             } else {
                 opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
             }
+        }
+    }
+
+    public static final class AVXNegateOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<AVXNegateOp> TYPE = LIRInstructionClass.create(AVXNegateOp.class);
+
+        private final VexRVMOp sub;
+        private final AVXKind.AVXSize size;
+
+        @Def({REG}) protected AllocatableValue result;
+        @Temp({REG}) protected AllocatableValue temp;
+        @Use({REG, STACK}) protected AllocatableValue input;
+
+        public AVXNegateOp(VexRVMOp sub, LIRGeneratorTool tool, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+            super(TYPE);
+            this.result = result;
+            this.temp = tool.newVariable(result.getValueKind());
+            this.input = input;
+            this.sub = sub;
+            this.size = size;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            new AMD64VectorBinary.AVXBinaryOp(VXORPS, getRegisterSize(temp), temp, temp, temp).emitCode(crb, masm);
+            new AMD64VectorBinary.AVXBinaryOp(sub, size, result, temp, input).emitCode(crb, masm);
+        }
+    }
+
+    public static final class AVXNotOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<AVXNegateOp> TYPE = LIRInstructionClass.create(AVXNegateOp.class);
+
+        private final AVXKind.AVXSize size;
+
+        @Def({REG}) protected AllocatableValue result;
+        @Temp({REG}) protected AllocatableValue temp;
+        @Use({REG, STACK}) protected AllocatableValue input;
+
+        public AVXNotOp(LIRGeneratorTool tool, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+            super(TYPE);
+            this.size = size;
+            this.result = result;
+            this.temp = tool.newVariable(result.getValueKind());
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            new AMD64VectorBinary.AVXBinaryOp(VPCMPEQB, getRegisterSize(temp), temp, temp, temp).emitCode(crb, masm);
+            new AMD64VectorBinary.AVXBinaryOp(VPANDN, size, result, temp, input).emitCode(crb, masm);
         }
     }
 

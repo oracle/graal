@@ -34,28 +34,135 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
 
     @Override
     public LIRKind getIntegerKind(int bits) {
+        return LIRKind.value(getIntegerAMD64Kind(bits));
+    }
+
+    private static AMD64Kind getIntegerAMD64Kind(int bits) {
         if (bits <= 8) {
-            return LIRKind.value(AMD64Kind.BYTE);
+            return AMD64Kind.BYTE;
         } else if (bits <= 16) {
-            return LIRKind.value(AMD64Kind.WORD);
+            return AMD64Kind.WORD;
         } else if (bits <= 32) {
-            return LIRKind.value(AMD64Kind.DWORD);
+            return AMD64Kind.DWORD;
         } else {
             assert bits <= 64;
-            return LIRKind.value(AMD64Kind.QWORD);
+            return AMD64Kind.QWORD;
         }
     }
 
     @Override
+    public LIRKind getVectorIntegerKind(int bits, int elementCount) {
+        final AMD64Kind scalarKind = getIntegerAMD64Kind(bits);
+        switch (scalarKind) {
+            case BYTE:
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V32_BYTE);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V64_BYTE);
+                }
+                if (elementCount <= 16) {
+                    return LIRKind.value(AMD64Kind.V128_BYTE);
+                }
+                if (elementCount <= 32) {
+                    return LIRKind.value(AMD64Kind.V256_BYTE);
+                }
+                if (elementCount <= 64) {
+                    return LIRKind.value(AMD64Kind.V512_BYTE);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+            case WORD:
+                if (elementCount <= 2) {
+                    return LIRKind.value(AMD64Kind.V32_WORD);
+                }
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V64_WORD);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V128_WORD);
+                }
+                if (elementCount <= 16) {
+                    return LIRKind.value(AMD64Kind.V256_WORD);
+                }
+                if (elementCount <= 32) {
+                    return LIRKind.value(AMD64Kind.V512_WORD);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+            case DWORD:
+                if (elementCount <= 2) {
+                    return LIRKind.value(AMD64Kind.V64_DWORD);
+                }
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V128_DWORD);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V256_DWORD);
+                }
+                if (elementCount <= 16) {
+                    return LIRKind.value(AMD64Kind.V512_DWORD);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+            case QWORD:
+                if (elementCount <= 2) {
+                    return LIRKind.value(AMD64Kind.V128_QWORD);
+                }
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V256_QWORD);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V512_QWORD);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+        }
+
+        throw GraalError.shouldNotReachHere("vector too large");
+    }
+
+    @Override
     public LIRKind getFloatingKind(int bits) {
+        return LIRKind.value(getFloatingAMD64Kind(bits));
+    }
+
+    private static AMD64Kind getFloatingAMD64Kind(int bits) {
         switch (bits) {
             case 32:
-                return LIRKind.value(AMD64Kind.SINGLE);
+                return AMD64Kind.SINGLE;
             case 64:
-                return LIRKind.value(AMD64Kind.DOUBLE);
+                return AMD64Kind.DOUBLE;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("could not find floating type with bit length " + bits);
         }
+    }
+
+    @Override
+    public LIRKind getVectorFloatingKind(int bits, int elementCount) {
+        final AMD64Kind scalarKind = getFloatingAMD64Kind(bits);
+        switch (scalarKind) {
+            case SINGLE:
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V128_SINGLE);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V256_SINGLE);
+                }
+                if (elementCount <= 16) {
+                    return LIRKind.value(AMD64Kind.V512_SINGLE);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+            case DOUBLE:
+                if (elementCount <= 2) {
+                    return LIRKind.value(AMD64Kind.V128_DOUBLE);
+                }
+                if (elementCount <= 4) {
+                    return LIRKind.value(AMD64Kind.V256_DOUBLE);
+                }
+                if (elementCount <= 8) {
+                    return LIRKind.value(AMD64Kind.V512_DOUBLE);
+                }
+                throw GraalError.shouldNotReachHere("vector too large");
+        }
+
+        throw GraalError.shouldNotReachHere("vector too large");
     }
 
     @Override

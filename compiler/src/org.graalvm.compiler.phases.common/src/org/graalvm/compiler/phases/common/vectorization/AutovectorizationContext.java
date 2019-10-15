@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.phases.common.vectorization;
 
-import java.util.List;
+import org.graalvm.compiler.graph.Node;
 
-import org.graalvm.compiler.core.common.VectorDescription;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+public interface AutovectorizationContext {
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+    /**
+     * Predicate to check if a specific node is supported for vectorization, based on its type.
+     *
+     * @param node Candidate node for vectorization.
+     * @return Whether the node is supported for vectorization.
+     */
+    boolean supported(Node node);
 
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
+    /**
+     * Retrieve the BlockInfo object for the current block.
+     *
+     * @return BlockInfo for the current block.
+     */
+    BlockInfo getBlockInfo();
 
-    boolean shouldFullUnroll(LoopEx loop);
-
-    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
-
-    boolean shouldTryUnswitch(LoopEx loop);
-
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
 }

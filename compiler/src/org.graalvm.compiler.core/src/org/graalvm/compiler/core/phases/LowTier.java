@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -42,9 +44,16 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
+import org.graalvm.compiler.phases.common.vectorization.AutovectorizationPolicies;
+import org.graalvm.compiler.phases.common.vectorization.DefaultAutovectorizationPolicies;
+import org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase;
+import org.graalvm.compiler.phases.common.vectorization.MethodList;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 public class LowTier extends PhaseSuite<LowTierContext> {
 
@@ -53,6 +62,15 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
+
+        @Option(help = "Enable autovectorization", type = OptionType.Expert)
+        public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(false);
+
+        @Option(help = "Substring of methods and/or classes that should be ex/included", type = OptionType.Debug)
+        public static final OptionKey<String> AVList = new OptionKey<>("");
+
+        @Option(help = "Whether AVList should be a blacklist or a whitelist", type = OptionType.Debug)
+        public static final OptionKey<Boolean> AVWhitelist = new OptionKey<>(false); // Blacklist by default
         // @formatter:on
 
     }
@@ -81,10 +99,30 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new UseTrappingNullChecksPhase());
 
+        if (Options.Autovectorize.getValue(options)) {
+            final String listValue = Options.AVList.getValue(options).trim();
+            List<String> list = new ArrayList<>();
+            if (!listValue.isEmpty()) {
+                list = Arrays.asList(listValue.split(","));
+            }
+
+            appendPhase(new IsomorphicPackingPhase(
+                    new SchedulePhase(SchedulingStrategy.EARLIEST),
+                    createAutovectorizationPolicies(),
+                    new MethodList(list, Options.AVWhitelist.getValue(options)),
+                    NodeView.DEFAULT));
+        }
+
+        appendPhase(canonicalizer);
+
         appendPhase(new DeadCodeEliminationPhase(Required));
 
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
 
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+    }
+
+    public AutovectorizationPolicies createAutovectorizationPolicies() {
+        return new DefaultAutovectorizationPolicies();
     }
 }

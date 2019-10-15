@@ -100,6 +100,10 @@ public interface ArithmeticLIRGeneratorTool {
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
+    Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state);
+
+    void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state);
+
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
     @SuppressWarnings("unused")

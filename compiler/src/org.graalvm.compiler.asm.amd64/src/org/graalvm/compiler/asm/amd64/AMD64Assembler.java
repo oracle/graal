@@ -24,14 +24,27 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.debug.GraalError;
+
+import java.util.EnumSet;
+
 import static jdk.vm.ci.amd64.AMD64.CPU;
-import static jdk.vm.ci.amd64.AMD64.MASK;
-import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
+import static jdk.vm.ci.amd64.AMD64.MASK;
+import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
@@ -76,20 +89,6 @@ import static org.graalvm.compiler.core.common.NumUtil.isByte;
 import static org.graalvm.compiler.core.common.NumUtil.isInt;
 import static org.graalvm.compiler.core.common.NumUtil.isShiftCount;
 import static org.graalvm.compiler.core.common.NumUtil.isUByte;
-
-import java.util.EnumSet;
-
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
-import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.debug.GraalError;
-
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.Register.RegisterCategory;
-import jdk.vm.ci.code.TargetDescription;
 
 /**
  * This class implements an assembler that can encode most X86 instructions.
@@ -1265,6 +1264,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final VexMRIOp VEXTRACTF128 = new VexMRIOp("VEXTRACTF128", P_66, M_0F3A, W0, 0x19, VEXOpAssertion.AVX1_256ONLY);
         public static final VexMRIOp VEXTRACTI128 = new VexMRIOp("VEXTRACTI128", P_66, M_0F3A, W0, 0x39, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexMRIOp VEXTRACTPS   = new VexMRIOp("VEXTRACTPS",   P_66, M_0F3A, WIG,0x17, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRB      = new VexMRIOp("VPEXTRB",      P_66, M_0F3A, W0, 0x14, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRW      = new VexMRIOp("VPEXTRW",      P_66, M_0F3A, W0, 0x15, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRD      = new VexMRIOp("VPEXTRD",      P_66, M_0F3A, W0, 0x16, VEXOpAssertion.XMM_CPU);
@@ -1364,6 +1364,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VADDSUBPS = new VexRVMOp("VADDSUBPS", P_F2, M_0F,   WIG, 0xD0);
         public static final VexRVMOp VADDSUBPD = new VexRVMOp("VADDSUBPD", P_66, M_0F,   WIG, 0xD0);
         public static final VexRVMOp VPAND     = new VexRVMOp("VPAND",     P_66, M_0F,   WIG, 0xDB, VEXOpAssertion.AVX1_2);
+        public static final VexRVMOp VPANDN    = new VexRVMOp("VPANDN",    P_66, M_0F,   WIG, 0xDF, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPOR      = new VexRVMOp("VPOR",      P_66, M_0F,   WIG, 0xEB, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPXOR     = new VexRVMOp("VPXOR",     P_66, M_0F,   WIG, 0xEF, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPADDB    = new VexRVMOp("VPADDB",    P_66, M_0F,   WIG, 0xFC, VEXOpAssertion.AVX1_2);
@@ -1588,6 +1589,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VSHUFPD     = new VexRVMIOp("VSHUFPD",     P_66, M_0F,   WIG, 0xC6);
         public static final VexRVMIOp VINSERTF128 = new VexRVMIOp("VINSERTF128", P_66, M_0F3A, W0,  0x18, VEXOpAssertion.AVX1_256ONLY);
         public static final VexRVMIOp VINSERTI128 = new VexRVMIOp("VINSERTI128", P_66, M_0F3A, W0,  0x38, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRVMIOp VPINSRB     = new VexRVMIOp("VPINSRB",     P_66, M_0F3A, W0,  0x20, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRW     = new VexRVMIOp("VPINSRW",     P_66, M_0F,   W0,  0xC4, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRD     = new VexRVMIOp("VPINSRD",     P_66, M_0F3A, W0,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRQ     = new VexRVMIOp("VPINSRQ",     P_66, M_0F3A, W1,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VINSERTPS   = new VexRVMIOp("VINSERTPS",   P_66, M_0F3A, WIG, 0x21, VEXOpAssertion.XMM_CPU);
         // @formatter:on
 
         private VexRVMIOp(String opcode, int pp, int mmmmm, int w, int op) {
@@ -2090,10 +2096,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movb(AMD64Address dst, Register src) {
-        assert inRC(CPU, src) : "must have byte register";
         prefixb(dst, src);
         emitByte(0x88);
         emitOperandHelper(src, dst, 0);
+    }
+
+    public final void movb(Register dst, AMD64Address src) {
+      prefixb(src, dst);
+      emitByte(0x8A);
+      emitOperandHelper(dst, src, 0);
     }
 
     public final void movl(Register dst, int imm32) {
@@ -3834,9 +3845,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
     }
 
+    public final void vmovdqu128(Register dst, AMD64Address src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.XMM, dst, src);
+    }
+
     public final void vmovdqu(AMD64Address dst, Register src) {
         assert inRC(XMM, src);
         VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vmovdqu128(AMD64Address dst, Register src) {
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void vpmovzxbw(Register dst, AMD64Address src) {

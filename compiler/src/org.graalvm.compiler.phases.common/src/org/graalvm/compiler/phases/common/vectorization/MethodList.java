@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.phases.common.vectorization;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.VectorDescription;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+public class MethodList {
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+    private final List<String> list;
+    private final boolean whitelist;
 
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
+    public MethodList(List<String> list, boolean whitelist) {
+        this.list = list;
+        this.whitelist = whitelist;
+    }
 
-    boolean shouldFullUnroll(LoopEx loop);
+    boolean shouldSkip(ResolvedJavaMethod method) {
+        final String name = String.format("%s.%s", method.getDeclaringClass().toJavaName(), method.getName());
 
-    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
+        // In first order logic:
+        // !listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
+        //  listWhitelist -> noneMatch  <=>  !listWhitelist v noneMatch
+        return (whitelist || list.stream().anyMatch(name::contains)) && (!whitelist || list.stream().noneMatch(name::contains));
 
-    boolean shouldTryUnswitch(LoopEx loop);
+    }
 
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
 }

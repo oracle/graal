@@ -24,13 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.r10;
-import static jdk.vm.ci.amd64.AMD64.rax;
-import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
@@ -41,7 +35,11 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -70,6 +68,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -80,6 +79,15 @@ import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rsp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -336,5 +344,60 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
         return calleeRegisters;
+    }
+
+    class AMD64VectorDescription extends VectorDescription {
+
+        @Override
+        protected int maxVectorWidth(PrimitiveStamp stamp) {
+            final boolean isFloat = stamp instanceof FloatStamp;
+            final boolean isInt = stamp instanceof IntegerStamp;
+            final boolean isNumeric = isFloat || isInt;
+
+            final int bytes = stamp.getBits() / 8;
+            int result = bytes;
+
+            // AMD64 modes
+            EnumSet<AMD64.CPUFeature> features = ((AMD64) getTarget().arch).getFeatures();
+
+            if (features.contains(CPUFeature.SSE)) {
+                if (isNumeric && bytes == 4) {
+                    result = 16;
+                } else if (isNumeric && features.contains(CPUFeature.SSE2)) {
+                    // Other sizes of data types are only properly supported in SSE2 and beyond.
+                    result = 16;
+                }
+            }
+
+            if (features.contains(CPUFeature.AVX)) {
+                if (isFloat) {
+                    result = 32;
+                }
+            }
+
+            if (features.contains(CPUFeature.AVX2)) {
+                // AVX2 adds proper support to integer operations from AVX. Every numeric type
+                // should be supported.
+                if (isNumeric) {
+                    result = 32;
+                }
+            }
+
+            // TODO: re-enable these when AVX 512 is supported elsewhere.
+            /*
+             * if (features.contains(CPUFeature.AVX512F)) { if (isFloat) result = 64; }
+             *
+             * if (features.contains(CPUFeature.AVX512BW)) { if (isInt) result = 64; }
+             */
+
+            return result / bytes;
+        }
+    }
+
+    private final VectorDescription vectorDescription = new AMD64VectorDescription();
+
+    @Override
+    public VectorDescription getVectorDescription() {
+        return vectorDescription;
     }
 }

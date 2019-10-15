@@ -47,6 +47,11 @@ public class AArch64LIRKindTool implements LIRKindTool {
     }
 
     @Override
+    public LIRKind getVectorIntegerKind(int bits, int elementCount) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
     public LIRKind getFloatingKind(int bits) {
         switch (bits) {
             case 32:
@@ -56,6 +61,11 @@ public class AArch64LIRKindTool implements LIRKindTool {
             default:
                 throw GraalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    public LIRKind getVectorFloatingKind(int bits, int elementCount) {
+        throw GraalError.unimplemented();
     }
 
     @Override

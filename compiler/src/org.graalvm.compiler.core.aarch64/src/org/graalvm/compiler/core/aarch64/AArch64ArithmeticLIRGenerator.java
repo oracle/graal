@@ -495,6 +495,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
+    public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
     public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
         AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address);
         AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();

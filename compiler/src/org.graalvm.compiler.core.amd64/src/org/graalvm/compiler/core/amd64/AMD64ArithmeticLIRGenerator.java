@@ -25,64 +25,21 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSF;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZX;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZXB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.POPCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
-import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
-
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.VMConstant;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
@@ -124,27 +81,88 @@ import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
 import org.graalvm.compiler.lir.amd64.AMD64Ternary;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
+import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstFloatOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.VMConstant;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSF;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZXB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.POPCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPAND;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMULLD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
+import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -164,6 +182,28 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         AllocatableValue input = asAllocatable(inputVal);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         boolean isAvx = supportAVX();
+        AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case DWORD:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VPSUBD, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case QWORD:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VPSUBQ, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case SINGLE:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VSUBPS, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case DOUBLE:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VSUBPD, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+            return result;
+        }
         switch ((AMD64Kind) input.getPlatformKind()) {
             case DWORD:
                 getLIRGen().append(new AMD64Unary.MOp(NEG, DWORD, result, input));
@@ -197,6 +237,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitNot(Value inputVal) {
         AllocatableValue input = asAllocatable(inputVal);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
+        boolean isAvx = supportAVX();
+        AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            getLIRGen().append(new AMD64VectorUnary.AVXNotOp(getLIRGen(), getRegisterSize(result), result, input));
+            return result;
+        }
         switch ((AMD64Kind) input.getPlatformKind()) {
             case DWORD:
                 getLIRGen().append(new AMD64Unary.MOp(NOT, DWORD, result, input));
@@ -301,7 +348,24 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
-        switch ((AMD64Kind) a.getPlatformKind()) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPADDD, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPADDQ, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VADDPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VADDPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+        switch (kind) {
             case DWORD:
                 if (isJavaConstant(b) && !setFlags) {
                     long displacement = asJavaConstant(b).asLong();
@@ -338,6 +402,23 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPSUBD, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPSUBQ, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VSUBPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VSUBPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 return emitBinary(resultKind, SUB, DWORD, false, a, b, setFlags);
@@ -393,6 +474,21 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitMul(Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
         LIRKind resultKind = LIRKind.combine(a, b);
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPMULLD, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VMULPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VMULPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 return emitIMUL(DWORD, a, b);
@@ -542,6 +638,19 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
         boolean isAvx = supportAVX();
         LIRKind resultKind = LIRKind.combine(a, b);
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case SINGLE:
+                    return emitBinary(resultKind, VDIVPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VDIVPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 AMD64MulDivOp op = emitIDIV(DWORD, a, b, state);
@@ -625,6 +734,28 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitAnd(Value a, Value b) {
         LIRKind resultKind = LIRKind.combine(a, b);
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        boolean isAvx = supportAVX();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VANDPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VANDPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 return emitBinary(resultKind, AND, DWORD, true, a, b, false);
@@ -641,8 +772,29 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Variable emitOr(Value a, Value b) {
-        boolean isAvx = supportAVX();
         LIRKind resultKind = LIRKind.combine(a, b);
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        boolean isAvx = supportAVX();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VORPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VORPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 return emitBinary(resultKind, OR, DWORD, true, a, b, false);
@@ -669,6 +821,27 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitXor(Value a, Value b) {
         boolean isAvx = supportAVX();
         LIRKind resultKind = LIRKind.combine(a, b);
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        if (kind.getVectorLength() > 1 && isAvx) {
+            AMD64Kind scalarKind = kind.getScalar();
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VXORPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VXORPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 return emitBinary(resultKind, XOR, DWORD, true, a, b, false);
@@ -1160,6 +1333,23 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 throw GraalError.shouldNotReachHere();
         }
         return result;
+    }
+
+    @Override
+    public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
+        AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
+        Variable result = getLIRGen().newVariable(vectorKind);
+        // getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+        // Use the line below instead of the line above for the temporary-stack-space load op.
+        getLIRGen().append(new AMD64Packing.LoadStackOp(getLIRGen(), asAllocatable(result), loadAddress, count));
+        return result;
+    }
+
+    @Override
+    public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
+        AMD64AddressValue storeAddress = getAMD64LIRGen().asAddressValue(address);
+        // getLIRGen().append(new AMD64Unary.VectorWriteMemory(storeAddress, asAllocatable(value)));
+        getLIRGen().append(new AMD64Packing.StoreStackOp(getLIRGen(), storeAddress, asAllocatable(value), count));
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {

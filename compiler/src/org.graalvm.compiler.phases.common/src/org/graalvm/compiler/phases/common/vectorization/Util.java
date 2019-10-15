@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.phases.common.vectorization;
 
-import java.util.List;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 
-import org.graalvm.compiler.core.common.VectorDescription;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+final class Util {
+    private Util() { }
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
-
-    boolean shouldFullUnroll(LoopEx loop);
-
-    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
-
-    boolean shouldTryUnswitch(LoopEx loop);
-
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    static Stamp getStamp(ValueNode node, NodeView view) {
+        return (node instanceof WriteNode ? ((WriteNode) node).value() : node).stamp(view);
+    }
 }

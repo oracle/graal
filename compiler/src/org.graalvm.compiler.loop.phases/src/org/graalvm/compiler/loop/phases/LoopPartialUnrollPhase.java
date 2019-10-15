@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
@@ -64,7 +65,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         if (!LoopTransformations.isUnrollableLoop(loop)) {
                             continue;
                         }
-                        if (getPolicies().shouldPartiallyUnroll(loop)) {
+                        if (context instanceof MidTierContext && getPolicies().shouldPartiallyUnroll(loop, ((MidTierContext) context).getVectorDescription())) {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.

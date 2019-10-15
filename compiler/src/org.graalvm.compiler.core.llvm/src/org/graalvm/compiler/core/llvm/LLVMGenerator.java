@@ -24,23 +24,24 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.getType;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiFunction;
-
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
@@ -79,24 +80,23 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.phases.util.Providers;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterAttributes;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
+
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.getType;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 public abstract class LLVMGenerator implements LIRGeneratorTool {
     private final ArithmeticLLVMGenerator arithmetic;
@@ -893,6 +893,21 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
 
     public abstract LLVMValueRef getRetrieveExceptionFunction();
 
+    @Override
+    public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+      throw unimplemented();
+    }
+
+    @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
+        throw unimplemented();
+    }
+
+    @Override
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
+        throw unimplemented();
+    }
+
     public LLVMGenerationResult getLLVMResult() {
         return generationResult;
     }
@@ -1236,6 +1251,16 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
             LLVMValueRef load = builder.buildLoad(getVal(address), getType(kind));
             return new LLVMVariable(load);
+        }
+
+        @Override
+        public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
+            throw unimplemented();
+        }
+
+        @Override
+        public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
+            throw unimplemented();
         }
 
         @Override

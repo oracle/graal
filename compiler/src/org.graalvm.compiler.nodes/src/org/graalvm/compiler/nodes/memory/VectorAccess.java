@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop;
+package org.graalvm.compiler.nodes.memory;
 
-import java.util.List;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.word.LocationIdentity;
 
-import org.graalvm.compiler.core.common.VectorDescription;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+public interface VectorAccess extends GuardedNode, HeapAccess {
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+    AddressNode getAddress();
 
-public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
+    LocationIdentity[] getLocationIdentities();
 
-    boolean shouldFullUnroll(LoopEx loop);
-
-    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
-
-    boolean shouldTryUnswitch(LoopEx loop);
-
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    boolean canNullCheck();
 }

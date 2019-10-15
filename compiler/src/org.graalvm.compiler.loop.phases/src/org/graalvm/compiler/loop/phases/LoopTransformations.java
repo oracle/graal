@@ -239,6 +239,18 @@ public abstract class LoopTransformations {
         // Each duplication is inserted after the original, ergo create the post loop first
         LoopFragmentWhole mainLoop = preLoop.duplicate();
         LoopFragmentWhole postLoop = preLoop.duplicate();
+
+        // The duplication above unmarks certain nodes in the loop's LoopFragmentWhole, but not in
+        // the loop's LoopFragmentInside (despite the LoopFragmentInside deriving from the
+        // LoopFragmentWhole).
+        //
+        // Invalidate the loop's LoopFragmentInside here, so that when it is used later it is
+        // consistent with the LoopFragmentWhole.
+        // `processPreLoopPhis` utilizes loop.inside() and asserts that have been duplicated.
+        // However, since the duplication above removes some nodes from the LoopFragmentWhole and
+        // therefore does not duplicate those nodes, the assertion fails as we encounter nodes that were not duplicated.
+        loop.invalidateInsideFragment();
+
         preLoopBegin.incrementSplits();
         preLoopBegin.incrementSplits();
         preLoopBegin.setPreLoop();

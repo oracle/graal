@@ -321,6 +321,11 @@ public class FloatStamp extends PrimitiveStamp {
         return null;
     }
 
+    @Override
+    public VectorPrimitiveStamp asVector(int elementCount) {
+        return VectorFloatStamp.create(this, elementCount);
+    }
+
     private boolean isConstant() {
         /*
          * There are many forms of NaNs and any operations on them can silently convert them into

@@ -110,6 +110,10 @@ public class LoopEx {
         whole = null;
     }
 
+    public void invalidateInsideFragment() {
+        inside = null;
+    }
+
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
         // TODO (gd)

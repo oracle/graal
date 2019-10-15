@@ -24,16 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static java.lang.reflect.Modifier.isStatic;
-import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.aarch64.AArch64.r10;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
@@ -45,8 +35,10 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -89,6 +81,18 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
+
+import static java.lang.reflect.Modifier.isStatic;
+
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+
+import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 
 /**
  * HotSpot AArch64 specific backend.
@@ -409,5 +413,21 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
         return calleeRegisters;
+    }
+
+    class AArch64VectorDescription extends VectorDescription {
+
+        @Override
+        protected int maxVectorWidth(PrimitiveStamp stamp) {
+            // TODO: ARM vectorization support
+            return 1;
+        }
+    }
+
+    private final VectorDescription vectorDescription = new AArch64VectorDescription();
+
+    @Override
+    public VectorDescription getVectorDescription() {
+        return vectorDescription;
     }
 }
