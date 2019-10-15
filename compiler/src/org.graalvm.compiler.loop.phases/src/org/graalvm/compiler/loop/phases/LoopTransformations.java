@@ -41,6 +41,7 @@ import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.loop.CountedLoopInfo;
+import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopFragmentInside;
@@ -101,6 +102,7 @@ public abstract class LoopTransformations {
          */
         CanonicalizerPhase c = canonicalizer.copyWithoutSimplification();
         EconomicSetNodeEventListener l = new EconomicSetNodeEventListener();
+        int peelings = 0;
         try (NodeEventScope ev = graph.trackNodeEvents(l)) {
             while (!loopBegin.isDeleted()) {
                 Mark newNodes = graph.getMark();
@@ -124,9 +126,11 @@ public abstract class LoopTransformations {
                         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After simplifying if %s", s);
                     }
                 }
-                if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2) {
+                if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
+                                peelings > DefaultLoopPolicies.Options.FullUnrollMaxIterations.getValue(graph.getOptions())) {
                     throw new RetryableBailoutException("FullUnroll : Graph seems to grow out of proportion");
                 }
+                peelings++;
             }
         }
         // Canonicalize with the original canonicalizer to capture all simplifications
