@@ -30,6 +30,6 @@
 package com.oracle.truffle.wasm.utils;
 
 public class SystemProperties {
-    public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasm.watToWasmExecutable";
+    public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
 }

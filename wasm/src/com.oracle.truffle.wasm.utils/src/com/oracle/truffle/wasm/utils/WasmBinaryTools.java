@@ -54,7 +54,7 @@ public class WasmBinaryTools {
 
     private static byte[] wat2wasm(File input, File output) throws IOException, InterruptedException {
         Assert.assertNotNull(
-                format("The property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
+                format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
                 SystemProperties.WAT_TO_WASM_EXECUTABLE);
         // execute the wat2wasm tool and wait for it to finish execution
         runExternalToolAndVerify(
