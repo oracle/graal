@@ -122,18 +122,18 @@ public class CountedLoopInfo {
         }
         ValueNode range = sub(max, min);
 
-        ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1);
+        ConstantNode one = ConstantNode.forIntegerStamp(stamp, 1, graph);
         if (oneOff) {
             range = add(range, one);
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
-        ValueNode denominator = add(range, sub(absStride, one));
+        ValueNode denominator = add(graph, range, sub(absStride, one), NodeView.DEFAULT);
         ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride, null);
 
         if (assumeLoopEntered) {
             return graph.addOrUniqueWithInputs(div);
         }
-        ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0);
+        ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0, graph);
         // This check is "wide": it looks like min <= max
         // That's OK even if the loop is strict (`!isLimitIncluded()`)
         // because in this case, `div` will be zero when min == max
