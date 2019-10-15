@@ -43,15 +43,15 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Arrays;
 
 /**
- * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
+ * This class is designed as a "scratchpad" for generating many long arrays of unknown size. It will
  * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
  * <p>
  * Usage Example:
  * </p>
  *
  * <pre>
- * IntArrayBuffer buf = new LongArrayBuffer();
- * List<int[]> results = new ArrayList<>();
+ * LongArrayBuffer buf = new LongArrayBuffer();
+ * List<long[]> results = new ArrayList<>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeLongs()) {
  *         buf.add(someCalculation(x));

@@ -81,7 +81,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * }
  * </pre>
  *
- * For every successor, the visitor will provide the full path of AST nodes that have been traversed
+ * For every successor, the visitor will find the full path of AST nodes that have been traversed
  * from the initial node to the successor node, where {@link Group} nodes are treated specially: The
  * path will contain separate entries for <em>entering</em> and <em>leaving</em> a {@link Group},
  * and a special <em>pass-through</em> node for empty sequences of {@link Group}s marked with
@@ -106,6 +106,12 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  */
 public abstract class NFATraversalRegexASTVisitor {
 
+    /**
+     * Bailout threshold for the number of successors eliminated by de-duplication so far. This is
+     * necessary for expressions with an exponential number of possible paths, like
+     * {@code /(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)/}.
+     */
+    private static final int SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD = 100_000;
     protected final RegexAST ast;
     /**
      * This buffer of long values represents the path of {@link RegexASTNode}s traversed so far.
@@ -209,9 +215,6 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /**
      * Visit the next successor found.
-     *
-     * @param target Path to the successor. Do not modify this list, it will be reused by the
-     *            visitor for finding the next successor!
      */
     protected abstract void visit(RegexASTNode target);
 
@@ -219,7 +222,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected abstract void leaveLookAhead(LookAheadAssertion assertion);
 
-    protected boolean dollarsOrLookAheadsOnPath() {
+    private boolean dollarsOrLookAheadsOnPath() {
         return !dollarsOrLookAheadsOnPath.isEmpty();
     }
 
@@ -446,7 +449,7 @@ public abstract class NFATraversalRegexASTVisitor {
             isDuplicate = targetDeduplicationMap.put(key, key) != null;
         }
         if (isDuplicate) {
-            if (++deduplicatedTargets > Short.MAX_VALUE) {
+            if (++deduplicatedTargets > SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD) {
                 throw new UnsupportedRegexException("NFATraversal explosion");
             }
             return retreat();
