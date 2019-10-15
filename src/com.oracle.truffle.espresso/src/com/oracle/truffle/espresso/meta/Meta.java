@@ -737,6 +737,7 @@ public final class Meta implements ContextAccess {
     @TruffleBoundary
     public ObjectKlass knownKlass(Symbol<Type> type) {
         assert !Types.isArray(type);
+        assert !Types.isPrimitive(type);
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
 

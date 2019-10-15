@@ -278,12 +278,6 @@ public final class Types {
         return dims;
     }
 
-    public static void verify(Symbol<Type> type) throws ClassFormatError {
-        if (!isValid(type)) {
-            throw new ClassFormatError("Invalid type descriptor " + type);
-        }
-    }
-
     private static boolean isValid(Symbol<Type> type) {
         if (type.length() == 0) {
             return false;
@@ -334,8 +328,7 @@ public final class Types {
 
     static ByteSequence checkType(ByteSequence sequence) {
         // FIXME(peterssen): Do check.
-        return sequence;
-        // throw EspressoError.unimplemented();
+        return Validation.validTypeDescriptor(sequence, true) ? sequence : null;
     }
 
     public static String checkType(String type) {
