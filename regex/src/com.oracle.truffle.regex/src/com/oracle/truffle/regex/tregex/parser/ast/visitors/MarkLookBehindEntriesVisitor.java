@@ -115,7 +115,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
                 movePastLookAheadBoundaries();
             }
             for (CharacterClass t : newEntriesFound) {
-                t.addLookBehindEntry(ast, lb.getGroup());
+                t.addLookBehindEntry(ast, lb);
             }
             curEntriesFound.clear();
             newEntriesFound.clear();

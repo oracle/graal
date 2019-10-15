@@ -71,7 +71,7 @@ public class CharacterClass extends Term {
 
     private CharSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private StateSet<Group> lookBehindEntries;
+    private StateSet<LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
@@ -120,9 +120,9 @@ public class CharacterClass extends Term {
         setFlag(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR, value);
     }
 
-    public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {
+    public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(ast);
+            lookBehindEntries = StateSet.create(ast.getLookBehinds());
         }
         lookBehindEntries.add(lookBehindEntry);
     }
@@ -136,7 +136,7 @@ public class CharacterClass extends Term {
      * character as this node. Note that the set contains the {@link Group} bodies of the
      * {@link LookBehindAssertion} nodes, not the {@link LookBehindAssertion} nodes themselves.
      */
-    public Set<Group> getLookBehindEntries() {
+    public Set<LookBehindAssertion> getLookBehindEntries() {
         if (lookBehindEntries == null) {
             return Collections.emptySet();
         }

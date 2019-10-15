@@ -50,7 +50,6 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -157,10 +156,10 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 final CharacterClass charClass = (CharacterClass) target;
                 if (!charClass.getLookBehindEntries().isEmpty()) {
                     ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
-                    for (Group g : charClass.getLookBehindEntries()) {
-                        final ASTStep lbAstStep = new ASTStep(g);
-                        assert g.isLiteral();
-                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
+                    for (LookBehindAssertion lb : charClass.getLookBehindEntries()) {
+                        final ASTStep lbAstStep = new ASTStep(lb.getGroup());
+                        assert lb.getGroup().isLiteral();
+                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(lb.getGroup().getAlternatives().get(0).getFirstTerm())));
                         newLookBehinds.add(lbAstStep);
                     }
                     successor.setLookBehinds(newLookBehinds);

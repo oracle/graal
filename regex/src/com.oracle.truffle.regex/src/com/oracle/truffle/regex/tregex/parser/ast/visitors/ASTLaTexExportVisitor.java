@@ -96,8 +96,8 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
 
     private void drawLookBehindEntries() {
         for (CharacterClass cc : lbEntries) {
-            for (Group lbe : cc.getLookBehindEntries()) {
-                writeln(String.format("\\draw[->,dotted] (n%d) to[in=north] (n%d);", cc.getId(), lbe.getId()));
+            for (LookBehindAssertion lbe : cc.getLookBehindEntries()) {
+                writeln(String.format("\\draw[->,dotted] (n%d) to[in=north] (n%d);", cc.getId(), lbe.getGroup().getId()));
             }
         }
     }
