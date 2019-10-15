@@ -160,31 +160,32 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return findStaticFieldWithOffset(staticReceiverType, offsetConstant.asLong(), accessKind);
     }
 
-    /**
-     * NOTE GR-18873: this is a HotSpot-specific copy-pase implementation derived from
-     * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset}.
-     */
     private static ResolvedJavaField findStaticFieldWithOffset(ResolvedJavaType type, long offset, JavaKind expectedEntryKind) {
-        ResolvedJavaField[] declaredFields = type.getStaticFields();
-        return findFieldWithOffset(offset, expectedEntryKind, declaredFields);
+        try {
+            ResolvedJavaField[] declaredFields = type.getStaticFields();
+            return findFieldWithOffset(offset, expectedEntryKind, declaredFields);
+        } catch (UnsupportedOperationException e) {
+            return null;
+        }
     }
 
+    /**
+     * NOTE GR-18873: this is a HotSpot-specific copy-paste implementation derived from
+     * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset}.
+     */
     private static ResolvedJavaField findFieldWithOffset(long offset, JavaKind expectedEntryKind, ResolvedJavaField[] declaredFields) {
         for (ResolvedJavaField field : declaredFields) {
             long resolvedFieldOffset = field.getOffset();
-            // @formatter:off
             if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN &&
-                    expectedEntryKind.isPrimitive() &&
-                    !expectedEntryKind.equals(JavaKind.Void) &&
-                    field.getJavaKind().isPrimitive()) {
-                resolvedFieldOffset +=
-                        field.getJavaKind().getByteCount() -
+                            expectedEntryKind.isPrimitive() &&
+                            !expectedEntryKind.equals(JavaKind.Void) &&
+                            field.getJavaKind().isPrimitive()) {
+                resolvedFieldOffset += field.getJavaKind().getByteCount() -
                                 Math.min(field.getJavaKind().getByteCount(), 4 + expectedEntryKind.getByteCount());
             }
             if (resolvedFieldOffset == offset) {
                 return field;
             }
-            // @formatter:on
         }
         return null;
     }
