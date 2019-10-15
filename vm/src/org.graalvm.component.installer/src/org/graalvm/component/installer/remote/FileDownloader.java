@@ -60,6 +60,7 @@ public final class FileDownloader {
     private final URL sourceURL;
     private final Feedback feedback;
 
+    private File downloadDir;
     private File localFile;
     private long size;
     private static boolean deleteTemporary = !Boolean.FALSE.toString().equals(System.getProperty("org.graalvm.component.installer.deleteTemporary"));
@@ -85,6 +86,14 @@ public final class FileDownloader {
 
     public void setShaDigest(byte[] shaDigest) {
         this.shaDigest = shaDigest;
+    }
+
+    public File getDownloadDir() {
+        return downloadDir;
+    }
+
+    public void setDownloadDir(File downloadDir) {
+        this.downloadDir = downloadDir;
     }
 
     public static void setDeleteTemporary(boolean deleteTemporary) {
@@ -215,14 +224,7 @@ public final class FileDownloader {
     }
 
     static String fingerPrint(byte[] digest) {
-        StringBuilder sb = new StringBuilder(digest.length * 3);
-        for (int i = 0; i < digest.length; i++) {
-            if (i > 0) {
-                sb.append(':');
-            }
-            sb.append(String.format("%02x", (digest[i] & 0xff)));
-        }
-        return sb.toString();
+        return SystemUtils.fingerPrint(digest);
     }
 
     byte[] getDigest() {
@@ -305,7 +307,7 @@ public final class FileDownloader {
 
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
-        localFile = deleteOnExit(File.createTempFile("download", "", createTempDir())); // NOI18N
+        localFile = deleteOnExit(File.createTempFile("download", "", downloadDir == null ? createTempDir() : downloadDir)); // NOI18N
         boolean first = displayProgress;
         boolean success = false;
         try (
