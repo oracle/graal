@@ -56,7 +56,6 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -202,13 +201,6 @@ public final class EspressoContext {
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
         initializeKnownClass(Type.Object);
-
-        // Primitive classes have no dependencies.
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive()) {
-                initializeKnownClass(kind.getType());
-            }
-        }
 
         for (Symbol<Type> type : Arrays.asList(
                         Type.String,

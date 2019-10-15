@@ -78,15 +78,15 @@ public final class Meta implements ContextAccess {
         Object_array = Object.array();
 
         // Primitives.
-        _boolean = knownPrimitive(Type._boolean);
-        _byte = knownPrimitive(Type._byte);
-        _char = knownPrimitive(Type._char);
-        _short = knownPrimitive(Type._short);
-        _float = knownPrimitive(Type._float);
-        _int = knownPrimitive(Type._int);
-        _double = knownPrimitive(Type._double);
-        _long = knownPrimitive(Type._long);
-        _void = knownPrimitive(Type._void);
+        _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
+        _byte = new PrimitiveKlass(context, JavaKind.Byte);
+        _char = new PrimitiveKlass(context, JavaKind.Char);
+        _short = new PrimitiveKlass(context, JavaKind.Short);
+        _float = new PrimitiveKlass(context, JavaKind.Float);
+        _int = new PrimitiveKlass(context, JavaKind.Int);
+        _double = new PrimitiveKlass(context, JavaKind.Double);
+        _long = new PrimitiveKlass(context, JavaKind.Long);
+        _void = new PrimitiveKlass(context, JavaKind.Void);
 
         _boolean_array = _boolean.array();
         _byte_array = _byte.array();
@@ -736,27 +736,17 @@ public final class Meta implements ContextAccess {
 
     @TruffleBoundary
     public ObjectKlass knownKlass(Symbol<Type> type) {
+        assert !Types.isArray(type);
+        assert !Types.isPrimitive(type);
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
 
     @TruffleBoundary
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
+        assert !hostClass.isPrimitive();
         // Resolve non-primitive classes using BCL.
         return knownKlass(getTypes().fromClass(hostClass));
-    }
-
-    public PrimitiveKlass knownPrimitive(Symbol<Type> primitiveType) {
-        assert Types.isPrimitive(primitiveType);
-        // Resolve primitive classes using BCL.
-        return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(primitiveType);
-    }
-
-    public PrimitiveKlass knownPrimitive(java.lang.Class<?> primitiveClass) {
-        // assert isKnownClass(hostClass);
-        assert primitiveClass.isPrimitive();
-        // Resolve primitive classes using BCL.
-        return knownPrimitive(getTypes().fromClass(primitiveClass));
     }
 
     /**
