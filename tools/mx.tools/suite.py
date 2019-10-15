@@ -341,6 +341,7 @@ suite = {
             ],
             "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
+         },
         "TRUFFLE_COVERAGE_GRAALVM_SUPPORT" : {
             "native" : True,
             "description" : "Truffle Code coverage support distribution for the GraalVM",
