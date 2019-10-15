@@ -118,6 +118,10 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         return buf[--length];
     }
 
+    public Object peek() {
+        return buf[length - 1];
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T[] toArray(T[] a) {
         if (a.length < length) {

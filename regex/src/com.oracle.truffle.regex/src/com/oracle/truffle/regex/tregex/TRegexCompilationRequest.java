@@ -138,9 +138,12 @@ public final class TRegexCompilationRequest {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
         RegexProperties properties = ast.getProperties();
         checkFeatureSupport(properties);
@@ -160,7 +163,7 @@ public final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode) {
+    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode, boolean allowSimpleCG) {
         assert ast != null;
         assert nfa != null;
         this.root = rootNode;
@@ -169,7 +172,7 @@ public final class TRegexCompilationRequest {
         if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
+        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -183,15 +186,16 @@ public final class TRegexCompilationRequest {
                 // assigning preCalculatedResults
             }
         }
-        final boolean createCaptureGroupTracker = (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && preCalculatedResults == null;
-        executorNodeForward = createDFAExecutor(nfa, true, true, false);
+        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()));
+        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) &&
+                        preCalculatedResults == null;
         if (createCaptureGroupTracker) {
-            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true);
+            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false);
         }
         if (preCalculatedResults != null && preCalculatedResults.length > 1) {
-            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false);
-        } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
-            executorNodeBackward = createDFAExecutor(nfa, false, false, false);
+            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false);
+        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry())) {
+            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()));
         }
         logAutomatonSizes(rootNode);
         return new TRegexExecRootNode.LazyCaptureGroupRegexSearchNode(
@@ -210,7 +214,7 @@ public final class TRegexCompilationRequest {
         assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
         assert !ast.getRoot().isDead();
         createNFA();
-        return createDFAExecutor(nfa, true, true, true);
+        return createDFAExecutor(nfa, true, true, true, false);
     }
 
     private static void checkFeatureSupport(RegexProperties properties) throws UnsupportedRegexException {
@@ -243,9 +247,12 @@ public final class TRegexCompilationRequest {
     private void createAST() {
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
     }
 
@@ -264,22 +271,29 @@ public final class TRegexCompilationRequest {
 
     private void createNFA() {
         phaseStart("NFA");
-        nfa = NFAGenerator.createNFA(ast, compilationBuffer);
-        phaseEnd("NFA");
+        try {
+            nfa = NFAGenerator.createNFA(ast, compilationBuffer);
+        } finally {
+            phaseEnd("NFA");
+        }
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, trackCaptureGroups,
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
+        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
                         tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
         DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
         phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
-        dfa.calcDFA();
-        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
-        phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        TRegexDFAExecutorNode executorNode;
+        try {
+            dfa.calcDFA();
+            executorNode = dfa.createDFAExecutor();
+        } finally {
+            phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        }
         debugDFA(dfa, debugDumpName);
         return executorNode;
     }

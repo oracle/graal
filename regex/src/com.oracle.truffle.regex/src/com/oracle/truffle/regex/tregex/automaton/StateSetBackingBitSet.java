@@ -53,7 +53,7 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     private StateSetBackingBitSet(StateSetBackingBitSet copy) {
-        bitSet = copy.bitSet == null ? null : copy.bitSet.copy();
+        bitSet = copy.bitSet.copy();
     }
 
     @Override
@@ -121,7 +121,7 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
 
     @Override
     public int hashCode() {
-        return bitSet == null ? 0 : bitSet.hashCode();
+        return bitSet.hashCode();
     }
 
     @Override

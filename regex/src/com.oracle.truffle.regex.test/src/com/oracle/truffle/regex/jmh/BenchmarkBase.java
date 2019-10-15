@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.dfa;
+package com.oracle.truffle.regex.jmh;
 
-import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
-import java.util.Iterator;
+@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS)
+@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS)
+@Fork(BenchmarkBase.Defaults.FORKS)
+public class BenchmarkBase {
 
-public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFATransitionSet, DFAStateTransitionBuilder> {
-
-    private final boolean genericCG;
-
-    public DFATransitionCanonicalizer(boolean genericCG) {
-        this.genericCG = genericCG;
-    }
-
-    @Override
-    protected boolean isSameTargetMergeAllowed(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        if (!genericCG) {
-            return true;
-        }
-        assert a.getTransitionSet().isForward() && b.getTransitionSet().isForward();
-        assert a.getTransitionSet().equals(b.getTransitionSet());
-        Iterator<NFAStateTransition> ia = a.getTransitionSet().iterator();
-        Iterator<NFAStateTransition> ib = b.getTransitionSet().iterator();
-        while (ia.hasNext()) {
-            final NFAStateTransition lastA = ia.next();
-            final NFAStateTransition lastB = ib.next();
-            // implied by a.getTransitionSet().equals(b.getTransitionSet())
-            assert lastA.getTarget().equals(lastB.getTarget());
-            if (!(lastA.getSource().equals(lastB.getSource()) && lastA.getGroupBoundaries().equals(lastB.getGroupBoundaries()))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    protected DFAStateTransitionBuilder[] createResultArray(int size) {
-        return new DFAStateTransitionBuilder[size];
+    public static class Defaults {
+        public static final int MEASUREMENT_ITERATIONS = 5;
+        public static final int WARMUP_ITERATIONS = 5;
+        public static final int FORKS = 1;
     }
 }

@@ -40,6 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -52,14 +60,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import org.graalvm.collections.EconomicMap;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Regex AST visitor that will find convert all NFA successors of a given {@link Term} to
@@ -79,16 +79,12 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     private final List<ASTStep> curLookAheads = new ArrayList<>();
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
-    private final CompilationFinalBitSet captureGroupUpdates;
-    private final CompilationFinalBitSet captureGroupClears;
 
     private final CompilationBuffer compilationBuffer;
 
     public ASTStepVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         super(ast);
         this.compilationBuffer = compilationBuffer;
-        captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
     }
 
     public ASTStep step(NFAState expandState) {
@@ -149,73 +145,31 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     }
 
     @Override
-    protected void visit(ArrayList<PathElement> path) {
+    protected void visit(RegexASTNode target) {
         ASTSuccessor successor = new ASTSuccessor(compilationBuffer);
         ASTTransition transition = new ASTTransition();
-        PositionAssertion dollar = null;
-        captureGroupUpdates.clear();
-        captureGroupClears.clear();
-        Group outerPassThrough = null;
-        for (PathElement element : path) {
-            final RegexASTNode node = element.getNode();
-            if (node instanceof Group) {
-                Group group = (Group) node;
-                if (element.isGroupEnter()) {
-                    if (outerPassThrough == null) {
-                        if (element.isGroupPassThrough() && group.isExpandedQuantifier()) {
-                            outerPassThrough = group;
-                        }
-                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            captureGroupUpdates.set(group.getBoundaryIndexStart());
-                            captureGroupClears.clear(group.getBoundaryIndexStart());
-                        }
-                        if (!element.isGroupPassThrough() && (group.isLoop() || group.isExpandedQuantifier())) {
-                            for (int i = group.getEnclosedCaptureGroupsLow(); i < group.getEnclosedCaptureGroupsHigh(); i++) {
-                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexStart(i))) {
-                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexStart(i));
-                                }
-                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(i))) {
-                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexEnd(i));
-                                }
-                            }
-                        }
+        transition.setGroupBoundaries(getGroupBoundaries());
+        if (dollarsOnPath()) {
+            assert target instanceof MatchFound;
+            transition.setTarget(getLastDollarOnPath());
+        } else {
+            if (target instanceof CharacterClass) {
+                final CharacterClass charClass = (CharacterClass) target;
+                if (!charClass.getLookBehindEntries().isEmpty()) {
+                    ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
+                    for (Group g : charClass.getLookBehindEntries()) {
+                        final ASTStep lbAstStep = new ASTStep(g);
+                        assert g.isLiteral();
+                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
+                        newLookBehinds.add(lbAstStep);
                     }
-                } else {
-                    assert element.isGroupExit();
-                    if (outerPassThrough == null) {
-                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            captureGroupUpdates.set(group.getBoundaryIndexEnd());
-                            captureGroupClears.clear(group.getBoundaryIndexEnd());
-                        }
-                    } else if (outerPassThrough == group) {
-                        outerPassThrough = null;
-                    }
-                }
-            } else if (node instanceof PositionAssertion && ((PositionAssertion) node).type == PositionAssertion.Type.DOLLAR) {
-                dollar = (PositionAssertion) node;
-            }
-        }
-        transition.setGroupBoundaries(ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears));
-        final RegexASTNode lastNode = path.get(path.size() - 1).getNode();
-        if (dollar == null) {
-            if (lastNode instanceof CharacterClass) {
-                final CharacterClass charClass = (CharacterClass) lastNode;
-                ArrayList<ASTStep> newLookBehinds = new ArrayList<>();
-                for (Group g : charClass.getLookBehindEntries()) {
-                    final ASTStep lbAstStep = new ASTStep(g);
-                    assert g.isLiteral();
-                    lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
-                    newLookBehinds.add(lbAstStep);
+                    successor.setLookBehinds(newLookBehinds);
                 }
                 transition.setTarget(charClass);
-                successor.setLookBehinds(newLookBehinds);
             } else {
-                assert lastNode instanceof MatchFound;
-                transition.setTarget((MatchFound) lastNode);
+                assert target instanceof MatchFound;
+                transition.setTarget((MatchFound) target);
             }
-        } else {
-            assert lastNode instanceof MatchFound;
-            transition.setTarget(dollar);
         }
         successor.addInitialTransition(transition);
         if (!curLookAheads.isEmpty()) {

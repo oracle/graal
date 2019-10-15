@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.dfa;
+package com.oracle.truffle.regex.jmh;
 
-import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
-import java.util.Iterator;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
-public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFATransitionSet, DFAStateTransitionBuilder> {
+import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
 
-    private final boolean genericCG;
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+public class URLBenchmark extends BenchmarkBase {
 
-    public DFATransitionCanonicalizer(boolean genericCG) {
-        this.genericCG = genericCG;
+    @State(Scope.Benchmark)
+    public static class BenchState {
+        String reURL = "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?";
+        String input = "https://lafo.ssw.uni-linz.ac.at/?computer=15";
+        Pattern javaPattern = Pattern.compile(reURL);
+        Context context;
+        Value tregexPattern;
+
+        public BenchState() {
+            context = Context.newBuilder().build();
+            context.enter();
+            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, "").execute("").execute(reURL, "");
+        }
+
+        @TearDown
+        public void tearDown() {
+            context.leave();
+            context.close();
+        }
     }
 
-    @Override
-    protected boolean isSameTargetMergeAllowed(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        if (!genericCG) {
-            return true;
-        }
-        assert a.getTransitionSet().isForward() && b.getTransitionSet().isForward();
-        assert a.getTransitionSet().equals(b.getTransitionSet());
-        Iterator<NFAStateTransition> ia = a.getTransitionSet().iterator();
-        Iterator<NFAStateTransition> ib = b.getTransitionSet().iterator();
-        while (ia.hasNext()) {
-            final NFAStateTransition lastA = ia.next();
-            final NFAStateTransition lastB = ib.next();
-            // implied by a.getTransitionSet().equals(b.getTransitionSet())
-            assert lastA.getTarget().equals(lastB.getTarget());
-            if (!(lastA.getSource().equals(lastB.getSource()) && lastA.getGroupBoundaries().equals(lastB.getGroupBoundaries()))) {
-                return false;
-            }
-        }
-        return true;
+    @Benchmark
+    public boolean javaPattern(BenchState state) {
+        return state.javaPattern.matcher(state.input).find();
     }
 
-    @Override
-    protected DFAStateTransitionBuilder[] createResultArray(int size) {
-        return new DFAStateTransitionBuilder[size];
+    @Benchmark
+    public boolean tregex(BenchState state) {
+        return state.tregexPattern.invokeMember("exec", state.input, 0).getMember("isMatch").asBoolean();
     }
 }

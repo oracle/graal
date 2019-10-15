@@ -79,7 +79,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
     private void applyPartialTransitionExploded(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, short transitionIndex, int partialTransitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
-                final DFACaptureGroupPartialTransitionNode[] partialTransitions = executor.getCGTransitions()[possibleTransition].getPartialTransitions();
+                final DFACaptureGroupPartialTransition[] partialTransitions = executor.getCGTransitions()[possibleTransition].getPartialTransitions();
                 for (int i = 0; i < partialTransitions.length; i++) {
                     CompilerAsserts.partialEvaluationConstant(i);
                     if (i == partialTransitionIndex) {

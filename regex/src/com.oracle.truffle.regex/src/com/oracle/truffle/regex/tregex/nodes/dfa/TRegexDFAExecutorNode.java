@@ -44,6 +44,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -55,14 +56,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
     @Children private final DFAAbstractStateNode[] states;
-    @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
+    @CompilationFinal(dimensions = 1) private final DFACaptureGroupLazyTransition[] cgTransitions;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
 
     public TRegexDFAExecutorNode(
                     TRegexDFAExecutorProperties props,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransitionNode[] cgTransitions,
+                    DFACaptureGroupLazyTransition[] cgTransitions,
                     TRegexDFAExecutorDebugRecorder debugRecorder) {
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
@@ -75,7 +76,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TRegexDFAExecutorProperties props,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransitionNode[] cgTransitions) {
+                    DFACaptureGroupLazyTransition[] cgTransitions) {
         this(props, maxNumberOfNFAStates, states, cgTransitions, null);
     }
 
@@ -103,11 +104,19 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return props.isSearching();
     }
 
+    public boolean isSimpleCG() {
+        return props.isSimpleCG();
+    }
+
+    public boolean isGenericCG() {
+        return props.isGenericCG();
+    }
+
     public boolean isRegressionTestMode() {
         return props.isRegressionTestMode();
     }
 
-    public DFACaptureGroupLazyTransitionNode[] getCGTransitions() {
+    public DFACaptureGroupLazyTransition[] getCGTransitions() {
         return cgTransitions;
     }
 
@@ -133,8 +142,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private DFACaptureGroupTrackingData createCGData() {
-        if (props.isTrackCaptureGroups()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props.getNumberOfCaptureGroups());
+        if (isGenericCG() || isSimpleCG()) {
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props);
         } else {
             return null;
         }
@@ -155,17 +164,17 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
         }
-        if (props.isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             initResultOrder(locals);
-            locals.setResultObject(null);
             locals.setLastTransition((short) -1);
-        } else {
-            locals.setResultInt(TRegexDFAExecutorNode.NO_MATCH);
+        } else if (isSimpleCG()) {
+            CompilerDirectives.ensureVirtualized(locals.getCGData());
+            Arrays.fill(locals.getCGData().results, -1);
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
             // no match possible, break immediately
-            return props.isTrackCaptureGroups() ? null : TRegexDFAExecutorNode.NO_MATCH;
+            return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
             debugRecorder.startRecording(locals);
@@ -209,7 +218,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         if (recordExecution()) {
             debugRecorder.finishRecording();
         }
-        return props.isTrackCaptureGroups() ? locals.getResultCaptureGroups() : locals.getResultInt();
+        if (isSimpleCG()) {
+            int[] result = props.isSimpleCGMustCopy() ? locals.getCGData().currentResult : locals.getCGData().results;
+            return locals.getResultInt() == 0 ? result : null;
+        }
+        if (isGenericCG()) {
+            return locals.getResultInt() == 0 ? locals.getCGData().currentResult : null;
+        }
+        return locals.getResultInt();
     }
 
     private void debugRecordTransition(TRegexDFAExecutorLocals locals, DFAStateNode curState, int prevIndex) {
@@ -302,14 +318,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGReorderRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;
         int nReorder = 0;
-        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+        for (DFACaptureGroupLazyTransition t : cgTransitions) {
             nPT += t.getPartialTransitions().length;
-            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+            for (DFACaptureGroupPartialTransition pt : t.getPartialTransitions()) {
                 if (pt.doesReorderResults()) {
                     nReorder++;
                 }
@@ -322,14 +338,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGArrayCopyRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;
         int nArrayCopy = 0;
-        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+        for (DFACaptureGroupLazyTransition t : cgTransitions) {
             nPT += t.getPartialTransitions().length;
-            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+            for (DFACaptureGroupPartialTransition pt : t.getPartialTransitions()) {
                 nArrayCopy += pt.getArrayCopies().length / 2;
             }
         }

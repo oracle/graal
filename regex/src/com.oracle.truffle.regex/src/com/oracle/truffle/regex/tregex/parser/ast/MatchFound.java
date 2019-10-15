@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * {@link MatchFound} nodes are {@link RegexASTNode}s that represent the initial/final states of the
@@ -80,21 +78,6 @@ public class MatchFound extends Term {
 
     public void setNext(RegexASTNode next) {
         this.next = next;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        if (super.getSourceSection() == null) {
-            RegexASTSubtreeRootNode parent = getSubTreeParent();
-            if (parent == null || parent.getSourceSection() == null) {
-                // initial state, not part of actual AST
-                return null;
-            }
-            // set source section to empty space after parent tree
-            SourceSection parentSourceSection = parent.getSourceSection();
-            super.setSourceSection(parentSourceSection.getSource().createSection(parentSourceSection.getCharEndIndex(), 0));
-        }
-        return super.getSourceSection();
     }
 
     @Override

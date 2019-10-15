@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.dfa;
+package com.oracle.truffle.regex.tregex.buffer;
 
-import com.oracle.truffle.regex.tregex.automaton.StateTransitionCanonicalizer;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import java.util.Arrays;
 
-import java.util.Iterator;
+/**
+ * This class is designed as a "scratchpad" for generating many long arrays of unknown size. It will
+ * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
+ * <p>
+ * Usage Example:
+ * </p>
+ *
+ * <pre>
+ * LongArrayBuffer buf = new LongArrayBuffer();
+ * List<long[]> results = new ArrayList<>();
+ * for (Object obj : listOfThingsToProcess) {
+ *     for (Object x : obj.thingsThatShouldBecomeLongs()) {
+ *         buf.add(someCalculation(x));
+ *     }
+ *     results.add(buf.toArray());
+ *     buf.clear();
+ * }
+ * </pre>
+ */
+public class LongArrayBuffer extends AbstractArrayBuffer {
 
-public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFATransitionSet, DFAStateTransitionBuilder> {
+    protected long[] buf;
 
-    private final boolean genericCG;
-
-    public DFATransitionCanonicalizer(boolean genericCG) {
-        this.genericCG = genericCG;
+    public LongArrayBuffer(int initialSize) {
+        buf = new long[initialSize];
     }
 
     @Override
-    protected boolean isSameTargetMergeAllowed(DFAStateTransitionBuilder a, DFAStateTransitionBuilder b) {
-        if (!genericCG) {
-            return true;
-        }
-        assert a.getTransitionSet().isForward() && b.getTransitionSet().isForward();
-        assert a.getTransitionSet().equals(b.getTransitionSet());
-        Iterator<NFAStateTransition> ia = a.getTransitionSet().iterator();
-        Iterator<NFAStateTransition> ib = b.getTransitionSet().iterator();
-        while (ia.hasNext()) {
-            final NFAStateTransition lastA = ia.next();
-            final NFAStateTransition lastB = ib.next();
-            // implied by a.getTransitionSet().equals(b.getTransitionSet())
-            assert lastA.getTarget().equals(lastB.getTarget());
-            if (!(lastA.getSource().equals(lastB.getSource()) && lastA.getGroupBoundaries().equals(lastB.getGroupBoundaries()))) {
-                return false;
-            }
-        }
-        return true;
+    int getBufferLength() {
+        return buf.length;
     }
 
     @Override
-    protected DFAStateTransitionBuilder[] createResultArray(int size) {
-        return new DFAStateTransitionBuilder[size];
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
+    }
+
+    public long get(int i) {
+        return buf[i];
+    }
+
+    public void add(long v) {
+        if (length == buf.length) {
+            grow(length * 2);
+        }
+        buf[length++] = v;
+    }
+
+    public long pop() {
+        return buf[--length];
+    }
+
+    public long peek() {
+        return buf[length - 1];
+    }
+
+    public long[] toArray() {
+        return Arrays.copyOf(buf, length);
     }
 }

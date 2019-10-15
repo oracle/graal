@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public final class TRegexDFAExecutorProperties {
 
     private final boolean forward;
     private final boolean searching;
-    private final boolean trackCaptureGroups;
+    private final boolean genericCG;
+    private final boolean allowSimpleCG;
+    @CompilationFinal private boolean simpleCG;
+    @CompilationFinal private boolean simpleCGMustCopy;
     private final boolean regressionTestMode;
     private final int numberOfCaptureGroups;
     private final int minResultLength;
@@ -52,13 +57,15 @@ public final class TRegexDFAExecutorProperties {
     public TRegexDFAExecutorProperties(
                     boolean forward,
                     boolean searching,
-                    boolean trackCaptureGroups,
+                    boolean genericCG,
+                    boolean allowSimpleCG,
                     boolean regressionTestMode,
                     int numberOfCaptureGroups,
                     int minResultLength) {
         this.forward = forward;
         this.searching = searching;
-        this.trackCaptureGroups = trackCaptureGroups;
+        this.genericCG = genericCG;
+        this.allowSimpleCG = allowSimpleCG;
         this.regressionTestMode = regressionTestMode;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.minResultLength = minResultLength;
@@ -76,8 +83,39 @@ public final class TRegexDFAExecutorProperties {
         return searching;
     }
 
-    public boolean isTrackCaptureGroups() {
-        return trackCaptureGroups;
+    /**
+     * True if the DFA executor must track capture groups via {@link CGTrackingDFAStateNode}s.
+     */
+    public boolean isGenericCG() {
+        return genericCG;
+    }
+
+    public boolean isAllowSimpleCG() {
+        return allowSimpleCG;
+    }
+
+    /**
+     * True if the DFA executor tracks capture groups via {@link DFASimpleCG}.
+     */
+    public boolean isSimpleCG() {
+        return simpleCG;
+    }
+
+    public void setSimpleCG(boolean simpleCG) {
+        this.simpleCG = simpleCG;
+    }
+
+    /**
+     * True if the DFA executor tracks capture groups via {@link DFASimpleCG}, but must save the
+     * current result every time a final state is reached. This is necessary if any non-final states
+     * are reachable from a final state in the DFA.
+     */
+    public boolean isSimpleCGMustCopy() {
+        return simpleCGMustCopy;
+    }
+
+    public void setSimpleCGMustCopy(boolean simpleCGMustCopy) {
+        this.simpleCGMustCopy = simpleCGMustCopy;
     }
 
     public boolean isRegressionTestMode() {

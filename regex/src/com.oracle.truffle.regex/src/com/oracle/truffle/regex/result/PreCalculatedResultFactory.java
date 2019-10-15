@@ -108,7 +108,7 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
     }
 
     public RegexResult createFromStart(int start) {
-        return createFromOffset(start - indices[0]);
+        return createFromOffset(start);
     }
 
     public RegexResult createFromEnd(int end) {

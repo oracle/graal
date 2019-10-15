@@ -51,7 +51,7 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
 
     public TraceFinderDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher);
+        super(id, flags, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = preCalculatedAnchoredResult;
     }
@@ -84,7 +84,7 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     }
 
     @Override
-    void storeResult(TRegexDFAExecutorLocals locals, int index, boolean anchored) {
+    void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, int index, boolean anchored) {
         if (anchored) {
             assert hasPreCalculatedAnchoredResult();
             if (hasPreCalculatedUnAnchoredResult() && getPreCalculatedUnAnchoredResult() < getPreCalculatedAnchoredResult()) {

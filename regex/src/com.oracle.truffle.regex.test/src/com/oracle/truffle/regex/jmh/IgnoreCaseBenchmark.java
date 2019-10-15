@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,63 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.test;
+package com.oracle.truffle.regex.jmh;
 
-import static org.junit.Assert.assertEquals;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 
-public abstract class RegexTestBase {
+import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
 
-    private static Context context;
-    private Value engine;
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+public class IgnoreCaseBenchmark extends BenchmarkBase {
 
-    @BeforeClass
-    public static void setUp() {
-        context = Context.newBuilder().build();
-        context.enter();
-    }
+    @State(Scope.Benchmark)
+    public static class BenchState {
+        String re = "Julian";
+        String flags = "i";
+        // Checkstyle: stop
+        String input = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
+        // Checkstyle: resume
+        Pattern javaPattern = Pattern.compile(re, Pattern.CASE_INSENSITIVE);
+        Context context;
+        Value tregexPattern;
 
-    @AfterClass
-    public static void tearDown() {
-        if (context != null) {
+        public BenchState() {
+            context = Context.newBuilder().build();
+            context.enter();
+            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, "").execute("").execute(re, flags);
+        }
+
+        @TearDown
+        public void tearDown() {
             context.leave();
             context.close();
-            context = null;
         }
     }
 
-    abstract String getEngineOptions();
-
-    Value getEngine() {
-        if (engine == null) {
-            engine = context.eval(TRegexTestDummyLanguage.ID, "").execute("RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : ",") + getEngineOptions());
-        }
-        return engine;
+    @Benchmark
+    public boolean javaPattern(BenchState state) {
+        return state.javaPattern.matcher(state.input).find();
     }
 
-    Value compileRegex(String pattern, String flags) {
-        return getEngine().execute(pattern, flags);
-    }
-
-    Value execRegex(Value compiledRegex, Object input, int fromIndex) {
-        return compiledRegex.invokeMember("exec", input, fromIndex);
-    }
-
-    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        assert captureGroupBounds.length % 2 == 0;
-        Value compiledRegex = compileRegex(pattern, flags);
-        Value result = execRegex(compiledRegex, input, fromIndex);
-        assertEquals(isMatch, result.getMember("isMatch").asBoolean());
-        if (isMatch) {
-            assertEquals(captureGroupBounds.length / 2, compiledRegex.getMember("groupCount").asInt());
-            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                assertEquals(captureGroupBounds[i * 2], result.invokeMember("getStart", i).asInt());
-                assertEquals(captureGroupBounds[i * 2 + 1], result.invokeMember("getEnd", i).asInt());
-            }
-        }
+    @Benchmark
+    public boolean tregex(BenchState state) {
+        return state.tregexPattern.invokeMember("exec", state.input, 0).getMember("isMatch").asBoolean();
     }
 }

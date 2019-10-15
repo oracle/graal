@@ -40,7 +40,17 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -49,16 +59,6 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -432,7 +432,7 @@ public class NFAState implements IndexedState, JsonConvertible {
 
     @TruffleBoundary
     private JsonArray sourceSectionsToJson() {
-        return Json.array(getStateSet().stream().map(RegexASTNode::getSourceSection).filter(Objects::nonNull).map(x -> Json.obj(
+        return Json.array(getStateSet().stream().map(x -> getStateSet().getAst().getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream).map(x -> Json.obj(
                         Json.prop("start", x.getCharIndex()),
                         Json.prop("end", x.getCharEndIndex()))));
     }

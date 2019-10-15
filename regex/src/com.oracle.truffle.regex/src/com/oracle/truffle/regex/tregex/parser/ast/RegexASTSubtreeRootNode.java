@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A common supertype to the root node and look-ahead and look-behind assertions. Every AST subtree
@@ -120,11 +118,6 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     }
 
     public abstract String getPrefix();
-
-    @Override
-    public SourceSection getSourceSection() {
-        return group.getSourceSection();
-    }
 
     @TruffleBoundary
     @Override

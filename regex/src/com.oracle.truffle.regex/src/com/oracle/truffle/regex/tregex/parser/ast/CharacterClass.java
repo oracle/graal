@@ -80,9 +80,6 @@ public class CharacterClass extends Term {
      */
     CharacterClass(CharSet charSet) {
         this.charSet = charSet;
-        if (charSet.matchesNothing()) {
-            markAsDead();
-        }
     }
 
     private CharacterClass(CharacterClass copy) {

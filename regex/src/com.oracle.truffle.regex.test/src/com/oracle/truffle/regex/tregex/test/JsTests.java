@@ -55,4 +55,12 @@ public class JsTests extends RegexTestBase {
         test("\\s*(?=\\b)", "", "paragraph block*", 1, true, 9, 10);
         test("\\s*(?=\\b|\\W|$)", "", "paragraph block*", 1, true, 9, 10);
     }
+
+    @Test
+    public void nestedQuantifiers() {
+        test("(x??)?", "", "x", 0, true, 0, 1, 0, 1);
+        test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);
+        test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
+        test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
+    }
 }

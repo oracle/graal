@@ -48,7 +48,7 @@ import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -73,6 +73,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 public class GroupBoundaries implements JsonConvertible {
 
     private static final GroupBoundaries EMPTY_INSTANCE = new GroupBoundaries(new CompilationFinalBitSet(0), new CompilationFinalBitSet(0));
+    private static final byte[] EMPTY_ARRAY = new byte[0];
 
     private final CompilationFinalBitSet updateIndices;
     private final CompilationFinalBitSet clearIndices;
@@ -92,14 +93,19 @@ public class GroupBoundaries implements JsonConvertible {
         return EMPTY_INSTANCE;
     }
 
+    public boolean isEmpty() {
+        assert !(updateIndices.isEmpty() && clearIndices.isEmpty()) || this == EMPTY_INSTANCE;
+        return this == EMPTY_INSTANCE;
+    }
+
     /**
      * Creates a byte array suitable to be part of the {@code indexUpdates} parameter passed to
-     * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
+     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
      *
      * @param targetArray the index of the row to be targeted.
      *
-     * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
+     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
      *      byte[][], byte)
      */
     public byte[] updatesToPartialTransitionArray(int targetArray) {
@@ -108,12 +114,12 @@ public class GroupBoundaries implements JsonConvertible {
 
     /**
      * Creates a byte array suitable to be part of the {@code indexClears} parameter passed to
-     * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
+     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
      *
      * @param targetArray the index of the row to be targeted.
      *
-     * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
+     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
      *      byte[][], byte)
      */
     public byte[] clearsToPartialTransitionArray(int targetArray) {
@@ -144,6 +150,9 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     private static byte[] indicesToArray(CompilationFinalBitSet indices) {
+        if (indices.isEmpty()) {
+            return EMPTY_ARRAY;
+        }
         final byte[] array = new byte[indices.numberOfSetBits()];
         writeIndicesToArray(indices, array, 0);
         return array;
@@ -165,6 +174,14 @@ public class GroupBoundaries implements JsonConvertible {
      */
     public CompilationFinalBitSet getClearIndices() {
         return clearIndices;
+    }
+
+    public byte[] getUpdateIndicesArray() {
+        return updateArray;
+    }
+
+    public byte[] getClearIndicesArray() {
+        return clearArray;
     }
 
     public boolean hasIndexUpdates() {

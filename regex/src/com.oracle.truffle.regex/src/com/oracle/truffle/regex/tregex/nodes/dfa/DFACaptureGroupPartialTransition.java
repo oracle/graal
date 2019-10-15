@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -50,12 +53,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.Arrays;
-
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-public final class DFACaptureGroupPartialTransitionNode extends Node implements JsonConvertible {
+public final class DFACaptureGroupPartialTransition implements JsonConvertible {
 
     public static final int FINAL_STATE_RESULT_INDEX = 0;
 
@@ -64,7 +62,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     public static final byte[][] EMPTY_INDEX_UPDATES = {};
     public static final byte[][] EMPTY_INDEX_CLEARS = {};
 
-    private static final DFACaptureGroupPartialTransitionNode EMPTY_INSTANCE = new DFACaptureGroupPartialTransitionNode(
+    private static final DFACaptureGroupPartialTransition EMPTY_INSTANCE = new DFACaptureGroupPartialTransition(
                     0, EMPTY_REORDER_SWAPS, EMPTY_ARRAY_COPIES, EMPTY_INDEX_UPDATES, EMPTY_INDEX_CLEARS, (byte) 0);
 
     private final int id;
@@ -74,7 +72,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     @CompilationFinal(dimensions = 2) private final byte[][] indexClears;
     private final byte preReorderFinalStateResultIndex;
 
-    private DFACaptureGroupPartialTransitionNode(int id, byte[] reorderSwaps, byte[] arrayCopies, byte[][] indexUpdates, byte[][] indexClears,
+    private DFACaptureGroupPartialTransition(int id, byte[] reorderSwaps, byte[] arrayCopies, byte[][] indexUpdates, byte[][] indexClears,
                     byte preReorderFinalStateResultIndex) {
         this.id = id;
         this.reorderSwaps = reorderSwaps;
@@ -85,7 +83,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     }
 
     /**
-     * Creates a new {@link DFACaptureGroupPartialTransitionNode}. All numeric values stored in this
+     * Creates a new {@link DFACaptureGroupPartialTransition}. All numeric values stored in this
      * class refer to indices of the first or second dimension of
      * {@link DFACaptureGroupTrackingData#results} and are stored as {@code byte} to save space.
      * This is OK since the dimensions of {@link DFACaptureGroupTrackingData#results} are capped by
@@ -159,10 +157,10 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
      *            when {@link TRegexDFAExecutorNode#isSearching()} is {@code true}, because in that
      *            case we need to be able to apply copy the current result corresponding to the NFA
      *            final state without doing any reordering.
-     * @return a new {@link DFACaptureGroupPartialTransitionNode}, or a static empty instance if all
+     * @return a new {@link DFACaptureGroupPartialTransition}, or a static empty instance if all
      *         arguments are empty or zero.
      */
-    public static DFACaptureGroupPartialTransitionNode create(
+    public static DFACaptureGroupPartialTransition create(
                     DFAGenerator dfaGen,
                     byte[] reorderSwaps,
                     byte[] arrayCopies,
@@ -173,11 +171,11 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         if (reorderSwaps.length == 0 && arrayCopies.length == 0 && indexUpdates.length == 0 && indexClears.length == 0 && preReorderFinalStateResultIndex == 0) {
             return getEmptyInstance();
         }
-        return new DFACaptureGroupPartialTransitionNode(dfaGen.getCgPartialTransitionIDCounter().inc(),
+        return new DFACaptureGroupPartialTransition(dfaGen.getCgPartialTransitionIDCounter().inc(),
                         reorderSwaps, arrayCopies, indexUpdates, indexClears, preReorderFinalStateResultIndex);
     }
 
-    public static DFACaptureGroupPartialTransitionNode getEmptyInstance() {
+    public static DFACaptureGroupPartialTransition getEmptyInstance() {
         return EMPTY_INSTANCE;
     }
 
@@ -301,10 +299,10 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof DFACaptureGroupPartialTransitionNode)) {
+        if (!(obj instanceof DFACaptureGroupPartialTransition)) {
             return false;
         }
-        DFACaptureGroupPartialTransitionNode o = (DFACaptureGroupPartialTransitionNode) obj;
+        DFACaptureGroupPartialTransition o = (DFACaptureGroupPartialTransition) obj;
         return Arrays.equals(reorderSwaps, o.reorderSwaps) && Arrays.equals(arrayCopies, o.arrayCopies) &&
                         Arrays.deepEquals(indexUpdates, o.indexUpdates) && Arrays.deepEquals(indexClears, o.indexClears);
     }
@@ -369,36 +367,36 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         }
         json.append(Json.prop("arrayCopies", copies));
         for (byte[] indexUpdate : indexUpdates) {
-            json.append(indexManipulationToProp("indexUpdates", indexUpdate));
+            json.append(indexManipulationToProp("indexUpdates", indexUpdate, true));
         }
         for (byte[] indexClear : indexClears) {
-            json.append(indexManipulationToProp("indexClears", indexClear));
+            json.append(indexManipulationToProp("indexClears", indexClear, true));
         }
         return json;
     }
 
     @TruffleBoundary
-    private static JsonObject.JsonObjectProperty indexManipulationToProp(String name, byte[] values) {
+    static JsonObject.JsonObjectProperty indexManipulationToProp(String name, byte[] values, boolean hasTarget) {
         return Json.prop(name, Json.obj(
-                        Json.prop("target", Byte.toUnsignedInt(values[0])),
-                        Json.prop("groupStarts", groupEntriesToJsonArray(values)),
-                        Json.prop("groupEnds", groupExitsToJsonArray(values))));
+                        Json.prop("target", hasTarget ? Byte.toUnsignedInt(values[0]) : 0),
+                        Json.prop("groupStarts", groupEntriesToJsonArray(values, hasTarget)),
+                        Json.prop("groupEnds", groupExitsToJsonArray(values, hasTarget))));
     }
 
     @TruffleBoundary
-    private static JsonArray groupEntriesToJsonArray(byte[] gbArray) {
-        return groupBoundariesToJsonArray(gbArray, true);
+    private static JsonArray groupEntriesToJsonArray(byte[] gbArray, boolean hasTarget) {
+        return groupBoundariesToJsonArray(gbArray, true, hasTarget);
     }
 
     @TruffleBoundary
-    private static JsonArray groupExitsToJsonArray(byte[] gbArray) {
-        return groupBoundariesToJsonArray(gbArray, false);
+    private static JsonArray groupExitsToJsonArray(byte[] gbArray, boolean hasTarget) {
+        return groupBoundariesToJsonArray(gbArray, false, hasTarget);
     }
 
     @TruffleBoundary
-    private static JsonArray groupBoundariesToJsonArray(byte[] gbArray, boolean entries) {
+    private static JsonArray groupBoundariesToJsonArray(byte[] gbArray, boolean entries, boolean hasTarget) {
         JsonArray array = Json.array();
-        for (int i = 1; i < gbArray.length; i++) {
+        for (int i = hasTarget ? 1 : 0; i < gbArray.length; i++) {
             int intValue = Byte.toUnsignedInt(gbArray[i]);
             if ((intValue & 1) == (entries ? 0 : 1)) {
                 array.append(Json.val(intValue / 2));
