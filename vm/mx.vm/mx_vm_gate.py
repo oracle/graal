@@ -62,6 +62,9 @@ class VmGateTasks:
 
 
 def gate_body(args, tasks):
+    # all mx_sdk_vm_impl gate tasks can also be run as vm gate tasks
+    mx_sdk_vm_impl.gate_body(args, tasks)
+
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
             # 1. the build must be a GraalVM
