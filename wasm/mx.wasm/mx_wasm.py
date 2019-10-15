@@ -106,6 +106,10 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             # Unlike tests, benchmarks do not have result files, so these files are optional.
             if os.path.isfile(result_path):
                 yield build_output_name(".result")
+            opts_path = os.path.join(root, remove_extension(filename) + ".opts")
+            # Some benchmarks may specify custom options.
+            if os.path.isfile(opts_path):
+                yield build_output_name(".opts")
             yield build_output_name(".wat")
         for subdir in subdirs:
             yield os.path.join(output_dir, subdir, "wasm_test_index")
@@ -174,13 +178,19 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 result_output_path = os.path.join(output_dir, subdir, basename + ".result")
                 shutil.copyfile(result_path, result_output_path)
 
+            # Step 3: copy the opts file if it exists.
+            opts_path = os.path.join(root, basename + ".opts")
+            if os.path.isfile(opts_path):
+                opts_output_path = os.path.join(output_dir, subdir, basename + ".opts")
+                shutil.copyfile(opts_path, opts_output_path)
+
             output_wat_path = os.path.join(output_dir, subdir, basename + ".wat")
             if filename.endswith(".c"):
-                # Step 3: produce the .wat files, for easier debugging.
+                # Step 4: produce the .wat files, for easier debugging.
                 wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
                 mx.run([wasm2wat_cmd, "-o", output_wat_path, output_wasm_path])
             elif filename.endswith(".wat"):
-                # Step 3: copy the .wait file, for easier debugging.
+                # Step 4: copy the .wait file, for easier debugging.
                 wat_path = os.path.join(root, basename + ".wat")
                 shutil.copyfile(wat_path, output_wat_path)
 
