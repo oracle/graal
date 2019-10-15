@@ -27,8 +27,7 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.nio.ByteOrder;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
@@ -43,9 +42,9 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -100,7 +99,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 // Try to canonicalize to a field access.
                 ResolvedJavaType receiverType = StampTool.typeOrNull(object());
                 if (receiverType != null) {
-                    ResolvedJavaField field = getStaticFieldUnsafeAccess(tool.getMetaAccess());
+                    ResolvedJavaField field = getStaticFieldUnsafeAccess(tool.getConstantReflection());
                     if (field == null) {
                         field = receiverType.findInstanceFieldWithOffset(constantOffset, accessKind());
                     }
@@ -143,42 +142,51 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
      * {@code object} is a constant of type {@link Class} (static field's declaring class) and
      * {@code offset} is a constant (HotSpot-specific field offset from the declaring class).
      *
-     * NOTE GR-18873: the
-     * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset} and
-     * {@code jdk.vm.ci.hotspot.HotSpotObjectConstantImpl#asObject(java.lang.Class)} are not exposed
-     * in JVMCI so we have to call them reflectively.
-     *
      * @return the static field, if any, that this node is reading
      */
-    private ResolvedJavaField getStaticFieldUnsafeAccess(MetaAccessProvider metaAccessProvider) {
-        if (!(object().isJavaConstant() && offset().isJavaConstant() &&
-                        !object().isNullConstant() && !offset().isNullConstant())) {
-            return null;
-        }
-
-        ResolvedJavaType receiverType = StampTool.typeOrNull(object());
-        if (!"jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl".equals(receiverType.getClass().getName())) {
+    private ResolvedJavaField getStaticFieldUnsafeAccess(ConstantReflectionProvider constantReflection) {
+        if (!object().isJavaConstant() || !offset().isJavaConstant() ||
+                        object().isNullConstant() || offset().isNullConstant()) {
             return null;
         }
         JavaConstant objectConstant = object().asJavaConstant();
         JavaConstant offsetConstant = offset().asJavaConstant();
         assert objectConstant != null && offsetConstant != null : "Verified by the check at the beginning.";
-        try {
-            Method findStaticFieldWithOffset = receiverType.getClass().getDeclaredMethod("findStaticFieldWithOffset", long.class, JavaKind.class);
-            findStaticFieldWithOffset.setAccessible(true);
-            Method asObject = objectConstant.getClass().getMethod("asObject", Class.class);
-            asObject.setAccessible(true);
-
-            Class<?> classConstant = (Class<?>) asObject.invoke(objectConstant, Class.class);
-            if (classConstant == null) {
-                // object is not of type Class so it is not a static field
-                return null;
-            }
-            ResolvedJavaType staticReceiverType = metaAccessProvider.lookupJavaType(classConstant);
-            return (ResolvedJavaField) findStaticFieldWithOffset.invoke(staticReceiverType, offsetConstant.asLong(), accessKind);
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        ResolvedJavaType staticReceiverType = constantReflection.asJavaType(objectConstant);
+        if (staticReceiverType == null) {
+            // object is not of type Class so it is not a static field
             return null;
         }
+        return findStaticFieldWithOffset(staticReceiverType, offsetConstant.asLong(), accessKind);
+    }
+
+    /**
+     * NOTE GR-18873: this is a HotSpot-specific copy-pase implementation derived from
+     * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset}.
+     */
+    private static ResolvedJavaField findStaticFieldWithOffset(ResolvedJavaType type, long offset, JavaKind expectedEntryKind) {
+        ResolvedJavaField[] declaredFields = type.getStaticFields();
+        return findFieldWithOffset(offset, expectedEntryKind, declaredFields);
+    }
+
+    private static ResolvedJavaField findFieldWithOffset(long offset, JavaKind expectedEntryKind, ResolvedJavaField[] declaredFields) {
+        for (ResolvedJavaField field : declaredFields) {
+            long resolvedFieldOffset = field.getOffset();
+            // @formatter:off
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN &&
+                    expectedEntryKind.isPrimitive() &&
+                    !expectedEntryKind.equals(JavaKind.Void) &&
+                    field.getJavaKind().isPrimitive()) {
+                resolvedFieldOffset +=
+                        field.getJavaKind().getByteCount() -
+                                Math.min(field.getJavaKind().getByteCount(), 4 + expectedEntryKind.getByteCount());
+            }
+            if (resolvedFieldOffset == offset) {
+                return field;
+            }
+            // @formatter:on
+        }
+        return null;
     }
 
 }
