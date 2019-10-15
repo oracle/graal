@@ -1109,7 +1109,7 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>true</code> if this object represents a duration, else <code>false</code>.
      *
      * @see Duration
-     * @see #asDate(Object)
+     * @see #asDuration(Object)
      * @since 20.0.0 beta 2
      */
     @Abstract(ifExported = {"asDuration"})
