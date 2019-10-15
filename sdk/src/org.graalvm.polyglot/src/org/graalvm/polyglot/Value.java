@@ -86,6 +86,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * <li>{@link #isProxyObject() Proxy Object}: This value represents a {@link Proxy proxy} value.
  * <li>{@link #isNativePointer() Native Pointer}: This value represents a native pointer. The native
  * pointer value can be accessed using {@link #asNativePointer()}.
+ * <li>{@link #isException() Exception}: This value represents an exception object. The exception
+ * can be thrown using {@link #throwException()}.
  * </ul>
  * In addition any value may have one or more of the following traits:
  * <ul>
@@ -812,6 +814,8 @@ public final class Value {
      * timezone}.</li>
      * <li><code>{@link Duration}.class</code> is supported if the value is a {@link #isDuration()
      * duration}.</li>
+     * <li><code>{@link PolyglotException}.class</code> is supported if the value is an
+     * {@link #isException() exception object}.</li>
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
@@ -1188,6 +1192,29 @@ public final class Value {
      */
     public Duration asDuration() {
         return impl.asDuration(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents an exception, else <code>false</code>.
+     *
+     * @throws IllegalStateException if the underlying context is already closed.
+     * @see #throwException()
+     * @since 19.3
+     */
+    public boolean isException() {
+        return impl.isException(receiver);
+    }
+
+    /**
+     * Throws the receiver if this object represents an {@link #isException() exception}.
+     *
+     * @throws UnsupportedOperationException if the value is not an exception.
+     * @throws IllegalStateException if the underlying context is already closed.
+     * @see #isException()
+     * @since 19.3
+     */
+    public RuntimeException throwException() {
+        return impl.throwException(receiver);
     }
 
     /**
