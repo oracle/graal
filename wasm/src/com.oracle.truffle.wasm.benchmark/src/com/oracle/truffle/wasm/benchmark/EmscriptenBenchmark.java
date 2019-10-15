@@ -45,20 +45,28 @@ public class EmscriptenBenchmark extends WasmBenchmark {
     public static class EmscriptenFibBenchmarkState extends WasmBenchmarkState {
         private static final String BENCH_NAME = "fib";
 
-        Value mainFunction = mainFunctions.get(BENCH_NAME);
-        Value resetContext = resetContexts.get(BENCH_NAME);
-        Value customInitializer = customInitializers.get(BENCH_NAME);
-        WasmInitialization initialization = initializations.get(BENCH_NAME);
+        private Value mainFunction;
+        private Value resetContext;
+        private Value customInitializer;
+        private WasmInitialization initialization;
+
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
+            mainFunction = mainFunctions.get(BENCH_NAME);
+            resetContext = resetContexts.get(BENCH_NAME);
+            customInitializer = customInitializers.get(BENCH_NAME);
+            initialization = initializations.get(BENCH_NAME);
+        }
 
         @Setup(Level.Iteration)
-        public void setup() {
+        public void setupIteration() {
             if (initialization != null) {
                 customInitializer.execute(initialization);
             }
         }
 
         @TearDown(Level.Iteration)
-        public void teardown() {
+        public void teardownIteration() {
             resetContext.execute();
         }
     }
