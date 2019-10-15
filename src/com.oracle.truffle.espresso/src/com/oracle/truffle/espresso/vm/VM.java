@@ -1161,6 +1161,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
+        if (name == null) {
+            return StaticObject.NULL;
+        }
+
         String internalName = name;
         if (!name.startsWith("[")) {
             // Force 'L' type.

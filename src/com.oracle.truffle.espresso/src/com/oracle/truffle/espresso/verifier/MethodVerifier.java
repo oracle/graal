@@ -1935,7 +1935,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
-        assert parsedSig.length >= 0 : "Method ref with no return value !";
+        assert parsedSig.length > 0 : "Method ref with no return value !";
 
         // Pop arguments
         for (int i = parsedSig.length - 2; i >= 0; i--) {
@@ -1970,7 +1970,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
         // Check signature is well formed.
-        assert parsedSig.length >= 0 : "Method ref with no return value !";
+        assert parsedSig.length > 0 : "Method ref with no return value !";
 
         // Pop arguments
         // Check signature conforms with count argument
