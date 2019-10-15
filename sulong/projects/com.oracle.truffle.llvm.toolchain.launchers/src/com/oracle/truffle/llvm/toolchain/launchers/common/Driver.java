@@ -134,6 +134,21 @@ public class Driver {
     public static final String VERSIION = getVersion();
 
     public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+        runDriverExit(sulongArgs, userArgs, verbose, help, earlyExit);
+    }
+
+    public final void runDriverExit(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+        try {
+            System.exit(runDriverReturn(sulongArgs, userArgs, verbose, help, earlyExit));
+        } catch (IOException e) {
+            System.exit(1);
+        } catch (Exception e) {
+            System.err.println("Exception: " + e);
+            System.exit(1);
+        }
+    }
+
+    public final int runDriverReturn(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) throws Exception {
         ArrayList<String> toolArgs = new ArrayList<>(sulongArgs.size() + userArgs.size());
         // add custom sulong flags
         toolArgs.addAll(sulongArgs);
@@ -141,7 +156,7 @@ public class Driver {
         toolArgs.addAll(userArgs);
         printInfos(verbose, help, earlyExit, toolArgs);
         if (earlyExit) {
-            System.exit(0);
+            return 0;
         }
         ProcessBuilder pb = new ProcessBuilder(toolArgs);
         if (verbose) {
@@ -161,19 +176,18 @@ public class Driver {
             // wait for process termination
             p.waitFor();
             // set exit code
-            System.exit(p.exitValue());
+            return p.exitValue();
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
                 printMissingToolMessage();
             }
-            System.exit(1);
+            throw ioe;
         } catch (Exception e) {
             if (p != null) {
                 p.destroyForcibly();
             }
-            System.err.println("Exception: " + e);
-            System.exit(1);
+            throw e;
         }
     }
 

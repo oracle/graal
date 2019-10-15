@@ -146,9 +146,6 @@ LLVM is only needed for compiling the bitcode files. For running compiled
 bitcode files, there are no special runtime dependencies, but additional
 libraries might be needed if the user code has external dependencies.
 
-In particular, for running C++ code, you need libc++ (the C++ standard
-library from the LLVM project).
-
 How to get started?
 -------------------
 

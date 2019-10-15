@@ -345,6 +345,7 @@ suite = {
         "SULONG_EXE" : "<mx_exe> lli",
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "CLANGXX": "<toolchainGetToolPath:native,CXX>",
+        "TOOLCHAIN_LD": "<toolchainGetToolPath:native,LD>",
         "OS": "<os>",
         "JACOCO": "<jacoco>",
       },

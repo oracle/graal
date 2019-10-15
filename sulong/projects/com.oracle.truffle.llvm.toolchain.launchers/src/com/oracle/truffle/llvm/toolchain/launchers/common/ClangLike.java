@@ -56,6 +56,7 @@ public class ClangLike extends Driver {
     protected final OS os;
     protected final String[] args;
     protected final String platform;
+    protected final int outputFlagPos;
 
     protected ClangLike(String[] args, boolean cxx, OS os, String platform) {
         super(cxx ? "clang++" : "clang");
@@ -68,6 +69,7 @@ public class ClangLike extends Driver {
         boolean showHelp = false;
         boolean shouldExitEarly = false;
         boolean keepArgs = true;
+        int outputFlagIdx = -1;
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (!mayHaveInputFiles && !arg.startsWith("-")) {
@@ -79,6 +81,9 @@ public class ClangLike extends Driver {
                 continue;
             }
             switch (arg) {
+                case "-o":
+                    outputFlagIdx = i;
+                    break;
                 case "-v":
                     isVerbose = true;
                     break;
@@ -111,6 +116,7 @@ public class ClangLike extends Driver {
         this.verbose = isVerbose;
         this.help = showHelp;
         this.earlyExit = shouldExitEarly;
+        this.outputFlagPos = outputFlagIdx;
     }
 
     private static boolean stageSelectionFlag(String s) {
@@ -158,10 +164,9 @@ public class ClangLike extends Driver {
         if (needLinkerFlags) {
             sulongArgs.add("-L" + getSulongHome().resolve(platform).resolve("lib"));
             if (os == OS.LINUX) {
-                sulongArgs.addAll(Arrays.asList("-fuse-ld=lld", "-Wl," + String.join(",", LinuxLinker.getLinkerFlags())));
+                sulongArgs.addAll(Arrays.asList("-fuse-ld=" + getLLVMExecutable(LinuxLinker.LLD), "-Wl," + String.join(",", LinuxLinker.getLinkerFlags())));
             } else if (os == OS.DARWIN) {
-                sulongArgs.add("-fembed-bitcode");
-                sulongArgs.add("-Wl," + String.join(",", DarwinLinker.getLinkerFlags(this)));
+                sulongArgs.add("-fuse-ld=" + DarwinLinker.LD);
             }
         }
         return sulongArgs;
