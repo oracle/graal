@@ -1059,12 +1059,14 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-		    CanonicalizerPhase c = CanonicalizerPhase.create();
+                    CanonicalizerPhase canonicalizer = null;
                     if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
-                        c.disableReadCanonicalization();
+                        canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
+                    } else {
+                        canonicalizer = CanonicalizerPhase.create();
                     }
-                    LoopTransformations.fullUnroll(loop, providers, c);
-                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
+                    LoopTransformations.fullUnroll(loop, providers, canonicalizer);
+		    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
