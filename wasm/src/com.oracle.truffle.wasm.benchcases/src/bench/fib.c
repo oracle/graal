@@ -11,7 +11,6 @@ int fib(int n) {
 }
 
 int main() {
-  fib(20);
-  return 0;
+  return fib(20);
 }
 
