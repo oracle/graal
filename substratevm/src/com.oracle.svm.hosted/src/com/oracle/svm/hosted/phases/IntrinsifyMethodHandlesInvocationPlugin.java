@@ -520,7 +520,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ResolvedJavaField resolvedTarget = lookup(fieldLoad.field());
 
                 maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
-                ValueNode transplantedFieldLoad = b.add(LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), resolvedTarget));
+                ValueNode receiver = fieldLoad.object() == null ? null : lookup(b, methodHandleArguments, fieldLoad.object());
+                ValueNode transplantedFieldLoad = b.add(LoadFieldNode.create(null, receiver, resolvedTarget));
                 transplantedSingleFunctionality = maybeEmitClassCast(b, classCastStamp, transplantedFieldLoad);
 
             } else if (singleFunctionality instanceof StoreFieldNode) {
