@@ -2527,7 +2527,7 @@ public class TrichotomyTest extends JTTTest {
         // test folding
         StructuredGraph graph = self.parseForCompile(self.getResolvedJavaMethod(name));
         HighTierContext context = self.getDefaultHighTierContext();
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = self.createCanonicalizerPhase();
         canonicalizer.apply(graph, context);
         Assert.assertTrue("Too many ConditionalNodes after canonicalization", graph.getNodes().filter(ConditionalNode.class).count() <= 1);
         Assert.assertTrue("Unexpected IfNodes after canonicalization", graph.getNodes().filter(IfNode.class).isEmpty());

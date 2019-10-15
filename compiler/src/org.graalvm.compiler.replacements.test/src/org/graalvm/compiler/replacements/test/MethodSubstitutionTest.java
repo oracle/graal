@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -79,14 +78,14 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
             createInliningPhase().apply(graph, context);
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-            new CanonicalizerPhase().apply(graph, context);
+            createCanonicalizerPhase().apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             // Try to ensure any macro nodes are lowered to expose any resulting invokes
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             }
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
+                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
             }
             assertNotInGraph(graph, MacroNode.class);
             if (name != null) {

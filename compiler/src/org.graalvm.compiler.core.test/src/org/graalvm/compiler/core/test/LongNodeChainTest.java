@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -85,7 +84,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
             new SchedulePhase(s).apply(graph);
         }
 
-        new CanonicalizerPhase().apply(graph, context);
+        this.createCanonicalizerPhase().apply(graph, context);
         JavaConstant asConstant = (JavaConstant) returnNode.result().asConstant();
         Assert.assertEquals(N + 1, asConstant.asInt());
     }

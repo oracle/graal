@@ -634,7 +634,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
                 node.remove();
             }
             HighTierContext context = getDefaultHighTierContext();
-            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
             canonicalizer.apply(graph, context);

@@ -385,9 +385,9 @@ public class CompileQueue {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
-        phaseSuite.appendPhase(new CanonicalizerPhase());
+        phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new StrengthenStampsPhase());
-        phaseSuite.appendPhase(new CanonicalizerPhase());
+        phaseSuite.appendPhase(CanonicalizerPhase.create());
         return phaseSuite;
     }
 
@@ -598,7 +598,7 @@ public class CompileQueue {
 
                     if (inlined) {
                         Providers providers = runtimeConfig.lookupBackend(method).getProviders();
-                        new CanonicalizerPhase().apply(graph, providers);
+                        CanonicalizerPhase.create().apply(graph, providers);
 
                         /*
                          * Publish the new graph, it can be picked up immediately by other threads

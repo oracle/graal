@@ -31,7 +31,6 @@ import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -147,7 +146,7 @@ public class PartialEscapeAnalysisIterationTest extends EATestBase {
         for (String name : new String[]{"noLoopIterationEmpty", "noLoopIteration"}) {
             prepareGraph(name, false);
             List<CommitAllocationNode> allocations = graph.getNodes().filter(CommitAllocationNode.class).snapshot();
-            new PartialEscapePhase(true, false, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
+            new PartialEscapePhase(true, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
             Assert.assertEquals(1, allocations.size());
             Assert.assertTrue(allocations.get(0).isAlive());
         }

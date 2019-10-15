@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
@@ -91,7 +90,7 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
                 ifNode.setCondition(LogicConstantNode.forBoolean(conditions[index++], graph));
             }
         }
-        new EarlyReadEliminationPhase(new CanonicalizerPhase()).apply(graph, context);
+        new EarlyReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
     }
 
     public static class TestObject {
@@ -311,9 +310,9 @@ public class EarlyReadEliminationTest extends GraalCompilerTest {
         HighTierContext context = getDefaultHighTierContext();
         createInliningPhase().apply(graph, context);
         if (doLowering) {
-            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         }
-        new EarlyReadEliminationPhase(new CanonicalizerPhase()).apply(graph, context);
+        new EarlyReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
         return graph;
     }
 }

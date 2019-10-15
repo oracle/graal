@@ -564,7 +564,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
                 createGraphBuilder(replacements.providers, config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
 
-                new CanonicalizerPhase().apply(graph, replacements.providers);
+                CanonicalizerPhase.create().apply(graph, replacements.providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
