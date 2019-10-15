@@ -2560,7 +2560,7 @@ def _force_bash_launchers(launcher):
         if launcher_name not in only:
             return True
 
-    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false'))
+    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if mx.suite('vm', fatalIfMissing=False) else 'true'))
     if isinstance(forced, bool):
         return forced
     else:
@@ -2581,7 +2581,7 @@ def _skip_libraries(library):
         if library_name not in only:
             return True
 
-    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false'))
+    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if mx.suite('vm', fatalIfMissing=False) else 'true'))
     if isinstance(skipped, bool):
         return skipped
     else:
