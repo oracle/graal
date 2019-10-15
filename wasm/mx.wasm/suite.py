@@ -234,6 +234,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "distDependencies" : [
+        "WASM_BENCHCASES",
         "WASM_UTILS",
       ]
     },
@@ -243,9 +244,6 @@ suite = {
       "description" : "Benchmarks compiled from the source code.",
       "dependencies" : [
         "com.oracle.truffle.wasm.benchcases",
-      ],
-      "distDependencies" : [
-        "WASM_BENCHMARKS",
       ],
       "defaultBuild" : False,
       "maven" : False,
