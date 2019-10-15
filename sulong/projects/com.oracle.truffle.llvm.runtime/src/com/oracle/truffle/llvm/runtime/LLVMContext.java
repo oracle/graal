@@ -372,6 +372,9 @@ public final class LLVMContext {
     }
 
     void finalizeContext() {
+        // join all created pthread - threads
+        pThreadContext.joinAllThreads();
+
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -418,9 +421,6 @@ public final class LLVMContext {
     }
 
     void dispose(LLVMMemory memory) {
-        // join all created pthread - threads
-        pThreadContext.joinAllThreads();
-
         printNativeCallStatistic();
 
         if (isInitialized()) {
