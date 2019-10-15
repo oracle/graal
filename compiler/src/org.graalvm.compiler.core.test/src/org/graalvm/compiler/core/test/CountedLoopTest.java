@@ -561,8 +561,6 @@ public class CountedLoopTest extends GraalCompilerTest {
 
         public void rewrite(LoopsData loops) {
             InductionVariable inductionVariable = loops.getInductionVariable(GraphUtil.unproxify(iv));
-            assert inductionVariable != null;
-            assertTrue(inductionVariable.getLoop().isCounted(), "must be counted");
             ValueNode node = null;
             if (inductionVariable == null) {
                 assert loopCanBeRemoved;

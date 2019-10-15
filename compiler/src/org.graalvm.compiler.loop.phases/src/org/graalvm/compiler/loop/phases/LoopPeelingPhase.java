@@ -45,10 +45,12 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
             LoopsData data = new LoopsData(graph);
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
-                    if (getPolicies().shouldPeel(loop, data.getCFG(), context.getMetaAccess())) {
-                        debug.log("Peeling %s", loop);
-                        LoopTransformations.peel(loop);
-                        debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s", loop);
+                    if (loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0) {
+                        if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context.getMetaAccess())) {
+                            debug.log("Peeling %s", loop);
+                            LoopTransformations.peel(loop);
+                            debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s", loop);
+                        }
                     }
                 }
                 data.deleteUnusedNodes();
