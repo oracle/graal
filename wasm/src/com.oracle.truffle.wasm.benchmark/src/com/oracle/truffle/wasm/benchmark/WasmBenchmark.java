@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.Warmup;
@@ -100,7 +101,7 @@ public class WasmBenchmark {
 
         // Open the wasm_bench_index file of the bench bundle.
         // The wasm_bench_index file contains the available benchmarks for that bundle.
-        InputStream index = WasmBenchmark.class.getResourceAsStream("/bench/wasm_bench_index");
+        InputStream index = WasmBenchmark.class.getResourceAsStream("/bench/wasm_test_index");
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 
         // Iterate through the available test of the bundle.
