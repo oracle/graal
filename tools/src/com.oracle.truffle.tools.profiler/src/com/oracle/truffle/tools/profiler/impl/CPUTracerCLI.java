@@ -91,8 +91,11 @@ class CPUTracerCLI extends ProfilerCLI {
     @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+
     public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
-        PrintStream out = new PrintStream(env.out());
+        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
         switch (env.getOptions().get(OUTPUT)) {
             case HISTOGRAM:
                 printTracerHistogram(out, tracer);
