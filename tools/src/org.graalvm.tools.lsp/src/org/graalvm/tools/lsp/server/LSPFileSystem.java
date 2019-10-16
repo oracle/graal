@@ -55,18 +55,16 @@ import org.graalvm.polyglot.io.FileSystem;
 public final class LSPFileSystem implements FileSystem {
 
     private final FileSystemProvider delegate;
-    private final boolean explicitUserDir;
-    private final Path userDir;
     private final VirtualLanguageServerFileProvider fileProvider;
 
     static final String FILE_SCHEME = "file";
 
-    public static FileSystem newReadOnlyFileSystem(Path userDir, VirtualLanguageServerFileProvider fileProvider) {
-        return newReadOnlyFileSystem(findDefaultFileSystemProvider(), userDir, fileProvider);
+    public static FileSystem newReadOnlyFileSystem(VirtualLanguageServerFileProvider fileProvider) {
+        return newReadOnlyFileSystem(findDefaultFileSystemProvider(), fileProvider);
     }
 
-    static FileSystem newReadOnlyFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
-        return new LSPFileSystem(fileSystemProvider, userDir, fileProvider);
+    static FileSystem newReadOnlyFileSystem(final FileSystemProvider fileSystemProvider, VirtualLanguageServerFileProvider fileProvider) {
+        return new LSPFileSystem(fileSystemProvider, fileProvider);
     }
 
     private static FileSystemProvider findDefaultFileSystemProvider() {
@@ -87,15 +85,9 @@ public final class LSPFileSystem implements FileSystem {
         return true;
     }
 
-    LSPFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
-        this(fileSystemProvider, true, userDir, fileProvider);
-    }
-
-    private LSPFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir, VirtualLanguageServerFileProvider fileProvider) {
+    private LSPFileSystem(final FileSystemProvider fileSystemProvider, VirtualLanguageServerFileProvider fileProvider) {
         Objects.requireNonNull(fileSystemProvider, "FileSystemProvider must be non null.");
         this.delegate = fileSystemProvider;
-        this.explicitUserDir = explicitUserDir;
-        this.userDir = userDir;
         this.fileProvider = fileProvider;
     }
 
@@ -118,12 +110,12 @@ public final class LSPFileSystem implements FileSystem {
         if (modes.contains(AccessMode.WRITE)) {
             throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
         }
-        if (modes.contains(AccessMode.EXECUTE) && !delegate.readAttributes(resolveRelative(path), BasicFileAttributes.class, linkOptions).isDirectory()) {
+        if (modes.contains(AccessMode.EXECUTE) && !delegate.readAttributes(path, BasicFileAttributes.class, linkOptions).isDirectory()) {
             throw new AccessDeniedException(path.toString(), null, "Execution not allowed. Read-only file-system.");
         }
 
         if (isFollowLinks(linkOptions)) {
-            delegate.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
+            delegate.checkAccess(path, modes.toArray(new AccessMode[modes.size()]));
         } else if (modes.isEmpty()) {
             delegate.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
         } else {
@@ -153,15 +145,13 @@ public final class LSPFileSystem implements FileSystem {
 
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-        final Path resolved = resolveRelative(path);
-
         for (OpenOption option : options) {
             if (!(option instanceof StandardOpenOption && option.equals(StandardOpenOption.READ))) {
-                throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
+                throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
             }
         }
 
-        final String text = fileProvider.getSourceText(resolved);
+        final String text = fileProvider.getSourceText(path);
         if (text != null) {
             final byte[] bytes = text.getBytes();
             return new SeekableByteChannel() {
@@ -175,11 +165,11 @@ public final class LSPFileSystem implements FileSystem {
                 }
 
                 public int write(ByteBuffer src) throws IOException {
-                    throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
+                    throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
                 }
 
                 public SeekableByteChannel truncate(long size) throws IOException {
-                    throw new AccessDeniedException(resolved.toString(), null, "Read-only file-system");
+                    throw new AccessDeniedException(path.toString(), null, "Read-only file-system");
                 }
 
                 public long size() throws IOException {
@@ -208,15 +198,15 @@ public final class LSPFileSystem implements FileSystem {
         }
 
         try {
-            return delegate.newFileChannel(resolved, options, attrs);
+            return delegate.newFileChannel(path, options, attrs);
         } catch (UnsupportedOperationException uoe) {
-            return delegate.newByteChannel(resolved, options, attrs);
+            return delegate.newByteChannel(path, options, attrs);
         }
     }
 
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-        return delegate.newDirectoryStream(resolveRelative(dir), filter);
+        return delegate.newDirectoryStream(dir, filter);
     }
 
     @Override
@@ -231,12 +221,12 @@ public final class LSPFileSystem implements FileSystem {
 
     @Override
     public Path readSymbolicLink(Path link) throws IOException {
-        return delegate.readSymbolicLink(resolveRelative(link));
+        return delegate.readSymbolicLink(link);
     }
 
     @Override
     public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-        return delegate.readAttributes(resolveRelative(path), attributes, options);
+        return delegate.readAttributes(path, attributes, options);
     }
 
     @Override
@@ -249,24 +239,11 @@ public final class LSPFileSystem implements FileSystem {
         if (path.isAbsolute()) {
             return path;
         }
-        if (explicitUserDir) {
-            if (userDir == null) {
-                throw new SecurityException("Access to user.dir is not allowed.");
-            }
-            return userDir.resolve(path);
-        } else {
-            return path.toAbsolutePath();
-        }
+        return path.toAbsolutePath();
     }
 
     @Override
     public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-        final Path resolvedPath = resolveRelative(path);
-        return resolvedPath.toRealPath(linkOptions);
+        return path.toRealPath(linkOptions);
     }
-
-    private Path resolveRelative(Path path) {
-        return explicitUserDir ? toAbsolutePath(path) : path;
-    }
-
 }

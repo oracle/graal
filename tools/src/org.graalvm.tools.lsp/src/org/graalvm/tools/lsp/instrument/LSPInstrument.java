@@ -30,8 +30,6 @@ import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -92,16 +90,10 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
         TruffleAdapter truffleAdapter = new TruffleAdapter();
 
-        String userDirString = System.getProperty("user.home");
-        Path userDir = null;
-        if (userDirString != null) {
-            userDir = Paths.get(userDirString);
-        }
-
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
         builder.engine(Engine.create());
-        builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(userDir, truffleAdapter));
+        builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
         executorWrapper.executeWithDefaultContext(() -> {

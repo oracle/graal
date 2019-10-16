@@ -44,6 +44,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
 		if (e.affectsConfiguration('graalvm.home')) {
 			config();
+			startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string);
+		} else if (e.affectsConfiguration('graalvm.languageServer.currentWorkDir')) {
+			stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
 		}
 	}));
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
@@ -73,57 +76,54 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate(): Thenable<void> {
-	let promises: Thenable<void>[] = [];
-	if (client) {
-		promises.push(client.stop());
-	}
-	if (serverProcess) {
-		serverProcess.kill('SIGINT');
-		promises.push(Promise.resolve());
-	}
-	return Promise.all(promises).then(() => undefined);
-
+	return stopLanguageServer();
 }
 
 function startLanguageServer(graalVMHome: string) {
 	const re = utils.findExecutable(POLYGLOT, graalVMHome);
 	if (re) {
-		serverProcess = cp.spawn(re, ['--lsp', '--experimental-options', '--shell']);
+		let serverWorkDir: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.currentWorkDir') as string;
+		if (!serverWorkDir) {
+			serverWorkDir = vscode.workspace.rootPath;
+		}
+		serverProcess = cp.spawn(re, ['--jvm', '--lsp', '--experimental-options', '--shell'], { cwd: serverWorkDir });
 		if (!serverProcess || !serverProcess.pid) {
 			vscode.window.showErrorMessage(`Launching server using command ${re} failed.`);
 		} else {
-			const connection = () => new Promise<StreamInfo>((resolve, reject) => {
-				const socket = new Socket();
-				socket.once('error', (e) => {
-					reject(e);
-				});
-				socket.connect(LSPORT, '127.0.0.1', () => {
-					resolve({
-						reader: socket,
-						writer: socket
+			serverProcess.stdout.once('data', () => {
+				const connection = () => new Promise<StreamInfo>((resolve, reject) => {
+					const socket = new Socket();
+					socket.once('error', (e) => {
+						reject(e);
+					});
+					socket.connect(LSPORT, '127.0.0.1', () => {
+						resolve({
+							reader: socket,
+							writer: socket
+						});
 					});
 				});
+				let clientOptions: LanguageClientOptions = {
+					documentSelector: [
+						{ scheme: 'file', language: 'javascript' },
+						{ scheme: 'file', language: 'sl' },
+						{ scheme: 'file', language: 'python' },
+						{ scheme: 'file', language: 'r' },
+						{ scheme: 'file', language: 'ruby' }
+					]
+				};
+				client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
+				serverProcess.stderr.on('data', data => client.outputChannel.append(data.toString('utf8')));
+				let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
+				client.onReady().then(() => {
+					prepareStatus.dispose();
+					vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
+				}).catch(() => {
+					prepareStatus.dispose();
+					vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
+				});
+				client.start();
 			});
-			let clientOptions: LanguageClientOptions = {
-				documentSelector: [
-					{ scheme: 'file', language: 'javascript' },
-					{ scheme: 'file', language: 'sl' },
-					{ scheme: 'file', language: 'python' },
-					{ scheme: 'file', language: 'r' },
-					{ scheme: 'file', language: 'ruby' }
-				]
-			};
-			client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
-			serverProcess.stderr.on('data', data => client.outputChannel.append(data.toString('utf8')));
-			let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
-			client.onReady().then(() => {
-				prepareStatus.dispose();
-				vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
-			}).catch(() => {
-				prepareStatus.dispose();
-				vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
-			});
-			client.start();
 		}
 	} else {
 		vscode.window.showErrorMessage('Cannot find runtime ' + POLYGLOT + ' within your GraalVM installation.');
@@ -158,6 +158,20 @@ function config() {
 			});
 		}
 	}
+}
+
+function stopLanguageServer(): Thenable<void> {
+	if (client) {
+		return client.stop().then(() => {
+			if (serverProcess) {
+				serverProcess.kill('SIGINT');
+			}
+		});
+	}
+	if (serverProcess) {
+		serverProcess.kill('SIGINT');
+	}
+	return Promise.resolve();
 }
 
 function updatePath(path: string | undefined, graalVMBin: string): string {

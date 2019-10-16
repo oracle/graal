@@ -39,6 +39,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Path to GraalVM installation"
+				},
+				"graalvm.languageServer.currentWorkDir": {
+					"type": "string",
+					"default": "",
+					"description": "Absolute path to the working directory of the GraalVM Language Server"
 				}
 			}
 		},

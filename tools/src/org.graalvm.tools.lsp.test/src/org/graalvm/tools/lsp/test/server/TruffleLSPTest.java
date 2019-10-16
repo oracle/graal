@@ -25,7 +25,6 @@
 package org.graalvm.tools.lsp.test.server;
 
 import java.net.URI;
-import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -97,7 +96,7 @@ public abstract class TruffleLSPTest {
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);
-        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(Paths.get("."), truffleAdapter));
+        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
         contextBuilder.engine(engine);
         context = contextBuilder.build();
         context.enter();
