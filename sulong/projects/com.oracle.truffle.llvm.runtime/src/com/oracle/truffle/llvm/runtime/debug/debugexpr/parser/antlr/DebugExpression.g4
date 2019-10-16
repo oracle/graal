@@ -29,7 +29,7 @@
  */
  
 /*
- * The parser and lexer need to be generated using 'mx create-asm-parser';
+ * The parser and lexer need to be generated using 'mx create-parser';
  */
 
 grammar DebugExpression;
@@ -38,11 +38,15 @@ grammar DebugExpression;
 {
 // DO NOT MODIFY - generated from DebugExpression.g4 using "mx create-parsers"
 
-//import com.oracle.truffle.api.source.Source;
-//import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-//import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-//import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-//import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.types.Type;
+
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExpressionPair;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 }
 
 @lexer::header
@@ -52,25 +56,58 @@ grammar DebugExpression;
 
 @parser::members
 {
+
+private LLVMExpressionNode astRoot = null;
+private DebugExprNodeFactory NF = null;
+
+/*boolean IsCast() {
+	Token peek = scanner.Peek();
+	if(la.kind==_lpar) {
+	    while(peek.kind==_asterisc) peek=scanner.Peek();
+	    int k = peek.kind;
+	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double||k==_typeof) return true;
+	}
+	return false;
+}*/
+
+public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
+	if(NF==null) NF=nodeFactory;
 }
 
+//public int GetErrors() {
+//	return errors.count;
+//}
+
+public LLVMExpressionNode GetASTRoot() {return astRoot; }
+
+}
 
 fragment
-LETTER : [a-zA-Z_];
-//DIGIT : '0123456789';
-//CR : '\r';
-//LF : '\n';
-//SINGLECOMMA : '\'';
-//QUOTE : '"';
+LETTER : [a-zA-Z];
+DIGIT : [0-9];
+CR : '\r';
+LF : '\n';
+SINGLECOMMA : '\'';
+QUOTE : '"';
 
 
 // Add token declarations here.
 // Example:
-//IDENT : LETTER (LETTER | DIGIT)*;
-IDENT : LETTER;
-//NUMBER : DIGIT+;
-//FLOATNUMBER : DIGIT+ '.' DIGIT+ ( [eE] [+-] DIGIT+ )?;
-//CHARCONST : SINGLECOMMA (LETTER|DIGIT) SINGLECOMMA;
+IDENT : LETTER (LETTER | DIGIT)*;
+NUMBER : DIGIT+;
+FLOATNUMBER : DIGIT+ '.' DIGIT+ ( [eE] [+-] DIGIT+ )?;
+CHARCONST : SINGLECOMMA (LETTER|DIGIT) SINGLECOMMA;
+//LAPR : '(';
+//ASTERISC : '*';
+//SIGNED : 'signed';
+//UNSIGNED : 'unsigned';
+//INT : 'int';
+//LONG : 'LONG';
+//SHORT : 'short';
+//FLOAT : 'float';
+//DOUBLE : 'double';
+//CHAR : 'char';
+//TYPEOF: 'typeof';
 
 WS  : [ \t\r\n]+ -> skip ;
 
@@ -80,6 +117,7 @@ WS  : [ \t\r\n]+ -> skip ;
 //=
 //Expr<out p> 										(. if(errors.count==0) astRoot =p.getNode(); .)
 //.
+
 
 debugExpr : IDENT;
 //debugExpr : expr;
@@ -97,11 +135,14 @@ debugExpr : IDENT;
 //|
 //"(" Expr<out p> ")"
 //.
-primExpr : IDENT // 												(. p = NF.createVarNode(t.val);.)
-| NUMBER // 												(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
-| FLOATNUMBER // 										(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)
-| CHARCONST //											(. p = NF.createCharacterConstant(t.val); .)
-;
+
+primExpr returns [DebugExpressionPair p] :
+  ( t=IDENT                                   { $p = NF.createVarNode($t.getText()); }
+  | t=NUMBER                                  { $p = NF.createIntegerConstant(Integer.parseInt($t.getText())); }
+  | t=FLOATNUMBER                             { $p = NF.createFloatConstant(Float.parseFloat($t.getText())); }
+  | t=CHARCONST                               { $p = NF.createCharacterConstant($t.getText()); }
+  )
+  ;
 //
 //Designator<out DebugExpressionPair p>				(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
 //=
