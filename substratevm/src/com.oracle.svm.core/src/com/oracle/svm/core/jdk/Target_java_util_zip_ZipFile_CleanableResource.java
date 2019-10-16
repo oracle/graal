@@ -43,7 +43,12 @@ public final class Target_java_util_zip_ZipFile_CleanableResource {
     @Substitute
     static Target_java_util_zip_ZipFile_CleanableResource get(ZipFile zf, File file, int mode)
                     throws IOException {
-        /* Skip FinalizableResource handling - SubstrateVM does not support Finalizers */
+        /*
+         * The JavaDoc comment of ZipFile.CleanableResource#get states that its finalizer-based
+         * cleanup mechanism (ZipFile.CleanableResource.FinalizableResource) will be removed once
+         * ZipFile#finalize() is removed. Since we anyway do not support finalization we have to
+         * substitute that away.
+         */
         return new Target_java_util_zip_ZipFile_CleanableResource(zf, file, mode);
     }
 }
