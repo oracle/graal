@@ -38,6 +38,9 @@ grammar DebugExpression;
 {
 // DO NOT MODIFY - generated from DebugExpression.g4 using "mx create-parsers"
 
+import java.util.LinkedList;
+import java.util.List;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -74,9 +77,9 @@ public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
 	if(NF==null) NF=nodeFactory;
 }
 
-//public int GetErrors() {
-//	return errors.count;
-//}
+public int GetErrors() {
+	return _syntaxErrors;
+}
 
 public LLVMExpressionNode GetASTRoot() {return astRoot; }
 
@@ -118,11 +121,15 @@ WS  : [ \t\r\n]+ -> skip ;
 //Expr<out p> 										(. if(errors.count==0) astRoot =p.getNode(); .)
 //.
 
+debugExpr :
+  {
+  DebugExpressionPair p = null;
+  }
+  (
+  (expr { p = $expr.p; })                        {if(_syntaxErrors == 0) astRoot = p.getNode();}
+  );
 
-debugExpr : IDENT;
-//debugExpr : expr;
 
-//
 //PrimExpr<out DebugExpressionPair p>					(. p=null; .)
 //=
 //ident 												(. p = NF.createVarNode(t.val);.)
@@ -141,10 +148,11 @@ primExpr returns [DebugExpressionPair p] :
   | t=NUMBER                                  { $p = NF.createIntegerConstant(Integer.parseInt($t.getText())); }
   | t=FLOATNUMBER                             { $p = NF.createFloatConstant(Float.parseFloat($t.getText())); }
   | t=CHARCONST                               { $p = NF.createCharacterConstant($t.getText()); }
-  | '(' expr ')'                              { $p = $expr.p}
+  | '(' expr ')'                              { $p = $expr.p; }
   )
   ;
-//
+
+
 //Designator<out DebugExpressionPair p>				(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
 //=
 //PrimExpr<out p>
@@ -158,7 +166,21 @@ primExpr returns [DebugExpressionPair p] :
 //	 "->" ident										(. p = NF.createObjectPointerMember(p, t.val); .)
 //}
 //.
-designator : primExpr;
+
+designator returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair idxPair = null;
+  List <DebugExpressionPair> list;
+  DebugExpressionPair prev = null;
+  }
+  (
+  primExpr { prev = $primExpr.p; }
+  )?
+  ( '[' expr { idxPair = $expr.p; } ']'      { $p = NF.createArrayElement(prev, idxPair); }
+  | (actPars { list = $actPars.l; })         { $p = NF.createFunctionCall(prev, list); }
+  | '.' (t=IDENT)                            { $p = NF.createObjectMember(prev, $t.getText()); }
+  | '->' (t=IDENT)                           { $p = NF.createObjectPointerMember(prev, $t.getText()); }
+  );
 
 
 //
@@ -176,7 +198,18 @@ designator : primExpr;
 //]
 //")"
 //.
-//
+
+actPars returns [List l] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair p2 = null;
+  $l = new LinkedList<DebugExpressionPair>();
+  }
+  '(' (expr { p1 = $expr.p; }) { $l.add(p1); }
+  ',' (expr { p2 = $expr.p; }) { $l.add(p2); }
+  ')';
+
+
 //UnaryExpr<out DebugExpressionPair p>				(. p=null; char kind='\0'; DebugExprType typeP=null;.)
 //=
 //Designator<out p>
@@ -185,7 +218,10 @@ designator : primExpr;
 //|
 //"sizeof" "(" DType<out typeP> ")" 					(. p=NF.createSizeofNode(typeP); .)
 //.
+
 unaryExpr : designator;
+
+
 //
 //UnaryOp<out char kind>								(. kind='\0'; .)
 //=
@@ -348,15 +384,17 @@ logOrExpr returns [DebugExpressionPair p] : logAndExpr;
 //]
 //.
 expr returns [DebugExpressionPair p] :
-                                       {DebugExpressionPair pThen = null;
-                                        DebugExpressionPair pElse = null;
-                                        DebugExpressionPair prev = null}
+  {
+  DebugExpressionPair pThen = null;
+  DebugExpressionPair pElse = null;
+  DebugExpressionPair prev = null;
+  }
   (
   logOrExpr { prev = $logOrExpr.p; }
   )?
   (
-   '?' (expr {pThen = $expr.p}) ':' (expr {pElse = $expr.p})   {$p = NF.createTernaryNode(prev, pThen, pElse);}
-  ) ;
+   '?' (expr { pThen = $expr.p; }) ':' (expr { pElse = $expr.p; })   { $p = NF.createTernaryNode(prev, pThen, pElse); }
+  );
 
 
 //
