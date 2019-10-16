@@ -106,8 +106,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
     public void testProxies(String snippet, int expectedProxiesCreated) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         CoreProviders context = getProviders();
-        CanonicalizerPhase canonicalizer1 = createCanonicalizerPhase();
-        canonicalizer1.disableSimplification();
+        CanonicalizerPhase canonicalizer1 = CanonicalizerPhase.createWithoutCFGSimplification();
         canonicalizer1.apply(graph, context);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
