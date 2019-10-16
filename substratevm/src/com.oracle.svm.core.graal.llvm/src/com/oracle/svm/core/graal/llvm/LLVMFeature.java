@@ -303,7 +303,7 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 }
 
 @AutomaticFeature
-@Platforms(Platform.AArch64.class)
+@Platforms(Platform.AARCH64.class)
 class LLVMAArch64TargetSpecificFeature implements Feature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;

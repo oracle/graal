@@ -41,7 +41,6 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.ProxyResource;
-import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.persist.test.Handler;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -123,7 +122,7 @@ public class CatalogIterableTest extends CommandTestBase {
     @Test
     public void testVerifyRemoteJars() throws Exception {
         initRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", "testComponent", "test");
-        info.setShaDigest(RemotePropertiesStorage.toHashBytes(null, "d3a45ea326b379cc3d543cc56130ee9bd395fd1c1d51a470e8c2c8af1129829c", this));
+        info.setShaDigest(SystemUtils.toHashBytes("d3a45ea326b379cc3d543cc56130ee9bd395fd1c1d51a470e8c2c8af1129829c"));
 
         try {
             exception.expect(IOException.class);
@@ -147,7 +146,7 @@ public class CatalogIterableTest extends CommandTestBase {
     public void testReadComponentMetadataNoNetwork() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("ruby");
-        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
+        CatalogIterable cit = new CatalogIterable(this, this);
         assertTrue(cit.iterator().hasNext());
         for (ComponentParam p : cit) {
             URL remoteU = p.createMetaLoader().getComponentInfo().getRemoteURL();
@@ -162,7 +161,7 @@ public class CatalogIterableTest extends CommandTestBase {
         exception.expectMessage("REMOTE_UnknownComponentId");
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("r");
-        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
+        CatalogIterable cit = new CatalogIterable(this, this);
         assertTrue(cit.iterator().hasNext());
         cit.iterator().next();
     }
@@ -178,7 +177,7 @@ public class CatalogIterableTest extends CommandTestBase {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         File mistyped = folder.newFile("mistyped-component.jar");
         textParams.add(mistyped.getPath());
-        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
+        CatalogIterable cit = new CatalogIterable(this, this);
         assertTrue(cit.iterator().hasNext());
         cit.iterator().next();
     }
@@ -280,7 +279,7 @@ public class CatalogIterableTest extends CommandTestBase {
             }
         });
 
-        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
+        CatalogIterable cit = new CatalogIterable(this, this);
         ComponentParam rubyComp = cit.iterator().next();
 
         exception.expect(FailedOperationException.class);

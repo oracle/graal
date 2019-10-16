@@ -17,6 +17,90 @@
     ]
   },
   {
+    "name" : "java.net.SocketPermission",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.net.URL",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.file.spi.FileSystemProvider",
+    "methods" : [
+        { "name" : "checkPermission" ,
+          "justification" : "Only creation of a FileSystemProvider instance, not used for file system access.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.ServiceLoader",
+    "methods" : [
+        { "name" : "parse" ,
+          "justification" : "Reads META-INF/services files from classpath.",
+          "parameterTypes" : [
+              "java.lang.Class",
+              "java.net.URL"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinWorkerThread",
+    "methods" : [
+        { "name" : "run" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinTask",
+    "methods" : [
+        { "name" : "invoke" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinPool",
+    "methods" : [
+        { "name" : "makeCommonPool" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "sun.nio.ch.SocketChannelImpl",
+    "methods" : [
+        { "name" : "toString" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.security.ProtectionDomain",
+    "methods" : [
+        { "name" : "toString" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
     "name" : "java.security.Provider",
     "methods" : [
         { "name" : "check" ,
@@ -47,58 +131,12 @@
     ]
   },
   {
-    "name" : "java.net.SocketPermission",
+    "name" : "com.oracle.svm.core.jdk.Resources",
     "methods" : [
-        { "name" : "equals" ,
+        { "name" : "createURL" ,
           "parameterTypes" : [
-              "java.lang.Object"
-        ]},
-        { "name" : "hashCode" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.security.ProtectionDomain",
-    "methods" : [
-        { "name" : "toString" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.net.URL",
-    "methods" : [
-        { "name" : "equals" ,
-          "parameterTypes" : [
-              "java.lang.Object"
-        ]},
-        { "name" : "hashCode" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.util.concurrent.ForkJoinWorkerThread",
-    "methods" : [
-        { "name" : "run" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.util.concurrent.ForkJoinTask",
-    "methods" : [
-        { "name" : "invoke" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.util.concurrent.ForkJoinPool",
-    "methods" : [
-        { "name" : "makeCommonPool" ,
-          "parameterTypes" : [
+            "java.lang.String",
+            "byte[]"
         ]}
     ]
   }

@@ -202,9 +202,9 @@ public class LLVMForeignCallNode extends RootNode {
 
     static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
         if (function.isLLVMIRFunction()) {
-            return function.getLLVMIRFunction();
-        } else if (function.isIntrinsicFunction()) {
-            return function.getIntrinsic().cachedCallTarget(function.getType());
+            return function.getLLVMIRFunctionSlowPath();
+        } else if (function.isIntrinsicFunctionSlowPath()) {
+            return function.getIntrinsicSlowPath().cachedCallTarget(function.getType());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + function.getFunction());

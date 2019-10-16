@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -934,7 +934,7 @@ public class SLDebugTest {
     public void testMisplacedLineBreakpoints() throws Throwable {
         final String sourceStr = "// A comment\n" +              // 1
                         "function invocable(n) {\n" +
-                        "  if (R3_R27_n <= 1) {\n" +
+                        "  if (R3_n <= 1) {\n" +
                         "    R4-6_one \n" +
                         "        =\n" +                 // 5
                         "          1;\n" +
@@ -943,9 +943,9 @@ public class SLDebugTest {
                         "  } else {\n" +
                         "    // A comment\n" +          // 10
                         "    while (\n" +
-                        "        R10-13_n > 0\n" +
+                        "        R10-12_n > 0\n" +
                         "          ) { \n" +
-                        "      R14-16_one \n" +
+                        "      R13-16_one \n" +
                         "          = \n" +              // 15
                         "            2;\n" +
                         "      R17-20_n = n -\n" +
@@ -954,7 +954,7 @@ public class SLDebugTest {
                         "    }\n" +                     // 20
                         "    R21_n =\n" +
                         "        n - 1; R22_n = n + 1;\n" +
-                        "    R23-26_return\n" +
+                        "    R23-27_return\n" +
                         "        n * n;\n" +
                         "    \n" +                      // 25
                         "  }\n" +
@@ -983,8 +983,8 @@ public class SLDebugTest {
     public void testMisplacedColumnBreakpoints() throws Throwable {
         final String sourceStr = "// A comment\n" +              // 1
                         "function invocable(B3_n) {\n" +
-                        "  if (R3-4_R16_n <= 1) B4_ B5_{B6_\n" +
-                        "    R5-7_one \n" +
+                        "  if (R3_n <= 1) B4_ B5_{B6_\n" +
+                        "    R4-7_one \n" +
                         "        =\n" +                 // 5
                         "          B7_1;\n" +
                         "    R8_return\n" +
@@ -992,16 +992,16 @@ public class SLDebugTest {
                         "  B8_}B9_ else B10_ {\n" +
                         "    // A commentB11_\n" +          // 10
                         "    while (\n" +
-                        "        R9-12_n > 0\n" +
+                        "        R9-11_n > 0\n" +
                         "          ) B12_ { \n" +
-                        "      one \n" +
+                        "      R12_one \n" +
                         "          = \n" +              // 15
                         "            2;\n" +
                         "      R13-14_n = n -\n" +
                         "          one *\n" +
                         "          one;\n" +
                         "   B13_ B14_}B15_\n" +                    // 20
-                        "    R15_return\n" +
+                        "    R15-16_return\n" +
                         "        n * n;\n" +
                         "    \n" +
                         "  }B16_\n" +

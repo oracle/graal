@@ -25,17 +25,22 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -58,6 +64,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -67,6 +74,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -106,14 +114,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.net.URL;
-import java.util.function.Supplier;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -122,9 +122,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
-import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -375,42 +372,18 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         MapCursor<String, List<InvocationPlugins.Binding>> cursor = invocationPlugins.getBindings(true).getEntries();
         while (cursor.advance()) {
             String className = cursor.getKey();
-            ResolvedJavaType type = null;
-            try {
-                String typeName = className.substring(1, className.length() - 1).replace('/', '.');
-                ClassLoader cl = ClassLoader.getSystemClassLoader();
-                Class<?> clazz = Class.forName(typeName, true, cl);
-                type = metaAccess.lookupJavaType(clazz);
-            } catch (ClassNotFoundException e) {
-                debug.log("Can't find original type for %s%n", className);
-                // throw new GraalError(e);
-            }
-
             for (InvocationPlugins.Binding binding : cursor.getValue()) {
                 if (binding.plugin instanceof MethodSubstitutionPlugin) {
                     MethodSubstitutionPlugin plugin = (MethodSubstitutionPlugin) binding.plugin;
 
-                    ResolvedJavaMethod original = null;
-                    for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
-                        if (declared.getName().equals(binding.name)) {
-                            if (declared.isStatic() == binding.isStatic) {
-                                if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                                    original = declared;
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    ResolvedJavaMethod original = plugin.getOriginalMethod(metaAccess);
                     if (original != null) {
                         ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
                         debug.log("Method substitution %s %s", method, original);
 
-                        hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, debug.getOptions());
-                        if (!original.isNative()) {
-                            hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, ROOT_COMPILATION, debug.getOptions());
-                        }
+                        hotSpotSubstrateReplacements.checkRegistered(plugin);
                     } else {
-                        throw new GraalError("Can't find original method for " + plugin);
+                        throw new GraalError("Can't find original method for " + plugin + " with class " + className);
                     }
                 }
             }

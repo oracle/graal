@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,9 +63,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -226,9 +223,9 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     static boolean isSpecializedNode(Element element) {
         if (element.getKind().isClass()) {
-            if (ElementUtils.isAssignable(element.asType(), ProcessorContext.getInstance().getType(Node.class))) {
+            if (ElementUtils.isAssignable(element.asType(), ProcessorContext.getInstance().getTypes().Node)) {
                 for (ExecutableElement method : ElementFilter.methodsIn(element.getEnclosedElements())) {
-                    if (ElementUtils.findAnnotationMirror(method, Specialization.class) != null) {
+                    if (ElementUtils.findAnnotationMirror(method, ProcessorContext.getInstance().getTypes().Specialization) != null) {
                         return true;
                     }
                 }
@@ -335,7 +332,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         TypeMirror commonNodeSuperType = ElementUtils.getCommonSuperType(context, nodeTypesList);
 
         Types types = context.getEnvironment().getTypeUtils();
-        TypeMirror factoryType = context.getType(NodeFactory.class);
+        TypeMirror factoryType = context.getTypes().NodeFactory;
         TypeMirror baseType;
         if (allSame) {
             baseType = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(factoryType), commonNodeSuperType);

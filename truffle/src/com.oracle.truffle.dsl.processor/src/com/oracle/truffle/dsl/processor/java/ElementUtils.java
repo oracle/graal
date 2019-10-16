@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.java;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,6 +92,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 public class ElementUtils {
 
     public static ExecutableElement findMethod(Class<?> type, String methodName) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        DeclaredType typeElement = context.getDeclaredType(type);
+        return findMethod(typeElement, methodName);
+    }
+
+    public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement typeElement = context.getTypeElement(type);
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
@@ -241,13 +246,12 @@ public class ElementUtils {
         return new DeclaredCodeTypeMirror(typeElem, Arrays.asList(typeArgs));
     }
 
-    public static List<AnnotationMirror> collectAnnotations(ProcessorContext context, AnnotationMirror markerAnnotation, String elementName, Element element,
-                    Class<? extends Annotation> annotationClass) {
+    public static List<AnnotationMirror> collectAnnotations(AnnotationMirror markerAnnotation, String elementName, Element element, DeclaredType annotationClass) {
         List<AnnotationMirror> result = new ArrayList<>();
         if (markerAnnotation != null) {
             result.addAll(ElementUtils.getAnnotationValueList(AnnotationMirror.class, markerAnnotation, elementName));
         }
-        AnnotationMirror explicit = ElementUtils.findAnnotationMirror(context.getEnvironment(), element, annotationClass);
+        AnnotationMirror explicit = ElementUtils.findAnnotationMirror(element, annotationClass);
         if (explicit != null) {
             result.add(explicit);
         }
@@ -1110,19 +1114,6 @@ public class ElementUtils {
         return e.getMessage() + System.lineSeparator() + string.toString();
     }
 
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, Element element, Class<?> annotationClass) {
-        return findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), annotationClass);
-    }
-
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List<? extends AnnotationMirror> mirrors, Class<?> annotationClass) {
-        TypeElement expectedAnnotationType = getTypeElement(processingEnv, annotationClass.getCanonicalName());
-        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
-    }
-
-    public static AnnotationMirror findAnnotationMirror(List<? extends AnnotationMirror> mirrors, TypeElement expectedAnnotationType) {
-        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
-    }
-
     public static AnnotationMirror findAnnotationMirror(Element element, Class<?> expectedAnnotationType) {
         return findAnnotationMirror(element.getAnnotationMirrors(), ProcessorContext.getInstance().getType(expectedAnnotationType));
     }
@@ -1366,14 +1357,6 @@ public class ElementUtils {
         return false;
     }
 
-    public static boolean isTopLevelClass(TypeMirror importType) {
-        TypeElement type = fromTypeMirror(importType);
-        if (type != null && type.getEnclosingElement() != null) {
-            return !type.getEnclosingElement().getKind().isClass() && !type.getEnclosingElement().getKind().isInterface();
-        }
-        return true;
-    }
-
     public static boolean isObject(TypeMirror actualType) {
         return actualType.getKind() == TypeKind.DECLARED && getQualifiedName(actualType).equals("java.lang.Object");
     }
@@ -1563,31 +1546,9 @@ public class ElementUtils {
         return result;
     }
 
-    public static boolean isAbstract(ExecutableElement method) {
-        if (method.getEnclosingElement().getKind().isInterface()) {
-            for (Modifier modifier : method.getModifiers()) {
-                if (modifier.toString().equals("default")) {
-                    return false;
-                }
-            }
-            if (method.getModifiers().contains(Modifier.STATIC)) {
-                return false;
-            }
-            return true;
-        } else if (method.getEnclosingElement().getKind().isClass()) {
-            if (!method.getEnclosingElement().getModifiers().contains(Modifier.ABSTRACT)) {
-                return false;
-            }
-            return method.getModifiers().contains(Modifier.ABSTRACT);
-        }
-        return false;
-    }
-
-    public static List<AnnotationMirror> getRepeatedAnnotation(List<? extends AnnotationMirror> mirrors, Class<? extends Annotation> repeatedAnnotation) {
-        ProcessorContext context = ProcessorContext.getInstance();
-        DeclaredType base = context.getDeclaredType(repeatedAnnotation);
-
-        AnnotationMirror repeatable = findAnnotationMirror(context.getEnvironment(), base.asElement().getAnnotationMirrors(), Repeatable.class);
+    public static List<AnnotationMirror> getRepeatedAnnotation(List<? extends AnnotationMirror> mirrors, DeclaredType base) {
+        DeclaredType repeatableType = ProcessorContext.getInstance().getDeclaredType(Repeatable.class);
+        AnnotationMirror repeatable = findAnnotationMirror(base.asElement(), repeatableType);
         TypeMirror repeat = null;
         if (repeatable != null) {
             repeat = ElementUtils.getAnnotationValue(TypeMirror.class, repeatable, "value");

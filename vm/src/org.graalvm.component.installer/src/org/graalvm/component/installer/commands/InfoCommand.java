@@ -256,13 +256,13 @@ public class InfoCommand extends QueryCommandBase {
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (printTable) {
             String line = String.format(feedback.l10n("INFO_ComponentShortList"),
-                            shortenComponentId(info), val(info.getVersionString()), val(info.getName()),
+                            shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
                             filePath(info));
             feedback.verbatimOut(line, false);
             return;
         } else {
             feedback.output("INFO_ComponentBasicInfo",
-                            shortenComponentId(info), val(info.getVersionString()), val(info.getName()),
+                            shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
                             param.getFullPath(), findRequiredGraalVMVersion(info));
             List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
             keys.remove(CommonConstants.CAP_GRAALVM_VERSION);

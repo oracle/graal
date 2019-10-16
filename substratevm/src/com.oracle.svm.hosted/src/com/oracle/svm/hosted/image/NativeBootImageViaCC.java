@@ -132,6 +132,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
+            additionalPreOptions.add("-Wl,-no_compact_unwind");
+
             if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
@@ -162,7 +164,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             additionalPreOptions.add("-arch");
             if (Platform.includedIn(Platform.AMD64.class)) {
                 additionalPreOptions.add("x86_64");
-            } else if (Platform.includedIn(Platform.AArch64.class)) {
+            } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
         }

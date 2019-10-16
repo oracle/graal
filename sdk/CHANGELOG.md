@@ -5,7 +5,12 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 19.3.0
 * The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
 * Added `org.graalvm.polyglot.ResourceLimits` that allows to specify context specific time and statement count execution limits.
+* Added [HomeFinder](http://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html), a utility class to find various paths of the running GraalVM.
 * Contexts can now be closed if they are still explicitly entered using `Context.enter` on the current thread. This allows for simpler error recovery code.
+* Added `Value.getContext()` to access the context a value is associated with.
+* Added `org.graalvm.home.Version` version utility that allows to create, validate and compare GraalVM versions.
+* Added Value API methods for interacting with exception objects: [Value#isException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#isException--) and [Value#throwException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#throwException--).
+* Added target type mapping from exception objects to [PolyglotException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-).
 
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot

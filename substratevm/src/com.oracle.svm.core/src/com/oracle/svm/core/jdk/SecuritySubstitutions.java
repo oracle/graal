@@ -29,8 +29,12 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessControlException;
+import java.security.CodeSource;
 import java.security.DomainCombiner;
 import java.security.Permission;
+import java.security.PermissionCollection;
+import java.security.Permissions;
+import java.security.Policy;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -53,6 +57,10 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+
+// Checkstyle: stop
+import sun.security.util.SecurityConstants;
+// Checkstyle: resume
 
 // Checkstyle: allow reflection
 
@@ -383,6 +391,55 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
         } catch (NoSuchMethodException ex) {
             return false;
         }
+    }
+}
+
+@TargetClass(java.security.Policy.class)
+final class Target_java_security_Policy {
+
+    @Substitute
+    private static Policy getPolicyNoCheck() {
+        return AllPermissionsPolicy.SINGLETON;
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    private static void setPolicy(Policy p) {
+        /*
+         * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
+         * where an exception is silently ignored by an application and then necessary security
+         * checks are not in place.
+         */
+        throw VMError.shouldNotReachHere("Installing a Policy is not yet supported");
+    }
+}
+
+final class AllPermissionsPolicy extends Policy {
+
+    static final Policy SINGLETON = new AllPermissionsPolicy();
+
+    private AllPermissionsPolicy() {
+    }
+
+    private static PermissionCollection allPermissions() {
+        Permissions result = new Permissions();
+        result.add(SecurityConstants.ALL_PERMISSION);
+        return result;
+    }
+
+    @Override
+    public PermissionCollection getPermissions(CodeSource codesource) {
+        return allPermissions();
+    }
+
+    @Override
+    public PermissionCollection getPermissions(ProtectionDomain domain) {
+        return allPermissions();
+    }
+
+    @Override
+    public boolean implies(ProtectionDomain domain, Permission permission) {
+        return true;
     }
 }
 

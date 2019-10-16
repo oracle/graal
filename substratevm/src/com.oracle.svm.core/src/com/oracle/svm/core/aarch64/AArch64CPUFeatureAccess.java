@@ -38,7 +38,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 
 @AutomaticFeature
-@Platforms(Platform.AArch64.class)
+@Platforms(Platform.AARCH64.class)
 class AArch64CPUFeatureAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -47,7 +47,7 @@ class AArch64CPUFeatureAccessFeature implements Feature {
 }
 
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
-    @Platforms(Platform.AArch64.class)
+    @Platforms(Platform.AARCH64.class)
     public static EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
         return features;

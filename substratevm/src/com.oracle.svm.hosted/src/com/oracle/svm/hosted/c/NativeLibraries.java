@@ -64,6 +64,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -187,12 +188,15 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
-                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
-            if (hint != null) {
-                message += "\n" + hint;
+            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                /* Fail if we will statically link JDK libraries but do not have them available */
+                String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
+                                "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
+                if (hint != null) {
+                    message += "\n" + hint;
+                }
+                UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
             }
-            UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
         }
         return libraryPaths;
     }

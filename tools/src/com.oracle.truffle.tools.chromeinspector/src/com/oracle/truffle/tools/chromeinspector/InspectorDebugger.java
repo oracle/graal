@@ -226,33 +226,41 @@ public final class InspectorDebugger extends DebuggerDomain {
         JSONArray arr = new JSONArray();
         Source source = script.getSource();
         if (source.hasCharacters() && source.getLength() > 0) {
+            int lc = source.getLineCount();
             int l1 = start.getLine();
             int c1 = start.getColumn();
             if (c1 <= 0) {
                 c1 = 1;
             }
+            if (l1 > lc) {
+                l1 = lc;
+                c1 = source.getLineLength(l1);
+            }
             int l2;
             int c2;
             if (end != null) {
-                int lc = source.getLineCount();
-                if (end.getLine() > lc) {
-                    l2 = lc;
-                    c2 = source.getLineLength(l2);
-                } else {
-                    c2 = end.getColumn();
-                    if (c2 <= 1) {
-                        l2 = end.getLine() - 1;
-                        if (l2 <= 0) {
-                            l2 = 1;
-                        }
+                l2 = end.getLine();
+                c2 = end.getColumn();
+                // The end should be exclusive, but not all clients adhere to that.
+                if (l1 != l2 || c1 != c2) {
+                    // Only when start != end consider end as exclusive:
+                    if (l2 > lc) {
+                        l2 = lc;
                         c2 = source.getLineLength(l2);
                     } else {
-                        l2 = end.getLine();
-                        c2 = c2 - 1;
+                        if (c2 <= 1) {
+                            l2 = l2 - 1;
+                            if (l2 <= 0) {
+                                l2 = 1;
+                            }
+                            c2 = source.getLineLength(l2);
+                        } else {
+                            c2 = c2 - 1;
+                        }
                     }
-                }
-                if (l1 > l2) {
-                    l1 = l2;
+                    if (l1 > l2) {
+                        l1 = l2;
+                    }
                 }
             } else {
                 l2 = l1;

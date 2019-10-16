@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
@@ -28,7 +44,6 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -61,8 +76,6 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     private byte groupNumber = -1;
     private byte enclosedCaptureGroupsLow;
     private byte enclosedCaptureGroupsHigh;
-    private SourceSection sourceSectionBegin;
-    private SourceSection sourceSectionEnd;
 
     /**
      * Creates an empty non-capturing group.
@@ -84,8 +97,6 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
         enclosedCaptureGroupsHigh = copy.enclosedCaptureGroupsHigh;
-        sourceSectionBegin = copy.sourceSectionBegin;
-        sourceSectionEnd = copy.sourceSectionEnd;
         if (recursive) {
             for (Sequence s : copy.alternatives) {
                 add(s.copy(ast, true));
@@ -243,6 +254,10 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         this.enclosedCaptureGroupsHigh = (byte) enclosedCaptureGroupsHigh;
     }
 
+    public boolean hasEnclosedCaptureGroups() {
+        return enclosedCaptureGroupsHigh > enclosedCaptureGroupsLow;
+    }
+
     /**
      * Returns the list of alternatives that make up this {@link Group}.
      * <p>
@@ -258,41 +273,6 @@ public final class Group extends Term implements RegexASTVisitorIterable {
             s.setParent(this);
         }
         this.alternatives = alternatives;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        if (super.getSourceSection() == null && sourceSectionBegin != null && sourceSectionEnd != null) {
-            super.setSourceSection(sourceSectionBegin.getSource().createSection(sourceSectionBegin.getCharIndex(),
-                            sourceSectionEnd.getCharEndIndex() - sourceSectionBegin.getCharIndex()));
-        }
-        return super.getSourceSection();
-    }
-
-    /**
-     * Returns the {@link SourceSection} corresponding to this group's opening bracket and modifier
-     * symbols (like "?:", "?=", ...), or {@code null} if this group has no corresponding source
-     * (this is the case for groups inserted by the parser when expanding quantifiers etc.).
-     */
-    public SourceSection getSourceSectionBegin() {
-        return sourceSectionBegin;
-    }
-
-    public void setSourceSectionBegin(SourceSection sourceSectionBegin) {
-        this.sourceSectionBegin = sourceSectionBegin;
-    }
-
-    /**
-     * Returns the {@link SourceSection} corresponding to this group's closing bracket, or
-     * {@code null} if this group has no corresponding source (this is the case for groups inserted
-     * by the parser when expanding quantifiers etc.).
-     */
-    public SourceSection getSourceSectionEnd() {
-        return sourceSectionEnd;
-    }
-
-    public void setSourceSectionEnd(SourceSection sourceSectionEnd) {
-        this.sourceSectionEnd = sourceSectionEnd;
     }
 
     public int size() {

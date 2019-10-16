@@ -1,28 +1,52 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.nfa;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -36,14 +60,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import org.graalvm.collections.EconomicMap;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Regex AST visitor that will find convert all NFA successors of a given {@link Term} to
@@ -63,16 +79,12 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     private final List<ASTStep> curLookAheads = new ArrayList<>();
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
-    private final CompilationFinalBitSet captureGroupUpdates;
-    private final CompilationFinalBitSet captureGroupClears;
 
     private final CompilationBuffer compilationBuffer;
 
     public ASTStepVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         super(ast);
         this.compilationBuffer = compilationBuffer;
-        captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
-        captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
     }
 
     public ASTStep step(NFAState expandState) {
@@ -133,73 +145,31 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     }
 
     @Override
-    protected void visit(ArrayList<PathElement> path) {
+    protected void visit(RegexASTNode target) {
         ASTSuccessor successor = new ASTSuccessor(compilationBuffer);
         ASTTransition transition = new ASTTransition();
-        PositionAssertion dollar = null;
-        captureGroupUpdates.clear();
-        captureGroupClears.clear();
-        Group outerPassThrough = null;
-        for (PathElement element : path) {
-            final RegexASTNode node = element.getNode();
-            if (node instanceof Group) {
-                Group group = (Group) node;
-                if (element.isGroupEnter()) {
-                    if (outerPassThrough == null) {
-                        if (element.isGroupPassThrough() && group.isExpandedQuantifier()) {
-                            outerPassThrough = group;
-                        }
-                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            captureGroupUpdates.set(group.getBoundaryIndexStart());
-                            captureGroupClears.clear(group.getBoundaryIndexStart());
-                        }
-                        if (!element.isGroupPassThrough() && (group.isLoop() || group.isExpandedQuantifier())) {
-                            for (int i = group.getEnclosedCaptureGroupsLow(); i < group.getEnclosedCaptureGroupsHigh(); i++) {
-                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexStart(i))) {
-                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexStart(i));
-                                }
-                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(i))) {
-                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexEnd(i));
-                                }
-                            }
-                        }
+        transition.setGroupBoundaries(getGroupBoundaries());
+        if (dollarsOnPath()) {
+            assert target instanceof MatchFound;
+            transition.setTarget(getLastDollarOnPath());
+        } else {
+            if (target instanceof CharacterClass) {
+                final CharacterClass charClass = (CharacterClass) target;
+                if (!charClass.getLookBehindEntries().isEmpty()) {
+                    ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
+                    for (Group g : charClass.getLookBehindEntries()) {
+                        final ASTStep lbAstStep = new ASTStep(g);
+                        assert g.isLiteral();
+                        lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
+                        newLookBehinds.add(lbAstStep);
                     }
-                } else {
-                    assert element.isGroupExit();
-                    if (outerPassThrough == null) {
-                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            captureGroupUpdates.set(group.getBoundaryIndexEnd());
-                            captureGroupClears.clear(group.getBoundaryIndexEnd());
-                        }
-                    } else if (outerPassThrough == group) {
-                        outerPassThrough = null;
-                    }
-                }
-            } else if (node instanceof PositionAssertion && ((PositionAssertion) node).type == PositionAssertion.Type.DOLLAR) {
-                dollar = (PositionAssertion) node;
-            }
-        }
-        transition.setGroupBoundaries(ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears));
-        final RegexASTNode lastNode = path.get(path.size() - 1).getNode();
-        if (dollar == null) {
-            if (lastNode instanceof CharacterClass) {
-                final CharacterClass charClass = (CharacterClass) lastNode;
-                ArrayList<ASTStep> newLookBehinds = new ArrayList<>();
-                for (Group g : charClass.getLookBehindEntries()) {
-                    final ASTStep lbAstStep = new ASTStep(g);
-                    assert g.isLiteral();
-                    lbAstStep.addSuccessor(new ASTSuccessor(compilationBuffer, new ASTTransition(g.getAlternatives().get(0).getFirstTerm())));
-                    newLookBehinds.add(lbAstStep);
+                    successor.setLookBehinds(newLookBehinds);
                 }
                 transition.setTarget(charClass);
-                successor.setLookBehinds(newLookBehinds);
             } else {
-                assert lastNode instanceof MatchFound;
-                transition.setTarget((MatchFound) lastNode);
+                assert target instanceof MatchFound;
+                transition.setTarget((MatchFound) target);
             }
-        } else {
-            assert lastNode instanceof MatchFound;
-            transition.setTarget(dollar);
         }
         successor.addInitialTransition(transition);
         if (!curLookAheads.isEmpty()) {

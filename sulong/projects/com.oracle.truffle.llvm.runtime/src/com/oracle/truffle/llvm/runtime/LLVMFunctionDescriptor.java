@@ -40,6 +40,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -52,6 +54,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptorFactory.ResolveFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -60,6 +63,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -154,12 +158,45 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     public abstract static class Function {
         void resolve(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor) {
             // nothing to do
+            CompilerAsserts.neverPartOfCompilation();
         }
 
         abstract TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor);
 
         LLVMSourceFunctionType getSourceType() {
             return null;
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class ResolveFunctionNode extends LLVMNode {
+
+        abstract Function execute(Function function, LLVMFunctionDescriptor descriptor);
+
+        @Specialization
+        @TruffleBoundary
+        Function doLazyLLVMIRFunction(LazyLLVMIRFunction function, LLVMFunctionDescriptor descriptor) {
+            function.resolve(descriptor);
+            return descriptor.getFunction();
+        }
+
+        @Specialization
+        @TruffleBoundary
+        Function doUnresolvedFunction(UnresolvedFunction function, LLVMFunctionDescriptor descriptor) {
+            function.resolve(descriptor);
+            return descriptor.getFunction();
+        }
+
+        private static boolean resolveDoesNothing(Function function, LLVMFunctionDescriptor descriptor) {
+            function.resolve(descriptor);
+            return descriptor.getFunction() == function;
+        }
+
+        @Fallback
+        Function doOther(Function function, LLVMFunctionDescriptor descriptor) {
+            assert resolveDoesNothing(function, descriptor);
+            // nothing to do
+            return function;
         }
     }
 
@@ -250,6 +287,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
         @Override
         TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
+            CompilerAsserts.neverPartOfCompilation();
             resolve(descriptor);
             return descriptor.getFunction().createNativeWrapper(descriptor);
         }
@@ -308,6 +346,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     public void resolveIfLazyLLVMIRFunction() {
+        CompilerAsserts.neverPartOfCompilation();
         if (getFunction() instanceof LazyLLVMIRFunction) {
             getFunction().resolve(this);
             assert getFunction() instanceof LLVMIRFunction;
@@ -319,14 +358,22 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return currentFunction instanceof LLVMIRFunction || currentFunction instanceof LazyLLVMIRFunction;
     }
 
-    public boolean isIntrinsicFunction() {
-        getFunction().resolve(this);
-        return getFunction() instanceof IntrinsicFunction;
+    public boolean isIntrinsicFunctionSlowPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        return isIntrinsicFunction(ResolveFunctionNodeGen.getUncached());
     }
 
-    public boolean isNativeFunction() {
-        getFunction().resolve(this);
-        return getFunction() instanceof NativeFunction;
+    public boolean isIntrinsicFunction(ResolveFunctionNode resolve) {
+        return resolve.execute(getFunction(), this) instanceof IntrinsicFunction;
+    }
+
+    public boolean isNativeFunctionSlowPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        return isNativeFunction(ResolveFunctionNodeGen.getUncached());
+    }
+
+    public boolean isNativeFunction(ResolveFunctionNode resolve) {
+        return resolve.execute(getFunction(), this) instanceof NativeFunction;
     }
 
     @Override
@@ -355,22 +402,34 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    public RootCallTarget getLLVMIRFunction() {
-        getFunction().resolve(this);
-        assert getFunction() instanceof LLVMIRFunction;
-        return ((LLVMIRFunction) getFunction()).callTarget;
+    public RootCallTarget getLLVMIRFunctionSlowPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        return getLLVMIRFunction(ResolveFunctionNodeGen.getUncached());
     }
 
-    public Intrinsic getIntrinsic() {
-        getFunction().resolve(this);
-        assert getFunction() instanceof IntrinsicFunction;
-        return ((IntrinsicFunction) getFunction()).intrinsic;
+    public RootCallTarget getLLVMIRFunction(ResolveFunctionNode resolve) {
+        Function fn = resolve.execute(getFunction(), this);
+        return ((LLVMIRFunction) fn).callTarget;
     }
 
-    public TruffleObject getNativeFunction() {
-        getFunction().resolve(this);
-        assert getFunction() instanceof NativeFunction;
-        TruffleObject nativeFunction = ((NativeFunction) getFunction()).nativeFunction;
+    public Intrinsic getIntrinsicSlowPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        return getIntrinsic(ResolveFunctionNodeGen.getUncached());
+    }
+
+    public Intrinsic getIntrinsic(ResolveFunctionNode resolve) {
+        Function fn = resolve.execute(getFunction(), this);
+        return ((IntrinsicFunction) fn).intrinsic;
+    }
+
+    public TruffleObject getNativeFunctionSlowPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        return getNativeFunction(ResolveFunctionNodeGen.getUncached());
+    }
+
+    public TruffleObject getNativeFunction(ResolveFunctionNode resolve) {
+        Function fn = resolve.execute(getFunction(), this);
+        TruffleObject nativeFunction = ((NativeFunction) fn).nativeFunction;
         if (nativeFunction == null) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMLinkerException("Native function " + getName() + " not found");

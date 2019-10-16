@@ -891,7 +891,7 @@ public class SnippetTemplate {
             }
             snippetCopy.setGuardsStage(guardsStage);
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-                new LoweringPhase(new CanonicalizerPhase(), args.cacheKey.loweringStage).apply(snippetCopy, providers);
+                new LoweringPhase(CanonicalizerPhase.create(), args.cacheKey.loweringStage).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -1059,8 +1059,8 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, providers, new CanonicalizerPhase());
-                    new CanonicalizerPhase().applyIncremental(snippetCopy, providers, mark, false);
+                    LoopTransformations.fullUnroll(loop, providers, CanonicalizerPhase.create());
+                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);

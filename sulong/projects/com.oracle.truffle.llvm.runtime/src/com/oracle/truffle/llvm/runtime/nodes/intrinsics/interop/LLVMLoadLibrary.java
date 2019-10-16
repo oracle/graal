@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -46,7 +47,12 @@ public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createReadString()") LLVMReadStringNode readId) {
         String name = readId.executeWithTarget(value);
-        context.addExternalLibrary(name, true, "<truffle_load_library>");
+        addExternalLibrary(context, name);
         return null;
+    }
+
+    @TruffleBoundary
+    private static void addExternalLibrary(LLVMContext context, String name) {
+        context.addExternalLibrary(name, true, "<truffle_load_library>");
     }
 }

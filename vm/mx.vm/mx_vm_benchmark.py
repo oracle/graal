@@ -115,9 +115,10 @@ class NativeImageVM(GraalVm):
                 else:
                     return False
 
+            before_main_args, executable, image_run_args = NativeImageVM._split_vm_arguments(args)
             benchmark_run_args = []
             benchmark_config_prefix = '-Dnative-image.benchmark.'
-            for arg in args:
+            for arg in before_main_args:
                 if arg.startswith(benchmark_config_prefix):
                     trimmed_arg = arg[len(benchmark_config_prefix):]
                     found = add_to_list(trimmed_arg, 'extra-image-build-argument', self.extra_image_build_arguments)
@@ -135,7 +136,7 @@ class NativeImageVM(GraalVm):
                 else:
                     benchmark_run_args += [arg]
 
-            return benchmark_run_args
+            return benchmark_run_args + executable + image_run_args
 
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, hotspot_pgo, is_gate, is_llvm=False):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)

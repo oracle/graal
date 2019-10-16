@@ -36,6 +36,9 @@ common_vm_windows: ${common_vm} ${windows} {
   environment : {
     PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
   }
+  packages : {
+    msvc : "==10.0"
+  }
 }
 
 # SULONG
@@ -128,6 +131,10 @@ vm_linux: ${common_vm_linux} {
   capabilities: [linux, amd64, manycores, ram16gb, fast]
 }
 
+vm_linux_aarch64: ${common_vm_linux} {
+  capabilities: [linux, aarch64]
+}
+
 vm_darwin: ${common_vm_darwin} {
   capabilities: [darwin_mojave, amd64, ram16gb]
 }
@@ -161,6 +168,10 @@ bench_daily_vm_darwin: ${vm_darwin} {
 }
 
 deploy_vm_linux: ${vm_linux} {
+  targets: [deploy, post-merge]
+}
+
+deploy_vm_linux_aarch64: ${vm_linux_aarch64} {
   targets: [deploy, post-merge]
 }
 

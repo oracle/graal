@@ -26,10 +26,12 @@ package org.graalvm.component.installer.model;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -114,22 +116,17 @@ public final class ComponentRegistry implements ComponentCollection {
     }
 
     @Override
-    public ComponentInfo findComponent(String id, Version.Match vm) {
-        return findComponent(id);
-    }
-
-    @Override
-    public ComponentInfo findComponent(String idspec) {
+    public ComponentInfo findComponentMatch(String idspec, Version.Match vm, boolean exact) {
         Version.Match[] vmatch = new Version.Match[1];
         String id = Version.idAndVersion(idspec, vmatch);
         if (!allLoaded) {
-            return loadSingleComponent(id, false, false);
+            return loadSingleComponent(id, false, false, exact);
         }
         ComponentInfo ci = components.get(id);
         if (ci != null) {
             return ci;
         }
-        String fullId = findAbbreviatedId(id);
+        String fullId = exact ? id : findAbbreviatedId(id);
         return fullId == null ? null : components.get(fullId);
     }
 
@@ -297,7 +294,7 @@ public final class ComponentRegistry implements ComponentCollection {
     }
 
     public ComponentInfo loadSingleComponent(String id, boolean filelist) {
-        return loadSingleComponent(id, filelist, false);
+        return loadSingleComponent(id, filelist, false, false);
     }
 
     @Override
@@ -306,8 +303,8 @@ public final class ComponentRegistry implements ComponentCollection {
         return ci == null ? null : Collections.singletonList(ci);
     }
 
-    ComponentInfo loadSingleComponent(String id, boolean filelist, boolean notFoundFailure) {
-        String fid = findAbbreviatedId(id);
+    ComponentInfo loadSingleComponent(String id, boolean filelist, boolean notFoundFailure, boolean exact) {
+        String fid = exact ? id : findAbbreviatedId(id);
         if (fid == null) {
             if (notFoundFailure) {
                 throw env.failure("REMOTE_UnknownComponentId", null, id);
@@ -460,5 +457,36 @@ public final class ComponentRegistry implements ComponentCollection {
 
     public void verifyAdministratorAccess() throws IOException {
         storage.saveComponent(null);
+    }
+
+    /**
+     * Finds components which depend on the supplied one. Optionally searches recursively, so it
+     * finds the dependency closure.
+     * 
+     * @param recursive create closure of dependent components.
+     * @param startFrom Component whose dependents should be returned.
+     * @return Dependent components or closure thereof, depending on parameters
+     */
+    public Set<ComponentInfo> findDependentComponents(ComponentInfo startFrom, boolean recursive) {
+        if (startFrom == null) {
+            return Collections.emptySet();
+        }
+        Deque<String> toSearch = new ArrayDeque<>();
+        toSearch.add(startFrom.getId());
+        Set<ComponentInfo> result = new HashSet<>();
+
+        while (!toSearch.isEmpty()) {
+            String id = toSearch.poll();
+            for (String cid : getComponentIDs()) {
+                ComponentInfo ci = loadSingleComponent(cid, false, false, true);
+                if (ci.getDependencies().contains(id)) {
+                    result.add(ci);
+                    if (recursive) {
+                        toSearch.add(ci.getId());
+                    }
+                }
+            }
+        }
+        return result;
     }
 }

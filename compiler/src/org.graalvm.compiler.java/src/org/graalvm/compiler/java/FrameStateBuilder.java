@@ -1027,4 +1027,17 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
         sideEffects.add(sideEffect);
     }
+
+    public void replaceValue(ValueNode oldValue, ValueNode newValue) {
+        for (int i = 0; i < locals.length; ++i) {
+            if (locals[i] == oldValue) {
+                locals[i] = newValue;
+            }
+        }
+        for (int i = 0; i < stack.length; ++i) {
+            if (stack[i] == oldValue) {
+                stack[i] = newValue;
+            }
+        }
+    }
 }

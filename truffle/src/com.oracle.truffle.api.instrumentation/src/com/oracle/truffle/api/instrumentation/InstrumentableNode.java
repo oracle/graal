@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -306,8 +306,6 @@ public interface InstrumentableNode extends NodeInterface {
      * <li>Otherwise, this node's source section contains the character index. Use following steps
      * to find the nearest tagged node in this node's hierarchy:
      * <ol type="a">
-     * <li>Find the nearest tagged parent node, remember it's existence as an
-     * <code>outerCandidate</code> boolean.</li>
      * <li>Traverse the node children in declaration order (AST breadth-first order). For every
      * child do:
      * <ol>
@@ -315,41 +313,26 @@ public interface InstrumentableNode extends NodeInterface {
      * <li>When the child does not have a source section assigned, ignore it.</li>
      * <li>When the <code>sourceCharIndex</code> is inside the child's source section, find if it's
      * tagged with one of the tags (store as <code>isTagged</code>) and repeat recursively from
-     * <b>3.b.</b> using this child as the node and passing the current
-     * <code>outerCandidate || isTagged</code> as the new <code>outerCandidate</code> value.</li>
-     * <li>When the child is above the character index, remember the lowest such child (store in
-     * <code>lowestHigherNode</code> and <code>lowestHigherTaggedNode</code> if the child is
-     * tagged).</li>
-     * <li>When the child is below the character index, remember the highest such child (store in
-     * <code>highestLowerNode</code> and <code>highestLowerTaggedNode</code> if the child is
-     * tagged).</li>
+     * <b>3.a.</b> using this child as the node.</li>
+     * <li>When the child is above the character index, remember a sorted list of such children up
+     * to the lowest tagged child (store in <code>higherNodes</code> list).</li>
+     * <li>When the child is below the character index, remember a sorted list of such children down
+     * to the highest tagged child (store in <code>lowerNodes</code> list).</li>
      * </ol>
      * </li>
-     * <li>If a tagged child node was found in <b>3.b</b> with source section matching the
+     * <li>If a tagged child node was found in <b>3.a</b> with source section matching the
      * <code>sourceCharIndex</code>, return it.</li>
-     * <li>Otherwise, we check the lowest/highest nodes:
+     * <li>Otherwise, we check the list of lower/higher nodes:
      * <ol>
-     * <li>Prefer the node after the character index, unless we're in a nested recursive call, in
-     * which case prefer the first instrumentable node in the current scope. The motivation is to
-     * prefer the next tagged code location, but when the next node is not tagged, we search for the
-     * first tagged child in the next node.</li>
-     * <li>Create a <code>primaryNode</code> alias to the <code>lowestHigherNode</code> if not in a
-     * recursive call and to <code>highestLowerNode</code> otherwise.</li>
-     * <li>Create a <code>secondaryNode</code> alias to the <code>highestLowerNode</code> if not in
-     * a recursive call and to <code>lowestHigherNode</code> otherwise.</li>
-     * <li>Create an analogous aliases for highest/lowest tagged nodes.</li>
-     * <li>If <code>primaryNode</code> is tagged, return it.</li>
-     * <li>Otherwise, if <code>secondaryNode</code> is tagged, return it.</li>
-     * <li>If <code>outerCandidate</code> is false, repeat <b>3.b.</b> on <code>primaryNode</code>
-     * and if it provides a tagged child, return it, otherwise return <code>primaryTaggedNode</code>
-     * if it's not <code>null</code>.</li>
-     * <li>Otherwise, if <code>outerCandidate</code> is false, repeat <b>3.b.</b> on
-     * <code>secondaryNode</code> and if it provides a tagged child, return it, otherwise return
-     * <code>secondaryTaggedNode</code> if it's not <code>null</code>.</li>
+     * <li>Prefer the node after the character index.</li>
+     * <li>Traverse <code>higherNodes</code> in ascending order. When the node is tagged, return it,
+     * when not, repeat with that node from <b>3.a.</b></li>
+     * <li>If no tagged node was found, traverse <code>lowerNodes</code> in descending order. When
+     * the node is tagged, return it, when not, repeat with that node from <b>3.a.</b></li>
      * <li>When nothing was found in the steps above, return <code>null</code>.</li>
      * </ol>
      * </li>
-     * <li>If <b>d.</b> didn't provide a tagged node, apply this algorithm recursively to a parent
+     * <li>If <b>c.</b> didn't provide a tagged node, apply this algorithm recursively to a parent
      * of this node, if exists. If you encounter the nearest tagged parent node found in <b>3.a</b>,
      * return it. Otherwise, return a tagged child found in the steps above, if any.</li>
      * </ol>

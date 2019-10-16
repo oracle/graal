@@ -35,9 +35,7 @@ import jdk.vm.ci.meta.Signature;
 /**
  * Denotes a method whose body is used by a compiler as the substitute (or intrinsification) of
  * another method. The exact mechanism used to do the substitution is compiler dependent but every
- * compiler should require substitute methods to be annotated with {@link MethodSubstitution}. In
- * addition, a compiler is recommended to implement {@link MethodSubstitutionRegistry} to advertise
- * the mechanism by which it supports registration of method substitutes.
+ * compiler should require substitute methods to be annotated with {@link MethodSubstitution}.
  *
  * A compiler may support partial intrinsification where only a part of a method is implemented by
  * the compiler. The unsupported path is expressed by a call to either the original or substitute

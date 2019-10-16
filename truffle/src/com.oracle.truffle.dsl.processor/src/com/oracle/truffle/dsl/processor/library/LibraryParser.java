@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.library;
 
-import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -53,23 +52,18 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
-import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class LibraryParser extends AbstractParser<LibraryData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(GenerateLibrary.class, GenerateLibrary.DefaultExport.class,
-                    GenerateLibrary.Abstract.class);
+    public final List<DeclaredType> annotations = Arrays.asList(types.GenerateLibrary, types.GenerateLibrary_DefaultExport, types.GenerateLibrary_Abstract);
 
     @Override
     public boolean isDelegateToRootDeclaredType() {
@@ -86,8 +80,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
 
         LibraryData model = new LibraryData((TypeElement) element, mirror);
 
-        if (!ElementUtils.typeEquals(type.getSuperclass(), context.getType(Library.class))) {
-            model.addError("Declared library classes must exactly extend the type %s.", ElementUtils.getQualifiedName(context.getType(Library.class)));
+        if (!ElementUtils.typeEquals(type.getSuperclass(), types.Library)) {
+            model.addError("Declared library classes must exactly extend the type %s.", ElementUtils.getQualifiedName(types.Library));
             return model;
         }
 
@@ -101,7 +95,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
 
         boolean defaultExportReachable = true;
-        List<AnnotationMirror> defaultExports = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), DefaultExport.class);
+        List<AnnotationMirror> defaultExports = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), types.GenerateLibrary_DefaultExport);
         for (AnnotationMirror defaultExport : defaultExports) {
             LibraryDefaultExportData export = loadDefaultExportImpl(model, defaultExport, "value");
             if (export == null) {
@@ -128,7 +122,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         parseAssertions(element, mirror, type, model);
 
         List<ExecutableElement> allMethods = ElementFilter.methodsIn(CompilerFactory.getCompiler(type).getEnclosedElementsInDeclarationOrder(type));
-        allMethods.add(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), "accepts"));
+        allMethods.add(ElementUtils.findExecutableElement(types.Library, "accepts"));
 
         TypeMirror inferredReceiverType = null;
         Map<String, LibraryMessage> messages = new HashMap<>();
@@ -195,7 +189,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
 
         // parse abstract methods
         for (LibraryMessage message : model.getMethods()) {
-            AnnotationMirror abstractMirror = ElementUtils.findAnnotationMirror(message.getExecutable(), Abstract.class);
+            AnnotationMirror abstractMirror = ElementUtils.findAnnotationMirror(message.getExecutable(), types.GenerateLibrary_Abstract);
             if (abstractMirror != null) {
                 message.setAbstract(true);
                 AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, "ifExported");
@@ -295,7 +289,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
     }
 
-    private static LibraryDefaultExportData loadDefaultExportImpl(LibraryData model, AnnotationMirror exportAnnotation, String annotationName) {
+    private LibraryDefaultExportData loadDefaultExportImpl(LibraryData model, AnnotationMirror exportAnnotation, String annotationName) {
         TypeMirror type = ElementUtils.getAnnotationValue(TypeMirror.class, exportAnnotation, annotationName);
         AnnotationValue typeValue = ElementUtils.getAnnotationValue(exportAnnotation, annotationName, false);
         if (typeValue == null) {
@@ -306,7 +300,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             return null;
         }
 
-        List<AnnotationMirror> exportedLibraries = ElementUtils.getRepeatedAnnotation(ElementUtils.castTypeElement(type).getAnnotationMirrors(), ExportLibrary.class);
+        List<AnnotationMirror> exportedLibraries = ElementUtils.getRepeatedAnnotation(ElementUtils.castTypeElement(type).getAnnotationMirrors(), types.ExportLibrary);
         TypeMirror receiverClass = null;
         for (AnnotationMirror exportedLibrary : exportedLibraries) {
             TypeMirror exportedLib = ElementUtils.getAnnotationValue(TypeMirror.class, exportedLibrary, "value");
@@ -329,8 +323,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return GenerateLibrary.class;
+    public DeclaredType getAnnotationType() {
+        return types.GenerateLibrary;
     }
 
 }

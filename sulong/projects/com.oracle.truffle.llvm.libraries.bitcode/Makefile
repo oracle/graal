@@ -52,6 +52,12 @@ DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
 POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
+ifeq ($(OS), darwin)
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+else
+CLANG_PREFIX=
+endif
+
 bin/libsulong.bc: ${C_BC_FILES}
 	$(QUIETLY) $(LLVM_LINK) -o $@ $+
 
@@ -62,11 +68,11 @@ bin/%.bc: bin/%.noopt.bc
 	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}
 
 bin/%.noopt.bc: src/%.c deps/%.d
-	$(QUIETLY) $(CLANG) -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
-	$(QUIETLY) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h

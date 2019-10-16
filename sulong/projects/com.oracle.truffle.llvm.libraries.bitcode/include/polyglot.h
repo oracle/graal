@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -690,22 +690,22 @@ static polyglot_typeid polyglot_boolean_typeid();
 /**
  * Get a polyglot typeid for the primitive int8_t type.
  */
-static polyglot_typeid polyglot_int8_typeid();
+static polyglot_typeid polyglot_i8_typeid();
 
 /**
  * Get a polyglot typeid for the primitive int16_t type.
  */
-static polyglot_typeid polyglot_int16_typeid();
+static polyglot_typeid polyglot_i16_typeid();
 
 /**
  * Get a polyglot typeid for the primitive int32_t type.
  */
-static polyglot_typeid polyglot_int32_typeid();
+static polyglot_typeid polyglot_i32_typeid();
 
 /**
  * Get a polyglot typeid for the primitive int64_t type.
  */
-static polyglot_typeid polyglot_int64_typeid();
+static polyglot_typeid polyglot_i64_typeid();
 
 /**
  * Get a polyglot typeid for the primitive float type.

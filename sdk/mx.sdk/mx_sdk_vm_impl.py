@@ -100,6 +100,8 @@ def _with_metaclass(meta, *bases):
 
 
 _suite = mx.suite('sdk')
+""":type: mx.SourceSuite | mx.Suite"""
+
 _exe_suffix = mx.exe_suffix('')
 """:type: str"""
 _lib_suffix = mx.add_lib_suffix("")
@@ -122,12 +124,13 @@ def gate_body(args, tasks):
         if t:
             for dist_name, _, _, suite, env_file in mx_sdk_vm._vm_configs:
                 if env_file is not False:
-                    # register a gate test to check that the env file produces a GraalVM with the expected distribution name
                     _env_file = env_file or dist_name
                     graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=_graalvm_base_name, dist_name=dist_name, jdk_version=_src_jdk_version).upper().replace('-', '_')
-                    out = mx.LinesOutputCapture()
-                    mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=out, env={})
                     mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(_env_file, suite.name, graalvm_dist_name))
+                    out = mx.LinesOutputCapture()
+                    retcode = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-dist-name'], suite, out=out, err=out, env={}, nonZeroIsFatal=False)
+                    if retcode != 0:
+                        mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output: \n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines)))
                     if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
                         mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 
@@ -393,10 +396,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/bin/jvisualvm.exe',
                         exclude_base + '/lib/visualvm',
                         exclude_base + hsdis,
-                        ] + ([
-                                 exclude_base + '/bin/jmc',
-                                 exclude_base + '/lib/missioncontrol',
-                                 ] if mx.get_os() == 'darwin' else [])
+                    ] + ([
+                        exclude_base + '/bin/jmc',
+                        exclude_base + '/lib/missioncontrol',
+                    ] if mx.get_os() == 'darwin' else [])
                 })
             else:
                 # TODO(GR-8329): add exclusions
@@ -867,7 +870,7 @@ class SvmSupport(object):
         output_directory = dirname(output_file)
         native_image_command += [
             '-H:Path=' + output_directory or ".",
-            ]
+        ]
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
     def is_debug_supported(self):
@@ -1094,7 +1097,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     build_args += [
                         '-H:-ParseRuntimeOptions',
                         '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
-                        ]
+                    ]
 
                 build_args += [
                     '--features=org.graalvm.home.HomeFinderFeature',
@@ -1685,7 +1688,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         build_args = [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config),
             '-H:NumberOfThreads=' + str(self.parallelism),
-            ]
+        ]
         if self.subject.native_image_config.is_polyglot:
             build_args += ["--macro:truffle", "--language:all"]
         return build_args
@@ -2011,11 +2014,11 @@ def get_lib_polyglot_project():
                 destination="<lib:polyglot>",
                 jar_distributions=polyglot_lib_jar_dependencies,
                 build_args=[
-                               "-H:+IncludeAllTimeZones",
-                               "-Dgraalvm.libpolyglot=true",
-                               "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>",
-                               "--tool:all",
-                           ] + polyglot_lib_build_args,
+                    "-H:+IncludeAllTimeZones",
+                    "-Dgraalvm.libpolyglot=true",
+                    "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>",
+                    "--tool:all",
+                ] + polyglot_lib_build_args,
                 is_polyglot=True,
             )
             _lib_polyglot_project = GraalVmLibrary(None, GraalVmNativeImage.project_name(lib_polyglot_config), [], lib_polyglot_config)
@@ -2053,9 +2056,6 @@ def get_polyglot_launcher_project():
         else:
             _polyglot_launcher_project = None
     return _polyglot_launcher_project
-
-
-
 
 
 _native_image_configs = {}

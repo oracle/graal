@@ -40,19 +40,10 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
-import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
-import com.oracle.truffle.dsl.processor.model.Template;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -65,6 +56,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -80,13 +72,21 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
+
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
+import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
+import com.oracle.truffle.dsl.processor.model.Template;
 
 abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
@@ -101,7 +101,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     @SuppressWarnings({"deprecation", "unchecked"})
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, null));
+        ProcessorContext.enter(processingEnv);
         try {
             if (roundEnv.processingOver()) {
                 generateServicesRegistration(registrations);
@@ -111,22 +111,14 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 return true;
             }
             String[] supportedAnnotations = this.getClass().getAnnotation(SupportedAnnotationTypes.class).value();
-            Class<? extends Annotation> registrationAnnotationClass;
-            try {
-                TypeElement supportedAnnotation = processingEnv.getElementUtils().getTypeElement(supportedAnnotations[0]);
-                if (supportedAnnotation == null) {
-                    throw new IllegalStateException("Cannot resolve " + supportedAnnotations[0]);
-                }
-                registrationAnnotationClass = (Class<? extends Annotation>) Class.forName(processingEnv.getElementUtils().getBinaryName(supportedAnnotation).toString());
-            } catch (ClassNotFoundException cnf) {
-                throw new IllegalStateException(cnf);
+            TypeElement supportedAnnotation = processingEnv.getElementUtils().getTypeElement(supportedAnnotations[0]);
+            if (supportedAnnotation == null) {
+                throw new IllegalStateException("Cannot resolve " + supportedAnnotations[0]);
             }
-            TypeMirror registration = ProcessorContext.getInstance().getType(registrationAnnotationClass);
-            for (Element e : roundEnv.getElementsAnnotatedWith(registrationAnnotationClass)) {
-                AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e.getAnnotationMirrors(), registration);
-                Annotation annotation = e.getAnnotation(registrationAnnotationClass);
-                if (annotation != null && e.getKind() == ElementKind.CLASS) {
-                    if (validateRegistration(e, mirror, annotation)) {
+            for (Element e : roundEnv.getElementsAnnotatedWith(supportedAnnotation)) {
+                AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e, supportedAnnotation.asType());
+                if (mirror != null && e.getKind() == ElementKind.CLASS) {
+                    if (validateRegistration(e, mirror)) {
                         TypeElement annotatedElement = (TypeElement) e;
                         if (requiresLegacyRegistration(annotatedElement)) {
                             legacyRegistrations.add(annotatedElement);
@@ -138,13 +130,13 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             }
             return true;
         } finally {
-            ProcessorContext.setThreadLocalInstance(null);
+            ProcessorContext.leave();
         }
     }
 
-    abstract boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror, Annotation registration);
+    abstract boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror);
 
-    abstract Class<?> getProviderClass();
+    abstract DeclaredType getProviderClass();
 
     abstract Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement);
 

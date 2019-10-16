@@ -7,6 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 
 const INSTALL_GRAALVM_PYTHON_COMPONENT: string = 'Install GraalVM Python Component';
 
@@ -24,13 +25,13 @@ export function deactivate() {}
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (graalVMHome) {
-		const executable: string = graalVMHome + '/bin/graalpython';
+		const executable: string = path.join(graalVMHome, 'bin', 'graalpython');
 		if (!fs.existsSync(executable)) {
 			vscode.window.showInformationMessage('Python component is not installed in your GraalVM.', INSTALL_GRAALVM_PYTHON_COMPONENT).then(value => {
 				switch (value) {
 					case INSTALL_GRAALVM_PYTHON_COMPONENT:
 						vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'python');
-						const watcher:fs.FSWatcher = fs.watch(graalVMHome + '/bin', () => {
+						const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome + 'bin'), () => {
 							setConfig('pythonPath', executable);
 							watcher.close();
 						});

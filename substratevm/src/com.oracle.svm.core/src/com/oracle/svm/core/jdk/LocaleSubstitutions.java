@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.text.BreakIterator;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -35,8 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -48,10 +46,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+
 //Checkstyle: allow reflection
 
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
+import sun.util.locale.provider.LocaleProviderAdapter.Type;
 import sun.util.locale.provider.LocaleResources;
 import sun.util.locale.provider.LocaleServiceProviderPool;
 import sun.util.locale.provider.LocaleServiceProviderPool.LocalizedObjectGetter;
@@ -59,74 +61,59 @@ import sun.util.locale.provider.LocaleServiceProviderPool.LocalizedObjectGetter;
 @TargetClass(java.util.Locale.class)
 final class Target_java_util_Locale {
 
-    static {
-        /*
-         * Ensure that default locales are initialized, so that we do not have to do it at run time.
-         */
-        Locale.getDefault();
-        for (Locale.Category category : Locale.Category.values()) {
-            Locale.getDefault(category);
-        }
-    }
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = DefaultLocaleComputer.class) //
+    private static Locale defaultLocale;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = DefaultLocaleComputer.class) //
+    private static Locale defaultDisplayLocale;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = DefaultLocaleComputer.class) //
+    private static Locale defaultFormatLocale;
 
     @Substitute
     private static Object initDefault() {
-        throw VMError.unsupportedFeature("initalization of Locale");
+        throw VMError.unsupportedFeature("The default Locale must be initialized during image generation");
     }
 
     @Substitute
     private static Object initDefault(Locale.Category category) {
-        throw VMError.unsupportedFeature("initalization of Locale with category " + category);
+        throw VMError.unsupportedFeature("The default Locale must be initialized during image generation: " + category);
+    }
+}
+
+final class DefaultLocaleComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        return ImageSingletons.lookup(LocalizationFeature.class).imageLocale;
+    }
+}
+
+@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class)
+final class Target_sun_util_locale_provider_LocaleProviderAdapter {
+
+    @Substitute
+    @SuppressWarnings({"unused"})
+    public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
+        LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).adaptersByClass.get(providerClass);
+        if (result != null) {
+            return result;
+        }
+        throw VMError.unsupportedFeature("LocaleProviderAdapter.getAdapter:  providerClass: " + providerClass.getName());
+    }
+
+    @Substitute
+    public static LocaleProviderAdapter forType(Type type) {
+        final LocaleProviderAdapter result = ImageSingletons.lookup(LocalizationSupport.class).adaptersByType.get(type);
+        if (result != null) {
+            return result;
+        }
+        throw VMError.unsupportedFeature("LocaleProviderAdapter.forType:  type: " + type.toString());
     }
 }
 
 @Substitute
 @TargetClass(sun.util.locale.provider.LocaleServiceProviderPool.class)
-@SuppressWarnings({"unchecked"})
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
-    /*
-     * We make our own caches, which are full populated during native image generation, to avoid any
-     * dynamic resource loading at run time. This is a conservative handling of locale-specific
-     * parts, but good enough for now.
-     */
-    private static final Map<Class<? extends LocaleServiceProvider>, Object> cachedPools;
-
     private final LocaleServiceProvider cachedProvider;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected static Class<LocaleServiceProvider>[] spiClasses() {
-        /*
-         * LocaleServiceProviderPool.spiClasses does not contain all the classes we need, so we list
-         * them manually here.
-         */
-        return (Class<LocaleServiceProvider>[]) new Class<?>[]{
-                        java.text.spi.BreakIteratorProvider.class,
-                        java.text.spi.CollatorProvider.class,
-                        java.text.spi.DateFormatProvider.class,
-                        java.text.spi.DateFormatSymbolsProvider.class,
-                        java.text.spi.DecimalFormatSymbolsProvider.class,
-                        java.text.spi.NumberFormatProvider.class,
-                        java.util.spi.CurrencyNameProvider.class,
-                        java.util.spi.LocaleNameProvider.class,
-                        java.util.spi.TimeZoneNameProvider.class,
-                        java.util.spi.CalendarDataProvider.class,
-                        java.util.spi.CalendarNameProvider.class};
-    }
-
-    static {
-        cachedPools = new HashMap<>();
-        try {
-            for (Class<LocaleServiceProvider> providerClass : spiClasses()) {
-                final LocaleProviderAdapter lda = LocaleProviderAdapter.forJRE();
-                final LocaleServiceProvider provider = lda.getLocaleServiceProvider(providerClass);
-                assert provider != null : "Target_sun_util_locale_provider_LocaleServiceProviderPool: There should be no null LocaleServiceProviders.";
-                cachedPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
-            }
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 
     Target_sun_util_locale_provider_LocaleServiceProviderPool(LocaleServiceProvider cachedProvider) {
         this.cachedProvider = cachedProvider;
@@ -134,7 +121,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
     @Substitute
     private static LocaleServiceProviderPool getPool(Class<? extends LocaleServiceProvider> providerClass) {
-        LocaleServiceProviderPool result = (LocaleServiceProviderPool) cachedPools.get(providerClass);
+        LocaleServiceProviderPool result = (LocaleServiceProviderPool) ImageSingletons.lookup(LocalizationSupport.class).providerPools.get(providerClass);
         if (result == null) {
             throw VMError.unsupportedFeature("LocaleServiceProviderPool.getPool " + providerClass.getName());
         }
@@ -154,7 +141,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     @KeepOriginal
     private native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter, Locale locale, String key, Object... params);
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "unchecked"})
     @Substitute
     private <P extends LocaleServiceProvider, S> S getLocalizedObjectImpl(LocalizedObjectGetter<P, S> getter, Locale locale, boolean isObjectProvider, String key, Object... params) {
         if (locale == null) {
@@ -253,6 +240,12 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
          */
         VMError.guarantee(isNonENSupported != null, "isNonENSupported must be initialized during image generation");
         return isNonENSupported;
+    }
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    protected Set<String> createLanguageTagSet(String category) {
+        throw VMError.unsupportedFeature("All language tag sets must be created at image build time. Missing category: " + category);
     }
 }
 

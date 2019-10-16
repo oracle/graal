@@ -74,9 +74,14 @@ public interface CommandInput {
     Path getGraalHomePath();
 
     /**
+     * @return factory to create ComponentCatalogs
+     */
+    CatalogFactory getCatalogFactory();
+
+    /**
      * @return Registry of available components.
      */
-    ComponentCollection getRegistry();
+    ComponentCatalog getRegistry();
 
     /**
      * @return Registry of local components.
@@ -98,4 +103,15 @@ public interface CommandInput {
     }
 
     FileOperations getFileOperations();
+
+    interface CatalogFactory {
+        /**
+         * Create a component catalog for the target VM installation, using the commandline options.
+         * 
+         * @param targetGraalVM target installation component registry
+         * @param input values for the catalog
+         * @return ComponentCatalog usable with target installation
+         */
+        ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM);
+    }
 }

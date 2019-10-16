@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
@@ -28,6 +44,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -39,14 +56,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
     @Children private final DFAAbstractStateNode[] states;
-    @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
+    @CompilationFinal(dimensions = 1) private final DFACaptureGroupLazyTransition[] cgTransitions;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
 
     public TRegexDFAExecutorNode(
                     TRegexDFAExecutorProperties props,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransitionNode[] cgTransitions,
+                    DFACaptureGroupLazyTransition[] cgTransitions,
                     TRegexDFAExecutorDebugRecorder debugRecorder) {
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
@@ -59,7 +76,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TRegexDFAExecutorProperties props,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransitionNode[] cgTransitions) {
+                    DFACaptureGroupLazyTransition[] cgTransitions) {
         this(props, maxNumberOfNFAStates, states, cgTransitions, null);
     }
 
@@ -87,11 +104,19 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return props.isSearching();
     }
 
+    public boolean isSimpleCG() {
+        return props.isSimpleCG();
+    }
+
+    public boolean isGenericCG() {
+        return props.isGenericCG();
+    }
+
     public boolean isRegressionTestMode() {
         return props.isRegressionTestMode();
     }
 
-    public DFACaptureGroupLazyTransitionNode[] getCGTransitions() {
+    public DFACaptureGroupLazyTransition[] getCGTransitions() {
         return cgTransitions;
     }
 
@@ -117,8 +142,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private DFACaptureGroupTrackingData createCGData() {
-        if (props.isTrackCaptureGroups()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props.getNumberOfCaptureGroups());
+        if (isGenericCG() || isSimpleCG()) {
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props);
         } else {
             return null;
         }
@@ -139,17 +164,17 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
         }
-        if (props.isTrackCaptureGroups()) {
+        if (isGenericCG()) {
             initResultOrder(locals);
-            locals.setResultObject(null);
             locals.setLastTransition((short) -1);
-        } else {
-            locals.setResultInt(TRegexDFAExecutorNode.NO_MATCH);
+        } else if (isSimpleCG()) {
+            CompilerDirectives.ensureVirtualized(locals.getCGData());
+            Arrays.fill(locals.getCGData().results, -1);
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
             // no match possible, break immediately
-            return props.isTrackCaptureGroups() ? null : TRegexDFAExecutorNode.NO_MATCH;
+            return isGenericCG() || isSimpleCG() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
             debugRecorder.startRecording(locals);
@@ -193,7 +218,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         if (recordExecution()) {
             debugRecorder.finishRecording();
         }
-        return props.isTrackCaptureGroups() ? locals.getResultCaptureGroups() : locals.getResultInt();
+        if (isSimpleCG()) {
+            int[] result = props.isSimpleCGMustCopy() ? locals.getCGData().currentResult : locals.getCGData().results;
+            return locals.getResultInt() == 0 ? result : null;
+        }
+        if (isGenericCG()) {
+            return locals.getResultInt() == 0 ? locals.getCGData().currentResult : null;
+        }
+        return locals.getResultInt();
     }
 
     private void debugRecordTransition(TRegexDFAExecutorLocals locals, DFAStateNode curState, int prevIndex) {
@@ -286,14 +318,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGReorderRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;
         int nReorder = 0;
-        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+        for (DFACaptureGroupLazyTransition t : cgTransitions) {
             nPT += t.getPartialTransitions().length;
-            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+            for (DFACaptureGroupPartialTransition pt : t.getPartialTransitions()) {
                 if (pt.doesReorderResults()) {
                     nReorder++;
                 }
@@ -306,14 +338,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public double getCGArrayCopyRatio() {
-        if (!props.isTrackCaptureGroups()) {
+        if (!isGenericCG()) {
             return 0;
         }
         int nPT = 0;
         int nArrayCopy = 0;
-        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+        for (DFACaptureGroupLazyTransition t : cgTransitions) {
             nPT += t.getPartialTransitions().length;
-            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+            for (DFACaptureGroupPartialTransition pt : t.getPartialTransitions()) {
                 nArrayCopy += pt.getArrayCopies().length / 2;
             }
         }

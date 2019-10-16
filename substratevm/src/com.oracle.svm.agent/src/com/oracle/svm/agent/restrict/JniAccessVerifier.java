@@ -33,6 +33,7 @@ import static com.oracle.svm.agent.Support.jvmtiEnv;
 import static com.oracle.svm.agent.Support.jvmtiFunctions;
 import static com.oracle.svm.agent.Support.toCString;
 
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -91,7 +92,8 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     public boolean verifyGetMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer cname, CCharPointer csignature, JNIMethodId result, JNIObjectHandle callerClass) {
         assert result.isNonNull();
         String name = fromCString(cname);
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(() -> getClassNameOrNull(env, clazz), () -> name, () -> fromCString(csignature), () -> getClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> getClassNameOrNull(env, clazz)), new LazyValue<>(() -> name), new LazyValue<>(() -> fromCString(csignature)),
+                        new LazyValue<>(() -> getClassNameOrNull(env, callerClass)))) {
             return true;
         }
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
@@ -134,7 +136,8 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     public boolean verifyThrowNew(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass) {
         String name = ConfigurationMethod.CONSTRUCTOR_NAME;
         String signature = "(Ljava/lang/String;)V";
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(() -> getClassNameOrNull(env, clazz), () -> name, () -> signature, () -> getClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> getClassNameOrNull(env, clazz)), new LazyValue<>(() -> name), new LazyValue<>(() -> signature),
+                        new LazyValue<>(() -> getClassNameOrNull(env, callerClass)))) {
             return true;
         }
         JNIMethodId result;

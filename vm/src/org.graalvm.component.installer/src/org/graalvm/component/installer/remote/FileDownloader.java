@@ -34,14 +34,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -49,6 +45,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.URLConnectionFactory;
 
 /**
@@ -63,6 +60,7 @@ public final class FileDownloader {
     private final URL sourceURL;
     private final Feedback feedback;
 
+    private File downloadDir;
     private File localFile;
     private long size;
     private static boolean deleteTemporary = !Boolean.FALSE.toString().equals(System.getProperty("org.graalvm.component.installer.deleteTemporary"));
@@ -88,6 +86,14 @@ public final class FileDownloader {
 
     public void setShaDigest(byte[] shaDigest) {
         this.shaDigest = shaDigest;
+    }
+
+    public File getDownloadDir() {
+        return downloadDir;
+    }
+
+    public void setDownloadDir(File downloadDir) {
+        this.downloadDir = downloadDir;
     }
 
     public static void setDeleteTemporary(boolean deleteTemporary) {
@@ -218,14 +224,7 @@ public final class FileDownloader {
     }
 
     static String fingerPrint(byte[] digest) {
-        StringBuilder sb = new StringBuilder(digest.length * 3);
-        for (int i = 0; i < digest.length; i++) {
-            if (i > 0) {
-                sb.append(':');
-            }
-            sb.append(String.format("%02x", (digest[i] & 0xff)));
-        }
-        return sb.toString();
+        return SystemUtils.fingerPrint(digest);
     }
 
     byte[] getDigest() {
@@ -261,45 +260,9 @@ public final class FileDownloader {
         return this;
     }
 
-    public static class CopyDirVisitor extends SimpleFileVisitor<Path> {
-
-        private Path fromPath;
-        private Path toPath;
-        private StandardCopyOption copyOption;
-
-        public CopyDirVisitor(Path fromPath, Path toPath, StandardCopyOption copyOption) {
-            this.fromPath = fromPath;
-            this.toPath = toPath;
-            this.copyOption = copyOption;
-        }
-
-        public CopyDirVisitor(Path fromPath, Path toPath) {
-            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                        throws IOException {
-
-            Path targetPath = toPath.resolve(fromPath.relativize(dir));
-            if (!Files.exists(targetPath)) {
-                Files.createDirectory(targetPath);
-            }
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                        throws IOException {
-
-            Files.copy(file, toPath.resolve(fromPath.relativize(file)), copyOption);
-            return FileVisitResult.CONTINUE;
-        }
-    }
-
     private void copySubtree(Path from) throws IOException {
         Path to = Files.createTempDirectory(createTempDir().toPath(), "download");
-        Files.walkFileTree(from, new CopyDirVisitor(from, to));
+        SystemUtils.copySubtree(from, to);
         localFile = to.toFile();
     }
 
@@ -332,6 +295,7 @@ public final class FileDownloader {
         }
 
         URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
+
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
         if (verbose) {
@@ -343,7 +307,7 @@ public final class FileDownloader {
 
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
-        localFile = deleteOnExit(File.createTempFile("download", "", createTempDir())); // NOI18N
+        localFile = deleteOnExit(File.createTempFile("download", "", downloadDir == null ? createTempDir() : downloadDir)); // NOI18N
         boolean first = displayProgress;
         boolean success = false;
         try (

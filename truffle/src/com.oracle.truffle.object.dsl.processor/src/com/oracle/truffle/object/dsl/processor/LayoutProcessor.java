@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,22 +54,24 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
-import com.oracle.truffle.api.object.dsl.Layout;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
 
-@SupportedAnnotationTypes("com.oracle.truffle.api.object.dsl.Layout")
+@SupportedAnnotationTypes(TruffleTypes.Layout_Name)
 public class LayoutProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
-        ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, null));
+        ProcessorContext context = ProcessorContext.enter(processingEnv);
         try {
-            for (Element element : roundEnvironment.getElementsAnnotatedWith(Layout.class)) {
+            TruffleTypes types = context.getTypes();
+            for (Element element : roundEnvironment.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Layout))) {
                 processLayout((TypeElement) element);
             }
         } finally {
-            ProcessorContext.setThreadLocalInstance(null);
+            ProcessorContext.leave();
         }
         return true;
     }

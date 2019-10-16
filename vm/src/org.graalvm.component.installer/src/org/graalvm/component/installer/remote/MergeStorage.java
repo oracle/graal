@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.SoftwareChannel;
@@ -43,11 +44,11 @@ import org.graalvm.component.installer.persist.AbstractCatalogStorage;
  * 
  * @author sdedic
  */
-class MergeStorage extends AbstractCatalogStorage {
+public class MergeStorage extends AbstractCatalogStorage implements ComponentCatalog.DownloadInterceptor {
     private final Map<ComponentInfo, SoftwareChannel> channelMap = new HashMap<>();
     private final List<SoftwareChannel> channels = new ArrayList<>();
 
-    MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
+    public MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
         super(localRegistry, feedback, null);
     }
 
@@ -98,5 +99,11 @@ class MergeStorage extends AbstractCatalogStorage {
 
     public SoftwareChannel getOrigin(ComponentInfo ci) {
         return channelMap.get(ci);
+    }
+
+    @Override
+    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
+        SoftwareChannel orig = getOrigin(info);
+        return orig != null ? orig.configureDownloader(info, dn) : dn;
     }
 }

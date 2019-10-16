@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public interface TruffleException {
 
     /**
      * Returns a node indicating the location where this exception occurred in the AST. This method
-     * may <code>null</code> to indicate that the location is not available.
+     * may return <code>null</code> to indicate that the location is not available.
      *
      * @since 0.27
      */

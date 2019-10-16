@@ -27,10 +27,18 @@ package org.graalvm.component.installer.commands;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
@@ -41,6 +49,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 public class UninstallCommand implements InstallerCommand {
@@ -51,18 +60,24 @@ public class UninstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_DRY_RUN, "");
         OPTIONS.put(Commands.OPTION_FORCE, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
+        OPTIONS.put(Commands.OPTION_UNINSTALL_DEPENDENT, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
         OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
+        OPTIONS.put(Commands.LONG_OPTION_UNINSTALL_DEPENDENT, Commands.OPTION_UNINSTALL_DEPENDENT);
     }
 
     private final Map<String, ComponentInfo> toUninstall = new LinkedHashMap<>();
+    private List<ComponentInfo> uninstallSequence = new ArrayList<>();
     private Feedback feedback;
     private CommandInput input;
     private boolean ignoreFailures;
     private ComponentRegistry registry;
     private boolean rebuildPolyglot;
+    private boolean removeDependent;
+    private boolean breakDependent;
+    private Map<ComponentInfo, Collection<ComponentInfo>> brokenDependencies = new HashMap<>();
 
     @Override
     public Map<String, String> supportedOptions() {
@@ -73,25 +88,49 @@ public class UninstallCommand implements InstallerCommand {
     public void init(CommandInput commandInput, Feedback feedBack) {
         this.input = commandInput;
         this.feedback = feedBack;
+        this.registry = input.getLocalRegistry();
+        setIgnoreFailures(input.optValue(Commands.OPTION_FORCE) != null);
+        setBreakDependent(input.optValue(Commands.OPTION_FORCE) != null);
+        setRemoveDependent(input.optValue(Commands.OPTION_UNINSTALL_DEPENDENT) != null);
     }
 
-    @Override
-    public int execute() throws IOException {
-        input.getLocalRegistry().verifyAdministratorAccess();
+    public boolean isIgnoreFailures() {
+        return ignoreFailures;
+    }
 
-        this.registry = input.getLocalRegistry();
+    public void setIgnoreFailures(boolean ignoreFailures) {
+        this.ignoreFailures = ignoreFailures;
+    }
 
-        ignoreFailures = input.optValue(Commands.OPTION_FORCE) != null;
+    public boolean isRemoveDependent() {
+        return removeDependent;
+    }
 
-        if (input.optValue(Commands.OPTION_HELP) != null) {
-            feedback.output("UNINSTALL_Help");
-            return 0;
-        }
-        if (!input.hasParameter()) {
-            feedback.output("UNINSTALL_ParametersMissing");
-            return 1;
-        }
+    public void setRemoveDependent(boolean removeDependent) {
+        this.removeDependent = removeDependent;
+    }
 
+    public boolean isBreakDependent() {
+        return breakDependent;
+    }
+
+    public void setBreakDependent(boolean breakDependent) {
+        this.breakDependent = breakDependent;
+    }
+
+    public Collection<ComponentInfo> getUninstallComponents() {
+        return new ArrayList<>(toUninstall.values());
+    }
+
+    public List<ComponentInfo> getUninstallSequence() {
+        return Collections.unmodifiableList(uninstallSequence);
+    }
+
+    public Map<ComponentInfo, Collection<ComponentInfo>> getBrokenDependencies() {
+        return Collections.unmodifiableMap(brokenDependencies);
+    }
+
+    void prepareUninstall() {
         String compId;
         while ((compId = input.nextParameter()) != null) {
             if (toUninstall.containsKey(compId)) {
@@ -110,8 +149,123 @@ public class UninstallCommand implements InstallerCommand {
             toUninstall.put(compId, info);
         }
 
+        for (ComponentInfo u : toUninstall.values()) {
+            Set<ComponentInfo> br = registry.findDependentComponents(u, true);
+            if (!br.isEmpty()) {
+                brokenDependencies.put(u, br);
+            }
+        }
+    }
+
+    void checkBrokenDependencies() {
+        if (brokenDependencies.isEmpty()) {
+            return;
+        }
+        Set<ComponentInfo> uninstalled = new HashSet<>(toUninstall.values());
+        // get all broken components, excluding the ones scheduled for uninstall
+        Stream<ComponentInfo> stm = brokenDependencies.values().stream().flatMap((col) -> col.stream()).filter((c) -> !uninstalled.contains(c));
+        // if all broken are uninstalled -> OK
+        if (!stm.findFirst().isPresent()) {
+            return;
+        }
+
+        List<ComponentInfo> sorted = new ArrayList<>(brokenDependencies.keySet());
+        P printer;
+        boolean warning = removeDependent || breakDependent;
+        if (warning) {
+            printer = feedback::output;
+            feedback.output(removeDependent ? "UNINSTALL_BrokenDependenciesRemove" : "UNINSTALL_BrokenDependenciesWarn");
+        } else {
+            printer = (a, b) -> feedback.error(a, null, b);
+            feedback.error("UNINSTALL_BrokenDependencies", null);
+        }
+        Comparator<ComponentInfo> c = (a, b) -> a.getId().compareToIgnoreCase(b.getId());
+        Collections.sort(sorted, c);
+        for (ComponentInfo i : sorted) {
+            List<ComponentInfo> deps = new ArrayList<>(brokenDependencies.get(i));
+            deps.removeAll(uninstalled);
+            if (deps.isEmpty()) {
+                continue;
+            }
+            Collections.sort(sorted, c);
+
+            if (!warning) {
+                printer.print("UNINSTALL_BreakDepSource", i.getName(), i.getId());
+            }
+            for (ComponentInfo d : deps) {
+                printer.print("UNINSTALL_BreakDepTarget", d.getName(), d.getId());
+            }
+        }
+        if (warning) {
+            return;
+        }
+        throw feedback.failure("UNINSTALL_BreakDependenciesTerminate", null);
+    }
+
+    void includeAndOrderComponents() {
+        Set<ComponentInfo> allBroken = new LinkedHashSet<>();
+        if (!breakDependent) {
+            for (Collection<ComponentInfo> ii : brokenDependencies.values()) {
+                allBroken.addAll(ii);
+            }
+            for (ComponentInfo ci : allBroken) {
+                Set<ComponentInfo> br = registry.findDependentComponents(ci, true);
+                if (!br.isEmpty()) {
+                    allBroken.addAll(br);
+                    brokenDependencies.put(ci, br);
+                }
+            }
+
+            if (removeDependent) {
+                for (ComponentInfo i : allBroken) {
+                    toUninstall.put(i.getId(), i);
+                }
+            }
+        }
+
+        List<ComponentInfo> leaves = new ArrayList<>(toUninstall.values());
+        leaves.removeAll(allBroken);
+
+        List<ComponentInfo> ordered = new ArrayList<>(toUninstall.size());
+        ordered.addAll(leaves);
+
+        int top = leaves.size();
+        for (ComponentInfo ci : allBroken) {
+            Set<ComponentInfo> check = new HashSet<>();
+            CatalogContents.findDependencies(ci, true, Boolean.TRUE, check, (a, b, c, d) -> registry.findComponentMatch(a, b, true));
+            int i;
+            for (i = ordered.size(); i > top; i--) {
+                ComponentInfo c = ordered.get(i - 1);
+                if (check.contains(c)) {
+                    break;
+                }
+            }
+            ordered.add(i, ci);
+        }
+        Collections.reverse(ordered);
+        this.uninstallSequence = ordered;
+    }
+
+    interface P {
+        void print(String key, Object... params);
+    }
+
+    @Override
+    public int execute() throws IOException {
+        registry.verifyAdministratorAccess();
+        if (input.optValue(Commands.OPTION_HELP) != null) {
+            feedback.output("UNINSTALL_Help");
+            return 0;
+        }
+        if (!input.hasParameter()) {
+            feedback.output("UNINSTALL_ParametersMissing");
+            return 1;
+        }
+        prepareUninstall();
+        checkBrokenDependencies();
+        includeAndOrderComponents();
         try {
-            for (ComponentInfo info : toUninstall.values()) {
+            for (ComponentInfo info : uninstallSequence) {
                 try {
                     uninstallSingleComponent(info);
                 } catch (InstallerStopException | IOException ex) {
@@ -141,6 +295,11 @@ public class UninstallCommand implements InstallerCommand {
         feedback.output("UNINSTALL_UninstallingComponent",
                         info.getId(), info.getName(), info.getVersionString());
         rebuildPolyglot |= info.isPolyglotRebuild();
+        doUninstallSingle(inst);
+    }
+
+    // overriden in tests
+    void doUninstallSingle(Uninstaller inst) throws IOException {
         inst.uninstall();
     }
 

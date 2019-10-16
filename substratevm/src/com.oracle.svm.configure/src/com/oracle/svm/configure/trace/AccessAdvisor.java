@@ -25,7 +25,7 @@
 package com.oracle.svm.configure.trace;
 
 import java.util.Arrays;
-import java.util.function.Supplier;
+import org.graalvm.compiler.phases.common.LazyValue;
 
 public class AccessAdvisor {
     private boolean ignoreInternalAccesses = true;
@@ -45,11 +45,11 @@ public class AccessAdvisor {
         return qualifiedClass != null && Arrays.asList("java.", "javax.", "sun.", "com.sun.", "jdk.", "org.graalvm.compiler.").stream().anyMatch(qualifiedClass::startsWith);
     }
 
-    public boolean shouldIgnore(Supplier<String> callerClass) {
+    public boolean shouldIgnore(LazyValue<String> callerClass) {
         return ignoreInternalAccesses && (!isInLivePhase || isInternalClass(callerClass.get()));
     }
 
-    public boolean shouldIgnoreJniMethodLookup(Supplier<String> queriedClass, Supplier<String> name, Supplier<String> signature, Supplier<String> callerClass) {
+    public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
         if (!ignoreInternalAccesses) {
             return false;
         }
@@ -76,11 +76,37 @@ public class AccessAdvisor {
                 return true;
             }
         }
+        // Ignore libjvmcicompiler internal JNI calls
+        // 1. Lookup of jdk.vm.ci.services.Services.getJVMCIClassLoader
+        // 2. Lookup of
+        // org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints methods
+        if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(queriedClass.get()) && "getJVMCIClassLoader".equals(name.get()) &&
+                        "()Ljava/lang/ClassLoader;".equals(signature.get())) {
+            return true;
+        }
+        if (callerClass.get() == null && "org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints".equals(queriedClass.get())) {
+            return true;
+        }
         /*
          * NOTE: JVM invocations cannot be reliably filtered with callerClass == null because these
          * could also be calls in a manually launched thread which is attached to JNI, but is not
          * executing Java code (yet).
          */
+        return false;
+    }
+
+    public boolean shouldIgnoreJniClassLookup(LazyValue<String> name, LazyValue<String> callerClass) {
+        if (!ignoreInternalAccesses) {
+            return false;
+        }
+        if (shouldIgnore(callerClass)) {
+            return true;
+        }
+        // Ignore libjvmcicompiler internal JNI calls
+        // 1. Lookup of jdk.vm.ci.services.Services
+        if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(name.get())) {
+            return true;
+        }
         return false;
     }
 }

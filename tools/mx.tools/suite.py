@@ -67,6 +67,33 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.agentscript" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.agentscript.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.agentscript",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.profiler" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -88,6 +115,35 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.profiler",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.coverage" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+                ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.coverage.impl to org.graalvm.truffle",
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.coverage.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.coverage",
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT"
             ],
@@ -191,6 +247,38 @@ suite = {
                 "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
             },
         },
+        "AGENTSCRIPT": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.agentscript",
+            "dependencies": ["com.oracle.truffle.tools.agentscript"],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "agentscript",
+            },
+            "description" : "Script driven tracing and instrumentation Agent",
+        },
+        "AGENTSCRIPT_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.agentscript.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "AGENTSCRIPT",
+            ],
+            "description" : "Tests for the script driven tracing and instrumentation Agent.",
+            "maven" : False,
+        },
+        "AGENTSCRIPT_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Script driven tracing and instrumentation Agentfor the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-agentscript.properties",
+            },
+        },
         "TRUFFLE_PROFILER": {
             "subDir": "src",
             # This distribution defines a module.
@@ -224,6 +312,41 @@ suite = {
             "description" : "Truffle Profiler support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-profiler.properties",
+            },
+        },
+        "TRUFFLE_COVERAGE": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.coverage",
+            "dependencies": [
+                "com.oracle.truffle.tools.coverage",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "coverage",
+            },
+            "description" : "Truffle code coverage tool.",
+            "javadocType" : "api",
+        },
+        "TRUFFLE_COVERAGE_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.coverage.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "TRUFFLE_COVERAGE",
+            ],
+            "description" : "Tests for the truffle coverage tool.",
+            "maven" : False,
+         },
+        "TRUFFLE_COVERAGE_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Code coverage support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-coverage.properties",
             },
         },
         "VISUALVM_GRAALVM_SUPPORT": {

@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(ReferenceLibrary.class)
+@ExportLibrary(NativeTypeLibrary.class)
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
     final Object foreign;
@@ -121,20 +122,36 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
 
         public abstract LLVMInteropType.Structured execute(LLVMTypedForeignObject object);
 
-        @Specialization(limit = "3", guards = "typeLibrary.hasNativeType(object.getForeign())")
+        @Specialization(limit = "3")
         public LLVMInteropType.Structured getType(LLVMTypedForeignObject object,
-                        @CachedLibrary("object.getForeign()") NativeTypeLibrary typeLibrary) {
-            Object type = typeLibrary.getNativeType(object.getForeign());
-            if (type instanceof LLVMInteropType.Structured) {
+                        @CachedLibrary("object") NativeTypeLibrary typeLibrary) {
+            Object type = typeLibrary.getNativeType(object);
+            if (type == null || type instanceof LLVMInteropType.Structured) {
                 return (LLVMInteropType.Structured) type;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMPolyglotException(this, "Invalid type %s returned from foreign object.", type);
             }
         }
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasNativeType() {
+        return true;
+    }
+
+    @ExportMessage
+    static class GetNativeType {
+
+        @Specialization(guards = "typeLibrary.hasNativeType(object.foreign)")
+        static Object getType(LLVMTypedForeignObject object,
+                        @CachedLibrary("object.foreign") NativeTypeLibrary typeLibrary) {
+            return typeLibrary.getNativeType(object.foreign);
+        }
 
         @Specialization(limit = "3", guards = "!typeLibrary.hasNativeType(object.getForeign())")
-        public LLVMInteropType.Structured doFallback(LLVMTypedForeignObject object,
+        static LLVMInteropType.Structured doFallback(LLVMTypedForeignObject object,
                         @SuppressWarnings("unused") @CachedLibrary("object.getForeign()") NativeTypeLibrary typeLibrary) {
             return object.getType();
         }

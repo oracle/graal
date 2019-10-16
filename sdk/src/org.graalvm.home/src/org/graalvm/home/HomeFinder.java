@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,24 +51,48 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+/**
+ * A utility class to find various paths of the running GraalVM, as well as the version.
+ *
+ * Use {@link HomeFinder#getInstance()} to get the singleton instance.
+ *
+ * @since 19.3
+ */
 public abstract class HomeFinder {
     /**
+     * @since 19.3
+     */
+    public HomeFinder() {
+    }
+
+    /**
      * @return the GraalVM home folder if inside GraalVM or {@code null} otherwise.
+     * @since 19.3
      */
     public abstract Path getHomeFolder();
 
     /**
      * @return the GraalVM version or {@code "snapshot"} if unknown.
+     * @since 19.3
      */
     public abstract String getVersion();
 
+    /**
+     * @return a Map of language ids to their home path.
+     * @since 19.3
+     */
     public abstract Map<String, Path> getLanguageHomes();
 
+    /**
+     * @return a Map of tool ids to their home path.
+     * @since 19.3
+     */
     public abstract Map<String, Path> getToolHomes();
 
     /**
      * @return the HomeFinder instance by using a ServiceLoader.
      * @throws IllegalStateException if no implementation could be found.
+     * @since 19.3
      */
     public static HomeFinder getInstance() {
         if (ImageInfo.inImageCode()) {

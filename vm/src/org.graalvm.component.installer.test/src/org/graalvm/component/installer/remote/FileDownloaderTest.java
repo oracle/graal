@@ -33,6 +33,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import org.junit.Assert;
@@ -100,7 +101,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setShaDigest(new byte[0]);
         dn.download();
 
-        byte[] check = RemotePropertiesStorage.toHashBytes(null, "b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa", this);
+        byte[] check = SystemUtils.toHashBytes("b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa");
         assertArrayEquals(check, dn.getDigest());
     }
 

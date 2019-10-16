@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.parser;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -57,14 +58,14 @@ abstract class TypeSystemMethodParser<E extends TemplateMethod> extends Template
 
     @Override
     public final boolean isParsable(ExecutableElement method) {
-        return ElementUtils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+        return ElementUtils.findAnnotationMirror(method, getAnnotationType()) != null;
     }
 
     protected final TypeMirror resolveCastOrCheck(TemplateMethod method) {
-        Class<?> annotationType = getAnnotationType();
+        DeclaredType annotationType = getAnnotationType();
         TypeMirror targetTypeMirror = ElementUtils.getAnnotationValue(TypeMirror.class, method.getMessageAnnotation(), "value");
         if (!method.getMethod().getModifiers().contains(Modifier.PUBLIC) || !method.getMethod().getModifiers().contains(Modifier.STATIC)) {
-            method.addError("@%s annotated method %s must be public and static.", annotationType.getSimpleName(), method.getMethodName());
+            method.addError("@%s annotated method %s must be public and static.", annotationType.asElement().getSimpleName().toString(), method.getMethodName());
         }
         return targetTypeMirror;
     }
