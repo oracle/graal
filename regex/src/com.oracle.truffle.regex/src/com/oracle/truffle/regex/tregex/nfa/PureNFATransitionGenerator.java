@@ -55,17 +55,20 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
     private final PureNFAGenerator nfaGen;
     private final ObjectArrayBuffer transitionBuffer = new ObjectArrayBuffer(8);
+    private PureNFAState curState;
 
     public PureNFATransitionGenerator(RegexAST ast, PureNFAGenerator nfaGen) {
         super(ast);
         this.nfaGen = nfaGen;
     }
 
-    public PureNFATransition[] generateTransitions(Term root) {
+    public void generateTransitions(PureNFAState state) {
+        this.curState = state;
+        Term root = (Term) ast.getState(state.getAstNodeId());
         setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
         transitionBuffer.clear();
         run(root);
-        return transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]);
+        curState.setSuccessors(transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]));
     }
 
     @Override
@@ -76,7 +79,13 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
         } else {
             targetState = nfaGen.getOrCreateState((Term) target);
         }
-        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(), targetState, getGroupBoundaries(), getLookAheadsOnPath(), getLookBehindsOnPath(),
+        targetState.incPredecessors();
+        transitionBuffer.add(new PureNFATransition((short) nfaGen.getTransitionIdCounter().inc(),
+                        curState,
+                        targetState,
+                        getGroupBoundaries(),
+                        getLookAheadsOnPath(),
+                        getLookBehindsOnPath(),
                         getQuantifierGuardsOnPath().length == 0 ? QuantifierGuard.NO_GUARDS : Arrays.copyOf(getQuantifierGuardsOnPath(), getQuantifierGuardsOnPath().length)));
     }
 

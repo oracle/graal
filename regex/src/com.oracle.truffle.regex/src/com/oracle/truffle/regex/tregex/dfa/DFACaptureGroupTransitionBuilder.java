@@ -206,14 +206,14 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     public DFACaptureGroupLazyTransition toLazyTransition(CompilationBuffer compilationBuffer) {
         if (lazyTransition == null) {
             DFAStateNodeBuilder successor = getTarget();
-            DFACaptureGroupPartialTransition[] partialTransitions = new DFACaptureGroupPartialTransition[successor.getTransitions().length];
-            for (int i = 0; i < successor.getTransitions().length; i++) {
-                DFACaptureGroupTransitionBuilder successorTransition = (DFACaptureGroupTransitionBuilder) successor.getTransitions()[i];
+            DFACaptureGroupPartialTransition[] partialTransitions = new DFACaptureGroupPartialTransition[successor.getSuccessors().length];
+            for (int i = 0; i < successor.getSuccessors().length; i++) {
+                DFACaptureGroupTransitionBuilder successorTransition = (DFACaptureGroupTransitionBuilder) successor.getSuccessors()[i];
                 partialTransitions[i] = createPartialTransition(successorTransition.getRequiredStates(), successorTransition.getRequiredStatesIndexMap(), compilationBuffer);
             }
             DFACaptureGroupPartialTransition transitionToFinalState = null;
             DFACaptureGroupPartialTransition transitionToAnchoredFinalState = null;
-            if (successor.isFinalState()) {
+            if (successor.isUnAnchoredFinalState()) {
                 NFAState src = successor.getUnAnchoredFinalStateTransition().getSource();
                 transitionToFinalState = createPartialTransition(StateSet.create(dfaGen.getNfa(), src), new int[]{src.getId()}, compilationBuffer);
             }

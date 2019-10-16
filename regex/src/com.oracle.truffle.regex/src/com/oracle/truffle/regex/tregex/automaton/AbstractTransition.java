@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nfa;
-
-import com.oracle.truffle.regex.charset.CharSet;
-import com.oracle.truffle.regex.tregex.automaton.AbstractState;
-import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
-import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+package com.oracle.truffle.regex.tregex.automaton;
 
 /**
- * Represents a state of a {@link PureNFA}. All {@link PureNFAState}s correspond to a single
- * {@link RegexASTNode}, referenced by {@link #getAstNodeId()}. Initial and final states correspond
- * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
- * to either {@link CharacterClass}es or {@link BackReference}s.
+ * Basic interface for transitions of an automaton.
  */
-public class PureNFAState extends AbstractState<PureNFAState, PureNFATransition> {
+public interface AbstractTransition<S extends AbstractState<S, T>, T extends AbstractTransition<S, T>> {
 
-    private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
+    int getId();
 
-    private final short astNodeId;
-    private final CharSet charSet;
+    S getSource();
 
-    public PureNFAState(short id, short astNodeId, CharSet charSet) {
-        super(id, EMPTY_TRANSITIONS);
-        this.astNodeId = astNodeId;
-        this.charSet = charSet;
-    }
-
-    public short getAstNodeId() {
-        return astNodeId;
-    }
-
-    public CharSet getCharSet() {
-        return charSet;
-    }
-
-    @Override
-    protected PureNFATransition[] createTransitionsArray(int length) {
-        return new PureNFATransition[length];
-    }
+    S getTarget();
 }

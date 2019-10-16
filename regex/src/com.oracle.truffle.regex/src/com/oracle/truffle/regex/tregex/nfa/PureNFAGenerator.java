@@ -133,7 +133,7 @@ public final class PureNFAGenerator {
             for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
                 PureNFAState initialState = createMatchAllState(ast.getNFAUnAnchoredInitialState(i));
                 initialStates[i] = initialState;
-                entries[nEntries + i] = createEntryTransition(initialState);
+                entries[nEntries + i] = createEntryTransition(dummyInitialState, initialState);
             }
             PureNFAState[] anchoredInitialStates;
             if (ast.getReachableCarets().isEmpty()) {
@@ -143,16 +143,16 @@ public final class PureNFAGenerator {
                 for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
                     PureNFAState anchoredInitialState = createMatchAllState(ast.getNFAAnchoredInitialState(i));
                     anchoredInitialStates[i] = anchoredInitialState;
-                    entries[i] = createEntryTransition(anchoredInitialState);
+                    entries[i] = createEntryTransition(dummyInitialState, anchoredInitialState);
                 }
             }
-            dummyInitialState.setTransitions(entries);
+            dummyInitialState.setSuccessors(entries);
         } else {
-            PureNFATransition initialStateTransition = createEntryTransition(createMatchAllState(root.getUnAnchoredInitialState()));
+            PureNFATransition initialStateTransition = createEntryTransition(dummyInitialState, createMatchAllState(root.getUnAnchoredInitialState()));
             if (root.hasCaret()) {
-                dummyInitialState.setTransitions(new PureNFATransition[]{createEntryTransition(createMatchAllState(root.getAnchoredInitialState())), initialStateTransition});
+                dummyInitialState.setSuccessors(new PureNFATransition[]{createEntryTransition(dummyInitialState, createMatchAllState(root.getAnchoredInitialState())), initialStateTransition});
             } else {
-                dummyInitialState.setTransitions(new PureNFATransition[]{initialStateTransition, initialStateTransition});
+                dummyInitialState.setSuccessors(new PureNFATransition[]{initialStateTransition, initialStateTransition});
             }
         }
         assert dummyInitialState.getId() == 0;
@@ -167,7 +167,7 @@ public final class PureNFAGenerator {
     }
 
     private void expandNFAState(PureNFAState curState) {
-        curState.setTransitions(transitionGen.generateTransitions((Term) ast.getState(curState.getAstNodeId())));
+        transitionGen.generateTransitions(curState);
     }
 
     private PureNFAState createMatchAllState(RegexASTNode astNode) {
@@ -184,8 +184,12 @@ public final class PureNFAGenerator {
         return state;
     }
 
-    private PureNFATransition createEntryTransition(PureNFAState initialState) {
-        return new PureNFATransition((short) transitionID.inc(), initialState, GroupBoundaries.getEmptyInstance(), ast.getLookAheads().getEmptySet(), ast.getLookBehinds().getEmptySet(),
+    private PureNFATransition createEntryTransition(PureNFAState dummyInitialState, PureNFAState initialState) {
+        initialState.incPredecessors();
+        return new PureNFATransition((short) transitionID.inc(), dummyInitialState, initialState,
+                        GroupBoundaries.getEmptyInstance(),
+                        ast.getLookAheads().getEmptySet(),
+                        ast.getLookBehinds().getEmptySet(),
                         QuantifierGuard.NO_GUARDS);
     }
 }

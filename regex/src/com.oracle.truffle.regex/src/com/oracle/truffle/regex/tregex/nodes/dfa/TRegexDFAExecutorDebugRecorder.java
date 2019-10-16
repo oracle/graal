@@ -186,7 +186,7 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
     @TruffleBoundary
     public void recordTransition(int currentIndex, short stateNodeID, int transitionIndex) {
-        int transitionID = dfa.getState(stateNodeID).getTransitions()[transitionIndex].getId();
+        int transitionID = dfa.getState(stateNodeID).getSuccessors()[transitionIndex].getId();
         curRecording().recordTransition(currentIndex, transitionID);
     }
 

@@ -75,7 +75,7 @@ public class DFAExport {
         try (BufferedWriter writer = path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             writer.write("digraph finite_state_machine {");
             writer.newLine();
-            String finalStates = stateMap.values().stream().filter(DFAStateNodeBuilder::isFinalState).map(
+            String finalStates = stateMap.values().stream().filter(DFAStateNodeBuilder::isUnAnchoredFinalState).map(
                             s -> DotExport.escape(dotState(s, shortLabels))).collect(Collectors.joining("\" \""));
             if (!finalStates.isEmpty()) {
                 writer.write(String.format("    node [shape = doublecircle]; \"%s\";", finalStates));
@@ -104,7 +104,7 @@ public class DFAExport {
                         }
                     }
                 }
-                for (DFAStateTransitionBuilder t : state.getTransitions()) {
+                for (DFAStateTransitionBuilder t : state.getSuccessors()) {
                     DotExport.printConnection(writer, dotState(state, shortLabels), dotState(t.getTarget(), shortLabels), t.getMatcherBuilder().toString());
                 }
             }

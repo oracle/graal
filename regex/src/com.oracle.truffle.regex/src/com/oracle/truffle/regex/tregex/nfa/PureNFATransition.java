@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
@@ -48,18 +49,22 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 /**
  * Represents a transition of a {@link PureNFA}.
  */
-public class PureNFATransition {
+public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
     private final short id;
+    private final PureNFAState source;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
     private final StateSet<LookAheadAssertion> traversedLookAheads;
     private final StateSet<LookBehindAssertion> traversedLookBehinds;
     private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState target, GroupBoundaries groupBoundaries, StateSet<LookAheadAssertion> traversedLookAheads, StateSet<LookBehindAssertion> traversedLookBehinds,
+    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries,
+                    StateSet<LookAheadAssertion> traversedLookAheads,
+                    StateSet<LookBehindAssertion> traversedLookBehinds,
                     QuantifierGuard[] quantifierGuards) {
         this.id = id;
+        this.source = source;
         this.target = target;
         this.groupBoundaries = groupBoundaries;
         this.traversedLookAheads = traversedLookAheads;
@@ -67,10 +72,17 @@ public class PureNFATransition {
         this.quantifierGuards = quantifierGuards;
     }
 
-    public short getId() {
+    @Override
+    public int getId() {
         return id;
     }
 
+    @Override
+    public PureNFAState getSource() {
+        return source;
+    }
+
+    @Override
     public PureNFAState getTarget() {
         return target;
     }

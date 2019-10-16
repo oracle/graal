@@ -103,6 +103,12 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public void setGroup(Group group) {
         this.group = group;
         group.setParent(this);
+        if (anchoredInitialState != null) {
+            anchoredInitialState.setNext(group);
+        }
+        if (unAnchoredInitialState != null) {
+            unAnchoredInitialState.setNext(group);
+        }
     }
 
     /**
@@ -124,7 +130,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public void setAnchoredInitialState(PositionAssertion anchoredInitialState) {
         this.anchoredInitialState = anchoredInitialState;
         anchoredInitialState.setParent(this);
-        anchoredInitialState.setNext(this);
+        anchoredInitialState.setNext(group);
     }
 
     public RegexASTNode getUnAnchoredInitialState() {
@@ -134,7 +140,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public void setUnAnchoredInitialState(MatchFound unAnchoredInitialState) {
         this.unAnchoredInitialState = unAnchoredInitialState;
         unAnchoredInitialState.setParent(this);
-        unAnchoredInitialState.setNext(this);
+        unAnchoredInitialState.setNext(group);
     }
 
     public RegexASTNode getAnchoredFinalState() {

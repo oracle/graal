@@ -62,11 +62,14 @@ public class PureNFA {
         for (PureNFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
-            if (s.getTransitions() == null) {
+            if (s.getSuccessors() == null) {
                 continue;
             }
-            for (PureNFATransition t : s.getTransitions()) {
+            for (PureNFATransition t : s.getSuccessors()) {
                 assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
+                if (this.transitions[t.getId()] == null) {
+                    t.getTarget().addPredecessor(t);
+                }
                 this.transitions[t.getId()] = t;
             }
         }
@@ -77,15 +80,15 @@ public class PureNFA {
     }
 
     public int getNumberOfEntryPoints() {
-        return getDummyInitialState().getTransitions().length / 2;
+        return getDummyInitialState().getSuccessors().length / 2;
     }
 
     public PureNFATransition getAnchoredEntry(int i) {
-        return getDummyInitialState().getTransitions()[i];
+        return getDummyInitialState().getSuccessors()[i];
     }
 
     public PureNFATransition getUnAnchoredEntry(int i) {
-        return getDummyInitialState().getTransitions()[getNumberOfEntryPoints() + i];
+        return getDummyInitialState().getSuccessors()[getNumberOfEntryPoints() + i];
     }
 
     public PureNFAState[] getStates() {
