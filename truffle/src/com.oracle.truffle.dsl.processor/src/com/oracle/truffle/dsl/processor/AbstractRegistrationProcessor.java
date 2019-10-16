@@ -247,7 +247,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
     private void generateProviderFile(String providerClassName, String serviceClassName, Element... originatingElements) {
         assert originatingElements.length > 0;
-        String filename = "META-INF/providers/" + providerClassName;
+        String filename = "META-INF/truffle-registrations/" + providerClassName;
         try {
             FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
