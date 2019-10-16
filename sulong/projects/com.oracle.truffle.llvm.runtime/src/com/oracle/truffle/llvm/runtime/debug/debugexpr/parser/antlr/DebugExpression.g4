@@ -47,8 +47,12 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory.CompareKind;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprTypeofNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExpressionPair;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 }
 
@@ -63,18 +67,21 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 private LLVMExpressionNode astRoot = null;
 private DebugExprNodeFactory NF = null;
 
-/*boolean IsCast() {
-	Token peek = scanner.Peek();
-	if(la.kind==_lpar) {
-	    while(peek.kind==_asterisc) peek=scanner.Peek();
-	    int k = peek.kind;
-	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double||k==_typeof) return true;
+public boolean IsCast() {
+    TokenSource tokenSource = _input.getTokenSource();
+	Token peek = tokenSource.nextToken();
+	if (peek.getType() == LAPR) {
+	    while(peek.getType() == ASTERISC) peek = tokenSource.nextToken();
+	    int tokenType = peek.getType();
+	    if(tokenType == SIGNED || tokenType == UNSIGNED || tokenType == INT || tokenType == LONG
+	        || tokenType == CHAR || tokenType == SHORT || tokenType == FLOAT || tokenType == DOUBLE
+	        || tokenType == TYPEOF ) return true;
 	}
 	return false;
-}*/
+}
 
 public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
-	if(NF==null) NF=nodeFactory;
+	if (NF == null) NF = nodeFactory;
 }
 
 public int GetErrors() {
@@ -100,17 +107,17 @@ IDENT : LETTER (LETTER | DIGIT)*;
 NUMBER : DIGIT+;
 FLOATNUMBER : DIGIT+ '.' DIGIT+ ( [eE] [+-] DIGIT+ )?;
 CHARCONST : SINGLECOMMA (LETTER|DIGIT) SINGLECOMMA;
-//LAPR : '(';
-//ASTERISC : '*';
-//SIGNED : 'signed';
-//UNSIGNED : 'unsigned';
-//INT : 'int';
-//LONG : 'LONG';
-//SHORT : 'short';
-//FLOAT : 'float';
-//DOUBLE : 'double';
-//CHAR : 'char';
-//TYPEOF: 'typeof';
+LAPR : '(';
+ASTERISC : '*';
+SIGNED : 'signed';
+UNSIGNED : 'unsigned';
+INT : 'int';
+LONG : 'LONG';
+SHORT : 'short';
+FLOAT : 'float';
+DOUBLE : 'double';
+CHAR : 'char';
+TYPEOF: 'typeof';
 
 WS  : [ \t\r\n]+ -> skip ;
 
@@ -219,7 +226,17 @@ actPars returns [List l] :
 //"sizeof" "(" DType<out typeP> ")" 					(. p=NF.createSizeofNode(typeP); .)
 //.
 
-unaryExpr : designator;
+unaryExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair prev = null;
+  char kind = '\0';
+  DebugExprType typeP = null;
+  }
+  (
+  designator { prev = $designator.p; }                                              { $p = prev; }
+  | (unaryOP { kind = $unaryOP.kind; }) (castExpr { prev = $castExpr.p; })          { $p = NF.createUnaryOpNode(prev, kind); }
+  | 'sizeof' '(' (dType { typeP = $dType.ty; }) ')'                                 { $p = NF.createSizeofNode(typeP); }
+  );
 
 
 //
@@ -238,6 +255,17 @@ unaryExpr : designator;
 //)
 //													(. kind = t.val.charAt(0); .)
 //.
+
+unaryOP returns [char kind] :
+  t=( '*'
+  | '+'
+  | '-'
+  | '~'
+  | '!'
+  )                                              { $kind = $t.getText().charAt(0); }
+  ;
+
+
 //CastExpr<out DebugExpressionPair p>					(. DebugExprType typeP=null; DebugExprTypeofNode typeNode=null; .)
 //=
 //[
@@ -253,8 +281,27 @@ unaryExpr : designator;
 //UnaryExpr<out p> 									(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); }
 //														if(typeNode!=null) {p = NF.createPointerCastNode(p, typeNode);} .)
 //.
-castExpr : unaryExpr;
-//
+
+castExpr returns [DebugExpressionPair p] :
+  {
+  DebugExprType typeP = null;
+  DebugExprTypeofNode typeNode = null;
+  DebugExpressionPair prev;
+  }
+
+  {if(IsCast())}(
+  '('
+  ( dType { typeP = $dType.ty; }
+  | 'typeof' '(' t=IDENT                          { typeNode = NF.createTypeofNode($t.getText()); }
+    ')'
+  )?
+  ')'?
+  )
+  unaryExpr {prev = $unaryExpr.p;}                  { if (typeP != null) { $p = NF.createCastIfNecessary(prev, typeP); }
+                                                      if (typeNode != null) { $p = NF.createPointerCastNode(prev, typeNode);} }
+  ;
+
+
 //MultExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //CastExpr<out p>
@@ -269,7 +316,21 @@ castExpr : unaryExpr;
 //
 //}
 //.
-multExpr : castExpr;
+
+multExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  castExpr { prev = $castExpr.p; }
+  )?
+  ( '*' (castExpr { p1 = $castExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.MUL, prev, p1); }
+  | '/' (castExpr { p1 = $castExpr.p; })                    { $p = NF.createDivNode(prev, p1); }
+  | '%' (castExpr { p1 = $castExpr.p; })                    { $p = NF.createDivNode(prev, p1); }
+  );
+
+
 //AddExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //MultExpr<out p>
@@ -281,7 +342,20 @@ multExpr : castExpr;
 //
 //}
 //.
-addExpr : multExpr;
+
+addExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  multExpr { prev = $multExpr.p; }
+  )?
+  ( '+' (multExpr { p1 = $multExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.ADD, prev, p1); }
+  | '-' (multExpr { p1 = $multExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.SUB, prev, p1); }
+  );
+
+
 //ShiftExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 //=
 //AddExpr<out p>
@@ -293,7 +367,20 @@ addExpr : multExpr;
 //
 //}
 //.
-shiftExpr : addExpr;
+
+shiftExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  addExpr { prev = $addExpr.p; }
+  )?
+  ( '>>' (addExpr { p1 = $addExpr.p; })                    { $p = NF.createShiftLeft(prev, p1); }
+  | '<<' (addExpr { p1 = $addExpr.p; })                    { $p = NF.createShiftRight(prev, p1); }
+  );
+
+
 //RelExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //ShiftExpr<out p>
@@ -311,7 +398,22 @@ shiftExpr : addExpr;
 //
 //}
 //.
-relExpr : shiftExpr;
+
+relExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  shiftExpr { prev = $shiftExpr.p; }
+  )?
+  ( '<' (shiftExpr { p1 = $shiftExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.LT, p1); }
+  | '>' (shiftExpr { p1 = $shiftExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.GT, p1); }
+  | '<=' (shiftExpr { p1 = $shiftExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.LE, p1); }
+  | '>=' (shiftExpr { p1 = $shiftExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.GE, p1); }
+  );
+
+
 //EqExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //RelExpr<out p>
@@ -323,7 +425,20 @@ relExpr : shiftExpr;
 //
 //}
 //.
-eqExpr : relExpr;
+
+eqExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  relExpr { prev = $relExpr.p; }
+  )?
+  ( '==' (relExpr { p1 = $relExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.EQ, p1); }
+  | '!=' (relExpr { p1 = $relExpr.p; })                    { $p = NF.createCompareNode(prev, CompareKind.NE, p1); }
+  );
+
+
 //AndExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //EqExpr<out p>
@@ -416,6 +531,9 @@ expr returns [DebugExpressionPair p] :
 //	 "]"
 //}
 //.
+
+dType returns [DebugExprType ty] : ;
+
 //BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 //=
 //"(" DType<out ty> ")"
@@ -460,3 +578,5 @@ expr returns [DebugExpressionPair p] :
 //|
 //"double" 											(. ty = DebugExprType.getFloatType(64);.)
 //.
+
+baseType returns [DebugExprType ty] : ;
