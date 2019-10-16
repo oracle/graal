@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.pthread;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -47,37 +46,37 @@ public final class LLVMPThreadContext {
     private final LLVMContext context;
 
     // the long-key is the thread-id
+    private final Object threadLock;
     private final ConcurrentMap<Long, Object> threadReturnValueStorage;
     private final ConcurrentMap<Long, Thread> threadStorage;
-    private boolean isCreateThreadAllowed;
+    private volatile boolean isCreateThreadAllowed;
 
     private int pThreadKey;
     private final Object pThreadKeyLock;
     private final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> pThreadKeyStorage;
     private final ConcurrentMap<Integer, LLVMPointer> pThreadDestructorStorage;
 
-    private final Object callTargetLock;
-    private CallTarget pthreadCallTarget;
+    private final CallTarget pthreadCallTarget;
 
     public LLVMPThreadContext(LLVMContext context) {
         this.context = context;
 
         // pthread storages
+        this.threadLock = new Object();
         this.threadReturnValueStorage = new ConcurrentHashMap<>();
         this.threadStorage = new ConcurrentHashMap<>();
         this.pThreadKey = 0;
         this.pThreadKeyLock = new Object();
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
-        this.callTargetLock = new Object();
-        this.pthreadCallTarget = null;
+        this.pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode(context.getLanguage()));
         this.isCreateThreadAllowed = true;
     }
 
     @TruffleBoundary
     public void joinAllThreads() {
         final Collection<Thread> threadsToJoin;
-        synchronized (threadStorage) {
+        synchronized (threadLock) {
             this.isCreateThreadAllowed = false;
             threadsToJoin = threadStorage.values();
         }
@@ -164,8 +163,8 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
-    public synchronized Thread createThread(Runnable runnable) {
-        synchronized (threadStorage) {
+    public Thread createThread(Runnable runnable) {
+        synchronized (threadLock) {
             if (isCreateThreadAllowed) {
                 final Thread thread = context.getEnv().createThread(runnable);
                 threadStorage.put(thread.getId(), thread);
@@ -197,14 +196,6 @@ public final class LLVMPThreadContext {
     }
 
     public CallTarget getPthreadCallTarget() {
-        if (pthreadCallTarget == null) {
-            synchronized (callTargetLock) {
-                if (pthreadCallTarget == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    pthreadCallTarget = Truffle.getRuntime().createCallTarget(new LLVMPThreadStart.LLVMPThreadFunctionRootNode(context.getLanguage()));
-                }
-            }
-        }
         return pthreadCallTarget;
     }
 }
