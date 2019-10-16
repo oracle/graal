@@ -520,7 +520,7 @@ public class BinaryReader extends BinaryStreamReader {
         /* Read (parse) and abstractly interpret the code entry */
         byte returnTypeId = module.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmBlockNode bodyBlock = readBlock(rootNode.codeEntry(), state, returnTypeId);
+        WasmBlockNode bodyBlock = readBlockBody(rootNode.codeEntry(), state, returnTypeId, returnTypeId);
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
@@ -566,7 +566,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
-        return readBlock(codeEntry, state, blockTypeId);
+        return readBlockBody(codeEntry, state, blockTypeId, blockTypeId);
     }
 
     private WasmLoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state) {
@@ -574,7 +574,7 @@ public class BinaryReader extends BinaryStreamReader {
         return readLoop(codeEntry, state, blockTypeId);
     }
 
-    private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
+    private WasmBlockNode readBlockBody(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId, byte continuationTypeId) {
         ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
         ArrayList<Node> callNodes = new ArrayList<>();
         int startStackSize = state.stackSize();
@@ -583,11 +583,12 @@ public class BinaryReader extends BinaryStreamReader {
         int startIntConstantOffset = state.intConstantOffset();
         int startNumericLiteralOffset = state.numericLiteralOffset();
         int startBranchTableOffset = state.branchTableOffset();
-        WasmBlockNode currentBlock = new WasmBlockNode(module, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset, startNumericLiteralOffset, startBranchTableOffset);
+        WasmBlockNode currentBlock = new WasmBlockNode(module, codeEntry, startOffset, returnTypeId, continuationTypeId, startStackSize,
+                        startByteConstantOffset, startIntConstantOffset, startNumericLiteralOffset, startBranchTableOffset);
 
-        // Push the current block return length in the return lengths stack.
+        // Push the type length of the current block's continuation.
         // Used when branching out of nested blocks (br and br_if instructions).
-        state.pushBlockReturnLength(currentBlock.returnTypeLength());
+        state.pushContinuationReturnLength(currentBlock.continuationTypeLength());
 
         int opcode;
         do {
@@ -641,7 +642,7 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
-                    state.useIntConstant(state.getBlockReturnLength(unwindLevel));
+                    state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
                     break;
                 }
                 case BR_IF: {
@@ -656,7 +657,7 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
-                    state.useIntConstant(state.getBlockReturnLength(unwindLevel));
+                    state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
                     break;
                 }
                 case BR_TABLE: {
@@ -674,7 +675,7 @@ public class BinaryReader extends BinaryStreamReader {
                         final int targetLabel = readLabelIndex();
                         branchTable[1 + 2 * i + 0] = targetLabel;
                         branchTable[1 + 2 * i + 1] = state.getStackState(targetLabel);
-                        final int blockReturnLength = state.getBlockReturnLength(targetLabel);
+                        final int blockReturnLength = state.getContinuationReturnLength(targetLabel);
                         if (returnLength == -1) {
                             returnLength = blockReturnLength;
                         } else {
@@ -684,7 +685,8 @@ public class BinaryReader extends BinaryStreamReader {
                     }
                     branchTable[0] = returnLength;
                     // TODO: Maybe move this pop up for consistency.
-                    state.pop();  // The offset to the branch table.
+                    state.pop();
+                    // The offset to the branch table.
                     state.saveBranchTable(branchTable);
                     break;
                 }
@@ -1070,14 +1072,14 @@ public class BinaryReader extends BinaryStreamReader {
 
         // Pop the current block return length in the return lengths stack.
         // Used when branching out of nested blocks (br and br_if instructions).
-        state.popBlockReturnLength();
+        state.popContinuationReturnLength();
 
         return currentBlock;
     }
 
     private WasmLoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
         int initialStackPointer = state.stackSize();
-        WasmBlockNode loopBlock = readBlock(codeEntry, state, returnTypeId);
+        WasmBlockNode loopBlock = readBlockBody(codeEntry, state, returnTypeId, ValueTypes.VOID_TYPE);
 
         // TODO: Hack to correctly set the stack pointer for abstract interpretation.
         // If a block has branch instructions that target "shallower" blocks which return no value,
@@ -1099,7 +1101,7 @@ public class BinaryReader extends BinaryStreamReader {
 
         // Read true branch.
         int startOffset = offset();
-        WasmBlockNode trueBranchBlock = readBlock(codeEntry, state, blockTypeId);
+        WasmBlockNode trueBranchBlock = readBlockBody(codeEntry, state, blockTypeId, blockTypeId);
 
         // TODO: Hack to correctly set the stack pointer for abstract interpretation.
         // If a block has branch instructions that target "shallower" blocks which return no value,
@@ -1111,12 +1113,12 @@ public class BinaryReader extends BinaryStreamReader {
         WasmNode falseBranchBlock;
         if (peek1(-1) == ELSE) {
             // If the if instruction has a true and a false branch, and it has non-void type, then each one of the two
-            // readBlock above and below would push once, hence we need to pop once to compensate for the extra push.
+            // readBlockBody above and below would push once, hence we need to pop once to compensate for the extra push.
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 state.pop();
             }
 
-            falseBranchBlock = readBlock(codeEntry, state, blockTypeId);
+            falseBranchBlock = readBlockBody(codeEntry, state, blockTypeId, blockTypeId);
 
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 // TODO: Hack to correctly set the stack pointer for abstract interpretation.

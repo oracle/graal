@@ -90,14 +90,18 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         throw new WasmExecutionException(this, message);
     }
 
-    public int returnTypeLength() {
-        switch (returnTypeId()) {
+    protected static final int typeLength(int typeId) {
+        switch (typeId) {
             case 0x00:
             case 0x40:
                 return 0;
             default:
                 return 1;
         }
+    }
+
+    int returnTypeLength() {
+        return typeLength(returnTypeId());
     }
 
     @Override
