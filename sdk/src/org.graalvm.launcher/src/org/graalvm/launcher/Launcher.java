@@ -1590,7 +1590,7 @@ public abstract class Launcher {
             assert isAOT();
             if (isVerbose()) {
                 StringBuilder sb = formatExec(executable, command);
-                System.out.print(sb.toString());
+                System.err.print(sb.toString());
             }
             String[] argv = new String[command.size() + 1];
             int i = 0;
