@@ -1066,7 +1066,7 @@ public class SnippetTemplate {
                         canonicalizer = CanonicalizerPhase.create();
                     }
                     LoopTransformations.fullUnroll(loop, providers, canonicalizer);
-		    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
+                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);

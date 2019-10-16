@@ -95,10 +95,10 @@ public abstract class LoopTransformations {
         SimplifierTool defaultSimplifier = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
                         canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
         /*
-         * IMPORTANT: Canonicalizations inside the body of the remaining loop can introduce new CF
-         * that is not automatically picked up by the CFG computation of the original LoopEx data
-         * structure, thus we disable simplification and manually simplify conditions in the peeled
-         * iteration to simplify the exit path.
+         * IMPORTANT: Canonicalizations inside the body of the remaining loop can introduce new
+         * control flow that is not automatically picked up by the control flow graph computation of
+         * the original LoopEx data structure, thus we disable simplification and manually simplify
+         * conditions in the peeled iteration to simplify the exit path.
          */
         CanonicalizerPhase c = canonicalizer.copyWithoutSimplification();
         EconomicSetNodeEventListener l = new EconomicSetNodeEventListener();
@@ -108,9 +108,9 @@ public abstract class LoopTransformations {
                 Mark newNodes = graph.getMark();
                 /*
                  * Mark is not enough for the canonicalization of the floating nodes in the unrolled
-                 * code since pre-existing constants are not new nodes. Therefore, we canon (without
-                 * simplification) all floating nodes changed during peeling but only simplify new
-                 * (in the peeled iteration) ones.
+                 * code since pre-existing constants are not new nodes. Therefore, we canonicalize
+                 * (without simplification) all floating nodes changed during peeling but only
+                 * simplify new (in the peeled iteration) ones.
                  */
                 EconomicSetNodeEventListener peeledListener = new EconomicSetNodeEventListener();
                 try (NodeEventScope peeledScope = graph.trackNodeEvents(peeledListener)) {
