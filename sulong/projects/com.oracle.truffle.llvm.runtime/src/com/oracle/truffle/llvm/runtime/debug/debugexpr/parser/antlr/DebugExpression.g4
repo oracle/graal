@@ -447,8 +447,19 @@ eqExpr returns [DebugExpressionPair p] :
 //
 //}
 //.
-andExpr : eqExpr;
-//
+
+andExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  eqExpr { prev = $eqExpr.p; }
+  )?
+  ( '&' (eqExpr { p1 = $eqExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.AND, prev, p1); }
+  );
+
+
 //XorExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //AndExpr<out p>
@@ -457,8 +468,19 @@ andExpr : eqExpr;
 //
 //}
 //.
-xorExpr : andExpr;
-//
+
+xorExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  andExpr { prev = $andExpr.p; }
+  )?
+  ( '^' (andExpr { p1 = $andExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.XOR, prev, p1); }
+  );
+
+
 //OrExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 //=
 //XorExpr<out p>
@@ -467,8 +489,19 @@ xorExpr : andExpr;
 //
 //}
 //.
-orExpr : xorExpr;
-//
+
+orExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  xorExpr { prev = $xorExpr.p; }
+  )?
+  ( '|' (xorExpr { p1 = $xorExpr.p; })                    { $p = NF.createArithmeticOp(ArithmeticOperation.OR, prev, p1); }
+  );
+
+
 //LogAndExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 //=
 //OrExpr<out p>
@@ -477,8 +510,19 @@ orExpr : xorExpr;
 //
 //}
 //.
-logAndExpr : orExpr;
-//
+
+logAndExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  orExpr { prev = $orExpr.p; }
+  )?
+  ( '&&' (orExpr { p1 = $orExpr.p; })                    { $p = NF.createLogicalAndNode(prev, p1); }
+  );
+
+
 //LogOrExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 //=
 //LogAndExpr<out p>
@@ -487,7 +531,16 @@ logAndExpr : orExpr;
 //
 //}
 //.
-logOrExpr returns [DebugExpressionPair p] : logAndExpr;
+logOrExpr returns [DebugExpressionPair p] :
+  {
+  DebugExpressionPair p1 = null;
+  DebugExpressionPair prev = null;
+  }
+  (
+  logAndExpr { prev = $logAndExpr.p; }
+  )?
+  ( '||' (logAndExpr { p1 = $logAndExpr.p; })                    { $p = NF.createLogicalOrNode(prev, p1); }
+  );
 
 //
 //Expr<out DebugExpressionPair p>						(. DebugExpressionPair pThen=null, pElse=null; .)
