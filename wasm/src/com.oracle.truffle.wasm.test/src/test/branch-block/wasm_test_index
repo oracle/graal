@@ -2,6 +2,8 @@ simple_br_before_add
 simple_br_before_add_twice
 simple_br_if_false
 simple_br_if_true
+simple_br_if_top_level
+simple_br_if_in_loop
 simple_branch_table-0
 simple_branch_table-1
 simple_branch_table-2

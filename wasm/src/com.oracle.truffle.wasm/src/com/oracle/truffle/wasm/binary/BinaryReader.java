@@ -683,6 +683,7 @@ public class BinaryReader extends BinaryStreamReader {
                         }
                     }
                     branchTable[0] = returnLength;
+                    // TODO: Maybe move this pop up for consistency.
                     state.pop();  // The offset to the branch table.
                     state.saveBranchTable(branchTable);
                     break;
