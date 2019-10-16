@@ -1926,6 +1926,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             **kw_args)
 
 
+_vm_suite = 'uninitialized'
 _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
@@ -2094,6 +2095,13 @@ def _get_native_image_configs(component, config_type):
             configs.setdefault(component_.name, []).append(config)
         _native_image_configs[config_type] = configs
     return _native_image_configs.get(config_type).get(component.name, [])
+
+
+def has_vm_suite():
+    global _vm_suite
+    if _vm_suite == 'uninitialized':
+        _vm_suite = mx.suite('vm', fatalIfMissing=False)
+    return _vm_suite is not None
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
@@ -2565,7 +2573,7 @@ def _force_bash_launchers(launcher):
         if launcher_name not in only:
             return True
 
-    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if mx.suite('vm', fatalIfMissing=False) else 'true'))
+    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if has_vm_suite() else 'true'))
     if isinstance(forced, bool):
         return forced
     else:
@@ -2586,7 +2594,7 @@ def _skip_libraries(library):
         if library_name not in only:
             return True
 
-    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if mx.suite('vm', fatalIfMissing=False) else 'true'))
+    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if has_vm_suite() else 'true'))
     if isinstance(skipped, bool):
         return skipped
     else:
@@ -2595,7 +2603,7 @@ def _skip_libraries(library):
 
 def _disable_installable(component):
     """ :type component: str | mx_sdk.GraalVmComponent """
-    disabled = _str_to_bool(mx.get_opts().disable_installables or mx.get_env('DISABLE_INSTALLABLES', 'false'))
+    disabled = _str_to_bool(mx.get_opts().disable_installables or mx.get_env('DISABLE_INSTALLABLES', 'false' if has_vm_suite() else 'true'))
     if isinstance(disabled, bool):
         return disabled
     if isinstance(disabled, str):
