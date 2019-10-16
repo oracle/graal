@@ -164,7 +164,7 @@ public abstract class BinaryStreamReader {
         } while ((b & 0x80) != 0);
 
         if ((shift < 64) && (b & 0x40) != 0) {
-            result |= (~0 << shift);
+            result |= (~0L << shift);
         }
 
         if (bytesConsumed != null) {

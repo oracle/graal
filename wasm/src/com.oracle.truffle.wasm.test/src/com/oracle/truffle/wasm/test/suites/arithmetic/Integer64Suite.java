@@ -44,6 +44,8 @@ public class Integer64Suite extends WasmSuiteBase {
                         "(module (func (export \"_main\") (result i64) i64.const 42))"),
             testCase("CONST_LARGE", expected(Long.MAX_VALUE),
                         "(module (func (export \"_main\") (result i64) i64.const 9223372036854775807))"),
+            testCase("CONST_LARGE", expected(0xfffc000000000000L),
+                    "(module (func (export \"_main\") (result i64) i64.const -1125899906842624))"),
             testCase("DROP", expected(889L),
                         "(module (func (export \"_main\") (result i64) i64.const 889 i64.const 42 drop))"),
             testCase("EQZ_FALSE", expected(0),
