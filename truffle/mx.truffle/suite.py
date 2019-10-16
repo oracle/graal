@@ -1087,6 +1087,16 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Truffle NFI support distribution for the GraalVM",
+      "layout" : {
+        "./" : ["dependency:com.oracle.truffle.nfi.native"],
+      },
+      "maven" : False,
+    },
+
     "TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,

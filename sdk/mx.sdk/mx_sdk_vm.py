@@ -171,6 +171,7 @@ class GraalVmComponent(object):
                  builder_jar_distributions=None,
                  support_distributions=None,
                  support_headers_distributions=None,
+                 support_libraries_distributions=None,
                  dir_name=None,
                  launcher_configs=None,
                  library_configs=None,
@@ -209,6 +210,7 @@ class GraalVmComponent(object):
         :type builder_jar_distributions: list[str]
         :type support_distributions: list[str]
         :type support_headers_distributions: list[str]
+        :type support_libraries_distributions: list[str]
         :param int priority: priority with a higher value means higher priority
         :type installable: bool
         :type installable_id: str
@@ -235,6 +237,7 @@ class GraalVmComponent(object):
         self.builder_jar_distributions = builder_jar_distributions or []
         self.support_distributions = support_distributions or []
         self.support_headers_distributions = support_headers_distributions or []
+        self.support_libraries_distributions = support_libraries_distributions or []
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
@@ -246,6 +249,7 @@ class GraalVmComponent(object):
         assert isinstance(self.builder_jar_distributions, list)
         assert isinstance(self.support_distributions, list)
         assert isinstance(self.support_headers_distributions, list)
+        assert isinstance(self.support_libraries_distributions, list)
         assert isinstance(self.license_files, list)
         assert isinstance(self.third_party_license_files, list)
         assert isinstance(self.provided_executables, list)

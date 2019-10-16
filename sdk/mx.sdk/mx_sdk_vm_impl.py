@@ -420,21 +420,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     mx.abort("Cannot find static libraries in '{}', required by SubstrateVM on JDK9+.\nAre you building with a recent LabsJDK?".format(dirname(static_libs_path)))
 
             # Add vm.properties
-            # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
             vm_name = graalvm_vm_name(self, _src_jdk)
-            has_truffle_nfi = mx.distribution('truffle:TRUFFLE_NFI_NATIVE', fatalIfMissing=False) is not None
+
             if mx.get_os() == 'windows':
-                if has_truffle_nfi:
-                    _add(layout, "<jre_base>/bin/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/bin/server/vm.properties", "string:name=" + vm_name)
             elif mx.get_os() == 'darwin' or _src_jdk_version >= 9:
                 # on macOS and jdk >= 9, the <arch> directory is not used
-                if has_truffle_nfi:
-                    _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
             else:
-                if has_truffle_nfi:
-                    _add(layout, "<jre_base>/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
             if _src_jdk_version == 8 and any(comp.jvmci_parent_jars for comp in registered_graalvm_components(stage1)):
@@ -478,8 +471,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _component_jvmlib_base = _component_type_base[:-len('lib/')] + 'bin/'
                 else:
                     _component_jvmlib_base = _component_type_base
+            elif mx.get_os() == 'windows':
+                _component_jvmlib_base = '<jre_base>/bin/'
             else:
-                _component_jvmlib_base = None
+                _component_jvmlib_base = '<jre_base>/lib/'
+            if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
+                _jvm_library_dest = _component_jvmlib_base + mx.get_arch() + '/'
+            else:
+                _jvm_library_dest = _component_jvmlib_base
 
             if _component.dir_name:
                 _component_base = _component_type_base + _component.dir_name + '/'
@@ -502,6 +501,12 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': [],
                 'path': None,
             } for d in _component.support_headers_distributions], _component)
+            _add(layout, _jvm_library_dest, [{
+                'source_type': 'extracted-dependency',
+                'dependency': d,
+                'exclude': [],
+                'path': None,
+            } for d in _component.support_libraries_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
@@ -553,17 +558,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
-                    if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
-                        _library_dest = _component_jvmlib_base + mx.get_arch() + '/'
-                    else:
-                        _library_dest = _component_jvmlib_base
+                    _svm_library_dest = _jvm_library_dest
                 else:
-                    _library_dest = _component_base
-                _library_dest += _library_config.destination
+                    _svm_library_dest = _component_base
+                _svm_library_dest += _library_config.destination
                 if not stage1:
                     source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
                     # add `LibraryConfig.destination` to the layout
-                    _add(layout, _library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
+                    _add(layout, _svm_library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
                 _add_native_image_macro(_library_config, _component)
             for _provided_executable in _component.provided_executables:
                 if _component.short_name == 'vvm':
