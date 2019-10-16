@@ -183,16 +183,6 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
-    "WASM_UTILS" : {
-      "moduleName" : "com.oracle.truffle.wasm.utils",
-      "dependencies" : [
-        "com.oracle.truffle.wasm.utils",
-      ],
-      "distDependencies" : [
-        "truffle:TRUFFLE_API",
-      ]
-    },
-
     "WASM_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
@@ -235,7 +225,6 @@ suite = {
       ],
       "distDependencies" : [
         "WASM_BENCHCASES",
-        "WASM_UTILS",
       ]
     },
 
