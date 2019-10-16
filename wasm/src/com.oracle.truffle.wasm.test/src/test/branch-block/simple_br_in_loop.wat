@@ -10,8 +10,10 @@
             local.tee 0
             i32.const 4
             i32.ne
-            br_if $B0
-            i32.const 12
+            if
+                br $B0
+            end
+            i32.const 14
         end
     )
 )
