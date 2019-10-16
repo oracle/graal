@@ -349,7 +349,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if _linkname != basename(_target):
                 if mx.is_windows():
                     if _target.endswith('.exe') or _target.endswith('.cmd'):
-                        link_template_name = join(_suite.mxDir, 'exe_link_template.cmd')
+                        link_template_name = join(_suite.mxDir, 'vm', 'exe_link_template.cmd')
                         with open(link_template_name, 'r') as template:
                             _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
                             _template_subst.register_no_arg('target', normpath(_linkname))
