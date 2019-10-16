@@ -350,7 +350,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             if (process.waitFor() != 0) {
                 return -1;
             }
-            final int width = Integer.parseInt(output.split(" ")[0]);
+            final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
             throw new RuntimeException(e);
