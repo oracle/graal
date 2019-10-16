@@ -33,25 +33,24 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr;
 
 // DO NOT MODIFY - generated from DebugExpression.g4 using "mx create-parsers"
 
-import org.antlr.v4.runtime.NoViableAltException;
-import org.antlr.v4.runtime.Parser;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.RuntimeMetaData;
-import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.Vocabulary;
-import org.antlr.v4.runtime.VocabularyImpl;
-import org.antlr.v4.runtime.atn.ATN;
-import org.antlr.v4.runtime.atn.ATNDeserializer;
-import org.antlr.v4.runtime.atn.ParserATNSimulator;
-import org.antlr.v4.runtime.atn.PredictionContextCache;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.tree.TerminalNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExpressionPair;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+
+import org.antlr.v4.runtime.atn.*;
+import org.antlr.v4.runtime.dfa.DFA;
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.misc.*;
+import org.antlr.v4.runtime.tree.*;
+import java.util.List;
+import java.util.Iterator;
+import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class DebugExpressionParser extends Parser {
@@ -61,8 +60,8 @@ public class DebugExpressionParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		DIGIT=1, CR=2, LF=3, SINGLECOMMA=4, QUOTE=5, IDENT=6, NUMBER=7, FLOATNUMBER=8, 
-		CHARCONST=9, WS=10;
+		T__0=1, T__1=2, T__2=3, T__3=4, DIGIT=5, CR=6, LF=7, SINGLECOMMA=8, QUOTE=9, 
+		IDENT=10, NUMBER=11, FLOATNUMBER=12, CHARCONST=13, WS=14;
 	public static final int
 		RULE_debugExpr = 0, RULE_primExpr = 1, RULE_designator = 2, RULE_unaryExpr = 3, 
 		RULE_castExpr = 4, RULE_multExpr = 5, RULE_addExpr = 6, RULE_shiftExpr = 7, 
@@ -75,11 +74,11 @@ public class DebugExpressionParser extends Parser {
 	};
 
 	private static final String[] _LITERAL_NAMES = {
-		null, null, "'\r'", "'\n'", "'''", "'\"'"
+		null, "'('", "')'", "'?'", "':'", null, "'\r'", "'\n'", "'''", "'\"'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
-		null, "DIGIT", "CR", "LF", "SINGLECOMMA", "QUOTE", "IDENT", "NUMBER", 
-		"FLOATNUMBER", "CHARCONST", "WS"
+		null, null, null, null, null, "DIGIT", "CR", "LF", "SINGLECOMMA", "QUOTE", 
+		"IDENT", "NUMBER", "FLOATNUMBER", "CHARCONST", "WS"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -188,6 +187,10 @@ public class DebugExpressionParser extends Parser {
 	public static class PrimExprContext extends ParserRuleContext {
 		public DebugExpressionPair p;
 		public Token t;
+		public ExprContext expr;
+		public ExprContext expr() {
+			return getRuleContext(ExprContext.class,0);
+		}
 		public TerminalNode IDENT() { return getToken(DebugExpressionParser.IDENT, 0); }
 		public TerminalNode NUMBER() { return getToken(DebugExpressionParser.NUMBER, 0); }
 		public TerminalNode FLOATNUMBER() { return getToken(DebugExpressionParser.FLOATNUMBER, 0); }
@@ -204,7 +207,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(42);
+			setState(47);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case IDENT:
@@ -233,6 +236,17 @@ public class DebugExpressionParser extends Parser {
 				setState(40);
 				_localctx.t = match(CHARCONST);
 				 _localctx.p =  NF.createCharacterConstant(_localctx.t.getText()); 
+				}
+				break;
+			case T__0:
+				{
+				setState(42);
+				match(T__0);
+				setState(43);
+				_localctx.expr = expr();
+				setState(44);
+				match(T__1);
+				 _localctx.p = _localctx.expr.p
 				}
 				break;
 			default:
@@ -267,7 +281,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(44);
+			setState(49);
 			primExpr();
 			}
 		}
@@ -298,7 +312,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(46);
+			setState(51);
 			designator();
 			}
 		}
@@ -329,7 +343,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(48);
+			setState(53);
 			unaryExpr();
 			}
 		}
@@ -360,7 +374,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(50);
+			setState(55);
 			castExpr();
 			}
 		}
@@ -391,7 +405,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(52);
+			setState(57);
 			multExpr();
 			}
 		}
@@ -422,7 +436,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(54);
+			setState(59);
 			addExpr();
 			}
 		}
@@ -453,7 +467,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(56);
+			setState(61);
 			shiftExpr();
 			}
 		}
@@ -484,7 +498,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(58);
+			setState(63);
 			relExpr();
 			}
 		}
@@ -515,7 +529,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(60);
+			setState(65);
 			eqExpr();
 			}
 		}
@@ -546,7 +560,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(62);
+			setState(67);
 			andExpr();
 			}
 		}
@@ -577,7 +591,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(64);
+			setState(69);
 			xorExpr();
 			}
 		}
@@ -608,7 +622,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(66);
+			setState(71);
 			orExpr();
 			}
 		}
@@ -624,6 +638,7 @@ public class DebugExpressionParser extends Parser {
 	}
 
 	public static class LogOrExprContext extends ParserRuleContext {
+		public DebugExpressionPair p;
 		public LogAndExprContext logAndExpr() {
 			return getRuleContext(LogAndExprContext.class,0);
 		}
@@ -639,7 +654,7 @@ public class DebugExpressionParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(68);
+			setState(73);
 			logAndExpr();
 			}
 		}
@@ -655,8 +670,17 @@ public class DebugExpressionParser extends Parser {
 	}
 
 	public static class ExprContext extends ParserRuleContext {
+		public DebugExpressionPair p;
+		public LogOrExprContext logOrExpr;
+		public ExprContext expr;
 		public LogOrExprContext logOrExpr() {
 			return getRuleContext(LogOrExprContext.class,0);
+		}
+		public List<ExprContext> expr() {
+			return getRuleContexts(ExprContext.class);
+		}
+		public ExprContext expr(int i) {
+			return getRuleContext(ExprContext.class,i);
 		}
 		public ExprContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -667,11 +691,41 @@ public class DebugExpressionParser extends Parser {
 	public final ExprContext expr() throws RecognitionException {
 		ExprContext _localctx = new ExprContext(_ctx, getState());
 		enterRule(_localctx, 30, RULE_expr);
+		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(70);
-			logOrExpr();
+			DebugExpressionPair pThen = null;
+			                                        DebugExpressionPair pElse = null;
+			                                        DebugExpressionPair prev = null
+			setState(79);
+			_errHandler.sync(this);
+			_la = _input.LA(1);
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__0) | (1L << IDENT) | (1L << NUMBER) | (1L << FLOATNUMBER) | (1L << CHARCONST))) != 0)) {
+				{
+				setState(76);
+				_localctx.logOrExpr = logOrExpr();
+				 prev = _localctx.logOrExpr.p; 
+				}
+			}
+
+			{
+			setState(81);
+			match(T__2);
+			{
+			setState(82);
+			_localctx.expr = expr();
+			pThen = _localctx.expr.p
+			}
+			setState(85);
+			match(T__3);
+			{
+			setState(86);
+			_localctx.expr = expr();
+			pElse = _localctx.expr.p
+			}
+			_localctx.p =  NF.createTernaryNode(prev, pThen, pElse);
+			}
 			}
 		}
 		catch (RecognitionException re) {
@@ -686,22 +740,27 @@ public class DebugExpressionParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\fK\4\2\t\2\4\3\t"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\20^\4\2\t\2\4\3\t"+
 		"\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t\13\4"+
 		"\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\3\2\3\2\3\3\3\3"+
-		"\3\3\3\3\3\3\3\3\3\3\3\3\5\3-\n\3\3\4\3\4\3\5\3\5\3\6\3\6\3\7\3\7\3\b"+
-		"\3\b\3\t\3\t\3\n\3\n\3\13\3\13\3\f\3\f\3\r\3\r\3\16\3\16\3\17\3\17\3\20"+
-		"\3\20\3\21\3\21\3\21\2\2\22\2\4\6\b\n\f\16\20\22\24\26\30\32\34\36 \2"+
-		"\2\2=\2\"\3\2\2\2\4,\3\2\2\2\6.\3\2\2\2\b\60\3\2\2\2\n\62\3\2\2\2\f\64"+
-		"\3\2\2\2\16\66\3\2\2\2\208\3\2\2\2\22:\3\2\2\2\24<\3\2\2\2\26>\3\2\2\2"+
-		"\30@\3\2\2\2\32B\3\2\2\2\34D\3\2\2\2\36F\3\2\2\2 H\3\2\2\2\"#\7\b\2\2"+
-		"#\3\3\2\2\2$%\7\b\2\2%-\b\3\1\2&\'\7\t\2\2\'-\b\3\1\2()\7\n\2\2)-\b\3"+
-		"\1\2*+\7\13\2\2+-\b\3\1\2,$\3\2\2\2,&\3\2\2\2,(\3\2\2\2,*\3\2\2\2-\5\3"+
-		"\2\2\2./\5\4\3\2/\7\3\2\2\2\60\61\5\6\4\2\61\t\3\2\2\2\62\63\5\b\5\2\63"+
-		"\13\3\2\2\2\64\65\5\n\6\2\65\r\3\2\2\2\66\67\5\f\7\2\67\17\3\2\2\289\5"+
-		"\16\b\29\21\3\2\2\2:;\5\20\t\2;\23\3\2\2\2<=\5\22\n\2=\25\3\2\2\2>?\5"+
-		"\24\13\2?\27\3\2\2\2@A\5\26\f\2A\31\3\2\2\2BC\5\30\r\2C\33\3\2\2\2DE\5"+
-		"\32\16\2E\35\3\2\2\2FG\5\34\17\2G\37\3\2\2\2HI\5\36\20\2I!\3\2\2\2\3,";
+		"\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3\62\n\3\3\4\3\4\3\5\3"+
+		"\5\3\6\3\6\3\7\3\7\3\b\3\b\3\t\3\t\3\n\3\n\3\13\3\13\3\f\3\f\3\r\3\r\3"+
+		"\16\3\16\3\17\3\17\3\20\3\20\3\21\3\21\3\21\3\21\5\21R\n\21\3\21\3\21"+
+		"\3\21\3\21\3\21\3\21\3\21\3\21\3\21\3\21\3\21\2\2\22\2\4\6\b\n\f\16\20"+
+		"\22\24\26\30\32\34\36 \2\2\2R\2\"\3\2\2\2\4\61\3\2\2\2\6\63\3\2\2\2\b"+
+		"\65\3\2\2\2\n\67\3\2\2\2\f9\3\2\2\2\16;\3\2\2\2\20=\3\2\2\2\22?\3\2\2"+
+		"\2\24A\3\2\2\2\26C\3\2\2\2\30E\3\2\2\2\32G\3\2\2\2\34I\3\2\2\2\36K\3\2"+
+		"\2\2 M\3\2\2\2\"#\7\f\2\2#\3\3\2\2\2$%\7\f\2\2%\62\b\3\1\2&\'\7\r\2\2"+
+		"\'\62\b\3\1\2()\7\16\2\2)\62\b\3\1\2*+\7\17\2\2+\62\b\3\1\2,-\7\3\2\2"+
+		"-.\5 \21\2./\7\4\2\2/\60\b\3\1\2\60\62\3\2\2\2\61$\3\2\2\2\61&\3\2\2\2"+
+		"\61(\3\2\2\2\61*\3\2\2\2\61,\3\2\2\2\62\5\3\2\2\2\63\64\5\4\3\2\64\7\3"+
+		"\2\2\2\65\66\5\6\4\2\66\t\3\2\2\2\678\5\b\5\28\13\3\2\2\29:\5\n\6\2:\r"+
+		"\3\2\2\2;<\5\f\7\2<\17\3\2\2\2=>\5\16\b\2>\21\3\2\2\2?@\5\20\t\2@\23\3"+
+		"\2\2\2AB\5\22\n\2B\25\3\2\2\2CD\5\24\13\2D\27\3\2\2\2EF\5\26\f\2F\31\3"+
+		"\2\2\2GH\5\30\r\2H\33\3\2\2\2IJ\5\32\16\2J\35\3\2\2\2KL\5\34\17\2L\37"+
+		"\3\2\2\2MQ\b\21\1\2NO\5\36\20\2OP\b\21\1\2PR\3\2\2\2QN\3\2\2\2QR\3\2\2"+
+		"\2RS\3\2\2\2ST\7\5\2\2TU\5 \21\2UV\b\21\1\2VW\3\2\2\2WX\7\6\2\2XY\5 \21"+
+		"\2YZ\b\21\1\2Z[\3\2\2\2[\\\b\21\1\2\\!\3\2\2\2\4\61Q";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

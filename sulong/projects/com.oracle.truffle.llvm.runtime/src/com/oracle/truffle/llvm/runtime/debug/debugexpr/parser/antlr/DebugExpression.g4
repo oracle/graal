@@ -141,6 +141,7 @@ primExpr returns [DebugExpressionPair p] :
   | t=NUMBER                                  { $p = NF.createIntegerConstant(Integer.parseInt($t.getText())); }
   | t=FLOATNUMBER                             { $p = NF.createFloatConstant(Float.parseFloat($t.getText())); }
   | t=CHARCONST                               { $p = NF.createCharacterConstant($t.getText()); }
+  | '(' expr ')'                              { $p = $expr.p}
   )
   ;
 //
@@ -158,6 +159,8 @@ primExpr returns [DebugExpressionPair p] :
 //}
 //.
 designator : primExpr;
+
+
 //
 //ActPars<out List l>									(. DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); .)
 //=
@@ -333,7 +336,8 @@ logAndExpr : orExpr;
 //
 //}
 //.
-logOrExpr : logAndExpr;
+logOrExpr returns [DebugExpressionPair p] : logAndExpr;
+
 //
 //Expr<out DebugExpressionPair p>						(. DebugExpressionPair pThen=null, pElse=null; .)
 //=
@@ -343,7 +347,17 @@ logOrExpr : logAndExpr;
 //
 //]
 //.
-expr : logOrExpr;
+expr returns [DebugExpressionPair p] :
+                                       {DebugExpressionPair pThen = null;
+                                        DebugExpressionPair pElse = null;
+                                        DebugExpressionPair prev = null}
+  (
+  logOrExpr { prev = $logOrExpr.p; }
+  )?
+  (
+   '?' (expr {pThen = $expr.p}) ':' (expr {pElse = $expr.p})   {$p = NF.createTernaryNode(prev, pThen, pElse);}
+  ) ;
+
 
 //
 //DType<out DebugExprType ty>
