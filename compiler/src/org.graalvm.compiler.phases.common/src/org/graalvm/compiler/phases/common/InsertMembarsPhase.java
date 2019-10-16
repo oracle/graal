@@ -61,6 +61,6 @@ public class InsertMembarsPhase extends Phase {
 
     @Override
     public float codeSizeIncrease() {
-        return 2f;
+        return 3f;
     }
 }
