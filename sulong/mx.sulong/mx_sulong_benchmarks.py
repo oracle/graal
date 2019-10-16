@@ -278,8 +278,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def prepare_env(self, env):
         # if hasattr(self.host_vm(), 'run_launcher'):
-        #     import mx_vm
-        #     env['CC'] = os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'jre', 'languages', 'llvm', self.toolchain_name(), 'bin', 'graalvm-{}-clang'.format(self.toolchain_name()))
+        #     import mx_sdk_vm_impl
+        #     env['CC'] = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'jre', 'languages', 'llvm', self.toolchain_name(), 'bin', 'graalvm-{}-clang'.format(self.toolchain_name()))
         # else:
         # we always use the bootstrap toolchain since the toolchain is not installed by default in a graalvm
         # change this if we can properly install components into a graalvm deployment
