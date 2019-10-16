@@ -585,7 +585,22 @@ expr returns [DebugExpressionPair p] :
 //}
 //.
 
-dType returns [DebugExprType ty] : ;
+dType returns [DebugExprType ty] :
+  {
+  DebugExprType tempTy = null;
+  }
+  (
+  baseType { tempTy = $baseType.ty; }
+  )?
+  (
+  '*'                                               { $ty = tempTy.createPointer(); }
+  | '['
+    ( t=NUMBER                                      { $ty = tempTy.createArrayType(Integer.parseInt($t.getText()));}
+    |                                               { $ty = tempTy.createArrayType(-1); }
+    )
+  ']'
+  );
+
 
 //BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 //=
@@ -632,4 +647,30 @@ dType returns [DebugExprType ty] : ;
 //"double" 											(. ty = DebugExprType.getFloatType(64);.)
 //.
 
-baseType returns [DebugExprType ty] : ;
+baseType returns [DebugExprType ty] :
+  {
+  $ty = null;
+  boolean signed = false;
+  }
+  (
+  '(' dType ')'                                                     { $ty = $dType.ty; }
+  | 'void'                                                          { $ty = DebugExprType.getVoidType(); }
+  | ( 'signed'                                                      { signed = true; }
+    | 'unsigned'                                                    { signed = false; }
+    )?
+     ( 'char'                                                       { $ty = DebugExprType.getIntType(8, signed); }
+     | 'short'                                                      { $ty = DebugExprType.getIntType(16, signed); }
+     | 'int'                                                        { $ty = DebugExprType.getIntType(32, signed); }
+     | 'long'                                                       { $ty = DebugExprType.getIntType(64, signed); }
+     )
+  | 'char'                                                          { $ty = DebugExprType.getIntType(8, false); }
+  | 'short'                                                         { $ty = DebugExprType.getIntType(16, true); }
+  | 'int'                                                           { $ty = DebugExprType.getIntType(32, true); }
+  | ( 'long'                                                        { $ty = DebugExprType.getIntType(64, true); }
+    )?
+     ( 'double'                                                     { $ty = DebugExprType.getFloatType(128); }
+     )
+  | 'float'                                                         { $ty = DebugExprType.getFloatType(32); }
+  | 'double'                                                        { $ty = DebugExprType.getFloatType(64); }
+  )
+  ;
