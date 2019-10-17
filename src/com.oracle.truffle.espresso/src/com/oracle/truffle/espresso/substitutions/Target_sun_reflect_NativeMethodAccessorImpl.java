@@ -342,10 +342,10 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         try {
             result = method.invokeDirect(receiver, adjustedArgs);
         } catch (EspressoException e) {
-            if (e.getException() == null) {
+            if (e.getExceptionObject() == null) {
                 throw EspressoError.shouldNotReachHere("no wrapped exception???");
             }
-            throw meta.throwExWithCause(meta.InvocationTargetException, e.getException());
+            throw meta.throwExWithCause(meta.InvocationTargetException, e.getExceptionObject());
         }
 
         if (reflectedMethod.getReturnKind() == JavaKind.Void) {

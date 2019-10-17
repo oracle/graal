@@ -276,7 +276,7 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (EspressoException e) {
                     setErroneous();
-                    StaticObject cause = e.getException();
+                    StaticObject cause = e.getExceptionObject();
                     if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
                         throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
                     } else {

@@ -317,7 +317,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     return m.invoke(VM.this, args);
                 } catch (EspressoException e) {
                     if (isJni) {
-                        jniEnv.getThreadLocalPendingException().set(e.getException());
+                        jniEnv.getThreadLocalPendingException().set(e.getExceptionObject());
                         return defaultValue(m.returnType());
                     }
                     throw EspressoError.shouldNotReachHere(e);
@@ -1083,10 +1083,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             result = (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
-            if (getMeta().Exception.isAssignableFrom(e.getException().getKlass()) &&
-                            !getMeta().RuntimeException.isAssignableFrom(e.getException().getKlass())) {
+            if (getMeta().Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
+                            !getMeta().RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 StaticObject wrapper = getMeta().PrivilegedActionException.allocateInstance();
-                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
+                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
                 throw new EspressoException(wrapper);
             }
             throw e;

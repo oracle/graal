@@ -23,12 +23,16 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -191,7 +195,9 @@ public final class Target_java_lang_Thread {
                         self.getKlass().vtableLookup(meta.Thread_run.getVTableIndex()).invokeDirect(self);
                         checkDeprecatedState(meta, self);
                     } catch (EspressoException uncaught) {
-                        meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
+                        Method dispatchUncaughtException = self.getKlass().lookupMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+                        assert !dispatchUncaughtException.isStatic();
+                        dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
