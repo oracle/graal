@@ -170,7 +170,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
     }
 
     /**
-     * NOTE GR-18873: this is a HotSpot-specific copy-paste implementation derived from
+     * NOTE GR-18873: this is a copy-paste implementation derived from
      * {@code jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl#findStaticFieldWithOffset}.
      */
     private static ResolvedJavaField findFieldWithOffset(long offset, JavaKind expectedEntryKind, ResolvedJavaField[] declaredFields) {
