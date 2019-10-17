@@ -30,6 +30,7 @@
 import sys
 import tarfile
 import os
+import pipes
 import tempfile
 from os.path import join
 import shutil
@@ -884,6 +885,16 @@ class ToolchainLauncherProject(mx.NativeProject):  # pylint: disable=too-many-an
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(ToolchainLauncherProject, self).getBuildEnv(replaceVar=replaceVar)
+        env['JAVACMD'] = mx.get_jdk().java
+        classpath_deps = [dep for dep in self.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
+        jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        env['JVM_ARGS'] = ' '.join(jvm_args)
+
+        toolchain = self.suite.toolchain
+        for tool in toolchain._supported_tools():
+            for exe in toolchain._tool_to_aliases(tool):
+                env['main-' + exe] = toolchain._tool_to_main(tool)
+
         env['RESULTS'] = ' '.join(self.results)
         return env
 

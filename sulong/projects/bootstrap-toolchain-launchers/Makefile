@@ -34,11 +34,10 @@ default: ${RESULTS}
 
 QUIETLY$(MX_VERBOSE)  = @
 
-MX_EXE?=mx
-SUITE_DIR?=suite/dir/not/found
-PLATFORM?=no-platform-specified
+JAVACMD?=no-java-cmd
+JVM_ARGS?=no-jvm-args
 
 bin/%: mx_launcher_template.sh
 	@mkdir -p $(dir $@)
-	$(QUIETLY) cat $< | sed "s#<mx_command>#${PLATFORM}-toolchain $(notdir $@)#" | sed "s#<mx_exe>#${MX_EXE}#" | sed "s#<suite_dir>#${SUITE_DIR}#" > $@
+	$(QUIETLY) cat $< | sed "s#<java>#${JAVACMD}#" | sed "s#<jvm_args>#${JVM_ARGS}#" | sed "s#<main_class>#${main-$(notdir $@)}#" > $@
 	@chmod +x $@

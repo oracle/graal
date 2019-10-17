@@ -29,13 +29,4 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-set -e
-
-unset DYNAMIC_IMPORTS
-unset DEFAULT_DYNAMIC_IMPORTS
-
-if [[ "$JACOCO" != "" ]]; then
-  EXTRA_MX_ARGS="--jacoco=$JACOCO --jacoco-exec-file=$suite_dir/jacoco.exec"
-fi
-
-<mx_exe> $EXTRA_MX_ARGS -p "<suite_dir>" <mx_command> "$@"
+exec <java> <jvm_args> <main_class> "$@"

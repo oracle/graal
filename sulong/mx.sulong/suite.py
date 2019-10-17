@@ -309,7 +309,7 @@ suite = {
       ],
       "javaProperties" : {
         "llvm.bin.dir" : "<path:SULONG_LLVM_ORG>/bin",
-        "llvm.home": "<sulong_home>",
+        "llvm.home": "<path:SULONG_HOME>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
@@ -324,13 +324,9 @@ suite = {
       "native": True,
       "vpath": True,
       "platformDependent": True,
-      "buildEnv" : {
-        "MX_EXE" : "<mx_exe>",
-        "SUITE_DIR" : "<path:bootstrap-toolchain-launchers>/../..",
-        "PLATFORM" : "native",
-      },
       "buildDependencies" : [
         "SULONG_LLVM_ORG",
+        "com.oracle.truffle.llvm.toolchain.launchers",
       ],
       "license" : "BSD-new",
     },
