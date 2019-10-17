@@ -763,6 +763,7 @@ public final class VMOperationControl {
         IsolateThread queueingThread;
         IsolateThread executingThread;
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public VMOperation getOperation() {
             return operation;
         }

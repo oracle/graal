@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,18 +40,20 @@ public class DeoptimizationSourcePositionDecoder {
     static final int NO_SOURCE_POSITION = -1;
     static final int NO_CALLER = 0;
 
-    @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
     public static NodeSourcePosition decode(int deoptId, CodePointer ip) {
-        CodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
-        if (info.isNull() || info.equal(CodeInfoTable.getImageCodeInfo())) {
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNull() || untetheredInfo.equal(CodeInfoTable.getImageCodeInfo())) {
             /* We only have information for runtime compiled code, not for native image code. */
             return null;
         }
-        Object tether = CodeInfoAccess.acquireTether(info);
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
+            CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
             return decode0(deoptId, info);
         } finally {
-            CodeInfoAccess.releaseTether(info, tether);
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 

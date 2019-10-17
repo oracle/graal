@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 
 /**
@@ -37,19 +42,30 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
  * frame.
  */
 public class FramePointerMapWalker implements StackFrameVisitor {
+    private final ObjectReferenceVisitor visitor;
 
-    public static FramePointerMapWalker factory(final ObjectReferenceVisitor objRefVisitor) {
-        return new FramePointerMapWalker(objRefVisitor);
-    }
-
-    @Override
-    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, visitor);
-    }
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected FramePointerMapWalker(final ObjectReferenceVisitor objRefVisitor) {
         this.visitor = objRefVisitor;
     }
 
-    private final ObjectReferenceVisitor visitor;
+    @Override
+    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        if (DeoptimizationSupport.enabled() && isRuntimeCompiledCode(codeInfo)) {
+            /*
+             * For runtime-compiled code that is currently on the stack, we need to treat all the
+             * references to Java heap objects as strong references. It is important that we really
+             * walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might decide to
+             * invalidate too much code, depending on the order in which the CodeInfo objects are
+             * visited.
+             */
+            RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, visitor);
+            RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, visitor);
+        }
+        return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, visitor);
+    }
+
+    private static boolean isRuntimeCompiledCode(CodeInfo codeInfo) {
+        return codeInfo != CodeInfoTable.getImageCodeInfo();
+    }
 }

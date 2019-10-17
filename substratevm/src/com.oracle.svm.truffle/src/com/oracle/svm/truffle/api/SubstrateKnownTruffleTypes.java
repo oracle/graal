@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.truffle.api;
 
-import java.lang.management.GarbageCollectorMXBean;
-import java.util.List;
+import java.lang.ref.Reference;
 
-public interface GC {
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
+import com.oracle.svm.core.heap.DiscoverableReference;
 
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-    /*
-     * Registered collection watchers.
-     */
+public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
-    void registerCollectionWatcher(CollectionWatcher watcher);
+    public final ResolvedJavaField discoverableReferenceFieldRawReferent = findField(lookupType(DiscoverableReference.class), "rawReferent");
+    public final ResolvedJavaField referenceFieldBootImageStrongValue = findField(lookupType(Reference.class), "bootImageStrongValue");
+    public final ResolvedJavaField referenceFieldFeeble = findField(lookupType(Reference.class), "feeble");
 
-    void unregisterCollectionWatcher(CollectionWatcher watcher);
-
-    /** Get the list of GarbageCollectorMXBeans for this collector. */
-    List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
+    public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
+        super(metaAccess);
+    }
 }

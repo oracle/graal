@@ -62,6 +62,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
@@ -262,7 +263,9 @@ public final class Deoptimizer {
      */
     @NeverInline("deoptimize must have a separate stack frame")
     public static void deoptimizeAll() {
-        deoptimizeInRange((CodePointer) WordFactory.zero(), (CodePointer) WordFactory.zero(), true);
+        JavaVMOperation.enqueueBlockingSafepoint("Deoptimizer.deoptimizeInRange", () -> {
+            deoptimizeInRange((CodePointer) WordFactory.zero(), (CodePointer) WordFactory.zero(), true);
+        });
     }
 
     /**
@@ -273,10 +276,9 @@ public final class Deoptimizer {
      */
     @NeverInline("deoptimize must have a separate stack frame")
     public static void deoptimizeInRange(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
+        VMOperation.guaranteeInProgressAtSafepoint("Deoptimization requires a safepoint.");
         /* Captures "fromIp", "toIp", and "deoptAll" for the VMOperation. */
-        JavaVMOperation.enqueueBlockingSafepoint("Deoptimizer.deoptimizeInRange", () -> {
-            deoptimizeInRangeOperation(fromIp, toIp, deoptAll);
-        });
+        deoptimizeInRangeOperation(fromIp, toIp, deoptAll);
     }
 
     /** Deoptimize a specific method on all thread stacks. */
@@ -286,9 +288,11 @@ public final class Deoptimizer {
     private static void deoptimizeInRangeOperation(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         VMOperation.guaranteeInProgress("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
-        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
+
+        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         JavaStackWalker.walkCurrentThread(sp, currentThreadDeoptVisitor);
+
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
@@ -337,7 +341,27 @@ public final class Deoptimizer {
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        CodeInfo info = CodeInfoTable.lookupCodeInfo(returnAddress);
+        deoptimizeFrame(sourceSp, ignoreNonDeoptimizable, speculation, currentThread, returnAddress);
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    private static void deoptimizeFrame(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread, CodePointer returnAddress) {
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(returnAddress);
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try {
+            CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+            deoptimize(sourceSp, ignoreNonDeoptimizable, speculation, currentThread, returnAddress, info);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+    }
+
+    @Uninterruptible(reason = "Pass the now protected CodeInfo object to interruptible code.", calleeMustBe = false)
+    private static void deoptimize(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread, CodePointer returnAddress, CodeInfo info) {
+        deoptimize0(sourceSp, ignoreNonDeoptimizable, speculation, currentThread, returnAddress, info);
+    }
+
+    private static void deoptimize0(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread, CodePointer returnAddress, CodeInfo info) {
         CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, returnAddress);
         Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable, currentThread);

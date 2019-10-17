@@ -315,7 +315,12 @@ public class SnippetRuntime {
         private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
 
         public void unwindException(Pointer callerSP) {
-            JavaStackWalker.walkCurrentThread(callerSP, stackFrameVisitor);
+            walkInline(callerSP);
+        }
+
+        @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
+        private static void walkInline(Pointer callerSP) {
+            JavaStackWalker.walkCurrentThreadInline(callerSP, stackFrameVisitor);
         }
     }
 

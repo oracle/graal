@@ -39,8 +39,8 @@ public interface StackFrameVisitor {
      * Called for each frame that is visited. Note that unless this method is annotated with
      * {@link Uninterruptible} or executing within a safepoint, the frame on the stack could be
      * deoptimized at any safepoint check. Nevertheless, the passed codeInfo remains valid for
-     * accessing information about the code at the (possibly outdated) instruction pointer,
-     * {@linkplain CodeInfoAccess#acquireTether(CodeInfo) which is ensured by the caller}.
+     * accessing information about the code at the (possibly outdated) instruction pointer (this is
+     * ensured by the caller).
      *
      * @param sp The stack pointer of the frame being visited.
      * @param ip The instruction pointer of the frame being visited.

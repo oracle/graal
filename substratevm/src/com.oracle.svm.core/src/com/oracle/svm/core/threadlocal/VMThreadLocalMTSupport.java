@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.threadlocal;
 
-/**
- * A generic walker which can be registered in the GC. Used to support regions of object references
- * which are not on the regular heap or stack.
- */
-public abstract class ObjectReferenceWalker extends AllocationFreeList.Element<ObjectReferenceWalker> {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    /** Constructor for subclasses. */
-    protected ObjectReferenceWalker() {
-        super();
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+
+public class VMThreadLocalMTSupport {
+    @UnknownPrimitiveField public int vmThreadSize = -1;
+    @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
+    @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMThreadLocalMTSupport() {
     }
-
-    /** Walk over all object references and use referenceVisitor to visit each reference. */
-    public abstract boolean walk(ObjectReferenceVisitor referenceVisitor);
-
-    /** For debugging. */
-    public String getWalkerName() {
-        return getClass().getName();
-    }
-
 }
