@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
@@ -57,6 +59,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.ReferenceWrapper;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -187,10 +190,21 @@ public final class EspressoContext {
         assert !this.initialized;
         spawnVM();
         this.initialized = true;
+        rqThread.start();
     }
+
+    public Thread rqThread;
 
     public Meta getMeta() {
         return meta;
+    }
+
+    // TODO(peterssen): Create one queue per ref type (weak/soft/phantom/final/cleaner)
+    public final ReferenceQueue<ReferenceWrapper> REFERENCE_QUEUE = new ReferenceQueue<>();
+
+    @TruffleBoundary
+    static void logHostPoll(StaticObject pepe) {
+        System.out.println("    Host poll: " + pepe);
     }
 
     private void spawnVM() {
@@ -207,6 +221,47 @@ public final class EspressoContext {
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
         initializeKnownClass(Type.Object);
+
+        // Initialize ReferenceQueues
+        rqThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()) {
+                    // Reference<StaticObject> r = (Reference<StaticObject> )
+                    // WEAK_REFERENCE_QUEUE.remove();
+                    // meta.Reference_enqueue.invokeDirect(r);
+                    ReferenceWrapper r, prev, head = null;
+                    prev = null; // (EspressoWeakReference) WEAK_REFERENCE_QUEUE.poll();
+                    StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
+
+                    try {
+                        prev = (ReferenceWrapper) REFERENCE_QUEUE.remove();
+                        System.out.println("New RQ wave: " + prev.getGuestReference());
+                        InterpreterToVM.monitorEnter(lock);
+                        setNextAndMaybeClear(prev);
+                        head = prev;
+                        while ((r = (ReferenceWrapper) REFERENCE_QUEUE.poll()) != null) {
+                            logHostPoll(r.getGuestReference());
+                            meta.Reference_discovered.set(prev.getGuestReference(), r.getGuestReference());
+                            setNextAndMaybeClear(r);
+                            prev = r;
+                        }
+
+                        assert head != null;
+                        meta.Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                        StaticObject obj = meta.Reference_pending.getAndSetObject(meta.Reference.getStatics(), head.getGuestReference());
+                        meta.Reference_discovered.set(prev.getGuestReference(), obj);
+
+                        getVM().JVM_MonitorNotify(lock);
+                    } catch (InterruptedException e) {
+                        // ignore
+                        return;
+                    } finally {
+                        InterpreterToVM.monitorExit(lock);
+                    }
+                }
+            }
+        });
 
         for (Symbol<Type> type : Arrays.asList(
                         Type.String,
@@ -259,6 +314,16 @@ public final class EspressoContext {
      * The order in which methods are called and fields are set here is important, it mimics
      * HotSpot's implementation.
      */
+    private void setNextAndMaybeClear(ReferenceWrapper wrapper) {
+        StaticObject ref = wrapper.getGuestReference();
+        // Cleaner references extends PhantomReference but are cleared.
+        // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
+        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().Cleaner)) {
+            wrapper.clear();
+        }
+        meta.Reference_next.set(ref, ref);
+    }
+
     private void createMainThread() {
 
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();

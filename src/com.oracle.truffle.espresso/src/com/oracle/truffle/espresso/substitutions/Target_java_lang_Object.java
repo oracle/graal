@@ -23,6 +23,14 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.ref.WeakReference;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -39,9 +47,18 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
+    @TruffleBoundary
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@Host(Object.class) StaticObject self) {
-        /* nop */
+        assert self.getKlass() instanceof ObjectKlass;
+        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
+            registerFinalizer(self);
+        }
+    }
+
+    @TruffleBoundary
+    private static void registerFinalizer(@Host(Object.class) StaticObject self) {
+        self.getKlass().getMeta().Finalizer_register.invokeDirect(null, self);
     }
 }

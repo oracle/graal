@@ -768,6 +768,15 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    public final boolean hasFinalizer() {
+        // TODO(peterssen): Use class flags.
+        Method finalize = lookupMethod(Name.finalize, Signature._void);
+        assert finalize != null;
+        return !finalize.getDeclaringKlass().isJavaLangObject();
+    }
+
+    // Verification data
+
     // Verification data
     @CompilationFinal //
     private volatile int verificationStatus = UNVERIFIED;
