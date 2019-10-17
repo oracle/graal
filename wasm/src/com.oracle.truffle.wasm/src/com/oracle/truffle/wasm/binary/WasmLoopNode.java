@@ -49,6 +49,6 @@ public class WasmLoopNode extends WasmNode {
 
     @Override
     public byte returnTypeId() {
-        return 0;
+        return ((WasmBlockNode) this.loopNode.getRepeatingNode()).returnTypeId();
     }
 }
