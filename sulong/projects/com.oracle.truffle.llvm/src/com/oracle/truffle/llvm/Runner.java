@@ -1087,14 +1087,12 @@ final class Runner {
         for (LLVMParserResult parserResult : sulongLibraries) {
             for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
                 if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
-                    if (symbol instanceof LLVMAlias) {
-                        throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
-                    } else if (symbol instanceof LLVMFunctionDescriptor) {
-                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
-                    } else {
-                        throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
-                    }
+                    /*
+                     * If `symbol` is an alias, `symbol.asFunction()` will follow the alias to the
+                     * real function. We intrinsify that function instead.
+                     */
+                    LLVMFunctionDescriptor function = symbol.asFunction();
+                    function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
                 }
             }
         }
