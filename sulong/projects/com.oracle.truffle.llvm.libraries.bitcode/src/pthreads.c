@@ -56,9 +56,13 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
   return ret;
 }
 
+#if !defined(pthread_equal)
+// some libcs have pthread_equal as a macro that simply does ==
+// others have it as an actual function
 int pthread_equal(pthread_t thread1, pthread_t thread2) {
   return thread1 == thread2;
 }
+#endif
 
 void pthread_exit(void *); // intrinsic
 
