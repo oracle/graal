@@ -115,7 +115,7 @@ public final class GraalVMLocator extends TruffleLocator
             setGraalVMProperties(homeFinder);
             if (!TruffleOptions.AOT) {
                 final List<URL> classPath = collectClassPath(homeFinder);
-                loader = new GuestLangToolsLoader(classPath.toArray(new URL[0]), JDKServices.getBaseClassLoader(GraalVMLocator.class));
+                loader = new GuestLangToolsLoader(classPath.toArray(new URL[0]), JDKServices.getLocatorBaseClassLoader(GraalVMLocator.class));
             }
         }
         return loader;
