@@ -472,11 +472,6 @@ suite = {
       },
       "license" : "BSD-new",
     },
-    "sulong-doc": {
-      "class": "SulongDocsProject",
-      "outputDir": "",
-      "prefix": "",
-    },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
       "subDir" : "tests",
@@ -1093,15 +1088,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testDistribution" : True,
-    },
-    "SULONG_DOC": {
-      "native": True, # Not Java
-      "relpath": True,
-      "dependencies": [
-        "sulong-doc",
-      ],
-      "description": "Sulong documentation, license",
-      "license" : "BSD-new",
     },
     "SULONG_LEGACY" : {
       "native" : True,
