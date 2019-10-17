@@ -936,12 +936,16 @@ class StdoutUnstripping:
 
 _graaljdk_override = None
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+def get_graaljdk():
     if _graaljdk_override is None:
         graaljdk_dir, _ = _update_graaljdk(jdk)
         graaljdk = mx.JDKConfig(graaljdk_dir)
     else:
         graaljdk = _graaljdk_override
+    return graaljdk
+
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+    graaljdk = get_graaljdk()
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     add_exports = join(graaljdk.home, '.add_exports')
     if exists(add_exports):
@@ -963,6 +967,14 @@ class GraalJVMCIJDKConfig(mx.JDKConfig):
 
     def run_java(self, args, **kwArgs):
         return run_java(args, **kwArgs)
+
+    @property
+    def home(self):
+        return get_graaljdk().home
+
+    @home.setter
+    def home(self, home):
+        jdk.home = home # forward setting to the backing jdk
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
