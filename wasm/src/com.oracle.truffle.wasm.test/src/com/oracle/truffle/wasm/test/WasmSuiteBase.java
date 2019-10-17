@@ -36,15 +36,18 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.wasm.binary.WasmIfNode;
 import com.oracle.truffle.wasm.utils.WasmInitialization;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -54,13 +57,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 import com.oracle.truffle.wasm.utils.WasmBinaryTools;
@@ -79,6 +75,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
     private static final int STATUS_ICON_WIDTH = 2;
     private static final int STATUS_LABEL_WIDTH = 11;
+    private static final int DEFAULT_INTERPRETER_ITERATIONS = 1;
+    private static final int DEFAULT_SYNC_NOINLINE_ITERATIONS = 3;
+    private static final int DEFAULT_SYNC_INLINE_ITERATIONS = 3;
     private static final int DEFAULT_ASYNC_ITERATIONS = 100000;
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
@@ -94,12 +93,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         contextBuilder.option("engine.BackgroundCompilation", "false");
         contextBuilder.option("engine.CompileImmediately", "true");
         contextBuilder.option("engine.Inlining", "false");
-        return contextBuilder.build();
-    }
-
-    private Context getInterpretedWithInline(Context.Builder contextBuilder) {
-        contextBuilder.option("engine.Compilation", "false");
-        contextBuilder.option("engine.Inlining", "true");
         return contextBuilder.build();
     }
 
@@ -120,14 +113,17 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+        boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
+
         final PrintStream oldOut = System.out;
         resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
-
         context.eval(source);
 
         // The sequence of WebAssembly functions to execute.
-        // First, we execute the main function (exported as "_main").
-        // Then, we execute a special function, which resets the globals to their initial values.
+        // Run custom initialization.
+        // Execute the main function (exported as "_main").
+        // Then, optionally save memory and globals, and compare them.
+        // Execute a special function, which resets memory and globals to their default values.
         Value mainFunction = context.getBindings("wasm").getMember("_main");
         Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
         Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
@@ -138,6 +134,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         resetStatus(oldOut, phaseIcon, phaseLabel);
         ByteArrayOutputStream capturedStdout = null;
         Object firstIterationContextState = null;
+
         for (int i = 0; i != iterations; ++i) {
             try {
                 capturedStdout = new ByteArrayOutputStream();
@@ -162,7 +159,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 }
 
                 // Reset context state.
-                boolean zeroMemory = iterationNeedsStateCheck(i + 1);
+                boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
                 resetContext.execute(zeroMemory);
 
                 validateResult(testCase.data.resultValidator, result, capturedStdout);
@@ -177,7 +174,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 System.setOut(oldOut);
             }
         }
-        assert capturedStdout != null;
 
         return result;
     }
@@ -222,27 +218,27 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Context context;
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
+            int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
             context = getInterpretedNoInline(contextBuilder);
-            runInContext(testCase, context, source, 1, PHASE_INTERPRETER_ICON, "interpreter");
+            runInContext(testCase, context, source, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
-
-            // Run in interpreted mode, with inlining turned on, to ensure profiles are populated.
-            context = getInterpretedWithInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_INTERPRETER_ICON, "interpreter");
+            runInContext(testCase, context, source, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, 3, PHASE_SYNC_INLINE_ICON, "sync,inl");
+            runInContext(testCase, context, source, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
+            int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, DEFAULT_ASYNC_ITERATIONS, PHASE_ASYNC_ICON, "async,multi");
+            runInContext(testCase, context, source, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
         } catch (PolyglotException e) {
@@ -349,7 +345,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             if (process.waitFor() != 0) {
                 return -1;
             }
-            final int width = Integer.parseInt(output.split(" ")[0]);
+            final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -396,7 +392,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Object mainContent = WasmResource.getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
             String resultContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
             String initContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
+            String optsContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.opts", testBundle, testName), false);
             WasmInitialization initializer = WasmInitialization.create(initContent);
+            Properties options = testOptions(optsContent);
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);
             String resultType = resultTypeValue[0];
@@ -426,9 +424,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     Assert.fail(String.format("Unknown type in result specification: %s", resultType));
             }
             if (mainContent instanceof String) {
-                collectedCases.add(testCase(testName, testData, (String) mainContent, initializer));
+                collectedCases.add(testCase(testName, testData, (String) mainContent, initializer, options));
             } else if (mainContent instanceof byte[]) {
-                collectedCases.add(testCase(testName, testData, (byte[]) mainContent, initializer));
+                collectedCases.add(testCase(testName, testData, (byte[]) mainContent, initializer, options));
             } else {
                 Assert.fail("Unknown content type: " + mainContent.getClass());
             }
@@ -442,15 +440,15 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program) {
-        return new WasmStringTestCase(name, data, program, null);
+        return new WasmStringTestCase(name, data, program, null, new Properties());
     }
 
-    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer) {
-        return new WasmStringTestCase(name, data, program, initializer);
+    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer, Properties options) {
+        return new WasmStringTestCase(name, data, program, initializer, options);
     }
 
-    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer) {
-        return new WasmBinaryTestCase(name, data, binary, initializer);
+    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer, Properties options) {
+        return new WasmBinaryTestCase(name, data, binary, initializer, options);
     }
 
     protected static WasmTestCaseData expectedStdout(String expectedOutput) {
@@ -473,15 +471,32 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestCaseData(expectedErrorMessage);
     }
 
+    protected Properties testOptions(String optsContent) {
+        Properties options = new Properties();
+        if (optsContent == null) {
+            return options;
+        }
+
+        try {
+            options.load(new StringReader(optsContent));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return options;
+    }
+
     protected static abstract class WasmTestCase {
         private final String name;
         private final WasmTestCaseData data;
         private final WasmInitialization initialization;
+        private final Properties options;
 
-        WasmTestCase(String name, WasmTestCaseData data, WasmInitialization initialization) {
+        WasmTestCase(String name, WasmTestCaseData data, WasmInitialization initialization, Properties options) {
             this.name = name;
             this.data = data;
             this.initialization = initialization;
+            this.options = options;
         }
 
         public abstract byte[] createBinary() throws IOException, InterruptedException;
@@ -489,13 +504,17 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         public WasmInitialization initialization() {
             return initialization;
         }
+
+        public Properties options() {
+            return options;
+        }
     }
 
     protected static class WasmStringTestCase extends WasmTestCase {
         private String program;
 
-        WasmStringTestCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer) {
-            super(name, data, initializer);
+        WasmStringTestCase(String name, WasmTestCaseData data, String program, WasmInitialization initializer, Properties options) {
+            super(name, data, initializer, options);
             this.program = program;
         }
 
@@ -508,8 +527,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     protected static class WasmBinaryTestCase extends WasmTestCase {
         private final byte[] binary;
 
-        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer) {
-            super(name, data, initializer);
+        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary, WasmInitialization initializer, Properties options) {
+            super(name, data, initializer, options);
             this.binary = binary;
         }
 

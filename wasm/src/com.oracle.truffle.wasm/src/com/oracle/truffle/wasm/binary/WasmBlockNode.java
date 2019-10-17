@@ -225,13 +225,12 @@ import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class WasmBlockNode extends WasmNode implements RepeatingNode {
     private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
 
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
+    @CompilationFinal private final byte continuationTypeId;
     @CompilationFinal private final int initialStackPointer;
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
@@ -241,11 +240,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Children WasmNode[] nestedControlTable;
     @Children Node[] callNodeTable;
 
-    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer,
+    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
                          int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset, int initialBranchTableOffset) {
         super(wasmModule, codeEntry, -1, -1, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
+        this.continuationTypeId = continuationTypeId;
         this.initialStackPointer = initialStackPointer;
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
@@ -2315,6 +2315,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public byte returnTypeId() {
         return returnTypeId;
+    }
+
+    public int continuationTypeLength() {
+        return typeLength(continuationTypeId);
     }
 
 }
