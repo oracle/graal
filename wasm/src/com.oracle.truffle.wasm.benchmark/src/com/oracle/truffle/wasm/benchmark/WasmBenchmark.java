@@ -39,9 +39,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.wasm.utils.SystemProperties;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -135,12 +137,14 @@ public abstract class WasmBenchmark {
 
         Object mainContent = WasmResource.getResourceAsTest(String.format("/bench/%s", wantedBenchmarkName), true);
         String initContent = WasmResource.getResourceAsString(String.format("/bench/%s.init", wantedBenchmarkName), false);
+        String optsContent = WasmResource.getResourceAsString(String.format("/bench/%s.opts", wantedBenchmarkName), false);
         WasmInitialization initializer = WasmInitialization.create(initContent);
+        Properties options = SystemProperties.createFromOptions(optsContent);
 
         if (mainContent instanceof String) {
-            return benchCase(wantedBenchmarkName, (String) mainContent, initializer);
+            return benchCase(wantedBenchmarkName, (String) mainContent, initializer, options);
         } else if (mainContent instanceof byte[]) {
-            return benchCase(wantedBenchmarkName, (byte[]) mainContent, initializer);
+            return benchCase(wantedBenchmarkName, (byte[]) mainContent, initializer, options);
         } else {
             Assert.fail("Unknown content type: " + mainContent.getClass());
         }
@@ -148,21 +152,23 @@ public abstract class WasmBenchmark {
         return null;
     }
 
-    private static WasmStringBenchCase benchCase(String name, String program, WasmInitialization initialization) {
-        return new WasmStringBenchCase(name, program, initialization);
+    private static WasmStringBenchCase benchCase(String name, String program, WasmInitialization initialization, Properties options) {
+        return new WasmStringBenchCase(name, program, initialization, options);
     }
 
-    private static WasmBinaryBenchCase benchCase(String name, byte[] program, WasmInitialization initialization) {
-        return new WasmBinaryBenchCase(name, program, initialization);
+    private static WasmBinaryBenchCase benchCase(String name, byte[] program, WasmInitialization initialization, Properties options) {
+        return new WasmBinaryBenchCase(name, program, initialization, options);
     }
 
     private abstract static class WasmBenchCase {
         private final String name;
         private final WasmInitialization initialization;
+        private final Properties options;
 
-        WasmBenchCase(String name, WasmInitialization initialization) {
+        WasmBenchCase(String name, WasmInitialization initialization, Properties options) {
             this.name = name;
             this.initialization = initialization;
+            this.options = options;
         }
 
         public abstract byte[] createBinary() throws IOException, InterruptedException;
@@ -175,8 +181,8 @@ public abstract class WasmBenchmark {
     private static class WasmStringBenchCase extends WasmBenchCase {
         private final String program;
 
-        WasmStringBenchCase(String name, String program, WasmInitialization initialization) {
-            super(name, initialization);
+        WasmStringBenchCase(String name, String program, WasmInitialization initialization, Properties options) {
+            super(name, initialization, options);
             this.program = program;
         }
 
@@ -189,8 +195,8 @@ public abstract class WasmBenchmark {
     private static class WasmBinaryBenchCase extends WasmBenchCase {
         private final byte[] binary;
 
-        WasmBinaryBenchCase(String name, byte[] binary, WasmInitialization initialization) {
-            super(name, initialization);
+        WasmBinaryBenchCase(String name, byte[] binary, WasmInitialization initialization, Properties options) {
+            super(name, initialization, options);
             this.binary = binary;
         }
 
