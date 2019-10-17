@@ -26,7 +26,7 @@ package com.oracle.graalvm.locator;
 
 class JDKServices {
 
-    static ClassLoader getLocatorBaseClassLoader(@SuppressWarnings("unused") Class<?> c) {
+    static ClassLoader getLocatorBaseClassLoader(Class<?> c) {
         return c.getClassLoader();
     }
 
