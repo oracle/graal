@@ -48,7 +48,7 @@ public class KillMemoryNode extends FixedWithNextNode implements MemoryCheckpoin
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return killedIdentity;
     }
 

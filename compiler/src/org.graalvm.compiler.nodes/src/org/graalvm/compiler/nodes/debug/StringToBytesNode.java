@@ -66,7 +66,7 @@ public final class StringToBytesNode extends FixedWithNextNode implements Lowera
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
     }
 }

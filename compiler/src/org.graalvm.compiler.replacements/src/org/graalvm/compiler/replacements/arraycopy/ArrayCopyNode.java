@@ -57,7 +57,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         if (!forceAnyLocation && elementKind == null) {
             elementKind = ArrayCopySnippets.Templates.selectComponentKind(this);
         }

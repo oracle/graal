@@ -93,4 +93,9 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
     public Stamp getAccessStamp() {
         return expectedValue.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)).unrestricted();
     }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
+    }
 }

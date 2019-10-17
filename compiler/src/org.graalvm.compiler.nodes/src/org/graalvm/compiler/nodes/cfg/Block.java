@@ -260,10 +260,10 @@ public final class Block extends AbstractBlockBase<Block> {
         LocationSet result = new LocationSet();
         for (FixedNode node : this.getNodes()) {
             if (node instanceof MemoryCheckpoint.Single) {
-                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getKilledLocationIdentity();
                 result.add(identity);
             } else if (node instanceof MemoryCheckpoint.Multi) {
-                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getKilledLocationIdentities()) {
                     result.add(identity);
                 }
             }

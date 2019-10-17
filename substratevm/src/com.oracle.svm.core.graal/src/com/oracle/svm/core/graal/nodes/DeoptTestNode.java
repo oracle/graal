@@ -81,7 +81,7 @@ public final class DeoptTestNode extends FixedWithNextNode implements Lowerable,
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

@@ -82,7 +82,7 @@ public final class AMD64StringLatin1InflateNode extends FixedWithNextNode
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
+    public LocationIdentity[] getKilledLocationIdentities() {
         // Model write access via 'dst' using:
         return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(writeKind)};
     }

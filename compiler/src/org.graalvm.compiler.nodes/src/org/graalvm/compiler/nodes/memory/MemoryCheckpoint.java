@@ -44,8 +44,7 @@ public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
          *
          * @return the identity of the location killed by this node.
          */
-        LocationIdentity getLocationIdentity();
-
+        LocationIdentity getKilledLocationIdentity();
     }
 
     interface Multi extends MemoryCheckpoint {
@@ -57,7 +56,7 @@ public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
          *
          * @return the identities of all locations killed by this node.
          */
-        LocationIdentity[] getLocationIdentities();
+        LocationIdentity[] getKilledLocationIdentities();
 
     }
 

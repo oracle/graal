@@ -121,7 +121,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locks.isEmpty() ? LocationIdentity.init() : LocationIdentity.any();
     }
 

@@ -162,12 +162,12 @@ public class VarHandleTest extends GraalCompilerTest {
                 startNodes++;
             } else if (n instanceof MemoryCheckpoint.Single) {
                 MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
-                if (single.getLocationIdentity().isAny()) {
+                if (single.getKilledLocationIdentity().isAny()) {
                     anyKillCount++;
                 }
             } else if (n instanceof MemoryCheckpoint.Multi) {
                 MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;
-                for (LocationIdentity loc : multi.getLocationIdentities()) {
+                for (LocationIdentity loc : multi.getKilledLocationIdentities()) {
                     if (loc.isAny()) {
                         anyKillCount++;
                         break;

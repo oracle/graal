@@ -58,7 +58,7 @@ public final class KillingBeginNode extends AbstractBeginNode implements MemoryC
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
     }
 }

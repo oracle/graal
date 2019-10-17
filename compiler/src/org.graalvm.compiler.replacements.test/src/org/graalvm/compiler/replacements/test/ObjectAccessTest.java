@@ -130,7 +130,7 @@ public class ObjectAccessTest extends SnippetsTest {
         Assert.assertEquals(graph.getParameter(0), address.getBase());
         Assert.assertEquals(BytecodeFrame.AFTER_BCI, write.stateAfter().bci);
 
-        Assert.assertEquals(locationIdentity, write.getLocationIdentity());
+        Assert.assertEquals(locationIdentity, write.getKilledLocationIdentity());
 
         if (indexConvert) {
             SignExtendNode convert = (SignExtendNode) address.getOffset();

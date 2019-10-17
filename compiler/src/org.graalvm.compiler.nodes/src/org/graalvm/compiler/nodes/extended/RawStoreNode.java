@@ -145,4 +145,9 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
     public FrameState getState() {
         return stateAfter;
     }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
+    }
 }
