@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.wasm.binary.WasmIfNode;
+import com.oracle.truffle.wasm.utils.SystemProperties;
 import com.oracle.truffle.wasm.utils.WasmInitialization;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -394,7 +395,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             String initContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
             String optsContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.opts", testBundle, testName), false);
             WasmInitialization initializer = WasmInitialization.create(initContent);
-            Properties options = testOptions(optsContent);
+            Properties options = SystemProperties.createFromOptions(optsContent);
 
             String[] resultTypeValue = resultContent.split("\\s+", 2);
             String resultType = resultTypeValue[0];
@@ -469,21 +470,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     protected static WasmTestCaseData expectedThrows(String expectedErrorMessage) {
         return new WasmTestCaseData(expectedErrorMessage);
-    }
-
-    protected Properties testOptions(String optsContent) {
-        Properties options = new Properties();
-        if (optsContent == null) {
-            return options;
-        }
-
-        try {
-            options.load(new StringReader(optsContent));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return options;
     }
 
     protected static abstract class WasmTestCase {

@@ -29,7 +29,26 @@
  */
 package com.oracle.truffle.wasm.utils;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Properties;
+
 public class SystemProperties {
     public static final String WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME = "wasmtest.watToWasmExecutable";
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty(WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME);
+
+    public static Properties createFromOptions(String optsContent) {
+        Properties options = new Properties();
+        if (optsContent == null) {
+            return options;
+        }
+
+        try {
+            options.load(new StringReader(optsContent));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return options;
+    }
 }
