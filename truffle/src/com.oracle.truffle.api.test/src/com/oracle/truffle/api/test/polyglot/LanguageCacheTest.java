@@ -81,7 +81,7 @@ public class LanguageCacheTest {
             final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, LanguageCacheTest.class.getClassLoader());
             final Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", List.class);
             createLanguages.setAccessible(true);
-            return (Map<String, Object>) createLanguages.invoke(null, Arrays.asList(loader));
+            return (Map<String, Object>) createLanguages.invoke(null, Arrays.asList(LanguageCacheTest.class.getClassLoader(), loader));
         } catch (InvocationTargetException ite) {
             throw ite.getCause();
         } catch (ReflectiveOperationException re) {
