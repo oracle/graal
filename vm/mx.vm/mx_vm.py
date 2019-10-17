@@ -1771,7 +1771,20 @@ x-GraalVM-Polyglot-Part: {polyglot}
             polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
                      and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
         )
-
+        dependencies = set()
+        # `known_allowed_dependencies` is a workaround for GR-18947
+        known_allowed_dependencies = {"llvm-toolchain"}
+        for c in main_component.direct_dependencies():
+            d = get_installable_distribution(c.name, fatalIfMissing=False)
+            if d:
+                if c.installable_id in known_allowed_dependencies:
+                    dependencies.add(c.installable_id)
+                else:
+                    mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
+        dependencies = sorted(dependencies)
+        if dependencies:
+            _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
+        print(_manifest_str)
         if isinstance(main_component, mx_sdk.GraalVmLanguage):
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
 """.format(workdir=join('jre', 'languages', main_component.dir_name))
@@ -1962,7 +1975,7 @@ def get_final_graalvm_distribution():
     return _final_graalvm_distribution
 
 
-def get_installable_distribution(name):
+def get_installable_distribution(name, fatalIfMissing=True):
     """
     :type name: str Component name
     :rtype: GraalVmInstallableComponent
@@ -1972,9 +1985,11 @@ def get_installable_distribution(name):
         for installable in installables:
             if installable.main_component.name == name:
                 return installable
-        mx.abort("Cannot find an installable with component name '{}'.\nAvailable installables:\n{}".format(name, '\n'.join((('- ' + s.main_component.name for s in installables)))))
-    else:
-        mx.abort('No installables available. Did you forget to dynamically import a component?')
+        if fatalIfMissing:
+            raise mx.abort("Cannot find an installable with component name '{}'.\nAvailable installables:\n{}".format(name, '\n'.join((('- ' + s.main_component.name for s in installables)))))
+    elif fatalIfMissing:
+        raise mx.abort('No installables available. Did you forget to dynamically import a component?')
+    return None
 
 
 def get_standalone_distribution(comp_dir_name):
@@ -1987,9 +2002,9 @@ def get_standalone_distribution(comp_dir_name):
         for standalone in standalones:
             if standalone.main_comp_dir_name == comp_dir_name:
                 return standalone
-        mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_dir_name for s in standalones)))))
+        raise mx.abort("Cannot find a standalone with dir_name '{}'.\nAvailable standalones:\n{}".format(comp_dir_name, '\n'.join((('- ' + s.main_comp_dir_name for s in standalones)))))
     else:
-        mx.abort('No standalones available. Did you forget to dynamically import a component?')
+        raise mx.abort('No standalones available. Did you forget to dynamically import a component?')
 
 
 def has_svm_polyglot_lib():
@@ -2424,7 +2439,7 @@ def graalvm_show(args):
         mx.log("No standalone")
 
 
-def  _get_dists(dist_class):
+def _get_dists(dist_class):
     """
     :type dist_class: mx.Distribution
     :rtype: list[mx.Distribution]
