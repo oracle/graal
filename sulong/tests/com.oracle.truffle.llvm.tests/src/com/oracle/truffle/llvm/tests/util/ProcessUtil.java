@@ -198,8 +198,9 @@ public class ProcessUtil {
         if (command == null) {
             throw new IllegalArgumentException("command is null!");
         }
+        Process process = null;
         try {
-            Process process = Runtime.getRuntime().exec(command);
+            process = Runtime.getRuntime().exec(command);
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (!success) {
                 throw new AssertionError("timeout running command: " + command);
@@ -207,10 +208,13 @@ public class ProcessUtil {
             String readError = readStreamAndClose(process.getErrorStream());
             String inputStream = readStreamAndClose(process.getInputStream());
             int llvmResult = process.exitValue();
-            process.destroyForcibly();
             return new ProcessResult(command, llvmResult, readError, inputStream);
         } catch (Exception e) {
             throw new RuntimeException(command + " ", e);
+        } finally {
+            if (process != null) {
+                process.destroyForcibly();
+            }
         }
     }
 
