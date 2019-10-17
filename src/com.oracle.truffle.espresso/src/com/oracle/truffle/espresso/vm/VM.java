@@ -1040,7 +1040,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     @Host(AccessControlContext.class) StaticObject context,
                     boolean wrapException) {
         if (StaticObject.isNull(action)) {
-            getMeta().throwEx(NullPointerException.class);
+            throw getMeta().throwEx(NullPointerException.class);
         }
         FrameInstance callerFrame = getCallerFrame(0);
         assert callerFrame != null : "No caller ?";
@@ -1108,11 +1108,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return null;
             }
         });
+
         if (domains.isEmpty()) {
             if (isPrivileged[0] && StaticObject.isNull(context)) {
                 return StaticObject.NULL;
             }
+            return createACC(StaticObject.NULL, isPrivileged[0], context == null ? StaticObject.NULL : context);
         }
+
         StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
         return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
     }

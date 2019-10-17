@@ -475,6 +475,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);
         public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.Thread);
+        public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.ThreadGroup, Type.String);
 
         public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
 
