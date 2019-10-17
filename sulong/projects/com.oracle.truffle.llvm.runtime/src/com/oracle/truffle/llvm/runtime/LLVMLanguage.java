@@ -76,6 +76,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      * should be passed directly using binary sources instead.
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
+    public static final String LLVM_PRINT_TOOLCHAIN_PATH_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
     static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
     static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
@@ -164,10 +165,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             activeConfiguration = Configurations.createConfiguration(this, env.getOptions());
         }
 
-        env.registerService(new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this));
+        Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
+        env.registerService(toolchain);
         this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
-        LLVMContext context = new LLVMContext(this, env, getLanguageHome());
+        LLVMContext context = new LLVMContext(this, env, getLanguageHome(), toolchain);
         return context;
     }
 

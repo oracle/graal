@@ -19,6 +19,11 @@ New features:
 * We added linker support to the LLVM toolchain. A path to the linker can be requested
   via the `LD` tool name.
 
+* Added the `--print-toolchain-path` command line flag to `lli` to print the location
+  of the toolchain on the standard output.
+
+* The toolchain Java API can be used to query the toolchain path using the `PATH` name.
+
 Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
