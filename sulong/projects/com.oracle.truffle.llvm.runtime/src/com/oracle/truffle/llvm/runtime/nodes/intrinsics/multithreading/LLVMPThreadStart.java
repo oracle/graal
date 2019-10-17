@@ -39,7 +39,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -83,11 +82,10 @@ public final class LLVMPThreadStart {
             } catch (PThreadExitException e) {
                 // return value is written to retval storage in exit function before it throws this
                 // exception
-
-            } catch (LLVMExitException e) {
-                CompilerDirectives.transferToInterpreter();
-                System.exit(e.getExitStatus());
-
+            } catch (Throwable t) {
+                // unclean exit, set return value to NULL and rethrow
+                pThreadContext.setThreadReturnValue(Thread.currentThread().getId(), LLVMNativePointer.createNull());
+                throw t;
             } finally {
                 // call destructors from key create
                 if (this.isThread) {
