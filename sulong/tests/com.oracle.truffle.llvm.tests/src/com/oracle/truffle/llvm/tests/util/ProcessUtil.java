@@ -201,11 +201,11 @@ public class ProcessUtil {
         try {
             Process process = Runtime.getRuntime().exec(command);
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
-            String readError = readStreamAndClose(process.getErrorStream());
-            String inputStream = readStreamAndClose(process.getInputStream());
             if (!success) {
                 throw new AssertionError("timeout running command: " + command);
             }
+            String readError = readStreamAndClose(process.getErrorStream());
+            String inputStream = readStreamAndClose(process.getInputStream());
             int llvmResult = process.exitValue();
             process.destroyForcibly();
             return new ProcessResult(command, llvmResult, readError, inputStream);
