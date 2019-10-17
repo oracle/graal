@@ -178,7 +178,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 System.setOut(oldOut);
             }
         }
-        assert capturedStdout != null;
 
         return result;
     }
