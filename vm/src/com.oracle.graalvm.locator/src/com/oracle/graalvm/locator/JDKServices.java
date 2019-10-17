@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.source;
+package com.oracle.graalvm.locator;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
+/**
+ * JDK version independent interface to JDK services used by GraalVMLocator.
+ */
+final class JDKServices {
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.api.impl.TruffleLocator;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-public final class CommonMIMETypeLocator extends TruffleLocator {
-    public static final class Detector implements FileTypeDetector {
-
-        @Override
-        public String findMimeType(TruffleFile file) throws IOException {
-            String name = file.getName();
-            if (name != null && name.endsWith(".locme")) {
-                return "application/x-locator";
-            }
-            return null;
-        }
-
-        @Override
-        public Charset findEncoding(TruffleFile file) throws IOException {
-            return null;
-        }
+    private JDKServices() {
     }
 
-    @Override
-    public void locate(Response response) {
+    private static InternalError shouldNotReachHere() {
+        throw new InternalError("JDK specific overlay for " + JDKServices.class.getName() + " missing");
     }
 
-    public static class LocatorLanguage extends ProxyLanguage {
+    static ClassLoader getBaseClassLoader(@SuppressWarnings("unused") Class<?> c) {
+        throw shouldNotReachHere();
     }
+
 }

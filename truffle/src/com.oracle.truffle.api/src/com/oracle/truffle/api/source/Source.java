@@ -1975,7 +1975,7 @@ public abstract class Source {
 
     static {
         // force loading source accessor
-        SourceAccessor.allLoaders();
+        SourceAccessor.load();
     }
 }
 

@@ -24,22 +24,23 @@
  */
 package com.oracle.graalvm.locator;
 
-import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.home.HomeFinder;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-
-import com.oracle.truffle.api.impl.TruffleLocator;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+
+import org.graalvm.home.HomeFinder;
+
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.TruffleLocator;
 
 public final class GraalVMLocator extends TruffleLocator
                 implements Callable<ClassLoader> {
@@ -114,7 +115,7 @@ public final class GraalVMLocator extends TruffleLocator
             setGraalVMProperties(homeFinder);
             if (!TruffleOptions.AOT) {
                 final List<URL> classPath = collectClassPath(homeFinder);
-                loader = new GuestLangToolsLoader(classPath.toArray(new URL[0]), GraalVMLocator.class.getClassLoader());
+                loader = new GuestLangToolsLoader(classPath.toArray(new URL[0]), JDKServices.getBaseClassLoader(GraalVMLocator.class));
             }
         }
         return loader;

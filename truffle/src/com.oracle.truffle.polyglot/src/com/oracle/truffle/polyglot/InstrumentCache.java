@@ -45,14 +45,16 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
@@ -61,16 +63,11 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import java.util.Objects;
-import java.util.ServiceLoader;
 
-//TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
 
-    private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
-    private static Map<ClassLoader, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
+    private static Map<List<ClassLoader>, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
 
     private final String className;
     private final String id;
@@ -89,7 +86,7 @@ final class InstrumentCache {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
-        nativeImageCache.addAll(doLoad(Collections.emptyList(), imageClassLoader));
+        nativeImageCache.addAll(doLoad(Arrays.asList(imageClassLoader)));
     }
 
     /**
@@ -121,31 +118,26 @@ final class InstrumentCache {
         return internal;
     }
 
-    static List<InstrumentCache> load(Collection<ClassLoader> loaders, ClassLoader additionalLoader) {
+    static List<InstrumentCache> load() {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
         synchronized (InstrumentCache.class) {
-            List<InstrumentCache> cache = runtimeCaches.get(additionalLoader);
+            List<ClassLoader> classLoaders = EngineAccessor.locatorOrDefaultLoaders();
+            List<InstrumentCache> cache = runtimeCaches.get(classLoaders);
             if (cache == null) {
-                cache = doLoad(loaders, additionalLoader);
-                runtimeCaches.put(additionalLoader, cache);
+                cache = doLoad(classLoaders);
+                runtimeCaches.put(classLoaders, cache);
             }
             return cache;
         }
     }
 
-    private static List<InstrumentCache> doLoad(Collection<ClassLoader> loaders, ClassLoader additionalLoader) {
+    static List<InstrumentCache> doLoad(List<ClassLoader> loaders) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         for (ClassLoader loader : loaders) {
             Loader.load(loader, list, classNamesUsed);
-        }
-        if (additionalLoader != null) {
-            Loader.load(additionalLoader, list, classNamesUsed);
-        }
-        if (!JDK8OrEarlier) {
-            Loader.load(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
         Collections.sort(list, new Comparator<InstrumentCache>() {
             @Override
@@ -364,6 +356,7 @@ final class InstrumentCache {
         @Override
         void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
             exportTruffle(loader);
+
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
                 Registration reg = provider.getClass().getAnnotation(Registration.class);
                 if (reg == null) {

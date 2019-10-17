@@ -512,15 +512,7 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
-        private final boolean useContextClassLoader;
-
-        APIAccessImpl(boolean useContextClassLoader) {
-            this.useContextClassLoader = useContextClassLoader;
-        }
-
-        @Override
-        public boolean useContextClassLoader() {
-            return useContextClassLoader;
+        APIAccessImpl() {
         }
 
         @Override
@@ -677,8 +669,6 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
-                boolean useContextClassLoader = false;
-
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
                     engine = createInvalidPolyglotImpl();
                 } else {
@@ -700,15 +690,14 @@ public final class Engine implements AutoCloseable {
                 }
 
                 if (engine == null) {
+                    // >= JDK 9.
                     engine = searchServiceLoader();
-                    useContextClassLoader = true;
                 }
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
-
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
+                    engine.setConstructors(new APIAccessImpl());
                 }
                 return engine;
             }
