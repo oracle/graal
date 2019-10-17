@@ -29,17 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Error;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -47,21 +42,15 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMPThreadKeyIntrinsics {
 
-    @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
-    @ImportStatic({CommonNodeFactory.class, LLVMInteropType.ValueKind.class})
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
 
         @Specialization
-        protected int doIntrinsic(LLVMPointer key, LLVMPointer destructor,
-                        @Cached("createStoreNode(I32)") LLVMStoreNode store,
+        protected int doIntrinsic(LLVMPointer destructor,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
             // add new key-value to key-storage, which is a
             // hashmap(key-value->hashmap(thread-id->specific-value))
-            final int keyId = context.getpThreadContext().createPThreadKey(destructor);
-            store.executeWithTarget(key, keyId);
-
-            return 0;
+            return context.getpThreadContext().createPThreadKey(destructor);
         }
     }
 

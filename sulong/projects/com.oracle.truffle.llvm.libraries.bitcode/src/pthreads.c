@@ -27,111 +27,68 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <errno.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <pthread.h>
 
-#include "unsupported.h"
+/*
+ * On different platforms, pthread_t and pthread_key_t might be different types
+ * (e.g. on Linux they are long/int, on Darwin they are pointer/long). We do an
+ * indirection here to abstract away the difference. On GraalVM, both are just
+ * implemented as IDs.
+ */
+typedef long __sulong_thread_t;
+typedef int __sulong_key_t;
 
-int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
-  ERR_UNSUPPORTED(pthread_attr_getdetachstate);
+int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg);
+void *__sulong_thread_join(long thread);
+__sulong_thread_t __sulong_thread_self();
+
+__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
+void __sulong_thread_key_delete(__sulong_key_t key);
+void *__sulong_thread_getspecific(__sulong_key_t key);
+void __sulong_thread_setspecific(__sulong_key_t key, const void *value);
+
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg) {
+  __sulong_thread_t sthread;
+  int ret = __sulong_thread_create(&sthread, start_routine, arg);
+  if (ret == 0) {
+    *thread = (pthread_t) sthread;
+  }
+  return ret;
 }
-int pthread_attr_getguardsize(const pthread_attr_t *attr, size_t *guardsize) {
-  ERR_UNSUPPORTED(pthread_attr_getguardsize);
+
+int pthread_equal(pthread_t thread1, pthread_t thread2) {
+  return thread1 == thread2;
 }
-int pthread_attr_getinheritsched(const pthread_attr_t *restrict attr, int *restrict inheritsched) {
-  ERR_UNSUPPORTED(pthread_attr_getinheritsched);
+
+void pthread_exit(void *); // intrinsic
+
+int pthread_join(pthread_t thread, void **retval) {
+  void *ret = __sulong_thread_join((__sulong_thread_t) thread);
+  if (retval) {
+    *retval = ret;
+  }
+  return 0;
 }
-int pthread_attr_getschedparam(const pthread_attr_t *restrict attr, struct sched_param *restrict param) {
-  ERR_UNSUPPORTED(pthread_attr_getschedparam);
+
+pthread_t pthread_self() {
+  return (pthread_t) __sulong_thread_self();
 }
-int pthread_attr_getschedpolicy(const pthread_attr_t *restrict attr, int *restrict policy) {
-  ERR_UNSUPPORTED(pthread_attr_getschedpolicy);
+
+int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {
+  *key = (pthread_key_t) __sulong_thread_key_create(destructor);
+  return 0;
 }
-int pthread_attr_getscope(const pthread_attr_t *restrict attr, int *restrict contentionscope) {
-  ERR_UNSUPPORTED(pthread_attr_getscope);
+
+int pthread_key_delete(pthread_key_t key) {
+  __sulong_thread_key_delete((__sulong_key_t) key);
+  return 0;
 }
-int pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr) {
-  ERR_UNSUPPORTED(pthread_attr_getstackaddr);
+
+void *pthread_getspecific(pthread_key_t key) {
+  return __sulong_thread_getspecific((__sulong_key_t) key);
 }
-int pthread_attr_getstacksize(const pthread_attr_t *restrict attr, size_t *restrict stacksize) {
-  ERR_UNSUPPORTED(pthread_attr_getstacksize);
-}
-int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate) {
-  ERR_UNSUPPORTED(pthread_attr_setdetachstate);
-}
-int pthread_attr_setguardsize(pthread_attr_t *attr, size_t guardsize) {
-  ERR_UNSUPPORTED(pthread_attr_setguardsize);
-}
-int pthread_attr_setinheritsched(pthread_attr_t *attr, int inheritsched) {
-  ERR_UNSUPPORTED(pthread_attr_setinheritsched);
-}
-int pthread_attr_setschedparam(pthread_attr_t *restrict attr, const struct sched_param *restrict param) {
-  ERR_UNSUPPORTED(pthread_attr_setschedparam);
-}
-int pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy) {
-  ERR_UNSUPPORTED(pthread_attr_setschedpolicy);
-}
-int pthread_attr_setscope(pthread_attr_t *attr, int contentionscope) {
-  ERR_UNSUPPORTED(pthread_attr_setscope);
-}
-int pthread_attr_setstackaddr(pthread_attr_t *attr, void *stackaddr) {
-  ERR_UNSUPPORTED(pthread_attr_setstackaddr);
-}
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
-  ERR_UNSUPPORTED(pthread_attr_setstacksize);
-}
-int pthread_cancel(pthread_t thread) {
-  ERR_UNSUPPORTED(pthread_cancel);
-}
-// void  pthread_cleanup_push(void*, void *);
-// void  pthread_cleanup_pop(int);
-int pthread_condattr_destroy(pthread_condattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_condattr_destroy);
-}
-int pthread_condattr_getpshared(const pthread_condattr_t *restrict attr, int *restrict pshared) {
-  ERR_UNSUPPORTED(pthread_condattr_getpshared);
-}
-int pthread_condattr_init(pthread_condattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_condattr_init);
-}
-int pthread_condattr_setpshared(pthread_condattr_t *attr, int pshared) {
-  ERR_UNSUPPORTED(pthread_condattr_setpshared);
-}
-int pthread_detach(pthread_t thread) {
-  ERR_UNSUPPORTED(pthread_detach);
-}
-int pthread_getconcurrency(void) {
-  ERR_UNSUPPORTED(pthread_getconcurrency);
-}
-int pthread_getschedparam(pthread_t thread, int *restrict policy, struct sched_param *restrict param) {
-  ERR_UNSUPPORTED(pthread_getschedparam);
-}
-int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_rwlockattr_destroy);
-}
-int pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *restrict attr, int *restrict pshared) {
-  ERR_UNSUPPORTED(pthread_rwlockattr_getpshared);
-}
-int pthread_rwlockattr_init(pthread_rwlockattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_rwlockattr_init);
-}
-int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *attr, int pshared) {
-  ERR_UNSUPPORTED(pthread_rwlockattr_setpshared);
-}
-int pthread_setcancelstate(int state, int *oldstate) {
-  ERR_UNSUPPORTED(pthread_setcancelstate);
-}
-int pthread_setcanceltype(int type, int *oldtype) {
-  ERR_UNSUPPORTED(pthread_setcanceltype);
-}
-int pthread_setconcurrency(int new_level) {
-  ERR_UNSUPPORTED(pthread_setconcurrency);
-}
-int pthread_setschedparam(pthread_t thread, int policy, const struct sched_param *param) {
-  ERR_UNSUPPORTED(pthread_setschedparam);
-}
-void pthread_testcancel(void) {
-  // do nothing - this is fine as long as no other pthread methods are supported
+
+int pthread_setspecific(pthread_key_t key, const void *value) {
+  __sulong_thread_setspecific((__sulong_key_t) key, value);
+  return 0;
 }

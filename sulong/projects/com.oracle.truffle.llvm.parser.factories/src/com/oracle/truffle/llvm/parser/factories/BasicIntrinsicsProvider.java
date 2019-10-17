@@ -362,15 +362,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerPThreadIntrinsics() {
-        add("pthread_create", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4)));
-        add("pthread_equal", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2)));
+        add("__sulong_thread_create", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("pthread_exit", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1)));
-        add("pthread_join", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2)));
-        add("pthread_self", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create());
-        add("pthread_key_create", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyCreateNodeGen.create(args.get(1), args.get(2)));
-        add("pthread_key_delete", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyDeleteNodeGen.create(args.get(1)));
-        add("pthread_getspecific", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadGetSpecificNodeGen.create(args.get(1)));
-        add("pthread_setspecific", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadSetSpecificNodeGen.create(args.get(1), args.get(2)));
+        add("__sulong_thread_join", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1)));
+        add("__sulong_thread_self", (args, nodeFactory) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create());
+        add("__sulong_thread_key_create", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyCreateNodeGen.create(args.get(1)));
+        add("__sulong_thread_key_delete", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyDeleteNodeGen.create(args.get(1)));
+        add("__sulong_thread_getspecific", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadGetSpecificNodeGen.create(args.get(1)));
+        add("__sulong_thread_setspecific", (args, nodeFactory) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadSetSpecificNodeGen.create(args.get(1), args.get(2)));
     }
 
     private static void registerSulongIntrinsics() {
