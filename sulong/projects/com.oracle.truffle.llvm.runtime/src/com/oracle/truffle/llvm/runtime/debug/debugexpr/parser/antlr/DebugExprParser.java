@@ -37,7 +37,6 @@ import org.antlr.v4.runtime.Recognizer;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -98,12 +97,12 @@ public class DebugExprParser {
 //        if (parser.root == null) {
 //            throw new IllegalStateException("no roots produced by inline assembly snippet");
 //        }
-//        return parser.root;
-        return new LLVMExpressionNode() {
+        return parser.GetASTRoot();
+        /*return new LLVMExpressionNode() {
             @Override
             public Object executeGeneric(VirtualFrame frame) {
                 throw DebugExprException.create(this, "Not Yet Implemented: " + asmSnippet);
             }
-        };
+        };*/
     }
 }

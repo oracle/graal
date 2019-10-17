@@ -102,7 +102,29 @@ fragment QUOTE : '"';
 // Add token declarations here.
 // Example:
 LAPR : '(';
+RAPR : ')';
 ASTERISC : '*';
+PLUS : '+';
+MINUS : '-';
+DIVIDE : '/';
+LOGICOR : '||';
+LOGICAND : '&&';
+DOT : '.';
+POINTER : '->';
+EXCLAM : '!';
+TILDA : '~';
+MODULAR : '%';
+SHIFTR : '>>';
+SHIFTL : '<<';
+GT : '>';
+LT : '<';
+GTE : '>=';
+LTE : '<=';
+EQ : '==';
+NE : '!=';
+AND : '&';
+OR : '|';
+XOR : '^';
 SIGNED : 'signed';
 UNSIGNED : 'unsigned';
 INT : 'int';
@@ -157,7 +179,7 @@ primExpr returns [DebugExpressionPair p] :
   | (t=NUMBER)                                  { $p = NF.createIntegerConstant(Integer.parseInt($t.getText())); }
   | (t=FLOATNUMBER)                             { $p = NF.createFloatConstant(Float.parseFloat($t.getText())); }
   | (t=CHARCONST)                               { $p = NF.createCharacterConstant($t.getText()); }
-  | '(' expr ')'                                { $p = $expr.p; }
+  | LAPR expr ')'                               { $p = $expr.p; }
   )
   ;
 
@@ -181,7 +203,7 @@ designator returns [DebugExpressionPair p] :
   DebugExpressionPair prev = null;
   }
   (
-  primExpr { prev = $primExpr.p; }
+  primExpr { prev = $primExpr.p; $p = prev;}
   )
   ( ('[' expr ']'                             { $p = NF.createArrayElement(prev, $expr.p); })
   | (actPars                                  { $p = NF.createFunctionCall(prev, $actPars.l); })
@@ -210,7 +232,7 @@ actPars returns [List l] :
   {
   $l = new LinkedList<DebugExpressionPair>();
   }
-  '(' ( (expr { $l.add($expr.p); }) (',' expr { $l.add($expr.p); })* )? ')';
+  LAPR ( (expr { $l.add($expr.p); }) (',' expr { $l.add($expr.p); })* )? ')';
 
 
 //UnaryExpr<out DebugExpressionPair p>				(. p=null; char kind='\0'; DebugExprType typeP=null;.)
@@ -225,7 +247,7 @@ actPars returns [List l] :
 unaryExpr returns [DebugExpressionPair p] :
   ( designator                                          { $p = $designator.p; }
   | unaryOP castExpr                                    { $p = NF.createUnaryOpNode($castExpr.p, $unaryOP.kind); }
-  | 'sizeof' '(' dType ')'                              { $p = NF.createSizeofNode($dType.ty); }
+  | 'sizeof' LAPR dType ')'                             { $p = NF.createSizeofNode($dType.ty); }
   );
 
 
@@ -281,14 +303,15 @@ castExpr returns [DebugExpressionPair p] :
   (
     { if(IsCast()) }
         (
-            '('
+            LAPR
             (
-                (dType { typeP = $dType.ty; }) | ('typeof' '(' ((t=IDENT) { typeNode = NF.createTypeofNode($t.getText());}) ')')
+                (dType { typeP = $dType.ty; })
+                | ('typeof' LAPR ((t=IDENT) { typeNode = NF.createTypeofNode($t.getText());}) ')')
             )
             ')'
         )
   )?
-  (unaryExpr {prev = $unaryExpr.p;}                  { if (typeP != null) { $p = NF.createCastIfNecessary(prev, typeP);}
+  (unaryExpr {prev = $unaryExpr.p; $p = prev;}                  { if (typeP != null) { $p = NF.createCastIfNecessary(prev, typeP);}
                                                       if (typeNode != null) { $p = NF.createPointerCastNode(prev, typeNode);}})
   ;
 
@@ -313,7 +336,7 @@ multExpr returns [DebugExpressionPair p] :
   DebugExpressionPair prev = null;
   }
   (
-  castExpr { prev = $castExpr.p; }
+  castExpr { prev = $castExpr.p; $p = prev;}
   )
   ( ('*' castExpr                    { $p = NF.createArithmeticOp(ArithmeticOperation.MUL, prev, $castExpr.p); })
   | ('/' castExpr                    { $p = NF.createDivNode(prev, $castExpr.p); })
@@ -337,7 +360,7 @@ addExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  (multExpr { prev = $multExpr.p; }) (('+' multExpr { $p = NF.createArithmeticOp(ArithmeticOperation.ADD, prev, $multExpr.p);}) | ('-' multExpr { $p = NF.createArithmeticOp(ArithmeticOperation.SUB, prev, $multExpr.p);}))*;
+  (multExpr { prev = $multExpr.p; $p = prev;}) (('+' multExpr { $p = NF.createArithmeticOp(ArithmeticOperation.ADD, prev, $multExpr.p);}) | ('-' multExpr { $p = NF.createArithmeticOp(ArithmeticOperation.SUB, prev, $multExpr.p);}))*;
 
 
 //ShiftExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
@@ -356,7 +379,7 @@ shiftExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  (addExpr { prev = $addExpr.p; }) (('>>' addExpr { $p = NF.createShiftLeft(prev, $addExpr.p); }) | ('<<' addExpr { $p = NF.createShiftRight(prev, $addExpr.p); }))*;
+  (addExpr { prev = $addExpr.p; $p = prev;}) (('>>' addExpr { $p = NF.createShiftLeft(prev, $addExpr.p); }) | ('<<' addExpr { $p = NF.createShiftRight(prev, $addExpr.p); }))*;
 
 
 //RelExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
@@ -382,7 +405,7 @@ relExpr returns [DebugExpressionPair p] :
   DebugExpressionPair prev = null;
   }
   (
-  shiftExpr { prev = $shiftExpr.p; }
+  shiftExpr { prev = $shiftExpr.p; $p = prev;}
   )
   ( ('<' shiftExpr                    { $p = NF.createCompareNode(prev, CompareKind.LT, $shiftExpr.p); })
   | ('>' shiftExpr                    { $p = NF.createCompareNode(prev, CompareKind.GT, $shiftExpr.p); })
@@ -408,7 +431,7 @@ eqExpr returns [DebugExpressionPair p] :
   DebugExpressionPair p1 = null;
   DebugExpressionPair prev = null;
   }
-  (relExpr { prev = $relExpr.p; })
+  (relExpr { prev = $relExpr.p; $p = prev;})
   (('==' relExpr { $p = NF.createCompareNode(prev, CompareKind.EQ, $relExpr.p); }) | ('!=' relExpr { $p = NF.createCompareNode(prev, CompareKind.NE, $relExpr.p); }))*;
 
 
@@ -426,7 +449,7 @@ andExpr returns [DebugExpressionPair p] :
   DebugExpressionPair p1 = null;
   DebugExpressionPair prev = null;
   }
-  ( eqExpr { prev = $eqExpr.p; } ) ('&' eqExpr { $p = NF.createArithmeticOp(ArithmeticOperation.AND, prev, $eqExpr.p); })*;
+  ( eqExpr { prev = $eqExpr.p; $p = prev;} ) ('&' eqExpr { $p = NF.createArithmeticOp(ArithmeticOperation.AND, prev, $eqExpr.p); })*;
 
 
 //XorExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
@@ -442,7 +465,7 @@ xorExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  ( andExpr { prev = $andExpr.p; } ) ( '^' andExpr { $p = NF.createArithmeticOp(ArithmeticOperation.XOR, prev, $andExpr.p); })*;
+  ( andExpr { prev = $andExpr.p; $p = prev;} ) ( '^' andExpr { $p = NF.createArithmeticOp(ArithmeticOperation.XOR, prev, $andExpr.p); })*;
 
 
 //OrExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
@@ -458,7 +481,7 @@ orExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  ( xorExpr { prev = $xorExpr.p; } ) ( '|' xorExpr { $p = NF.createArithmeticOp(ArithmeticOperation.OR, prev, $xorExpr.p); })*;
+  ( xorExpr { prev = $xorExpr.p; $p = prev;} ) ( '|' xorExpr { $p = NF.createArithmeticOp(ArithmeticOperation.OR, prev, $xorExpr.p); })*;
 
 
 //LogAndExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
@@ -474,7 +497,7 @@ logAndExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  ( orExpr { prev = $orExpr.p; } ) ( '&&' orExpr { $p = NF.createLogicalAndNode(prev, $orExpr.p); })*;
+  ( orExpr { prev = $orExpr.p; $p = prev;} ) ( '&&' orExpr { $p = NF.createLogicalAndNode(prev, $orExpr.p); })*;
 
 
 //LogOrExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
@@ -489,7 +512,7 @@ logOrExpr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair prev = null;
   }
-  ( logAndExpr { prev = $logAndExpr.p; } ) ( '||' logAndExpr { $p = NF.createLogicalOrNode(prev, $logAndExpr.p); })*;
+  ( logAndExpr { prev = $logAndExpr.p; $p = prev;} ) ( '||' logAndExpr { $p = NF.createLogicalOrNode(prev, $logAndExpr.p); })*;
 
 //
 //Expr<out DebugExpressionPair p>						(. DebugExpressionPair pThen=null, pElse=null; .)
@@ -506,7 +529,7 @@ expr returns [DebugExpressionPair p] :
   DebugExpressionPair pElse = null;
   DebugExpressionPair prev = null;
   }
-  (logOrExpr { prev = $logOrExpr.p; }) ('?' (expr { pThen = $expr.p; }) ':' (expr { pElse = $expr.p; }) { $p = NF.createTernaryNode(prev, pThen, pElse); })? ;
+  (logOrExpr { prev = $logOrExpr.p; $p = prev;}) ('?' (expr { pThen = $expr.p; }) ':' (expr { pElse = $expr.p; }) { $p = NF.createTernaryNode(prev, pThen, pElse); })? ;
 
 
 //
@@ -597,7 +620,7 @@ baseType returns [DebugExprType ty] :
   boolean signed = false;
   }
   (
-  '(' dType ')'                                                     { $ty = $dType.ty; }
+  LAPR dType ')'                                                     { $ty = $dType.ty; }
   | 'void'                                                          { $ty = DebugExprType.getVoidType(); }
   | (( 'signed'                                                     { signed = true; }
     | 'unsigned'                                                    { signed = false; }
