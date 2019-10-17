@@ -419,11 +419,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     'dependency': 'graalvm-jimage',
                     'path': '*',
                 })
-                # Temporary workaround until GR-16855 an SVM module provides the .a files
-                _add(layout, self.jdk_base + '/lib/', {
-                    'source_type': 'file',
-                    'path': _src_jdk_dir + (('/' + _src_jdk_base) if _src_jdk_base != '.' else '') + '/lib/*.a',
-                })
 
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
@@ -514,7 +509,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             _licenses = _component.third_party_license_files
             if not mx.get_opts().no_licenses:
-                _licenses += _component.license_files
+                _licenses = _licenses + _component.license_files
             for _license in _licenses:
                 if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
                     if _component_base == '<jdk_base>/':
@@ -528,9 +523,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
+            graalvm_dists = set()
 
             for _launcher_config in _get_launcher_configs(_component):
-                _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
+                graalvm_dists.update(_launcher_config.jar_distributions)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
@@ -552,7 +548,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
             for _library_config in _get_library_configs(_component):
-                _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
+                graalvm_dists.update(_library_config.jar_distributions)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
                     if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
@@ -567,6 +563,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     # add `LibraryConfig.destination` to the layout
                     _add(layout, _library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
                 _add_native_image_macro(_library_config, _component)
+
+            _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
+
             for _provided_executable in _component.provided_executables:
                 if _component.short_name == 'vvm':
                     _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
