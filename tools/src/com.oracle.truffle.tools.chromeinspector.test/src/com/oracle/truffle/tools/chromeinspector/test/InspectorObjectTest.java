@@ -216,7 +216,12 @@ public class InspectorObjectTest {
                         "    println(\"P: \" + arg.method);\n" +
                         "}\n" +
                         "function listenerAll(arg) {\n" +
-                        "    println(\"All: \" + arg.method);\n" +
+                        "    if (\"Runtime.consoleAPICalled\" == arg.method) {\n" +
+                        "        // print callback\n" +
+                        "        return;\n" +
+                        "    } else {\n" +
+                        "        println(\"All: \" + arg.method);\n" +
+                        "    }\n" +
                         "}\n");
         Value testSession = context.getBindings("sl").getMember("testSession");
         testSession.execute(inspector);
