@@ -234,6 +234,7 @@ public final class Meta implements ContextAccess {
         Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
+        Thread_threadStatus = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
@@ -486,6 +487,7 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_HOST_THREAD;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
+    public final Field Thread_threadStatus;
     public final Method Thread_exit;
     public final Method Thread_run;
     public final Method Thread_checkAccess;
