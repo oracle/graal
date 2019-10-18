@@ -38,9 +38,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -51,7 +48,6 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
-import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -208,7 +204,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             return false;
         }
         OptionValues options = loop.entryPoint().getOptions();
-        return loopBegin.unswitches() <= LoopMaxUnswitch.getValue(options);
+        return loopBegin.unswitches() < LoopMaxUnswitch.getValue(options);
     }
 
     private static final class CountingClosure implements VirtualClosure {
@@ -257,19 +253,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int loopTotal = loop.size() - loop.loopBegin().phis().count() - stateNodesCount.count - 1;
         int actualDiff = (loopTotal - inBranchTotal);
         ControlSplitNode firstSplit = controlSplits.get(0);
-        if (firstSplit instanceof TypeSwitchNode) {
-            int copies = firstSplit.successors().count() - 1;
-            for (Node succ : firstSplit.successors()) {
-                FixedNode current = (FixedNode) succ;
-                while (current instanceof FixedWithNextNode) {
-                    current = ((FixedWithNextNode) current).next();
-                }
-                if (current instanceof DeoptimizeNode) {
-                    copies--;
-                }
-            }
-            actualDiff = actualDiff * copies;
-        }
+
+        int copies = firstSplit.successors().count() - 1;
+        actualDiff = actualDiff * copies;
 
         debug.log("shouldUnswitch(%s, %s) : delta=%d (%.2f%% inside of branches), max=%d, f=%.2f, phis=%d -> %b", loop, controlSplits, actualDiff, (double) (inBranchTotal) / loopTotal * 100, maxDiff,
                         loopFrequency, phis, actualDiff <= maxDiff);
