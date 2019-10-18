@@ -349,6 +349,8 @@ final class InstrumentCache {
     private static final class ServicesLoader extends Loader {
 
         static final Loader INSTANCE = new ServicesLoader();
+        private static final String DEBUGGER_CLASS = "com.oracle.truffle.api.debug.impl.DebuggerInstrument";
+        private static final String DEBUGGER_PROVIDER = "com.oracle.truffle.api.debug.impl.DebuggerInstrumentProvider";
 
         private ServicesLoader() {
         }
@@ -356,32 +358,54 @@ final class InstrumentCache {
         @Override
         void loadImpl(ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
             exportTruffle(loader);
-
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
-                Registration reg = provider.getClass().getAnnotation(Registration.class);
-                if (reg == null) {
-                    PrintStream out = System.err;
-                    out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
-                    continue;
+                loadInstrumentImpl(provider, list, classNamesUsed);
+            }
+
+            /*
+             * Make sure the builtin debugger instrument is loaded if the service loader does not
+             * pick them up. This may happen on JDK 11 if the loader is based of the platform class
+             * loader and does see the Truffle module only through the special named module behavior
+             * for the platform class loader. However, while truffle classes are visible, Java
+             * services are not enumerated from there. This is a workaround, that goes around this
+             * problem by hardcoding instruments that are included in the Truffle module. The
+             * behavior is actually beneficial as this also avoids languages to be picked up from
+             * the application classpath.
+             */
+            if (!classNamesUsed.contains(DEBUGGER_CLASS)) {
+                try {
+                    loadInstrumentImpl((TruffleInstrument.Provider) loader.loadClass(DEBUGGER_PROVIDER).getConstructor().newInstance(), list,
+                                    classNamesUsed);
+                } catch (Exception e) {
+                    throw new AssertionError("Failed to discover debugger instrument.", e);
                 }
-                String className = provider.getInstrumentClassName();
-                String name = reg.name();
-                String id = reg.id();
-                if (id == null || id.isEmpty()) {
-                    id = defaultId(className);
-                }
-                String version = reg.version();
-                boolean internal = reg.internal();
-                Set<String> servicesClassNames = new TreeSet<>();
-                for (String service : provider.getServicesClassNames()) {
-                    servicesClassNames.add(service);
-                }
-                // we don't want multiple instruments with the same class name
-                if (!classNamesUsed.contains(className)) {
-                    classNamesUsed.add(className);
-                    InstrumentReflection reflection = new ServiceLoaderInstrumentReflection(provider);
-                    list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, reflection));
-                }
+            }
+        }
+
+        static void loadInstrumentImpl(TruffleInstrument.Provider provider, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+            Registration reg = provider.getClass().getAnnotation(Registration.class);
+            if (reg == null) {
+                PrintStream out = System.err;
+                out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
+                return;
+            }
+            String className = provider.getInstrumentClassName();
+            String name = reg.name();
+            String id = reg.id();
+            if (id == null || id.isEmpty()) {
+                id = defaultId(className);
+            }
+            String version = reg.version();
+            boolean internal = reg.internal();
+            Set<String> servicesClassNames = new TreeSet<>();
+            for (String service : provider.getServicesClassNames()) {
+                servicesClassNames.add(service);
+            }
+            // we don't want multiple instruments with the same class name
+            if (!classNamesUsed.contains(className)) {
+                classNamesUsed.add(className);
+                InstrumentReflection reflection = new ServiceLoaderInstrumentReflection(provider);
+                list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, reflection));
             }
         }
 
