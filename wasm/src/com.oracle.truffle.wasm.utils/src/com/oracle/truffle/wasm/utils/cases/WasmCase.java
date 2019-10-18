@@ -29,11 +29,18 @@
  */
 package com.oracle.truffle.wasm.utils.cases;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Properties;
 
 import com.oracle.truffle.wasm.utils.Assert;
+import com.oracle.truffle.wasm.utils.SystemProperties;
 import com.oracle.truffle.wasm.utils.WasmInitialization;
+import com.oracle.truffle.wasm.utils.WasmResource;
 import org.graalvm.polyglot.Value;
 
 /** Instances of this class are used for WebAssembly test/benchmark cases.
@@ -99,5 +106,76 @@ public abstract class WasmCase {
 
     public static WasmCaseData expectedThrows(String expectedErrorMessage) {
         return new WasmCaseData(expectedErrorMessage);
+    }
+
+    public static Collection<WasmCase> collectFileCases(String type, String resource) throws IOException {
+        Collection<WasmCase> collectedCases = new ArrayList<>();
+        if (resource == null) {
+            return collectedCases;
+        }
+
+        // Open the wasm_test_index file of the bundle. The wasm_test_index file contains the available cases for that bundle.
+        InputStream index = WasmCase.class.getResourceAsStream(String.format("/%s/%s/wasm_test_index", type, resource));
+        BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
+
+        // Iterate through the available test of the bundle.
+        while (indexReader.ready()) {
+            String caseName = indexReader.readLine().trim();
+
+            if (caseName.equals("") || caseName.startsWith("#")) {
+                // Skip empty lines or lines starting with a hash (treat as a comment).
+                continue;
+            }
+            collectedCases.add(collectFileCase(type, resource, caseName));
+        }
+
+        return collectedCases;
+    }
+
+    public static WasmCase collectFileCase(String type, String resource, String caseName) throws IOException {
+        Object mainContent = WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseName), true);
+        String resultContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.result", type, resource, caseName), true);
+        String initContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.init", type, resource, caseName), false);
+        String optsContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.opts", type, resource, caseName), false);
+        WasmInitialization initializer = WasmInitialization.create(initContent);
+        Properties options = SystemProperties.createFromOptions(optsContent);
+
+        String[] resultTypeValue = resultContent.split("\\s+", 2);
+        String resultType = resultTypeValue[0];
+        String resultValue = resultTypeValue[1];
+
+        WasmCaseData caseData = null;
+        switch (resultType) {
+            case "stdout":
+                caseData = WasmCase.expectedStdout(resultValue);
+                break;
+            case "int":
+                caseData = WasmCase.expected(Integer.parseInt(resultValue.trim()));
+                break;
+            case "long":
+                caseData = WasmCase.expected(Long.parseLong(resultValue.trim()));
+                break;
+            case "float":
+                caseData = WasmCase.expected(Float.parseFloat(resultValue.trim()));
+                break;
+            case "double":
+                caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
+                break;
+            case "exception":
+                caseData = WasmCase.expectedThrows(resultValue);
+                break;
+            default:
+                Assert.fail(String.format("Unknown type in result specification: %s", resultType));
+        }
+
+        if (mainContent instanceof String) {
+            return WasmCase.create(caseName, caseData, (String) mainContent, initializer, options);
+        } else if (mainContent instanceof byte[]) {
+            return WasmCase.create(caseName, caseData, (byte[]) mainContent, initializer, options);
+        } else {
+            Assert.fail("Unknown content type: " + mainContent.getClass());
+        }
+
+        return null;
     }
 }

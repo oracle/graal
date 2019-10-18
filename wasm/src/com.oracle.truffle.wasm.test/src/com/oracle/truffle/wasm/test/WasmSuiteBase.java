@@ -32,7 +32,6 @@ package com.oracle.truffle.wasm.test;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -40,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -55,11 +53,7 @@ import org.junit.Assert;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-import com.oracle.truffle.wasm.utils.SystemProperties;
-import com.oracle.truffle.wasm.utils.WasmInitialization;
-import com.oracle.truffle.wasm.utils.WasmResource;
 import com.oracle.truffle.wasm.utils.cases.WasmCase;
-import com.oracle.truffle.wasm.utils.cases.WasmCaseData;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
 
@@ -358,7 +352,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     protected Collection<? extends WasmCase> collectTestCases() throws IOException {
-        return Stream.concat(collectStringTestCases().stream(), collectFileTestCases(testResource()).stream()).collect(Collectors.toList());
+        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases("test", testResource()).stream()).collect(Collectors.toList());
     }
 
     protected Collection<? extends WasmCase> collectStringTestCases() {
@@ -367,72 +361,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     protected Collection<? extends WasmCase> filterTestCases(Collection<? extends WasmCase> testCases) {
         return testCases.stream().filter((WasmCase x) -> filterTestName().test(x.name())).collect(Collectors.toList());
-    }
-
-    protected Collection<WasmCase> collectFileTestCases(String testBundle) throws IOException {
-        Collection<WasmCase> collectedCases = new ArrayList<>();
-        if (testBundle == null) {
-            return collectedCases;
-        }
-
-        // Open the wasm_test_index file of the test bundle. The wasm_test_index file contains the available tests for that bundle.
-        InputStream index = getClass().getResourceAsStream(String.format("/test/%s/wasm_test_index", testBundle));
-        BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
-
-        // Iterate through the available test of the bundle.
-        while (indexReader.ready()) {
-            String testName = indexReader.readLine().trim();
-
-            if (testName.equals("") || testName.startsWith("#")) {
-                // Skip empty lines or lines starting with a hash (treat as a comment).
-                continue;
-            }
-
-            Object mainContent = WasmResource.getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
-            String resultContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
-            String initContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
-            String optsContent = WasmResource.getResourceAsString(String.format("/test/%s/%s.opts", testBundle, testName), false);
-            WasmInitialization initializer = WasmInitialization.create(initContent);
-            Properties options = SystemProperties.createFromOptions(optsContent);
-
-            String[] resultTypeValue = resultContent.split("\\s+", 2);
-            String resultType = resultTypeValue[0];
-            String resultValue = resultTypeValue[1];
-
-            WasmCaseData testData = null;
-            switch (resultType) {
-                case "stdout":
-                    testData = WasmCase.expectedStdout(resultValue);
-                    break;
-                case "int":
-                    testData = WasmCase.expected(Integer.parseInt(resultValue.trim()));
-                    break;
-                case "long":
-                    testData = WasmCase.expected(Long.parseLong(resultValue.trim()));
-                    break;
-                case "float":
-                    testData = WasmCase.expected(Float.parseFloat(resultValue.trim()));
-                    break;
-                case "double":
-                    testData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
-                    break;
-                case "exception":
-                    testData = WasmCase.expectedThrows(resultValue);
-                    break;
-                default:
-                    Assert.fail(String.format("Unknown type in result specification: %s", resultType));
-            }
-
-            if (mainContent instanceof String) {
-                collectedCases.add(WasmCase.create(testName, testData, (String) mainContent, initializer, options));
-            } else if (mainContent instanceof byte[]) {
-                collectedCases.add(WasmCase.create(testName, testData, (byte[]) mainContent, initializer, options));
-            } else {
-                Assert.fail("Unknown content type: " + mainContent.getClass());
-            }
-        }
-
-        return collectedCases;
     }
 
     protected String suiteName() {
