@@ -38,7 +38,7 @@ public class CBenchmarkSuite extends WasmBenchmarkSuiteBase {
     @State(Scope.Benchmark)
     public static class CBenchmarkState extends WasmBenchmarkState {
         @Override
-        protected String bundleName() {
+        protected String benchmarkResource() {
             return "c";
         }
     }

@@ -38,7 +38,7 @@ public class WatBenchmarkSuite extends WasmBenchmarkSuiteBase {
     @State(Scope.Benchmark)
     public static class WatBenchmarkState extends WasmBenchmarkState {
         @Override
-        protected String bundleName() {
+        protected String benchmarkResource() {
             return "wat";
         }
     }
