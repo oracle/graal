@@ -33,7 +33,9 @@ import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.
 import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.MEASUREMENT_ITERATIONS;
 import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_ITERATIONS;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -62,10 +64,15 @@ public abstract class WasmBenchmarkSuiteBase {
     }
 
     public abstract static class WasmBenchmarkState {
+        private WasmCase benchmarkCase;
+
         private Value mainFunction;
         private Value resetContext;
         private Value customInitializer;
         private WasmInitialization initialization;
+
+        private Value result;
+        private ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
@@ -75,14 +82,14 @@ public abstract class WasmBenchmarkSuiteBase {
                 Assert.fail("Please select a benchmark by setting -Dwasmbench.benchmarkName");
             }
 
-            WasmCase benchCase = WasmCase.collectFileCase("bench", benchmarkResource(), WasmBenchmarkOptions.BENCHMARK_NAME);
+            benchmarkCase = WasmCase.collectFileCase("bench", benchmarkResource(), WasmBenchmarkOptions.BENCHMARK_NAME);
 
-            Assert.assertNotNull(String.format("Benchmark %s.%s not found", benchmarkResource(), wantedBenchmarkName), benchCase);
+            Assert.assertNotNull(String.format("Benchmark %s.%s not found", benchmarkResource(), wantedBenchmarkName), benchmarkCase);
 
             Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.PredefinedModules", "testutil:testutil,env:emscripten");
 
-            byte[] binary = benchCase.createBinary();
+            byte[] binary = benchmarkCase.createBinary();
             Context context = contextBuilder.build();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
 
@@ -92,11 +99,19 @@ public abstract class WasmBenchmarkSuiteBase {
             mainFunction = wasmBindings.getMember("_main");
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
             customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-            initialization = benchCase.initialization();
+            initialization = benchmarkCase.initialization();
         }
 
         @Setup(Level.Iteration)
         public void setupIteration() {
+            // TODO: Find a way to capture stdout.
+            // capturedStdout = new ByteArrayOutputStream();
+            // System.setOut(new PrintStream(capturedStdout));
+
+            // Reset result.
+            result = null;
+
+            // Run initialization, if necessary.
             if (initialization != null) {
                 customInitializer.execute(initialization);
             }
@@ -104,12 +119,22 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @TearDown(Level.Iteration)
         public void teardownIteration() {
+            // Validate result.
+            WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, capturedStdout);
+
             // Reset context and zero out memory.
             resetContext.execute(true);
+
+            // Reset system output stream.
+            System.setOut(System.out);
         }
 
         public Value mainFunction() {
             return mainFunction;
+        }
+
+        public void setResult(Value result) {
+            this.result = result;
         }
 
         protected abstract String benchmarkResource();

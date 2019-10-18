@@ -43,7 +43,9 @@ public class Assert {
     }
 
     public static void assertEquals(String message, Object expected, Object actual) {
-        assertTrue(message, actual.equals(expected));
+        if (!actual.equals(expected)) {
+            fail(format("%s assertion failed %s != %s", message, expected, actual));
+        }
     }
 
     public static void assertEquals(String message, Float expected, Float actual) {
