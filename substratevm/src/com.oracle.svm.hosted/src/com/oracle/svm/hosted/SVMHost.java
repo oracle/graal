@@ -65,8 +65,8 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -266,7 +266,7 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        return new DynamicHub(className, type.isLocal(), javaClass.isAnonymousClass(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
