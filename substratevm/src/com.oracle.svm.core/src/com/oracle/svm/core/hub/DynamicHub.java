@@ -739,7 +739,28 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    private native Object getDeclaringClass();
+    @TargetElement(name = "getDeclaringClass", onlyWith = JDK11OrLater.class)
+    private native Object getDeclaringClassJDK11OrLater();
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private Object getDeclaringClass0() {
+        return getDeclaringClassInternal();
+    }
+
+    @Substitute
+    @TargetElement(name = "getDeclaringClass", onlyWith = JDK8OrEarlier.class)
+    private Object getDeclaringClassJDK8OrEarlier() {
+        return getDeclaringClassInternal();
+    }
+
+    private Object getDeclaringClassInternal() {
+        if (isLocalOrAnonymousClass()) {
+            return null;
+        } else {
+            return enclosingClass;
+        }
+    }
 
     @Substitute
     public DynamicHub[] getInterfaces() {
@@ -1257,7 +1278,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     private boolean isTopLevelClass() {
-        return !isLocalOrAnonymousClass() && getDeclaringClass() == null;
+        return !isLocalOrAnonymousClass() && getDeclaringClassJDK11OrLater() == null;
     }
 
     @KeepOriginal
@@ -1290,19 +1311,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes) {
         throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes)");
     }
-
-    @Substitute //
-    private Object getDeclaringClass0() {
-        if (isLocalOrAnonymousClass()) {
-            return null;
-        } else {
-            return enclosingClass;
-        }
-    }
 }
 
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
-@TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")
+@TargetClass(className = "java.lang.Class", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_Class_ReflectionData<T> {
     @Alias //
     static String NULL_SENTINEL;
