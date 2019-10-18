@@ -693,7 +693,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(name = "getCanonicalName", onlyWith = JDK11OrLater.class)
     private String getCanonicalNameJDK11OrLater() {
-        return getCanonicalName0();
+        String canonicalName = getCanonicalName0();
+        return canonicalName == Target_java_lang_Class_ReflectionData.NULL_SENTINEL ? null : canonicalName;
     }
 
     @KeepOriginal
@@ -1266,11 +1267,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     private String getSimpleBinaryName0() {
-        if (enclosingClass == null) {
+        if (isAnonymousClass || enclosingClass == null) {
             return null;
         }
         try {
-            return getName().substring(enclosingClass.getName().length() + 1);
+            int prefix = enclosingClass.getName().length();
+            char firstLetter;
+            do {
+                prefix += 1;
+                firstLetter = name.charAt(prefix);
+            } while (!Character.isLetter(firstLetter));
+            return name.substring(prefix);
         } catch (IndexOutOfBoundsException ex) {
             throw new InternalError("Malformed class name", ex);
         }
@@ -1297,6 +1304,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
 @TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")
 final class Target_java_lang_Class_ReflectionData<T> {
+    @Alias //
+    static String NULL_SENTINEL;
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
