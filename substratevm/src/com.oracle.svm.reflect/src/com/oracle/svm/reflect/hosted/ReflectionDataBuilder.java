@@ -75,6 +75,9 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
     private Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    /* Keep track of classes already processed for reflection. */
+    private final Set<Class<?>> processedClasses = new HashSet<>();
+
     public ReflectionDataBuilder() {
         arrayReflectionData = getArrayReflectionData();
     }
@@ -147,24 +150,62 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     protected void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        processReachableTypes(access);
+        processRegisteredElements(access);
+    }
 
+    /*
+     * Process all reachable types, looking for array types or types that have an enclosing method
+     * or constructor. Initialize the reflection metadata for those types.
+     */
+    private void processReachableTypes(DuringAnalysisAccessImpl access) {
+        /*
+         * We need to find all classes that have an enclosingMethod or enclosingConstructor.
+         * Unfortunately, there is no reverse lookup (ask a Method or Constructor about the classes
+         * they contain), so we need to iterate through all types that have been loaded so far.
+         * Accessing the original java.lang.Class for a ResolvedJavaType is not 100% reliable,
+         * especially in the case of class and method substitutions. But it is the best we can do
+         * here, and we assume that user code that requires reflection support is not using
+         * substitutions.
+         */
+        Set<Class<?>> allClasses = new HashSet<>();
+        for (AnalysisType aType : access.getUniverse().getTypes()) {
+            Class<?> originalClass = aType.getJavaClass();
+            if (originalClass != null) {
+                if (processedClasses.contains(originalClass)) {
+                    /* Class has already been processed. */
+                    continue;
+                }
+                if (enclosingMethodOrConstructor(originalClass) != null) {
+                    /*
+                     * We haven an enclosing method or constructor for this class, so we add the
+                     * class to the set of processed classes so that the ReflectionData is
+                     * initialized below.
+                     */
+                    allClasses.add(originalClass);
+                } else if (originalClass.isArray()) {
+                    // Always register reflection data for array classes
+                    allClasses.add(originalClass);
+                }
+            }
+        }
+        if (!allClasses.isEmpty()) {
+            /*
+             * If there are classes that haven't been seen before process them and request an
+             * analysis iteration.
+             */
+            processedClasses.addAll(allClasses);
+            registerClasses(access, allClasses);
+            access.requireAnalysisIteration();
+        }
+    }
+
+    private void processRegisteredElements(DuringAnalysisAccessImpl access) {
         if (!modified) {
             return;
         }
         modified = false;
         access.requireAnalysisIteration();
-        Class<?>[] parameterTypes = {};
-
-        Method reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData", parameterTypes);
-        Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassByName("java.lang.Class$ReflectionData");
-        Field declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");
-        Field publicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicFields");
-        Field declaredMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredMethods");
-        Field publicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicMethods");
-        Field declaredConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredConstructors");
-        Field publicConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicConstructors");
-        Field declaredPublicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicFields");
-        Field declaredPublicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicMethods");
 
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
         reflectionMethods.stream().map(Executable::getDeclaringClass).forEach(allClasses::add);
@@ -175,28 +216,21 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             allClasses.add(field.getDeclaringClass());
         });
 
-        /*
-         * We need to find all classes that have an enclosingMethod or enclosingConstructor.
-         * Unfortunately, there is no reverse lookup (ask a Method or Constructor about the classes
-         * they contain), so we need to iterate through all types that have been loaded so far.
-         * Accessing the original java.lang.Class for a ResolvedJavaType is not 100% reliable,
-         * especially in the case of class and method substitutions. But it is the best we can do
-         * here, and we assume that user code that requires reflection support is not using
-         * substitutions.
-         */
-        for (AnalysisType aType : access.getUniverse().getTypes()) {
-            Class<?> originalClass = aType.getJavaClass();
-            if (originalClass != null && enclosingMethodOrConstructor(originalClass) != null) {
-                /*
-                 * We haven an enclosing method or constructor for this class, so we add the class
-                 * to the set of processed classes so that the ReflectionData is initialized below.
-                 */
-                allClasses.add(originalClass);
-            } else if (originalClass != null && originalClass.isArray()) {
-                // Always register reflection data for array classes
-                allClasses.add(originalClass);
-            }
-        }
+        registerClasses(access, allClasses);
+    }
+
+    private void registerClasses(DuringAnalysisAccessImpl access, Set<Class<?>> allClasses) {
+        Class<?>[] parameterTypes = {};
+        Method reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData", parameterTypes);
+        Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassByName("java.lang.Class$ReflectionData");
+        Field declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");
+        Field publicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicFields");
+        Field declaredMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredMethods");
+        Field publicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicMethods");
+        Field declaredConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredConstructors");
+        Field publicConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicConstructors");
+        Field declaredPublicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicFields");
+        Field declaredPublicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicMethods");
 
         for (Class<?> clazz : allClasses) {
             AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
