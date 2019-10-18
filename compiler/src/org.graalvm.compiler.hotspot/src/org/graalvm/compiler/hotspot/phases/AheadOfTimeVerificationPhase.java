@@ -73,7 +73,7 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<CoreProviders> {
         if (!isObject(node)) {
             return false;
         }
-        return "Ljava/lang/invoke/DirectMethodHandle;".equals(StampTool.typeOrNull(node).getName());
+        return StampTool.typeOrNull(node).getName().startsWith("Ljava/lang/invoke/DirectMethodHandle");
     }
 
     private static boolean isBoundMethodHandle(ConstantNode node) {
