@@ -364,7 +364,7 @@ final class InstrumentCache {
 
             /*
              * Make sure the builtin debugger instrument is loaded if the service loader does not
-             * pick them up. This may happen on JDK 11 if the loader is based of the platform class
+             * pick them up. This may happen on JDK 11 if the loader delegates to the platform class
              * loader and does see the Truffle module only through the special named module behavior
              * for the platform class loader. However, while truffle classes are visible, Java
              * services are not enumerated from there. This is a workaround, that goes around this
