@@ -245,7 +245,7 @@ suite = {
       ],
     },
 
-    "WASM_BENCHCASES" : {
+    "WASM_BENCHMARKCASES" : {
       "description" : "Benchmarks compiled from the source code.",
       "dependencies" : [
         "com.oracle.truffle.wasm.benchmark",
