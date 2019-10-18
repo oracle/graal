@@ -252,15 +252,17 @@ public final class Target_java_lang_Thread {
         try {
             fromRunnable(thread, context.getMeta(), State.TIMED_WAITING);
             Thread.sleep(millis);
-        } catch (InterruptedException | IllegalArgumentException e) {
-            Meta meta = context.getMeta();
-            throw meta.throwExWithMessage(e.getClass(), e.getMessage());
+        } catch (InterruptedException e) {
+            setInterrupt(thread, false);
+            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } finally {
             toRunnable(thread, context.getMeta(), State.RUNNABLE);
         }
     }
 
-    private static void setInterrupt(StaticObject self, boolean value) {
+    public static void setInterrupt(StaticObject self, boolean value) {
         self.setHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
     }
 
@@ -272,11 +274,11 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@Host(Object.class) StaticObject self) {
-        setInterrupt(self, true);
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
         }
+        setInterrupt(self, true);
         hostThread.interrupt();
     }
 
