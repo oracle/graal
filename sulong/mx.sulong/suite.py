@@ -320,10 +320,7 @@ suite = {
 
     "bootstrap-toolchain-launchers": {
       "subDir": "projects",
-      "class" : "ToolchainLauncherProject",
-      "native": True,
-      "vpath": True,
-      "platformDependent": True,
+      "class" : "BootstrapToolchainLauncherProject",
       "buildDependencies" : [
         "SULONG_LLVM_ORG",
         "com.oracle.truffle.llvm.toolchain.launchers",
