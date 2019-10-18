@@ -34,7 +34,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
-public class BenchCasesBenchmark extends WasmBenchmark {
+public class CBenchmark extends WasmBenchmark {
 
     @State(Scope.Benchmark)
     public static class FibBenchmarkState extends WasmBenchmarkState {
