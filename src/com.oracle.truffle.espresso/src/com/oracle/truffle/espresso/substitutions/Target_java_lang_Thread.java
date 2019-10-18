@@ -165,6 +165,7 @@ public final class Target_java_lang_Thread {
                     try {
                         // Execute the payload
                         self.getKlass().vtableLookup(meta.Thread_run.getVTableIndex()).invokeDirect(self);
+                        checkDeprecatedState(meta, self);
                     } catch (EspressoException uncaught) {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {

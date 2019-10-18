@@ -266,6 +266,9 @@ public final class EspressoContext {
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
+        threadManager.registerMainThread(Thread.currentThread(), mainThread);
+
+        // Guest Thread.currentThread() must work as this point.
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
                         .invokeDirect(mainThreadGroup,
@@ -277,7 +280,6 @@ public final class EspressoContext {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        threadManager.registerMainThread(Thread.currentThread(), mainThread);
     }
 
     public void interruptActiveThreads() {
