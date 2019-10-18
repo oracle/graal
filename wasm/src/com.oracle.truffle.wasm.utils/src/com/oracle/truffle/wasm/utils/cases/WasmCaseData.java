@@ -27,39 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.utils;
+package com.oracle.truffle.wasm.utils.cases;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.polyglot.Value;
 
-public class Assert {
-    public static void assertTrue(String message, boolean condition) {
-        if (!condition) {
-            fail(message);
-        }
+import java.util.function.BiConsumer;
+
+public class WasmCaseData {
+    BiConsumer<Value, String> resultValidator;
+    String expectedErrorMessage;
+
+    WasmCaseData(BiConsumer<Value, String> resultValidator) {
+        this.resultValidator = resultValidator;
+        this.expectedErrorMessage = null;
     }
 
-    public static void assertNotNull(String message, Object object) {
-        assertTrue(message, object != null);
+    WasmCaseData(String expectedErrorMessage) {
+        this.resultValidator = null;
+        this.expectedErrorMessage = expectedErrorMessage;
     }
 
-    public static void assertEquals(String message, Object expected, Object actual) {
-        assertTrue(message, actual.equals(expected));
+    public BiConsumer<Value, String> resultValidator() {
+        return resultValidator;
     }
 
-    public static void assertEquals(String message, Float expected, Float actual) {
-        assertTrue(message, Float.compare(actual, expected) == 0);
-    }
-
-    public static void assertEquals(String message, Double expected, Double actual) {
-        assertTrue(message, Double.compare(actual, expected) == 0);
-    }
-
-    public static void fail(String message) {
-        throw new RuntimeException(message);
-    }
-
-    @TruffleBoundary
-    public static String format(String format, Object... args) {
-        return String.format(format, args);
+    public String expectedErrorMessage() {
+        return expectedErrorMessage;
     }
 }

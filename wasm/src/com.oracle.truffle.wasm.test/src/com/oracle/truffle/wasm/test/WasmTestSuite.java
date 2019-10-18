@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.wasm.test;
 
-import com.oracle.truffle.wasm.test.suites.control.IfThenElseSuite;
-import com.oracle.truffle.wasm.test.suites.memory.MemorySuite;
-import com.oracle.truffle.wasm.test.suites.webassembly.EmscriptenSuite;
-import com.oracle.truffle.wasm.test.suites.webassembly.IssueSuite;
-import com.oracle.truffle.wasm.test.suites.webassembly.MultipleFunctionsSuite;
-import com.oracle.truffle.wasm.test.suites.webassembly.SpecSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -45,8 +39,13 @@ import com.oracle.truffle.wasm.test.suites.arithmetic.Integer32Suite;
 import com.oracle.truffle.wasm.test.suites.arithmetic.Integer64Suite;
 import com.oracle.truffle.wasm.test.suites.control.BlockWithLocalsSuite;
 import com.oracle.truffle.wasm.test.suites.control.BranchBlockSuite;
+import com.oracle.truffle.wasm.test.suites.control.IfThenElseSuite;
 import com.oracle.truffle.wasm.test.suites.control.LoopBlockSuite;
 import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
+import com.oracle.truffle.wasm.test.suites.memory.MemorySuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.EmscriptenSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.IssueSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.MultipleFunctionsSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({

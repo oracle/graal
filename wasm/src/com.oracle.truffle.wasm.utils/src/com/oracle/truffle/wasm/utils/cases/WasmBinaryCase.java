@@ -27,39 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.utils;
+package com.oracle.truffle.wasm.utils.cases;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Properties;
 
-public class Assert {
-    public static void assertTrue(String message, boolean condition) {
-        if (!condition) {
-            fail(message);
-        }
+import com.oracle.truffle.wasm.utils.WasmInitialization;
+
+public class WasmBinaryCase extends WasmCase {
+    private final byte[] binary;
+
+    public WasmBinaryCase(String name, WasmCaseData data, byte[] binary, WasmInitialization initialization, Properties options) {
+        super(name, data, initialization, options);
+        this.binary = binary;
     }
 
-    public static void assertNotNull(String message, Object object) {
-        assertTrue(message, object != null);
-    }
-
-    public static void assertEquals(String message, Object expected, Object actual) {
-        assertTrue(message, actual.equals(expected));
-    }
-
-    public static void assertEquals(String message, Float expected, Float actual) {
-        assertTrue(message, Float.compare(actual, expected) == 0);
-    }
-
-    public static void assertEquals(String message, Double expected, Double actual) {
-        assertTrue(message, Double.compare(actual, expected) == 0);
-    }
-
-    public static void fail(String message) {
-        throw new RuntimeException(message);
-    }
-
-    @TruffleBoundary
-    public static String format(String format, Object... args) {
-        return String.format(format, args);
+    @Override
+    public byte[] createBinary() {
+        return binary;
     }
 }

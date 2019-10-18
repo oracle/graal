@@ -8,4 +8,4 @@ if [ $# -lt 2 ]; then
     exit 1
 fi
 
-mx -v --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- -Dwasmbench.benchmarkName=$BENCHMARK -- $SUTE
+mx -v --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- -Dwasmbench.benchmarkName=$BENCHMARK -- $SUITE
