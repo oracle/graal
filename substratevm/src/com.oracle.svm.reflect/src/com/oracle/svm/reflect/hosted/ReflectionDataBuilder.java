@@ -172,7 +172,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
          * here, and we assume that user code that requires reflection support is not using
          * substitutions.
          */
-        Set<Class<?>> allClasses = new HashSet<>();
         for (AnalysisType aType : access.getUniverse().getTypes()) {
             Class<?> originalClass = aType.getJavaClass();
             if (originalClass != null) {
@@ -180,27 +179,17 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                     /* Class has already been processed. */
                     continue;
                 }
-                if (enclosingMethodOrConstructor(originalClass) != null) {
+                if (originalClass.isArray() || enclosingMethodOrConstructor(originalClass) != null) {
                     /*
-                     * We haven an enclosing method or constructor for this class, so we add the
-                     * class to the set of processed classes so that the ReflectionData is
-                     * initialized below.
+                     * This type is either an array or it has an enclosing method or constructor. In
+                     * either case we process the class, i.e., initialize its reflection data, mark
+                     * it as processed and require an analysis iteration.
                      */
-                    allClasses.add(originalClass);
-                } else if (originalClass.isArray()) {
-                    // Always register reflection data for array classes
-                    allClasses.add(originalClass);
+                    processClass(access, originalClass);
+                    processedClasses.add(originalClass);
+                    access.requireAnalysisIteration();
                 }
             }
-        }
-        if (!allClasses.isEmpty()) {
-            /*
-             * If there are classes that haven't been seen before process them and request an
-             * analysis iteration.
-             */
-            processedClasses.addAll(allClasses);
-            registerClasses(access, allClasses);
-            access.requireAnalysisIteration();
         }
     }
 
@@ -220,78 +209,75 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             allClasses.add(field.getDeclaringClass());
         });
 
-        registerClasses(access, allClasses);
+        allClasses.forEach(clazz -> processClass(access, clazz));
     }
 
-    private void registerClasses(DuringAnalysisAccessImpl access, Set<Class<?>> allClasses) {
-        for (Class<?> clazz : allClasses) {
-            AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
-            DynamicHub hub = access.getHostVM().dynamicHub(type);
+    private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
+        AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
+        DynamicHub hub = access.getHostVM().dynamicHub(type);
 
-            if (type.isArray()) {
-                /*
-                 * Array types allocated reflectively need to be registered as instantiated.
-                 * Otherwise the isInstantiated check in AllocationSnippets.checkDynamicHub() will
-                 * fail at runtime when the array is *only* allocated through Array.newInstance().
-                 */
-                type.registerAsInHeap();
-            }
-
-            if (reflectionClasses.contains(clazz)) {
-                ClassForNameSupport.registerClass(clazz);
-            }
-
+        if (type.isArray()) {
             /*
-             * Ensure all internal fields of the original Class.ReflectionData object are
-             * initialized. Calling the public methods triggers lazy initialization of the fields.
+             * Array types allocated reflectively need to be registered as instantiated. Otherwise
+             * the isInstantiated check in AllocationSnippets.checkDynamicHub() will fail at runtime
+             * when the array is *only* allocated through Array.newInstance().
              */
-            try {
-                clazz.getDeclaredFields();
-                clazz.getFields();
-                clazz.getDeclaredMethods();
-                clazz.getMethods();
-                clazz.getDeclaredConstructors();
-                clazz.getConstructors();
-                clazz.getDeclaredClasses();
-                clazz.getClasses();
-            } catch (NoClassDefFoundError e) {
-                /*
-                 * If any of the methods or fields reference missing types in their signatures a
-                 * NoClassDefFoundError is thrown. Skip registering reflection metadata for this
-                 * class.
-                 */
-                // Checkstyle: stop
-                System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
-                                ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
-                // Checkstyle: resume
-                continue;
-            }
-
-            Object originalReflectionData = accessors.getReflectionData(clazz);
-            DynamicHub.ReflectionData reflectionData;
-
-            if (type.isArray()) {
-                // Always register reflection data for array classes
-                reflectionData = arrayReflectionData;
-            } else {
-                reflectionData = new DynamicHub.ReflectionData(
-                                filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
-                                filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods),
-                                filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterClasses(clazz.getDeclaredClasses(), reflectionClasses, access.getMetaAccess()),
-                                filterClasses(clazz.getClasses(), reflectionClasses, access.getMetaAccess()),
-                                enclosingMethodOrConstructor(clazz));
-            }
-
-            hub.setReflectionData(reflectionData);
+            type.registerAsInHeap();
         }
+
+        if (reflectionClasses.contains(clazz)) {
+            ClassForNameSupport.registerClass(clazz);
+        }
+
+        /*
+         * Ensure all internal fields of the original Class.ReflectionData object are initialized.
+         * Calling the public methods triggers lazy initialization of the fields.
+         */
+        try {
+            clazz.getDeclaredFields();
+            clazz.getFields();
+            clazz.getDeclaredMethods();
+            clazz.getMethods();
+            clazz.getDeclaredConstructors();
+            clazz.getConstructors();
+            clazz.getDeclaredClasses();
+            clazz.getClasses();
+        } catch (NoClassDefFoundError e) {
+            /*
+             * If any of the methods or fields reference missing types in their signatures a
+             * NoClassDefFoundError is thrown. Skip registering reflection metadata for this class.
+             */
+            // Checkstyle: stop
+            System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
+            // Checkstyle: resume
+            return;
+        }
+
+        Object originalReflectionData = accessors.getReflectionData(clazz);
+        DynamicHub.ReflectionData reflectionData;
+
+        if (type.isArray()) {
+            // Always register reflection data for array classes
+            reflectionData = arrayReflectionData;
+        } else {
+            reflectionData = new DynamicHub.ReflectionData(
+                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
+                            filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                            filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                            filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                            filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                            nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods),
+                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                            filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                            filterClasses(clazz.getDeclaredClasses(), reflectionClasses, access.getMetaAccess()),
+                            filterClasses(clazz.getClasses(), reflectionClasses, access.getMetaAccess()),
+                            enclosingMethodOrConstructor(clazz));
+        }
+
+        hub.setReflectionData(reflectionData);
     }
 
     protected void afterAnalysis() {
