@@ -31,6 +31,10 @@ package com.oracle.truffle.llvm.runtime.pthread;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+/**
+ * This exception is thrown when {@code pthread_exit} is called. It will be caught by the root
+ * function of the thread to exit the thread gracefully.
+ */
 public final class PThreadExitException extends ControlFlowException {
 
     private static final long serialVersionUID = -6400933896708251681L;
