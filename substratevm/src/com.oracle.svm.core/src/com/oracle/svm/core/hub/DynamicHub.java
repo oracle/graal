@@ -1314,11 +1314,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 }
 
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
+// Checkstyle: stop
 @TargetClass(className = "java.lang.Class", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_Class_ReflectionData<T> {
     @Alias //
     static String NULL_SENTINEL;
 }
+// Checkstyle: resume
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
 final class Target_jdk_internal_reflect_ReflectionFactory {
