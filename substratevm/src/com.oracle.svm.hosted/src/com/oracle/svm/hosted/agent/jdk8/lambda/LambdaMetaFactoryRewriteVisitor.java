@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent.lambda;
+package com.oracle.svm.hosted.agent.jdk8.lambda;
 
 import static org.objectweb.asm.Opcodes.ASM7;
 
@@ -71,7 +71,8 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
         @Override
         public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
             if (isMetaFactoryCall(bootstrapMethodHandle.getOwner(), bootstrapMethodHandle.getName())) {
-                Handle handle = new Handle(bootstrapMethodHandle.getTag(), "com/oracle/svm/hosted/agent/lambda/LambdaMetafactory", bootstrapMethodHandle.getName(), bootstrapMethodHandle.getDesc(),
+                Handle handle = new Handle(bootstrapMethodHandle.getTag(), "com/oracle/svm/hosted/agent/jdk8/lambda/LambdaMetafactory", bootstrapMethodHandle.getName(),
+                                bootstrapMethodHandle.getDesc(),
                                 bootstrapMethodHandle.isInterface());
                 super.visitInvokeDynamicInsn(name, descriptor, handle, bootstrapMethodArguments);
             } else {

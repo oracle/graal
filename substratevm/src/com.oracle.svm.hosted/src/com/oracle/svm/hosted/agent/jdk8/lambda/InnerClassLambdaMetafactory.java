@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent.lambda;
+package com.oracle.svm.hosted.agent.jdk8.lambda;
 
 import static jdk.internal.org.objectweb.asm.Opcodes.AASTORE;
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_BRIDGE;
@@ -121,7 +121,7 @@ import sun.security.action.GetPropertyAction;
     private static final ProxyClassesDumper dumper;
 
     // initialize lambdas eagerly for better startup performance
-    private static final boolean eagerlyInitialize;
+    private static final boolean eagerlyInitialize = false;
 
     static {
         final String key = "jdk.internal.lambda.dumpProxyClasses";
@@ -129,10 +129,6 @@ import sun.security.action.GetPropertyAction;
                         new GetPropertyAction(key), null,
                         new PropertyPermission(key, "read"));
         dumper = (null == path) ? null : ProxyClassesDumper.getInstance(path);
-
-        final String eagerlyInitializeKey = "jdk.internal.lambda.eagerlyInitialize";
-        String eagerlyInitializeSetting = GetPropertyAction.privilegedGetProperty(eagerlyInitializeKey);
-        eagerlyInitialize = !"false".equals(eagerlyInitializeSetting);
     }
 
     // See context values in AbstractValidatingLambdaMetafactory

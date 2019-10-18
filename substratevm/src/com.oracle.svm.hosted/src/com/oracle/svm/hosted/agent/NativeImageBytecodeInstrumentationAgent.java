@@ -33,7 +33,7 @@ import java.lang.instrument.Instrumentation;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
-import com.oracle.svm.hosted.agent.lambda.LambdaMetaFactoryRewriteVisitor;
+import com.oracle.svm.hosted.agent.jdk8.lambda.LambdaMetaFactoryRewriteVisitor;
 import com.oracle.svm.util.AgentSupport;
 
 /*

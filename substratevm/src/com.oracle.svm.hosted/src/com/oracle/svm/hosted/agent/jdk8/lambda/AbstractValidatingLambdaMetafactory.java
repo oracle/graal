@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent.lambda;
+package com.oracle.svm.hosted.agent.jdk8.lambda;
 
 import static sun.invoke.util.Wrapper.forPrimitiveType;
 import static sun.invoke.util.Wrapper.forWrapperType;

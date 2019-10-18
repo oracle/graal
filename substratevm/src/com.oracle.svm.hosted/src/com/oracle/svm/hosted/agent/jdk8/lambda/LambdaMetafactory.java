@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.agent.lambda;
+package com.oracle.svm.hosted.agent.jdk8.lambda;
 
 import java.io.Serializable;
 import java.lang.invoke.CallSite;
