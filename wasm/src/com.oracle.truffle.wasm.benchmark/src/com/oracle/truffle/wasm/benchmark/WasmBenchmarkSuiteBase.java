@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.wasm.benchmark;
 
-import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.FORKS;
-import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.MEASUREMENT_ITERATIONS;
-import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.WARMUP_ITERATIONS;
+import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.FORKS;
+import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.MEASUREMENT_ITERATIONS;
+import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_ITERATIONS;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -64,7 +64,7 @@ import com.oracle.truffle.wasm.utils.WasmResource;
 @Warmup(iterations = WARMUP_ITERATIONS)
 @Measurement(iterations = MEASUREMENT_ITERATIONS)
 @Fork(FORKS)
-public abstract class WasmBenchmark {
+public abstract class WasmBenchmarkSuiteBase {
     public static class Defaults {
         public static final int MEASUREMENT_ITERATIONS = 10;
         public static final int WARMUP_ITERATIONS = 10;
@@ -79,9 +79,15 @@ public abstract class WasmBenchmark {
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
-            WasmBenchCase benchCase = getBenchCase(benchmarkName());
+            final String wantedBenchmarkName = WasmBenchmarkOptions.BENCHMARK_NAME;
 
-            Assert.assertNotNull(String.format("Benchmark %s not found", benchmarkName()), benchCase);
+            if (wantedBenchmarkName == null || wantedBenchmarkName.equals("")) {
+                Assert.fail("Please select a benchmark by setting -Dwasmbench.benchmarkName");
+            }
+
+            WasmBenchCase benchCase = getBenchCase(bundleName(), WasmBenchmarkOptions.BENCHMARK_NAME);
+
+            Assert.assertNotNull(String.format("Benchmark %s not found", bundleName()), benchCase);
 
             Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.PredefinedModules", "testutil:testutil,env:emscripten");
@@ -116,16 +122,15 @@ public abstract class WasmBenchmark {
             return mainFunction;
         }
 
-        protected abstract String benchmarkName();
+        protected abstract String bundleName();
     }
 
-    // TODO: should we split the bench cases into bundles, like the test cases?
-    private static WasmBenchCase getBenchCase(String wantedBenchmarkName) throws IOException {
+    private static WasmBenchCase getBenchCase(String benchmarkBundle, String wantedBenchmarkName) throws IOException {
         Collection<WasmBenchCase> collectedCases = new ArrayList<>();
 
         // Open the wasm_bench_index file of the bench bundle.
         // The wasm_bench_index file contains the available benchmarks for that bundle.
-        InputStream index = WasmBenchmark.class.getResourceAsStream("/bench/wasm_test_index");
+        InputStream index = WasmBenchmarkSuiteBase.class.getResourceAsStream(String.format("/bench/%s/wasm_test_index", benchmarkBundle));
         Assert.assertNotNull("Could not find resource: wasm_test_index", index);
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 
@@ -135,9 +140,9 @@ public abstract class WasmBenchmark {
             return null;
         }
 
-        Object mainContent = WasmResource.getResourceAsTest(String.format("/bench/%s", wantedBenchmarkName), true);
-        String initContent = WasmResource.getResourceAsString(String.format("/bench/%s.init", wantedBenchmarkName), false);
-        String optsContent = WasmResource.getResourceAsString(String.format("/bench/%s.opts", wantedBenchmarkName), false);
+        Object mainContent = WasmResource.getResourceAsTest(String.format("/bench/%s/%s", benchmarkBundle, wantedBenchmarkName), true);
+        String initContent = WasmResource.getResourceAsString(String.format("/bench/%s/%s.init", benchmarkBundle, wantedBenchmarkName), false);
+        String optsContent = WasmResource.getResourceAsString(String.format("/bench/%s/%s.opts", benchmarkBundle, wantedBenchmarkName), false);
         WasmInitialization initializer = WasmInitialization.create(initContent);
         Properties options = SystemProperties.createFromOptions(optsContent);
 

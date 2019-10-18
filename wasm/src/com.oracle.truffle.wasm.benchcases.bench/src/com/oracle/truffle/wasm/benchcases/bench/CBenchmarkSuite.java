@@ -27,8 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.benchmark;
+package com.oracle.truffle.wasm.benchcases.bench;
 
-public class WasmBenchOptions {
-    public static final String BENCH_FILTER = System.getProperty("wasmbench.benchFilter");
+import com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+
+public class CBenchmarkSuite extends WasmBenchmarkSuiteBase {
+    @State(Scope.Benchmark)
+    public static class CBenchmarkState extends WasmBenchmarkState {
+        @Override
+        protected String bundleName() {
+            return "c";
+        }
+    }
+
+    @Benchmark
+    public void fibBenchmark(CBenchmarkState state) {
+        state.mainFunction().execute();
+    }
 }

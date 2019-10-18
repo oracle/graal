@@ -29,23 +29,22 @@
  */
 package com.oracle.truffle.wasm.benchcases.bench;
 
-import com.oracle.truffle.wasm.benchmark.WasmBenchmark;
+import com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
-public class CBenchmark extends WasmBenchmark {
-
+public class WatBenchmarkSuite extends WasmBenchmarkSuiteBase {
     @State(Scope.Benchmark)
-    public static class FibBenchmarkState extends WasmBenchmarkState {
+    public static class WatBenchmarkState extends WasmBenchmarkState {
         @Override
-        protected String benchmarkName() {
-            return "fib";
+        protected String bundleName() {
+            return "wat";
         }
     }
 
     @Benchmark
-    public void fibBenchmark(FibBenchmarkState state) {
+    public void watBenchmark(WatBenchmarkState state) {
         state.mainFunction().execute();
     }
 }
