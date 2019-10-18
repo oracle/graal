@@ -313,11 +313,18 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     static void resetNativeImageCacheLanguageHomes() {
         synchronized (LanguageCache.class) {
-            for (Map<String, LanguageCache> caches : runtimeCaches.values()) {
-                for (LanguageCache cache : caches.values()) {
-                    cache.languageHome = null;
-                }
+            if (nativeImageCache != null) {
+                resetNativeImageCacheLanguageHomes(nativeImageCache);
             }
+            for (Map<String, LanguageCache> caches : runtimeCaches.values()) {
+                resetNativeImageCacheLanguageHomes(caches);
+            }
+        }
+    }
+
+    private static void resetNativeImageCacheLanguageHomes(Map<String, LanguageCache> caches) {
+        for (LanguageCache cache : caches.values()) {
+            cache.languageHome = null;
         }
     }
 
