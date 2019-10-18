@@ -60,6 +60,12 @@ import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
+
+    public static final Field[] EMPTY_FIELDS = new Field[0];
+    public static final Method[] EMPTY_METHODS = new Method[0];
+    public static final Constructor<?>[] EMPTY_CONSTRUCTORS = new Constructor<?>[0];
+    public static final Class<?>[] EMPTY_CLASSES = new Class<?>[0];
+
     private enum FieldFlag {
         FINAL_BUT_WRITABLE,
         UNSAFE_ACCESSIBLE,
@@ -71,10 +77,10 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private boolean sealed;
 
     private final DynamicHub.ReflectionData arrayReflectionData;
-    private Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
-    private Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
+    private final Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /* Keep track of classes already processed for reflection. */
     private final Set<Class<?>> processedClasses = new HashSet<>();
@@ -89,8 +95,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static DynamicHub.ReflectionData getArrayReflectionData() {
         Method[] publicArrayMethods;
         try {
-            Class<?>[] parameterTypes = {};
-            Method getPublicMethodsMethod = ReflectionUtil.lookupMethod(Class.class, "privateGetPublicMethods", parameterTypes);
+            Method getPublicMethodsMethod = ReflectionUtil.lookupMethod(Class.class, "privateGetPublicMethods");
             publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
@@ -98,18 +103,18 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         // array classes only have methods inherited from Object
         return new DynamicHub.ReflectionData(
-                        new Field[0],
-                        new Field[0],
-                        new Field[0],
-                        new Method[0],
+                        EMPTY_FIELDS,
+                        EMPTY_FIELDS,
+                        EMPTY_FIELDS,
+                        EMPTY_METHODS,
                         publicArrayMethods,
-                        new Constructor<?>[0],
-                        new Constructor<?>[0],
+                        EMPTY_CONSTRUCTORS,
+                        EMPTY_CONSTRUCTORS,
                         null,
-                        new Field[0],
-                        new Method[0],
-                        new Class<?>[0],
-                        new Class<?>[0],
+                        EMPTY_FIELDS,
+                        EMPTY_METHODS,
+                        EMPTY_CLASSES,
+                        EMPTY_CLASSES,
                         null);
     }
 
@@ -134,12 +139,14 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         checkNotSealed();
         for (Field field : fields) {
             boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
-            EnumSet<FieldFlag> flags = (writable && allowUnsafeAccess) ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE, FieldFlag.UNSAFE_ACCESSIBLE) : //
-                            (writable ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE) : (allowUnsafeAccess ? EnumSet.of(FieldFlag.UNSAFE_ACCESSIBLE) : NO_FIELD_FLAGS));
+            EnumSet<FieldFlag> flags = writable && allowUnsafeAccess ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE, FieldFlag.UNSAFE_ACCESSIBLE)
+                            : writable ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE)
+                                            : allowUnsafeAccess ? EnumSet.of(FieldFlag.UNSAFE_ACCESSIBLE)
+                                                            : NO_FIELD_FLAGS;
             reflectionFields.compute(field, (key, existingFlags) -> {
                 if (writable && (existingFlags == null || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
                     UserError.guarantee(!analyzedFinalFields.contains(field),
-                                    "A field that was already processed by the analysis cannot be re-registered as writable: " + field.toString());
+                                    "A field that was already processed by the analysis cannot be re-registered as writable: " + field);
                 }
                 return flags;
             });
@@ -249,7 +256,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              */
             // Checkstyle: stop
             System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
-                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
+                            ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + '.');
             // Checkstyle: resume
             return;
         }
@@ -318,7 +325,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         if (enclosingMethod == null && enclosingConstructor == null) {
             return null;
-        } else if (enclosingMethod != null && enclosingConstructor != null) {
+        }
+        if (enclosingMethod != null && enclosingConstructor != null) {
             throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
@@ -355,15 +363,15 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                 }
             }
         }
-        return result.toArray(new Field[0]);
+        return result.toArray(EMPTY_FIELDS);
     }
 
     private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, new Constructor<?>[0]);
+        return filterMethods(methods, filter, metaAccess, EMPTY_CONSTRUCTORS);
     }
 
     private static Method[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
-        return filterMethods(methods, filter, metaAccess, new Method[0]);
+        return filterMethods(methods, filter, metaAccess, EMPTY_METHODS);
     }
 
     @SuppressWarnings("unchecked")
@@ -384,7 +392,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                 result.add(clazz);
             }
         }
-        return result.toArray(new Class<?>[0]);
+        return result.toArray(EMPTY_CLASSES);
     }
 
     boolean inspectFinalFieldWritableForAnalysis(Field field) {
