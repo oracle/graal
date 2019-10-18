@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Predicate;
+
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -62,21 +64,17 @@ import javax.lang.model.util.Types;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import java.lang.annotation.Annotation;
-import java.util.function.Predicate;
 
-@SupportedAnnotationTypes("com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration")
+@SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
     private static final int NUMBER_OF_PROPERTIES_PER_ENTRY = 4;
 
     @Override
-    boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror, Annotation registration) {
+    boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
         if (!annotatedElement.getModifiers().contains(Modifier.PUBLIC)) {
             emitError("Registered instrument class must be public", annotatedElement);
             return false;
@@ -85,8 +83,9 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             emitError("Registered instrument inner-class must be static", annotatedElement);
             return false;
         }
-        TypeMirror truffleInstrument = ProcessorContext.getInstance().getType(TruffleInstrument.class);
-        TypeMirror truffleInstrumentProvider = ProcessorContext.getInstance().getType(TruffleInstrument.Provider.class);
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        TypeMirror truffleInstrument = types.TruffleInstrument;
+        TypeMirror truffleInstrumentProvider = types.TruffleInstrument_Provider;
         boolean processingTruffleInstrument;
         if (processingEnv.getTypeUtils().isAssignable(annotatedElement.asType(), truffleInstrument)) {
             processingTruffleInstrument = true;
@@ -101,13 +100,15 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
     }
 
     @Override
-    Class<?> getProviderClass() {
-        return TruffleInstrument.Provider.class;
+    DeclaredType getProviderClass() {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        return types.TruffleInstrument_Provider;
     }
 
     @Override
     Iterable<AnnotationMirror> getProviderAnnotations(TypeElement annotatedElement) {
-        DeclaredType registrationType = (DeclaredType) ProcessorContext.getInstance().getType(TruffleInstrument.Registration.class);
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        DeclaredType registrationType = types.TruffleInstrument_Registration;
         AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
                         new Predicate<ExecutableElement>() {
                             @Override
@@ -134,7 +135,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             case "getServicesClassNames": {
                 ProcessorContext context = ProcessorContext.getInstance();
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
-                                ProcessorContext.getInstance().getType(TruffleInstrument.Registration.class));
+                                context.getTypes().TruffleInstrument_Registration);
                 List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
                 if (services.isEmpty()) {
                     builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
@@ -162,14 +163,16 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
 
     @Override
     void storeRegistrations(Properties into, Iterable<? extends TypeElement> instruments) {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         int numInstruments = loadIfFileAlreadyExists(getRegistrationFileName(), into);
         for (TypeElement l : instruments) {
-            Registration annotation = l.getAnnotation(Registration.class);
+            AnnotationMirror annotation = ElementUtils.findAnnotationMirror(l, types.TruffleInstrument_Registration);
             if (annotation == null) {
                 continue;
             }
 
-            int instNum = findInstrument(annotation.id(), into);
+            String id = ElementUtils.getAnnotationValue(String.class, annotation, "id");
+            int instNum = findInstrument(id, into);
             if (instNum == 0) { // not found
                 numInstruments += 1;
                 instNum = numInstruments;
@@ -178,26 +181,21 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             String prefix = "instrument" + instNum + ".";
             String className = processingEnv.getElementUtils().getBinaryName(l).toString();
 
-            into.setProperty(prefix + "id", annotation.id());
-            into.setProperty(prefix + "name", annotation.name());
-            into.setProperty(prefix + "version", annotation.version());
+            into.setProperty(prefix + "id", id);
+            into.setProperty(prefix + "name", ElementUtils.getAnnotationValue(String.class, annotation, "name"));
+            into.setProperty(prefix + "version", ElementUtils.getAnnotationValue(String.class, annotation, "version"));
             into.setProperty(prefix + "className", className);
-            into.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
+            into.setProperty(prefix + "internal", Boolean.toString(ElementUtils.getAnnotationValue(Boolean.class, annotation, "internal")));
 
             int serviceCounter = 0;
-            for (AnnotationMirror anno : l.getAnnotationMirrors()) {
-                final String annoName = anno.getAnnotationType().asElement().toString();
-                if (Registration.class.getCanonicalName().equals(annoName)) {
-                    for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : anno.getElementValues().entrySet()) {
-                        final Name attrName = entry.getKey().getSimpleName();
-                        if (attrName.contentEquals("services")) {
-                            AnnotationValue attrValue = entry.getValue();
-                            List<?> classes = (List<?>) attrValue.getValue();
-                            for (Object clazz : classes) {
-                                AnnotationValue clazzValue = (AnnotationValue) clazz;
-                                into.setProperty(prefix + "service" + serviceCounter++, clazzValue.getValue().toString());
-                            }
-                        }
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : annotation.getElementValues().entrySet()) {
+                final Name attrName = entry.getKey().getSimpleName();
+                if (attrName.contentEquals("services")) {
+                    AnnotationValue attrValue = entry.getValue();
+                    List<?> classes = (List<?>) attrValue.getValue();
+                    for (Object clazz : classes) {
+                        AnnotationValue clazzValue = (AnnotationValue) clazz;
+                        into.setProperty(prefix + "service" + serviceCounter++, clazzValue.getValue().toString());
                     }
                 }
             }

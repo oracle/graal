@@ -38,7 +38,7 @@ import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.mcontext_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 
-@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class)
+@Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class)
 @AutomaticFeature
 class AArch64UContextRegisterDumperFeature implements Feature {
     @Override

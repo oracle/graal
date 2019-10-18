@@ -59,7 +59,7 @@ import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandl
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.code.ReferenceAdjuster;
-import com.oracle.svm.core.code.RuntimeMethodInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
@@ -220,12 +220,14 @@ public class RuntimeCodeInstaller {
 
     private void doInstall(SubstrateInstalledCode installedCode) {
         ReferenceAdjuster adjuster = new InstantReferenceAdjuster();
-        CodeInfo info = doPrepareInstall(adjuster);
 
-        doInstallPrepared(method, info, installedCode);
+        // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
+        CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
+        doPrepareInstall(adjuster, codeInfo);
+        doInstallPrepared(method, codeInfo, installedCode);
     }
 
-    protected CodeInfo doPrepareInstall(ReferenceAdjuster adjuster) {
+    protected void doPrepareInstall(ReferenceAdjuster adjuster, CodeInfo codeInfo) {
         prepareCodeMemory();
 
         /*
@@ -234,7 +236,7 @@ public class RuntimeCodeInstaller {
          */
         ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
 
-        // Build an index of PatchingAnnoations
+        // Build an index of PatchingAnnotations
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
         for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
@@ -259,40 +261,41 @@ public class RuntimeCodeInstaller {
                             (SubstrateObjectConstant) constant);
         });
 
-        CodeInfo runtimeMethodInfo = RuntimeMethodInfoAccess.allocateMethodInfo();
         NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
-        RuntimeMethodInfoAccess.initialize(runtimeMethodInfo, code, codeSize, tier, observerHandles);
+        RuntimeCodeInfoAccess.initialize(codeInfo, code, codeSize, tier, observerHandles);
 
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);
-        RuntimeMethodInfoAccess.setCodeObjectConstantsInfo(runtimeMethodInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
-        patchDirectObjectConstants(objectConstants, runtimeMethodInfo, adjuster);
+        RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+        patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
-        createCodeChunkInfos(runtimeMethodInfo, adjuster);
-
+        createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;
-        return runtimeMethodInfo;
     }
 
     protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
-        RuntimeMethodInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
-
-        Throwable[] errorBox = {null};
-        JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
-            try {
-                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
-                /*
-                 * This call makes the new code visible, i.e., other threads can start executing it
-                 * immediately. So all metadata must be registered at this point.
-                 */
-                CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                installedCode.setAddress(codeStart.rawValue(), method);
-            } catch (Throwable e) {
-                errorBox[0] = e;
+        // The tether is acquired when it is created.
+        Object tether = RuntimeCodeInfoAccess.beforeInstallInCurrentIsolate(codeInfo, installedCode);
+        try {
+            Throwable[] errorBox = {null};
+            JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
+                try {
+                    CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
+                    /*
+                     * This call makes the new code visible, i.e., other threads can start executing
+                     * it immediately. So all metadata must be registered at this point.
+                     */
+                    CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
+                    installedCode.setAddress(codeStart.rawValue(), method);
+                } catch (Throwable e) {
+                    errorBox[0] = e;
+                }
+            });
+            if (errorBox[0] != null) {
+                throw rethrow(errorBox[0]);
             }
-        });
-        if (errorBox[0] != null) {
-            throw rethrow(errorBox[0]);
+        } finally {
+            CodeInfoAccess.releaseTether(codeInfo, tether);
         }
     }
 
@@ -307,7 +310,7 @@ public class RuntimeCodeInstaller {
             SubstrateObjectConstant constant = objectConstants.constants[i];
             adjuster.setConstantTargetAt(code.add(objectConstants.offsets[i]), objectConstants.lengths[i], constant);
         }
-        RuntimeMethodInfoAccess.setCodeConstantsLive(runtimeMethodInfo);
+        CodeInfoAccess.setState(runtimeMethodInfo, CodeInfo.STATE_CODE_CONSTANTS_LIVE);
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
@@ -351,7 +354,7 @@ public class RuntimeCodeInstaller {
                 long pcDisplacement = targetAddress - (code.rawValue() + call.pcOffset);
                 if (pcDisplacement != (int) pcDisplacement || testTrampolineJumps) {
                     /*
-                     * In case a trampoline jump is need we just "call" the trampoline jump at the
+                     * In case a trampoline jump is needed we just "call" the trampoline jump at the
                      * end of the code.
                      */
                     Long destAddr = Long.valueOf(targetAddress);
@@ -403,7 +406,7 @@ public class RuntimeCodeInstaller {
     }
 
     protected Pointer allocateCodeMemory(long size) {
-        PointerBase result = RuntimeMethodInfoAccess.allocateCodeMemory(WordFactory.unsigned(size));
+        PointerBase result = RuntimeCodeInfoAccess.allocateCodeMemory(WordFactory.unsigned(size));
         if (result.isNull()) {
             throw new OutOfMemoryError();
         }
@@ -411,6 +414,6 @@ public class RuntimeCodeInstaller {
     }
 
     protected void releaseCodeMemory(Pointer start, long size) {
-        RuntimeMethodInfoAccess.releaseCodeMemory((CodePointer) start, WordFactory.unsigned(size));
+        RuntimeCodeInfoAccess.releaseCodeMemory((CodePointer) start, WordFactory.unsigned(size));
     }
 }

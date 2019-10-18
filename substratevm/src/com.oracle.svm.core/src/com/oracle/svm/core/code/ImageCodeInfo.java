@@ -33,14 +33,12 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.util.VMError;
 
 public class ImageCodeInfo {
@@ -67,21 +65,20 @@ public class ImageCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
-        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
-        NonmovableArrays.setObject(objfields, CodeInfo.NAME_OBJFIELD, CODE_INFO_NAME);
-        Object tether = SubstrateOptions.getRuntimeAssertionsForClass(ImageCodeInfo.class.getName()) ? //
-                        new UninterruptibleUtils.AtomicInteger(0) : new Object();
-        NonmovableArrays.setObject(objfields, CodeInfo.TETHER_OBJFIELD, tether);
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
+        // The image code info is never invalidated, so we consider it as always tethered.
+        NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));
         // no InstalledCode for image code
         objectFields = NonmovableArrays.getHostedArray(objfields);
 
-        int runtimeInfoSize = SizeOf.get(CodeInfo.class);
+        int runtimeInfoSize = SizeOf.get(CodeInfoImpl.class);
         runtimeCodeInfoData = new byte[runtimeInfoSize];
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
     CodeInfo prepareCodeInfo() {
-        CodeInfo info = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(runtimeCodeInfoData), 0);
+        CodeInfoImpl info = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(runtimeCodeInfoData), 0);
         assert info.getCodeStart().isNull() : "already initialized";
 
         info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
@@ -112,7 +109,7 @@ public class ImageCodeInfo {
      * {@link ImageCodeInfo} and provide accesses during image generation.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    class HostedImageCodeInfo implements CodeInfo {
+    public class HostedImageCodeInfo implements CodeInfoImpl {
         @Override
         public CodePointer getCodeStart() {
             return codeStart;
@@ -234,12 +231,12 @@ public class ImageCodeInfo {
         }
 
         @Override
-        public boolean getCodeConstantsLive() {
+        public int getState() {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 
         @Override
-        public void setCodeConstantsLive(boolean codeConstantsLive) {
+        public void setState(int state) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
 

@@ -57,7 +57,7 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

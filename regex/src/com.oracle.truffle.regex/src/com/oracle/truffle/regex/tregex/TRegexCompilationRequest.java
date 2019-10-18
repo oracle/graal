@@ -2,25 +2,41 @@
  * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex;
 
@@ -122,9 +138,12 @@ public final class TRegexCompilationRequest {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
         RegexProperties properties = ast.getProperties();
         checkFeatureSupport(properties);
@@ -144,7 +163,7 @@ public final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode) {
+    TRegexExecRootNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(TRegexExecRootNode rootNode, boolean allowSimpleCG) {
         assert ast != null;
         assert nfa != null;
         this.root = rootNode;
@@ -153,7 +172,7 @@ public final class TRegexCompilationRequest {
         if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
+        if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -167,15 +186,16 @@ public final class TRegexCompilationRequest {
                 // assigning preCalculatedResults
             }
         }
-        final boolean createCaptureGroupTracker = (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && preCalculatedResults == null;
-        executorNodeForward = createDFAExecutor(nfa, true, true, false);
+        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()));
+        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) &&
+                        preCalculatedResults == null;
         if (createCaptureGroupTracker) {
-            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true);
+            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false);
         }
         if (preCalculatedResults != null && preCalculatedResults.length > 1) {
-            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false);
-        } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
-            executorNodeBackward = createDFAExecutor(nfa, false, false, false);
+            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false);
+        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry())) {
+            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()));
         }
         logAutomatonSizes(rootNode);
         return new TRegexExecRootNode.LazyCaptureGroupRegexSearchNode(
@@ -194,7 +214,7 @@ public final class TRegexCompilationRequest {
         assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
         assert !ast.getRoot().isDead();
         createNFA();
-        return createDFAExecutor(nfa, true, true, true);
+        return createDFAExecutor(nfa, true, true, true, false);
     }
 
     private static void checkFeatureSupport(RegexProperties properties) throws UnsupportedRegexException {
@@ -227,9 +247,12 @@ public final class TRegexCompilationRequest {
     private void createAST() {
         RegexParser regexParser = createParser();
         phaseStart("Parser");
-        ast = regexParser.parse();
-        regexParser.prepareForDFA();
-        phaseEnd("Parser");
+        try {
+            ast = regexParser.parse();
+            regexParser.prepareForDFA();
+        } finally {
+            phaseEnd("Parser");
+        }
         debugAST();
     }
 
@@ -248,22 +271,29 @@ public final class TRegexCompilationRequest {
 
     private void createNFA() {
         phaseStart("NFA");
-        nfa = NFAGenerator.createNFA(ast, compilationBuffer);
-        phaseEnd("NFA");
+        try {
+            nfa = NFAGenerator.createNFA(ast, compilationBuffer);
+        } finally {
+            phaseEnd("NFA");
+        }
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, trackCaptureGroups,
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
+        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
                         tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
         DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
         phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
-        dfa.calcDFA();
-        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
-        phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        TRegexDFAExecutorNode executorNode;
+        try {
+            dfa.calcDFA();
+            executorNode = dfa.createDFAExecutor();
+        } finally {
+            phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        }
         debugDFA(dfa, debugDumpName);
         return executorNode;
     }

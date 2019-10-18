@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Test;
@@ -123,7 +122,7 @@ public class TrufflePEATest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         createInliningPhase().apply(graph, context);
-        new PartialEscapePhase(true, true, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
+        new PartialEscapePhase(true, true, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         return graph;
     }
 

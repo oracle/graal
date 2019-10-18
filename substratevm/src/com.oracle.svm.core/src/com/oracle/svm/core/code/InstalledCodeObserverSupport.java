@@ -42,6 +42,11 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public final class InstalledCodeObserverSupport {
+    private static final InstalledCodeObserverHandleAction ACTION_ATTACH = h -> getAccessor(h).attachToCurrentIsolate(h);
+    private static final InstalledCodeObserverHandleAction ACTION_DETACH = h -> getAccessor(h).detachFromCurrentIsolate(h);
+    private static final InstalledCodeObserverHandleAction ACTION_RELEASE = h -> getAccessor(h).release(h);
+    private static final InstalledCodeObserverHandleAction ACTION_ACTIVATE = h -> getAccessor(h).activate(h);
+
     private final List<InstalledCodeObserver.Factory> observerFactories = new ArrayList<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -79,19 +84,19 @@ public final class InstalledCodeObserverSupport {
     }
 
     public static void activateObservers(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
-        forEach(observerHandles, h -> getAccessor(h).activate(h));
+        forEach(observerHandles, ACTION_ACTIVATE);
     }
 
     public static void detachFromCurrentIsolate(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
-        forEach(observerHandles, h -> getAccessor(h).detachFromCurrentIsolate(h));
+        forEach(observerHandles, ACTION_DETACH);
     }
 
     public static void attachToCurrentIsolate(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
-        forEach(observerHandles, h -> getAccessor(h).attachToCurrentIsolate(h));
+        forEach(observerHandles, ACTION_ATTACH);
     }
 
     public static void removeObservers(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
-        forEach(observerHandles, h -> getAccessor(h).release(h));
+        forEach(observerHandles, ACTION_RELEASE);
     }
 
     private interface InstalledCodeObserverHandleAction {

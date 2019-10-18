@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -48,11 +47,13 @@ import java.util.List;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -65,6 +66,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
 
     protected final ProcessorContext context;
     protected final ProcessingEnvironment processingEnv;
+    protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     protected final Log log;
 
@@ -82,9 +84,6 @@ public abstract class AbstractParser<M extends MessageContainer> {
                 mirrors = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), getAnnotationType());
             }
 
-            if (!context.getTruffleTypes().verify(context, element, null)) {
-                return null;
-            }
             model = parse(element, mirrors);
             if (model == null) {
                 return null;
@@ -114,9 +113,9 @@ public abstract class AbstractParser<M extends MessageContainer> {
 
     protected abstract M parse(Element element, List<AnnotationMirror> mirror);
 
-    public abstract Class<? extends Annotation> getAnnotationType();
+    public abstract DeclaredType getAnnotationType();
 
-    public Class<? extends Annotation> getRepeatAnnotationType() {
+    public DeclaredType getRepeatAnnotationType() {
         return null;
     }
 
@@ -124,8 +123,8 @@ public abstract class AbstractParser<M extends MessageContainer> {
         return false;
     }
 
-    public List<Class<? extends Annotation>> getAllAnnotationTypes() {
-        List<Class<? extends Annotation>> list = new ArrayList<>();
+    public List<DeclaredType> getAllAnnotationTypes() {
+        List<DeclaredType> list = new ArrayList<>();
         if (getAnnotationType() != null) {
             list.add(getAnnotationType());
         }
@@ -133,7 +132,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
         return list;
     }
 
-    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
+    public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
         return Collections.emptyList();
     }
 

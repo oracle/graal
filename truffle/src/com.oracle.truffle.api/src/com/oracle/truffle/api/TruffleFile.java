@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -531,7 +531,8 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
         try {
-            return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.toRealPath(path, options));
+            Path realPath = fileSystemContext.fileSystem.toRealPath(normalizedPath, options);
+            return new TruffleFile(fileSystemContext, realPath, realPath);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {

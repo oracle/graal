@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,14 +45,9 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationVa
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
@@ -122,7 +117,7 @@ public final class CacheExpression extends MessageContainer {
     }
 
     public AnnotationMirror getSharedGroupMirror() {
-        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), Shared.class);
+        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
     }
 
     public AnnotationValue getSharedGroupValue() {
@@ -182,23 +177,23 @@ public final class CacheExpression extends MessageContainer {
     }
 
     public boolean isCached() {
-        return isType(Cached.class);
+        return isType(types.Cached);
     }
 
     public boolean isCachedLibrary() {
-        return isType(CachedLibrary.class);
+        return isType(types.CachedLibrary);
     }
 
     public boolean isCachedContext() {
-        return isType(CachedContext.class);
+        return isType(types.CachedContext);
     }
 
     public boolean isCachedLanguage() {
-        return isType(CachedLanguage.class);
+        return isType(types.CachedLanguage);
     }
 
-    private boolean isType(Class<?> type) {
-        return ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), ProcessorContext.getInstance().getType(type));
+    private boolean isType(DeclaredType type) {
+        return ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), type);
     }
 
     @Override

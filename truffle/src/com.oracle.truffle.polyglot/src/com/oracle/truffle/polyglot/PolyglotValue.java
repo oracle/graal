@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -98,6 +99,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMembersNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsExceptionNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNullNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsTimeNodeGen;
@@ -107,6 +109,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.RemoveArrayElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.RemoveMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.SetArrayElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.ThrowExceptionNodeGen;
 
 abstract class PolyglotValue extends AbstractValueImpl {
 
@@ -125,6 +128,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
     PolyglotValue(PolyglotImpl polyglot, PolyglotLanguageContext languageContext) {
         super(polyglot);
         this.languageContext = languageContext;
+    }
+
+    @Override
+    public final Context getContext() {
+        if (languageContext == null) {
+            return null;
+        }
+        return languageContext.context.currentApi;
     }
 
     @Override
@@ -386,6 +397,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } else {
             throw cannotConvert(languageContext, receiver, null, "asDuration()", "isDuration()", "Value does not contain duration information.");
         }
+    }
+
+    @Override
+    public RuntimeException throwException(Object receiver) {
+        throw unsupported(languageContext, receiver, "throwException()", "isException()");
     }
 
     @Override
@@ -774,6 +790,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget asInstant;
         final CallTarget isDuration;
         final CallTarget asDuration;
+        final CallTarget isException;
+        final CallTarget throwException;
 
         final boolean isProxy;
         final boolean isHost;
@@ -824,6 +842,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.asInstant = createTarget(AsInstantNodeGen.create(this));
             this.isDuration = createTarget(IsDurationNodeGen.create(this));
             this.asDuration = createTarget(AsDurationNodeGen.create(this));
+            this.isException = createTarget(IsExceptionNodeGen.create(this));
+            this.throwException = createTarget(ThrowExceptionNodeGen.create(this));
         }
 
         abstract static class IsDateNode extends InteropNode {
@@ -1923,6 +1943,58 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
+        abstract static class IsExceptionNode extends InteropNode {
+
+            protected IsExceptionNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isException";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isException(receiver);
+            }
+        }
+
+        abstract static class ThrowExceptionNode extends InteropNode {
+
+            protected ThrowExceptionNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "throwException";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    throw objects.throwException(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    throw unsupported(context, receiver, "throwException()", "isException()");
+                }
+            }
+        }
+
     }
 
     static final class PrimitiveValue extends PolyglotValue {
@@ -2415,6 +2487,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public Value invoke(Object receiver, String identifier) {
             return (Value) CALL_PROFILED.call(cache.invokeNoArgs, languageContext, receiver, identifier);
+        }
+
+        @Override
+        public boolean isException(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isException, languageContext, receiver);
+        }
+
+        @Override
+        public RuntimeException throwException(Object receiver) {
+            CALL_PROFILED.call(cache.throwException, languageContext, receiver);
+            throw super.throwException(receiver);
         }
 
         @Override

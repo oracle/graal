@@ -643,7 +643,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final BasePhase<HighTierContext> createInliningPhase() {
-        return createInliningPhase(new CanonicalizerPhase());
+        return createInliningPhase(this.createCanonicalizerPhase());
     }
 
     protected BasePhase<HighTierContext> createInliningPhase(CanonicalizerPhase canonicalizer) {
@@ -1119,6 +1119,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph;
     }
 
+    protected StructuredGraph getFinalGraph(ResolvedJavaMethod method, OptionValues options) {
+        StructuredGraph graph = parseForCompile(method, options);
+        applyFrontEnd(graph);
+        return graph;
+    }
+
     @SuppressWarnings("try")
     protected void applyFrontEnd(StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
@@ -1514,5 +1520,9 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected boolean isArchitecture(String name) {
         return name.equals(backend.getTarget().arch.getName());
+    }
+
+    protected CanonicalizerPhase createCanonicalizerPhase() {
+        return CanonicalizerPhase.create();
     }
 }

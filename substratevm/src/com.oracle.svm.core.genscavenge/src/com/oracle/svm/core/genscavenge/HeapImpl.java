@@ -102,8 +102,8 @@ public class HeapImpl extends Heap {
     public HeapImpl(FeatureAccess access) {
         this.youngGeneration = new YoungGeneration("YoungGeneration");
         this.oldGeneration = new OldGeneration("OldGeneration");
-        this.gcImpl = new GCImpl(access);
         this.objectHeaderImpl = new ObjectHeaderImpl();
+        this.gcImpl = new GCImpl(access);
         this.heapPolicy = new HeapPolicy(access);
         this.pinHead = new AtomicReference<>();
         /* Pre-allocate verifiers for use during collection. */

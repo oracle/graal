@@ -7,11 +7,14 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
+import { addNativeImageToPOM } from './graalVMNativeImage';
 
 const OPEN_SETTINGS: string = 'Open Settings';
 const INSTALL_GRAALVM: string = 'Install GraalVM';
 const SELECT_GRAALVM: string = 'Select GraalVM';
+const INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT: string = 'Install GraalVM native-image Component';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', () => {
@@ -23,9 +26,17 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.installGraalVMComponent', (componentId: string) => {
 		installGraalVMComponent(componentId);
 	}));
+	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.addNativeImageToPOM', () => {
+		addNativeImageToPOM();
+	}));
 	const configurationProvider = new GraalVMConfigurationProvider();
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('graalvm', configurationProvider));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('node', configurationProvider));
+	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+		if (e.affectsConfiguration('graalvm.home')) {
+			config();
+		}
+	}));
 	if (!vscode.workspace.getConfiguration('graalvm').get('home')) {
 		vscode.window.showInformationMessage('No path to GraalVM home specified.', SELECT_GRAALVM, INSTALL_GRAALVM, OPEN_SETTINGS).then(value => {
 			switch (value) {
@@ -40,10 +51,42 @@ export function activate(context: vscode.ExtensionContext) {
 					break;
 			}
 		});
+	} else {
+		config();
 	}
 }
 
 export function deactivate() { }
+
+function config() {
+	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	if (graalVMHome) {
+		const javaConfig = vscode.workspace.getConfiguration('java');
+		if (javaConfig) {
+			const home = javaConfig.inspect('home');
+			if (home) {
+				javaConfig.update('home', graalVMHome, true);
+			}
+		}
+		const mvnConfig = vscode.workspace.getConfiguration('maven');
+		if (mvnConfig) {
+			const terminalEnv = javaConfig.inspect('terminal.customEnv');
+			if (terminalEnv) {
+				mvnConfig.update('terminal.customEnv', [{"environmentVariable": "JAVA_HOME", "value": graalVMHome}], true);
+			}
+		}
+		const executable: string = path.join(graalVMHome, 'bin', 'native-image');
+		if (!fs.existsSync(executable)) {
+			vscode.window.showInformationMessage('Native-image component is not installed in your GraalVM.', INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT).then(value => {
+				switch (value) {
+					case INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT:
+						vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'native-image');
+						break;
+				}
+			});
+		}
+	}
+}
 
 function updatePath(path: string | undefined, graalVMBin: string): string {
 	if (!path) {

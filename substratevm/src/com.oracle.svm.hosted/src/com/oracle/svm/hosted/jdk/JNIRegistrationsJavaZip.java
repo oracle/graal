@@ -45,6 +45,7 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements Feature {
              * library. On JDK 8, the zip library is loaded by the VM early during startup.
              */
             rerunClassInit(a, "java.util.zip.Adler32", "java.util.zip.CRC32");
+            rerunClassInit(a, "sun.net.www.protocol.jar.JarFileFactory", "sun.net.www.protocol.jar.JarURLConnection");
         }
     }
 

@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Basic support for GraalVM",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "OracleLabs",
 	"icon": "images/graalvm-logo.png",
@@ -50,6 +50,11 @@
 			{
 				"command": "extension.graalvm.installGraalVMComponent",
 				"title": "Install GraalVM Component",
+				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.addNativeImageToPOM",
+				"title": "Add Maven Native Image Plugin",
 				"category": "GraalVM"
 			}
 		],
@@ -306,12 +311,14 @@
 	},
 	"dependencies": {
 		"tar": "^4.4.8",
+		"sax": "^1.2.4",
 		"vscode-chrome-debug-core": "^6.7.53"
 	},
 	"devDependencies": {
 		"@types/mocha": "^2.2.42",
 		"@types/node": "^8.10.25",
 		"@types/tar": "^4.0.0",
+		"@types/sax": "^1.2.0",
 		"ts-loader": "^6.0.2",
 		"tslint": "^5.8.0",
 		"typescript": "^3.1.4",

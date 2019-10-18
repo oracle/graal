@@ -26,8 +26,8 @@ package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
@@ -43,13 +43,13 @@ public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginPro
     @Override
     public void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification) {
         if (architecture instanceof AMD64) {
-            registerArrayUtilsPlugins(plugins, providers.getMetaAccess(), providers.getReplacements().getDefaultReplacementBytecodeProvider());
+            registerArrayUtilsPlugins(plugins, providers.getMetaAccess(), providers.getReplacements());
         }
     }
 
-    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, BytecodeProvider bytecodeProvider) {
+    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, Replacements replacements) {
         final ResolvedJavaType arrayUtilsType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.ArrayUtils");
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(arrayUtilsType), bytecodeProvider);
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(arrayUtilsType), replacements);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", String.class, int.class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", char[].class, int.class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", byte[].class, int.class, int.class, byte[].class);

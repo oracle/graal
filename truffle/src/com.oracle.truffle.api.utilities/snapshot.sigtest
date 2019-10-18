@@ -43,8 +43,6 @@ innr public final static JSONObjectBuilder
 meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder array()
 meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder object()
 supr java.lang.Object
-hfds ACCESSOR,AstJsonDumpBuilder
-hcls DumpAccessor
 
 CLSS public final static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder
  outer com.oracle.truffle.api.utilities.JSONHelper

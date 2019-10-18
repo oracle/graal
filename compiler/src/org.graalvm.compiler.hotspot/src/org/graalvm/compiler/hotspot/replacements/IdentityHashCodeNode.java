@@ -61,7 +61,7 @@ public class IdentityHashCodeNode extends FixedWithNextNode implements Canonical
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return HotSpotReplacementsUtil.MARK_WORD_LOCATION;
     }
 

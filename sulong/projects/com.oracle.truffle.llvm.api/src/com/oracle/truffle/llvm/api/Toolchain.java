@@ -53,6 +53,8 @@ public interface Toolchain {
      * <dd>A C compiler with a <code>clang</code>-like command line interface.</dd>
      * <dt><code>CXX</code></dt>
      * <dd>A C++ compiler with a <code>clang++</code>-like command line interface.</dd>
+     * <dt><code>LD</code></dt>
+     * <dd>A linker that can deal with object files and bitcode files.</dd>
      * </dl>
      *
      * Note that not all toolchains support all tools.
@@ -83,8 +85,9 @@ abstract class ToolchainExampleSnippet {
         String id = toolchain.getIdentifier();
         TruffleFile cc = toolchain.getToolPath("CC");
         TruffleFile cxx = toolchain.getToolPath("CXX");
+        TruffleFile ld = toolchain.getToolPath("LD");
 
-        String[] args = {"make", "CC=" + cc, "CXX=" + cxx, "OUTPUT_DIR=" + id};
+        String[] args = {"make", "CC=" + cc, "CXX=" + cxx, "LD=" + ld, "OUTPUT_DIR=" + id};
         Process p = env.newProcessBuilder(args).start();
         p.waitFor();
         // END: toolchain-example

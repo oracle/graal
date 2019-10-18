@@ -496,6 +496,7 @@ public class ResourceLimitsTest {
         ExecutorService executorService = Executors.newFixedThreadPool(20);
         List<Future<?>> futures = new ArrayList<>();
         try (Context c = Context.newBuilder().resourceLimits(limits).build()) {
+            forceMultiThreading(executorService, c);
             for (int i = 0; i < limit; i++) {
                 futures.add(executorService.submit(() -> {
                     c.eval(statements(1));
@@ -535,8 +536,11 @@ public class ResourceLimitsTest {
                         build();
         ExecutorService executorService = Executors.newFixedThreadPool(threads);
         List<Future<?>> testFutures = new ArrayList<>();
+
         for (int contextIndex = 0; contextIndex < contexts; contextIndex++) {
             Context c = Context.newBuilder().engine(engine).resourceLimits(limits).build();
+            forceMultiThreading(executorService, c);
+
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < executions; i++) {
                 futures.add(executorService.submit(() -> {
@@ -580,6 +584,17 @@ public class ResourceLimitsTest {
         executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
+    private static void forceMultiThreading(ExecutorService executorService, Context c) throws InterruptedException, ExecutionException {
+        c.enter();
+        executorService.submit(new Runnable() {
+            public void run() {
+                c.enter();
+                c.leave();
+            }
+        }).get();
+        c.leave();
+    }
+
     @Test
     public void testParallelMultiContextStatementResetLimit() throws InterruptedException, ExecutionException {
         Engine engine = Engine.create();
@@ -597,6 +612,7 @@ public class ResourceLimitsTest {
         List<Future<?>> testFutures = new ArrayList<>();
         for (int contextIndex = 0; contextIndex < contexts; contextIndex++) {
             Context c = Context.newBuilder().engine(engine).resourceLimits(limits).build();
+            forceMultiThreading(executorService, c);
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < executions; i++) {
                 futures.add(executorService.submit(() -> {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,8 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -105,6 +105,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <li>{@link #isDate(Object) Date}, {@link #isTime(Object) Time} or {@link #isTimeZone(Object)
  * TimeZone}
  * <li>{@link #isDuration(Object) Duration}
+ * <li>{@link #isException(Object) Exception}
  * </ul>
  * All receiver values may be {@link #isExecutable(Object) executable},
  * {@link #isInstantiable(Object) instantiable}, {@link #isPointer(Object) pointers}, have
@@ -222,7 +223,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isExecutable")
     public Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -256,7 +256,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isInstantiable")
     public Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -284,7 +283,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -408,7 +406,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public byte asByte(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -424,7 +421,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public short asShort(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -440,7 +436,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public int asInt(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -456,7 +451,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public long asLong(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -472,7 +466,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public float asFloat(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -488,7 +481,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isNumber")
     public double asDouble(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -532,7 +524,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "hasMembers")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -578,7 +569,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -628,7 +618,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
     public void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -660,7 +649,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isMemberRemovable")
     public void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -693,7 +681,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isMemberInvocable")
     public Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -788,7 +775,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -801,7 +787,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public long getArraySize(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -833,7 +818,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isArrayElementModifiable", "isArrayElementInsertable"})
     public void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -853,7 +837,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = "isArrayElementRemovable")
     public void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -956,7 +939,6 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isPointer"})
     public long asPointer(Object receiver) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -1127,7 +1109,7 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>true</code> if this object represents a duration, else <code>false</code>.
      *
      * @see Duration
-     * @see #asDate(Object)
+     * @see #asDuration(Object)
      * @since 20.0.0 beta 2
      */
     @Abstract(ifExported = {"asDuration"})
@@ -1146,6 +1128,39 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isDuration"})
     public Duration asDuration(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value represents a throwable
+     * {@linkplain TruffleException#getExceptionObject() exception/error object}. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * <p>
+     * Objects must only return <code>true</code> if they support {@link #throwException} as well.
+     * If this method is implemented then also {@link #throwException(Object)} must be implemented.
+     *
+     * @see #throwException(Object)
+     * @see TruffleException#getExceptionObject()
+     * @since 19.3
+     */
+    @Abstract(ifExported = {"throwException"})
+    public boolean isException(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Throws the receiver object as an exception of the source language, as if it was thrown by the
+     * source language itself. Allows rethrowing exceptions caught by another language.
+     * <p>
+     * If this method is implemented then also {@link #isException(Object)} must be implemented.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isException(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isException(Object)
+     * @since 19.3
+     */
+    @Abstract(ifExported = {"isException"})
+    public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2007,6 +2022,32 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isDuration(receiver);
             assert !result || notOtherType(receiver, Type.DURATION);
             return result;
+        }
+
+        @Override
+        public boolean isException(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isException(receiver);
+            return result;
+        }
+
+        @Override
+        public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean wasException = delegate.isException(receiver);
+            boolean unsupported = false;
+            try {
+                throw delegate.throwException(receiver);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasException : violationInvariant(receiver);
+                unsupported = true;
+                throw e;
+            } finally {
+                if (!unsupported) {
+                    assert wasException : violationInvariant(receiver);
+                }
+            }
         }
 
     }

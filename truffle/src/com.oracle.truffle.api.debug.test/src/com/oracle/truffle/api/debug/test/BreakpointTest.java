@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1076,6 +1076,88 @@ public class BreakpointTest extends AbstractDebugTest {
                         "  \n" +
                         "  R1-2_R13-16_STATEMENT,\n" +
                         "  CALL(foo)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedLineBreakpoints2() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    R1-9_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1, LOOP(1,\n" +
+                        "    R10-25_STATEMENT)),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedLineBreakpointsComplex() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  EXPRESSION,\n" +
+                        "  EXPRESSION(\n" +
+                        "    R1-4_STATEMENT,\n" +
+                        "    EXPRESSION,\n" +       // 5
+                        "    R5-7_STATEMENT,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  R8-9_STATEMENT,\n" +
+                        "  LOOP(1,\n" +             // 10
+                        "    EXPRESSION,\n" +
+                        "    LOOP(1,\n" +
+                        "      R10-14_STATEMENT),\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +                      // 15
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +
+                        "      EXPRESSION)),\n" +
+                        "  EXPRESSION(\n" +
+                        "    LOOP(1,\n" +           // 20
+                        "      R15-21_STATEMENT,\n" +
+                        "      LOOP(1,\n" +
+                        "        EXPRESSION,\n" +
+                        "        R22-24_STATEMENT,\n" +
+                        "        EXPRESSION(\n" +   // 25
+                        "          R25-29_STATEMENT),\n" +
+                        "        EXPRESSION),\n" +
+                        "      EXPRESSION),\n" +
+                        "    EXPRESSION),\n" +
+                        "  EXPRESSION,\n" +         // 30
+                        "  LOOP(1,\n" +
+                        "    R30-32_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +           // 35
+                        "      EXPRESSION(\n" +
+                        "        R33-37_STATEMENT),\n" +
+                        "      R38_STATEMENT),\n" +
+                        "    R39-43_STATEMENT),\n" +
+                        "\n" +                      // 40
+                        "  LOOP(1,\n" +
+                        "    EXPRESSION)\n" +
                         ")\n";
         tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
     }

@@ -90,4 +90,10 @@ public final class AMD64CountLeadingZerosNode extends UnaryNode implements Arith
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
         builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitCountLeadingZeros(builder.operand(getValue())));
     }
+
+    @NodeIntrinsic
+    public static native int countLeadingZeros(int i);
+
+    @NodeIntrinsic
+    public static native int countLeadingZeros(long i);
 }

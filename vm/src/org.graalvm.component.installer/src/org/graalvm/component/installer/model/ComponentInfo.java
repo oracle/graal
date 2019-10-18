@@ -98,6 +98,11 @@ public final class ComponentInfo {
     private boolean nativeComponent;
 
     /**
+     * Component direct dependencies. Contains component canonical IDs.
+     */
+    private Set<String> dependencies = Collections.emptySet();
+
+    /**
      * Origin of the component.
      */
     private String origin;
@@ -321,5 +326,20 @@ public final class ComponentInfo {
         for (String s : vals.keySet()) {
             provideValue(s, vals.get(s));
         }
+    }
+
+    public void setDependencies(Set<String> deps) {
+        this.dependencies = deps;
+    }
+
+    public Set<String> getDependencies() {
+        return Collections.unmodifiableSet(dependencies);
+    }
+
+    /**
+     * @return True, if the Component is already installed.
+     */
+    public boolean isInstalled() {
+        return infoPath != null;
     }
 }

@@ -177,7 +177,7 @@ public class Signal {
         };
         */
         @CFieldAddress("uc_mcontext")
-        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, Platform.LINUX_AArch64.class})
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class, Platform.LINUX_AARCH64.class})
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
@@ -246,7 +246,7 @@ public class Signal {
     }
 
     @CStruct
-    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AArch64.class, Platform.LINUX_AArch64.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class, Platform.LINUX_AARCH64.class})
     public interface mcontext_t extends PointerBase {
         @CField
         long fault_address();

@@ -169,7 +169,7 @@ suite = {
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.utilities",
       ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
@@ -237,7 +237,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.dsl.processor",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.api.test",
         "com.oracle.truffle.api.library",
@@ -255,7 +254,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.dsl.processor",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.api.test",
         "com.oracle.truffle.api.interop",
@@ -284,8 +282,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.library",
-        "com.oracle.truffle.api.instrumentation",
         "truffle:ANTLR4"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -314,15 +310,10 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.interop",
         "com.oracle.truffle.dsl.processor"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      # We need to force javac as JDT cannot deal with the amount of deprecations
-      # in this package, together with using it in an annotation processor.
-      # Can be removed when deprecated API was removed.
-      "forceJavac" : "true",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -333,11 +324,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.library",
       ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
-      # We need to force javac as JDT cannot deal with the amount of deprecations
-      # in this package, together with using it in an annotation processor.
-      # Can be removed when deprecated API was removed.
-      "forceJavac" : "true",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
@@ -372,7 +359,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.polyglot"],
       "generatedDependencies" : ["com.oracle.truffle.polyglot"],
       "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
     },
@@ -388,7 +375,7 @@ suite = {
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
       "testProject" : True,
@@ -401,7 +388,7 @@ suite = {
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.utilities"
       ],
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
@@ -422,7 +409,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.object",
         "com.oracle.truffle.object",
-        "com.oracle.truffle.object.dsl.processor",
+        "com.oracle.truffle.api.object.dsl",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.api",
@@ -437,7 +424,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.dsl.processor"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -536,7 +522,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "os_arch" : {
         "solaris" : {
@@ -560,7 +546,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
 
@@ -911,32 +897,13 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
-    "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
-      "internal" : True,
-      "subDir" : "src",
-      "dependencies" : [
-        "com.oracle.truffle.api",
-        "com.oracle.truffle.dsl.processor",
-        "com.oracle.truffle.api.library"],
-      "distDependencies" : ["sdk:GRAAL_SDK"],
-      "maven" : False,
-    },
-
-    "TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL" : {
-      "internal" : True,
-      "subDir" : "src",
-      "dependencies" : [
-        "com.oracle.truffle.api",
-        "com.oracle.truffle.dsl.processor",
-        "com.oracle.truffle.dsl.processor.interop"],
-      "distDependencies" : ["sdk:GRAAL_SDK"],
-      "maven" : False,
-    },
-
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor", "truffle:ANTLR4"],
-      "distDependencies" : ["TRUFFLE_API"],
+      "dependencies" : ["truffle:ANTLR4",
+                        "com.oracle.truffle.dsl.processor",
+                        "com.oracle.truffle.object.dsl.processor",
+                        "com.oracle.truffle.dsl.processor.interop"],
+      "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
     },

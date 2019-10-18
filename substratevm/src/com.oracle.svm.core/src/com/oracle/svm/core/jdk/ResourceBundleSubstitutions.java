@@ -29,11 +29,14 @@ package com.oracle.svm.core.jdk;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.ResourceBundle.Control;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -99,7 +102,7 @@ final class Target_java_util_ListResourceBundle {
 
     @Substitute
     private void loadLookup() {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation");
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
     }
 }
 
@@ -109,7 +112,7 @@ final class Target_sun_util_resources_OpenListResourceBundle {
 
     @Substitute
     private void loadLookup() {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation");
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
     }
 }
 
@@ -121,7 +124,7 @@ final class Target_sun_util_resources_ParallelListResourceBundle {
 
     @Substitute
     private void setParallelContents(OpenListResourceBundle rb) {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation");
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
     }
 
     @Substitute
@@ -132,9 +135,16 @@ final class Target_sun_util_resources_ParallelListResourceBundle {
     @Substitute
     private void loadLookupTablesIfNecessary() {
         if (lookup == null) {
-            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation");
+            throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + getClass().getTypeName());
         }
     }
+}
+
+@TargetClass(java.text.DateFormatSymbols.class)
+final class Target_java_text_DateFormatSymbols {
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static ConcurrentMap<?, ?> cachedInstances = new ConcurrentHashMap<>(3);
 }
 
 /** Dummy class to have a class with the file's name. */

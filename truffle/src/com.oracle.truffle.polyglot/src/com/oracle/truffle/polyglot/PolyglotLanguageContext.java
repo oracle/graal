@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -331,11 +331,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return localEnv;
     }
 
-    boolean finalizeContext() {
+    boolean finalizeContext(boolean notifyInstruments) {
         if (!finalized) {
             finalized = true;
             LANGUAGE.finalizeContext(env);
-            if (eventsEnabled) {
+            if (eventsEnabled && notifyInstruments) {
                 EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
             }
             return true;
@@ -365,8 +365,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return false;
     }
 
-    void notifyDisposed() {
-        if (eventsEnabled) {
+    void notifyDisposed(boolean notifyInstruments) {
+        if (eventsEnabled && notifyInstruments) {
             EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
         }
         language.freeInstance(lazy.languageInstance);

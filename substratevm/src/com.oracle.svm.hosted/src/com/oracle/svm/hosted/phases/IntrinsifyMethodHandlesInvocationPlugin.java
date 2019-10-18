@@ -32,7 +32,6 @@ import java.lang.reflect.Method;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -76,13 +75,13 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
-import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 
@@ -192,7 +191,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * direct call, otherwise we do not have a single target method.
          */
         if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args))) {
-            processInvokeWithMethodHandle(b, universeProviders.getReplacements().getDefaultReplacementBytecodeProvider(), method, args);
+            processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
             return true;
         }
         return false;
@@ -307,8 +306,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
     }
 
-    private static void registerInvocationPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", bytecodeProvider);
+    private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register1("ensureInitialized", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -322,7 +321,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
         });
 
-        r = new Registration(plugins, "java.lang.invoke.Invokers", bytecodeProvider);
+        r = new Registration(plugins, "java.lang.invoke.Invokers", replacements);
         r.registerOptional1("maybeCustomize", MethodHandle.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode mh) {
@@ -335,7 +334,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
         });
 
-        r = new Registration(plugins, Objects.class, bytecodeProvider);
+        r = new Registration(plugins, Objects.class, replacements);
         r.register1("requireNonNull", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
@@ -350,10 +349,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     @SuppressWarnings("try")
-    private void processInvokeWithMethodHandle(GraphBuilderContext b, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
-        Plugins graphBuilderPlugins = new Plugins(((ReplacementsImpl) originalProviders.getReplacements()).getGraphBuilderPlugins());
+    private void processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
+        Plugins graphBuilderPlugins = new Plugins(originalProviders.getReplacements().getGraphBuilderPlugins());
 
-        registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), bytecodeProvider);
+        registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), replacements);
 
         graphBuilderPlugins.prependParameterPlugin(new MethodHandlesParameterPlugin(methodHandleArguments));
         graphBuilderPlugins.clearInlineInvokePlugins();
@@ -415,7 +414,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * The canonicalizer converts unsafe field accesses for get/set method handles back to
              * high-level field load and store nodes.
              */
-            new CanonicalizerPhase().apply(graph, originalProviders);
+            CanonicalizerPhase.create().apply(graph, originalProviders);
 
             ObjectStamp classCastStamp = null;
             for (FixedGuardNode guard : graph.getNodes(FixedGuardNode.TYPE)) {
@@ -521,7 +520,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ResolvedJavaField resolvedTarget = lookup(fieldLoad.field());
 
                 maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
-                ValueNode transplantedFieldLoad = b.add(LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), resolvedTarget));
+                ValueNode receiver = fieldLoad.object() == null ? null : lookup(b, methodHandleArguments, fieldLoad.object());
+                ValueNode transplantedFieldLoad = b.add(LoadFieldNode.create(null, receiver, resolvedTarget));
                 transplantedSingleFunctionality = maybeEmitClassCast(b, classCastStamp, transplantedFieldLoad);
 
             } else if (singleFunctionality instanceof StoreFieldNode) {

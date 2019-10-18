@@ -101,7 +101,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface AArch64 extends Platform {
+    interface AARCH64 extends Platform {
 
     }
 
@@ -160,14 +160,14 @@ public interface Platform {
      *
      * @since 19.0
      */
-    final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, AArch64 {
+    final class LINUX_AARCH64 implements LINUX, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
          * @since 19.0
          */
-        public LINUX_AArch64() {
+        public LINUX_AARCH64() {
         }
 
     }
@@ -193,14 +193,14 @@ public interface Platform {
      *
      * @since 2.0
      */
-    final class DARWIN_AArch64 implements DARWIN, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, AArch64 {
+    final class DARWIN_AARCH64 implements DARWIN, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS, AARCH64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
          * @since 2.0
          */
-        public DARWIN_AArch64() {
+        public DARWIN_AARCH64() {
         }
     }
 

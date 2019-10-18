@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -72,6 +73,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
     @Fallback
     String readOther(Object address) {
         if (readOther == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             readOther = insert(PointerReadStringNode.create());
         }
         return readOther.execute(address);

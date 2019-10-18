@@ -60,16 +60,17 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.DiscoverableReference;
-import com.oracle.svm.core.heap.FramePointerMapWalker;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -117,13 +118,15 @@ public class GCImpl implements GC {
     private final CollectionVMOperation collectOperation;
 
     private final OutOfMemoryError oldGenerationSizeExceeded;
-    private final UnpinnedObjectReferenceWalkerException unpinnedObjectReferenceWalkerException;
 
-    private final AllocationFreeList<ObjectReferenceWalker> objectReferenceWalkerList;
     private final AllocationFreeList<CollectionWatcher> collectionWatcherList;
     private final NoAllocationVerifier noAllocationVerifier;
 
     private final GarbageCollectorManagementFactory gcManagementFactory;
+
+    private final ThreadLocalMTWalker threadLocalsWalker;
+    private final RuntimeCodeCacheWalker runtimeCodeCacheWalker;
+    private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner;
 
     private CollectionPolicy policy;
     private boolean completeCollection;
@@ -136,23 +139,24 @@ public class GCImpl implements GC {
         this.collectOperation = new CollectionVMOperation();
 
         this.collectionEpoch = WordFactory.zero();
-        this.objectReferenceWalkerList = AllocationFreeList.factory();
         this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
         this.discoveredReferenceList = null;
         this.completeCollection = false;
         this.sizeBefore = WordFactory.zero();
 
-        /* Choose an incremental versus full collection policy. */
         this.policy = CollectionPolicy.getInitialPolicy(access);
         this.greyToBlackObjRefVisitor = GreyToBlackObjRefVisitor.factory();
-        this.frameWalker = FramePointerMapWalker.factory(greyToBlackObjRefVisitor);
+        this.frameWalker = new FramePointerMapWalker(greyToBlackObjRefVisitor);
         this.greyToBlackObjectVisitor = GreyToBlackObjectVisitor.factory(greyToBlackObjRefVisitor);
         this.alwaysCompletelyInstance = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
         this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
-        this.unpinnedObjectReferenceWalkerException = new UnpinnedObjectReferenceWalkerException();
         this.gcManagementFactory = new GarbageCollectorManagementFactory();
+
+        this.threadLocalsWalker = createThreadLocalsWalker();
+        this.runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
+        this.runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
         this.blackenBootImageRootsTimer = new Timer("blackenBootImageRoots");
         this.blackenDirtyCardRootsTimer = new Timer("blackenDirtyCardRoots");
@@ -170,9 +174,19 @@ public class GCImpl implements GC {
         this.watchersBeforeTimer = new Timer("watchersBefore");
         this.watchersAfterTimer = new Timer("watchersAfter");
         this.mutatorTimer = new Timer("Mutator");
-        this.walkRegisteredMemoryTimer = new Timer("walkRegisteredMemory");
+        this.walkThreadLocalsTimer = new Timer("walkThreadLocals");
+        this.walkRuntimeCodeCacheTimer = new Timer("walkRuntimeCodeCacheTimer");
+        this.cleanRuntimeCodeCacheTimer = new Timer("cleanRuntimeCodeCacheTimer");
 
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
+    }
+
+    private static ThreadLocalMTWalker createThreadLocalsWalker() {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            return new ThreadLocalMTWalker();
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -515,6 +529,25 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
+    /**
+     * Visit all the memory that is reserved for runtime compiled code. References from the runtime
+     * compiled code to the Java heap must be consider as either strong or weak references,
+     * depending on whether the code is currently on the execution stack.
+     */
+    @SuppressWarnings("try")
+    private void walkRuntimeCodeCache() {
+        try (Timer wrm = walkRuntimeCodeCacheTimer.open()) {
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheWalker);
+        }
+    }
+
+    @SuppressWarnings("try")
+    private void cleanRuntimeCodeCache() {
+        try (Timer wrm = cleanRuntimeCodeCacheTimer.open()) {
+            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(runtimeCodeCacheCleaner);
+        }
+    }
+
     @SuppressWarnings("try")
     private void cheneyScanFromRoots() {
         final Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromRoots:").newline();
@@ -541,7 +574,7 @@ public class GCImpl implements GC {
             blackenStackRoots();
 
             /* Custom memory regions which contain object references. */
-            walkRegisteredObjectReferences();
+            walkThreadLocals();
 
             /*
              * Native image Objects are grey at the beginning of a collection, so I need to blacken
@@ -552,7 +585,17 @@ public class GCImpl implements GC {
             /* Visit all the Objects promoted since the snapshot. */
             scanGreyObjects();
 
-            /* Reset the GreyToBlackVisitor. */
+            if (DeoptimizationSupport.enabled()) {
+                /* Visit the runtime compiled code, now that we know all the reachable objects. */
+                walkRuntimeCodeCache();
+
+                /* Visit all objects that became reachable because of the compiled code. */
+                scanGreyObjects();
+
+                /* Clean the code cache, now that all live objects were visited. */
+                cleanRuntimeCodeCache();
+            }
+
             greyToBlackObjectVisitor.reset();
         }
 
@@ -566,12 +609,12 @@ public class GCImpl implements GC {
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGen = heap.getOldGeneration();
 
-        /*
-         * Move all the chunks in fromSpace to toSpace. That does not make those chunks grey, so I
-         * have to use the dirty cards marks to blacken them, but that's what card marks are for.
-         */
         try (Timer csfdrt = cheneyScanFromDirtyRootsTimer.open()) {
-
+            /*
+             * Move all the chunks in fromSpace to toSpace. That does not make those chunks grey, so
+             * I have to use the dirty cards marks to blacken them, but that's what card marks are
+             * for.
+             */
             oldGen.emptyFromSpaceIntoToSpace();
 
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
@@ -604,7 +647,7 @@ public class GCImpl implements GC {
             blackenStackRoots();
 
             /* Custom memory regions which contain object references. */
-            walkRegisteredObjectReferences();
+            walkThreadLocals();
 
             /*
              * Native image Objects are grey at the beginning of a collection, so I need to blacken
@@ -615,7 +658,17 @@ public class GCImpl implements GC {
             /* Visit all the Objects promoted since the snapshot, transitively. */
             scanGreyObjects();
 
-            /* Reset the GreyToBlackVisitor. */
+            if (DeoptimizationSupport.enabled()) {
+                /* Visit the runtime compiled code, now that we know all the reachable objects. */
+                walkRuntimeCodeCache();
+
+                /* Visit all objects that became reachable because of the compiled code. */
+                scanGreyObjects();
+
+                /* Clean the code cache, now that all live objects were visited. */
+                cleanRuntimeCodeCache();
+            }
+
             greyToBlackObjectVisitor.reset();
         }
 
@@ -658,7 +711,7 @@ public class GCImpl implements GC {
             trace.string("[blackenStackRoots:").string("  sp: ").hex(sp);
             CodePointer ip = readReturnAddress();
             trace.string("  ip: ").hex(ip).newline();
-            JavaStackWalker.walkCurrentThread(sp, frameWalker);
+            blackenCurrentStack(sp);
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 /*
                  * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
@@ -674,7 +727,7 @@ public class GCImpl implements GC {
                          */
                         continue;
                     }
-                    JavaStackWalker.walkThread(vmThread, frameWalker);
+                    blackenStack(vmThread);
                     trace.newline();
                 }
             }
@@ -683,26 +736,23 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
+    @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
+    private void blackenStack(IsolateThread vmThread) {
+        JavaStackWalker.walkThreadInline(vmThread, frameWalker);
+    }
+
+    @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
+    private void blackenCurrentStack(Pointer sp) {
+        JavaStackWalker.walkCurrentThreadInline(sp, frameWalker);
+    }
+
     @SuppressWarnings("try")
-    private void walkRegisteredObjectReferences() {
+    private void walkThreadLocals() {
         final Log trace = Log.noopLog().string("[walkRegisteredObjectReferences").string(":").newline();
-        try (Timer wrm = walkRegisteredMemoryTimer.open()) {
-            /*
-             * ObjectReferenceWalkers should be pinned, otherwise they might already be forwarded.
-             * Walk the list as Object so there is no type checking until I know it is safe.
-             */
-            Object element = objectReferenceWalkerList.getFirstObject();
-            while (element != null) {
-                if (!HeapImpl.getHeapImpl().isPinned(element)) {
-                    throw unpinnedObjectReferenceWalkerException;
-                }
-                element = ((AllocationFreeList.Element<?>) element).getNextObject();
-            }
-            /* Visit each walker. */
-            for (ObjectReferenceWalker walker = objectReferenceWalkerList.getFirst(); walker != null; walker = walker.getNextElement()) {
-                trace.string("[").string(walker.getWalkerName()).string(":");
-                trace.newline();
-                walker.walk(greyToBlackObjRefVisitor);
+        if (threadLocalsWalker != null) {
+            try (Timer wrm = walkThreadLocalsTimer.open()) {
+                trace.string("[ThreadLocalsWalker:").newline();
+                threadLocalsWalker.walk(greyToBlackObjRefVisitor);
                 trace.string("]").newline();
             }
         }
@@ -870,27 +920,8 @@ public class GCImpl implements GC {
     }
 
     /*
-     * Registered memory walker methods.
-     */
-
-    @Override
-    public void registerObjectReferenceWalker(ObjectReferenceWalker walker) throws PreviouslyRegisteredElementException, UnpinnedObjectReferenceWalkerException {
-        /* Give a reasonable error message for trying to reuse an ObjectReferenceWalker. */
-        if (walker.getHasBeenOnList()) {
-            throw new PreviouslyRegisteredElementException("Attempting to reuse a previously-registered ObjectReferenceWalker.");
-        }
-        objectReferenceWalkerList.prepend(walker);
-    }
-
-    @Override
-    public void unregisterObjectReferenceWalker(final ObjectReferenceWalker walker) {
-        walker.removeElement();
-    }
-
-    /*
      * CollectionWatcher methods.
      */
-
     @Override
     public void registerCollectionWatcher(CollectionWatcher watcher) throws PreviouslyRegisteredElementException {
         /* Give a reasonable error message for trying to reuse a CollectionWatcher. */
@@ -962,7 +993,6 @@ public class GCImpl implements GC {
     /** Scrub the allocation-free lists I maintain. */
     private void scrubLists() {
         collectionWatcherList.scrub();
-        objectReferenceWalkerList.scrub();
     }
 
     /*
@@ -1011,7 +1041,9 @@ public class GCImpl implements GC {
     private final Timer releaseSpacesTimer;
     private final Timer verifyAfterTimer;
     private final Timer verifyBeforeTimer;
-    private final Timer walkRegisteredMemoryTimer;
+    private final Timer walkThreadLocalsTimer;
+    private final Timer walkRuntimeCodeCacheTimer;
+    private final Timer cleanRuntimeCodeCacheTimer;
     private final Timer watchersBeforeTimer;
     private final Timer watchersAfterTimer;
     private final Timer mutatorTimer;
@@ -1027,7 +1059,9 @@ public class GCImpl implements GC {
         cheneyScanFromDirtyRootsTimer.reset();
         promotePinnedObjectsTimer.reset();
         blackenStackRootsTimer.reset();
-        walkRegisteredMemoryTimer.reset();
+        walkThreadLocalsTimer.reset();
+        walkRuntimeCodeCacheTimer.reset();
+        cleanRuntimeCodeCacheTimer.reset();
         blackenBootImageRootsTimer.reset();
         blackenDirtyCardRootsTimer.reset();
         scanGreyObjectsTimer.reset();
@@ -1051,7 +1085,9 @@ public class GCImpl implements GC {
             logOneTimer(log, "        ", cheneyScanFromDirtyRootsTimer);
             logOneTimer(log, "          ", promotePinnedObjectsTimer);
             logOneTimer(log, "          ", blackenStackRootsTimer);
-            logOneTimer(log, "          ", walkRegisteredMemoryTimer);
+            logOneTimer(log, "          ", walkThreadLocalsTimer);
+            logOneTimer(log, "          ", walkRuntimeCodeCacheTimer);
+            logOneTimer(log, "          ", cleanRuntimeCodeCacheTimer);
             logOneTimer(log, "          ", blackenBootImageRootsTimer);
             logOneTimer(log, "          ", blackenDirtyCardRootsTimer);
             logOneTimer(log, "          ", scanGreyObjectsTimer);
@@ -1496,6 +1532,12 @@ public class GCImpl implements GC {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected boolean isGC() {
+            return true;
+        }
+
+        @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
         protected void operate(NativeVMOperationData data) {
             /*
@@ -1598,16 +1640,6 @@ public class GCImpl implements GC {
     @Override
     public List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList() {
         return gcManagementFactory.getGCBeanList();
-    }
-
-    public static class UnpinnedObjectReferenceWalkerException extends RuntimeException {
-
-        UnpinnedObjectReferenceWalkerException() {
-            super("ObjectReferenceWalker should be pinned.");
-        }
-
-        /** Every exception needs one of these. */
-        private static final long serialVersionUID = -7558859901392977054L;
     }
 }
 

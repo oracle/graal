@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -260,7 +260,7 @@ def _collect_class_path_entries(cp_entries_filter, entries_collector, properties
             if predicate(dist):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
-                        for key, value in dist.getJavaProperties().items():
+                        for key, value in distCpEntry.getJavaProperties().items():
                             javaProperties[key] = value
                     if distCpEntry.isJdkLibrary() or distCpEntry.isJreLibrary():
                         cpPath = distCpEntry.classpath_repr(mx.get_jdk(), resolve=True)

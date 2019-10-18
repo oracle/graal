@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
-
-import com.oracle.truffle.api.object.Layout.ImplicitCast;
 
 public class LayoutModel {
 
@@ -61,11 +60,11 @@ public class LayoutModel {
     private final boolean hasDynamicObjectGuard;
     private final boolean hasBuilder;
     private final List<PropertyModel> properties;
-    private final List<ImplicitCast> implicitCasts;
+    private final List<VariableElement> implicitCasts;
 
     public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
                     boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard, boolean hasBuilder,
-                    Collection<PropertyModel> properties, String interfaceFullName, Collection<ImplicitCast> implicitCasts) {
+                    Collection<PropertyModel> properties, String interfaceFullName, Collection<VariableElement> implicitCasts) {
         this.objectTypeSuperclass = objectTypeSuperclass;
         this.superLayout = superLayout;
         this.name = name;
@@ -195,7 +194,7 @@ public class LayoutModel {
         return false;
     }
 
-    public List<ImplicitCast> getImplicitCasts() {
+    public List<VariableElement> getImplicitCasts() {
         return implicitCasts;
     }
 

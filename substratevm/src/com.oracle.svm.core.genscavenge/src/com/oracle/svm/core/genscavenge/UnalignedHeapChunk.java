@@ -171,7 +171,7 @@ public class UnalignedHeapChunk extends HeapChunk {
     }
 
     /** Map from a Pointer to an object to the enclosing chunk. */
-    private static UnalignedHeader getEnclosingUnalignedHeapChunkFromPointer(Pointer objPointer) {
+    static UnalignedHeader getEnclosingUnalignedHeapChunkFromPointer(Pointer objPointer) {
         // This only works because there is only one object in an unaligned chunk.
         // Where does the object start in an unaligned chunk?
         final UnsignedWord startOffset = getObjectStartOffset();

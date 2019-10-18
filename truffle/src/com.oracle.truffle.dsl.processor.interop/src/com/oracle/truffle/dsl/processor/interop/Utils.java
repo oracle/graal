@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,48 +44,33 @@ import java.io.IOException;
 import java.io.Writer;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
-@SuppressWarnings("deprecation")
 final class Utils {
 
-    @SuppressWarnings("deprecation")
-    static String getReceiverTypeFullClassName(com.oracle.truffle.api.interop.MessageResolution message) {
-        String receiverTypeFullClassName;
-        try {
-            message.receiverType().getName();
-            throw new AssertionError();
-        } catch (MirroredTypeException mte) {
-            // This exception is always thrown: use the mirrors to inspect the class
-            receiverTypeFullClassName = ElementUtils.getQualifiedName(mte.getTypeMirror());
-        }
-        return receiverTypeFullClassName;
+    static String getReceiverTypeFullClassName(AnnotationMirror annotation) {
+        TypeMirror mirror = ElementUtils.getAnnotationValue(TypeMirror.class, annotation, "receiverType");
+        return ElementUtils.getQualifiedName(mirror);
     }
 
-    static Object getMessage(ProcessingEnvironment processingEnv, String messageName) {
-        Object currentMessage = null;
-        try {
-            currentMessage = com.oracle.truffle.api.interop.Message.valueOf(messageName);
-        } catch (IllegalArgumentException ex) {
+    static boolean getMessage(ProcessingEnvironment processingEnv, String messageName) {
+        if (InteropDSLProcessor.KNOWN_MESSAGES.contains(messageName)) {
+            return true;
+        } else {
             TypeElement typeElement = ElementUtils.getTypeElement(processingEnv, messageName);
-            TypeElement messageElement = ElementUtils.getTypeElement(processingEnv, com.oracle.truffle.api.interop.Message.class.getName());
-            if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), messageElement.asType())) {
-                currentMessage = messageName;
+            ProcessorContext context = ProcessorContext.getInstance();
+            if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), context.getTypes().InteropMessage)) {
+                return true;
             }
         }
-        return currentMessage;
-    }
-
-    static TypeMirror getTypeMirror(ProcessingEnvironment env, Class<?> clazz) {
-        String name = clazz.getName();
-        TypeElement elem = ElementUtils.getTypeElement(env, name);
-        return elem.asType();
+        return false;
     }
 
     static boolean isObjectArray(TypeMirror actualType) {

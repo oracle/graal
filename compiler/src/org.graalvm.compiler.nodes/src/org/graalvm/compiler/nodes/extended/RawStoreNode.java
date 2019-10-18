@@ -134,7 +134,7 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
 
     @Override
     protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess) {
-        return new StoreFieldNode(object(), field, value(), stateAfter(), volatileAccess);
+        return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), volatileAccess);
     }
 
     @Override
@@ -144,5 +144,10 @@ public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, 
 
     public FrameState getState() {
         return stateAfter;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
     }
 }

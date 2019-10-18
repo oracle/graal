@@ -73,8 +73,10 @@ def gate_body(args, tasks):
         if t:
             for suite, env_file_name, graalvm_dist_name in env_tests:
                 out = mx.LinesOutputCapture()
-                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
                 mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(env_file_name, suite.name, graalvm_dist_name))
+                retcode = mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={}, nonZeroIsFatal=False)
+                if retcode != 0:
+                    mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output: \n{}".format(retcode, env_file_name, suite.name, '\n'.join(out.lines)))
                 if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
                     mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(env_file_name, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 

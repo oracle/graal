@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -176,6 +176,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final CastUnsafe castUnsafe;
     final int contextLength;
     private volatile EngineLimits limits;
+    final boolean conservativeContextReferences;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -248,6 +249,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
 
         this.engineOptionValues.putAll(originalEngineOptions, allowExperimentalOptions);
+        this.conservativeContextReferences = engineOptionValues.get(PolyglotEngineOptions.UseConservativeContextReferences);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language), allowExperimentalOptions);
@@ -829,7 +831,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             for (PolyglotContextImpl context : localContexts) {
                 assert !Thread.holdsLock(context);
                 try {
-                    boolean closeCompleted = context.closeImpl(cancelIfExecuting, cancelIfExecuting);
+                    boolean closeCompleted = context.closeImpl(cancelIfExecuting, cancelIfExecuting, true);
                     if (!closeCompleted && !cancelIfExecuting) {
                         if (!ignoreCloseFailure) {
                             throw new IllegalStateException(String.format("One of the context instances is currently executing. " +
@@ -968,7 +970,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         synchronized (engine) {
             try {
                 engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
-                engine.addContext(engine.preInitializedContext);
             } finally {
                 // Reset language homes from native-image compilatio time, will be recomputed in
                 // image execution time
@@ -1277,12 +1278,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {
             context = new PolyglotContextImpl(this, config);
-            addContext(context);
-        } else {
-            // don't add contexts for preinitialized contexts as they have been added already
-            assert Thread.holdsLock(this);
-            assert contexts.contains(context.weakReference);
         }
+        addContext(context);
 
         if (polyglotLimits != null) {
             EngineLimits l = this.limits;
@@ -1317,7 +1314,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 patchResult = context.patch(config);
             } finally {
                 if (!patchResult) {
-                    context.closeImpl(false, false);
+                    context.closeImpl(false, false, false);
                     context = null;
                     PolyglotContextImpl.disposeStaticContext(context);
                     config.fileSystem = oldFileSystem;

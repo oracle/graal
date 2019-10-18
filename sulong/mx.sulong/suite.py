@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.239.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -309,7 +309,7 @@ suite = {
       ],
       "javaProperties" : {
         "llvm.bin.dir" : "<path:SULONG_LLVM_ORG>/bin",
-        "llvm.home": "<path:SULONG_LIBS>",
+        "llvm.home": "<sulong_home>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
@@ -345,6 +345,7 @@ suite = {
         "SULONG_EXE" : "<mx_exe> lli",
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "CLANGXX": "<toolchainGetToolPath:native,CXX>",
+        "TOOLCHAIN_LD": "<toolchainGetToolPath:native,LD>",
         "OS": "<os>",
         "JACOCO": "<jacoco>",
       },
@@ -959,6 +960,12 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": "./lib/<lib:c++*>*",
+            "dereference" : "never",
+          },
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"

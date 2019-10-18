@@ -708,7 +708,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope d = debug.scope("FloatingReadTest", graph)) {
             HighTierContext context = getDefaultHighTierContext();
-            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             canonicalizer.apply(graph, context);
             if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                 createInliningPhase(canonicalizer).apply(graph, context);

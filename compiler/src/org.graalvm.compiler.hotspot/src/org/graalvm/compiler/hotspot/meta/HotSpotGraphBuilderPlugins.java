@@ -39,7 +39,6 @@ import java.math.BigInteger;
 import java.util.zip.CRC32;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -92,6 +91,7 @@ import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
@@ -108,6 +108,7 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -128,6 +129,7 @@ public class HotSpotGraphBuilderPlugins {
      * @param snippetReflection
      * @param foreignCalls
      * @param options
+     * @param target
      */
     public static Plugins create(HotSpotGraalRuntimeProvider graalRuntime,
                     CompilerConfiguration compilerConfiguration,
@@ -138,11 +140,11 @@ public class HotSpotGraphBuilderPlugins {
                     SnippetReflectionProvider snippetReflection,
                     ForeignCallsProvider foreignCalls,
                     ReplacementsImpl replacements,
-                    OptionValues options) {
+                    OptionValues options, TargetDescription target) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes);
+        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
         HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
         HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, config, wordTypes);
 
@@ -171,29 +173,28 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
-                BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
-                registerObjectPlugins(invocationPlugins, options, config, replacementBytecodeProvider);
-                registerClassPlugins(plugins, config, replacementBytecodeProvider);
+                registerObjectPlugins(invocationPlugins, options, config, replacements);
+                registerClassPlugins(plugins, config, replacements);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
-                registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
+                registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacements);
                 if (!GeneratePIC.getValue(options)) {
                     registerCallSitePlugins(invocationPlugins);
                 }
-                registerReflectionPlugins(invocationPlugins, replacementBytecodeProvider);
-                registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacementBytecodeProvider);
-                registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
-                registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
-                registerCRC32CPlugins(invocationPlugins, config, replacementBytecodeProvider);
-                registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
-                registerSHAPlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerReflectionPlugins(invocationPlugins, replacements);
+                registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacements);
+                registerAESPlugins(invocationPlugins, config, replacements);
+                registerCRC32Plugins(invocationPlugins, config, replacements);
+                registerCRC32CPlugins(invocationPlugins, config, replacements);
+                registerBigIntegerPlugins(invocationPlugins, config, replacements);
+                registerSHAPlugins(invocationPlugins, config, replacements);
                 registerGHASHPlugins(invocationPlugins, config, metaAccess, foreignCalls);
-                registerCounterModePlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerCounterModePlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, foreignCalls);
-                registerUnsafePlugins(invocationPlugins, config, replacementBytecodeProvider);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true, false);
-                registerArrayPlugins(invocationPlugins, replacementBytecodeProvider);
-                registerStringPlugins(invocationPlugins, replacementBytecodeProvider);
-                registerArraysSupportPlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerUnsafePlugins(invocationPlugins, config, replacements);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false);
+                registerArrayPlugins(invocationPlugins, replacements);
+                registerStringPlugins(invocationPlugins, replacements);
+                registerArraysSupportPlugins(invocationPlugins, config, replacements);
 
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
@@ -203,8 +204,8 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Object.class, bytecodeProvider);
+    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, Object.class, replacements);
         if (!GeneratePIC.getValue(options)) {
             // FIXME: clone() requires speculation and requires a fix in here (to check that
             // b.getAssumptions() != null), and in ReplacementImpl.getSubstitution() where there is
@@ -235,8 +236,8 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins.getInvocationPlugins(), Class.class, bytecodeProvider);
+    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins.getInvocationPlugins(), Class.class, replacements);
 
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isInterface", Receiver.class);
@@ -273,8 +274,8 @@ public class HotSpotGraphBuilderPlugins {
         plugins.register(plugin, VolatileCallSite.class, "getTarget", Receiver.class);
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, reflectionClass, bytecodeProvider);
+    private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, reflectionClass, replacements);
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -290,12 +291,12 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ReflectionSubstitutions.class, "getClassAccessFlags", Class.class);
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider replacementBytecodeProvider) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r;
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r = new Registration(plugins, Unsafe.class, replacementBytecodeProvider);
+            r = new Registration(plugins, Unsafe.class, replacements);
         } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementBytecodeProvider);
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         }
         String substituteMethodName = config.doingUnsafeAccessOffset != Integer.MAX_VALUE ? "copyMemoryGuarded" : "copyMemory";
         r.registerMethodSubstitution(HotSpotUnsafeSubstitutions.class, HotSpotUnsafeSubstitutions.copyMemoryName, substituteMethodName, Receiver.class, Object.class, long.class, Object.class,
@@ -340,8 +341,8 @@ public class HotSpotGraphBuilderPlugins {
         return true;
     }
 
-    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, constantPoolClass, bytecodeProvider);
+    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, constantPoolClass, replacements);
 
         r.register2("getSize0", Receiver.class, Object.class, new InvocationPlugin() {
             @Override
@@ -411,22 +412,22 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerArrayPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Array.class, bytecodeProvider);
+    private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Array.class, replacements);
         r.setAllowOverwrite(true);
         r.registerMethodSubstitution(HotSpotArraySubstitutions.class, "newInstance", Class.class, int.class);
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
+            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "toBytes", char[].class, int.class, int.class);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "getChars", byte[].class, int.class, int.class, char[].class, int.class);
         }
     }
 
-    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Thread.class, bytecodeProvider);
+    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, Thread.class, replacements);
         r.register0("currentThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -476,81 +477,68 @@ public class HotSpotGraphBuilderPlugins {
         throw GraalError.shouldNotReachHere();
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            String arch = config.osArch;
-            String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
-
-            boolean implNames = cbcUsesImplNames(config);
-            String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
-            String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
-
-            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
-            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
-                            int.class);
-
-            r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
-            r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
-            r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
         }
+        String arch = config.osArch;
+        String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
+
+        boolean implNames = cbcUsesImplNames(config);
+        String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
+        String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class,
+                        int.class);
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class,
+                        int.class, int.class, byte[].class, int.class);
+        r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+        r.registerConditionalMethodSubstitution(config.useAESIntrinsics, AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class,
+                        byte[].class, int.class);
     }
 
-    private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, BigInteger.class, bytecodeProvider);
-        if (config.useMultiplyToLenIntrinsic()) {
-            assert config.multiplyToLen != 0L;
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                r.registerMethodSubstitution(BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
-                                int[].class);
-            } else {
-                r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
-                                int[].class);
-            }
+    private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, BigInteger.class, replacements);
+        assert !config.useMultiplyToLenIntrinsic() || config.multiplyToLen != 0L;
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
+                            int.class, int[].class);
+        } else {
+            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
+                            int.class, int[].class);
         }
-        if (config.useMulAddIntrinsic()) {
-            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMulAdd", int[].class, int[].class, int.class, int.class, int.class);
-        }
-        if (config.useMontgomeryMultiplyIntrinsic()) {
-            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class);
-        }
-        if (config.useMontgomerySquareIntrinsic()) {
-            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class);
-        }
-        if (config.useSquareToLenIntrinsic()) {
-            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implSquareToLen", int[].class, int.class, int[].class, int.class);
-        }
+        r.registerConditionalMethodSubstitution(config.useMulAddIntrinsic(), BigIntegerSubstitutions.class, "implMulAdd", int[].class, int[].class, int.class, int.class, int.class);
+        r.registerConditionalMethodSubstitution(config.useMontgomeryMultiplyIntrinsic(), BigIntegerSubstitutions.class, "implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class,
+                        long.class, int[].class);
+        r.registerConditionalMethodSubstitution(config.useMontgomerySquareIntrinsic(), BigIntegerSubstitutions.class, "implMontgomerySquare", int[].class, int[].class, int.class, long.class,
+                        int[].class);
+        r.registerConditionalMethodSubstitution(config.useSquareToLenIntrinsic(), BigIntegerSubstitutions.class, "implSquareToLen", int[].class, int.class, int[].class, int.class);
     }
 
-    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
         if (JavaVersionUtil.JAVA_SPEC > 8 && (useSha1 || useSha256 || useSha512)) {
-            Registration r = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
-            r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
+            Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
+            r.registerConditionalMethodSubstitution((useSha1 || useSha256 || useSha512), DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
 
-        if (useSha1) {
-            assert config.sha1ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA", bytecodeProvider);
-            r.registerMethodSubstitution(SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
-        }
-        if (useSha256) {
-            assert config.sha256ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA2", bytecodeProvider);
-            r.registerMethodSubstitution(SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
-        }
-        if (useSha512) {
-            assert config.sha512ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA5", bytecodeProvider);
-            r.registerMethodSubstitution(SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
-        }
+        assert !useSha1 || config.sha1ImplCompress != 0L;
+        Registration r = new Registration(plugins, "sun.security.provider.SHA", replacements);
+        r.registerConditionalMethodSubstitution(useSha1, SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        assert !useSha256 || config.sha256ImplCompress != 0L;
+        Registration r2 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
+        r2.registerConditionalMethodSubstitution(useSha256, SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        assert !useSha512 || config.sha512ImplCompress != 0L;
+        Registration r5 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
+        r5.registerConditionalMethodSubstitution(useSha512, SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
     }
 
     private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
@@ -586,11 +574,12 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerCounterModePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        if (config.useAESCTRIntrinsics) {
-            assert config.counterModeAESCrypt != 0L;
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", bytecodeProvider);
-            r.registerMethodSubstitution(CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+    private static void registerCounterModePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            assert !config.useAESCTRIntrinsics || config.counterModeAESCrypt != 0L;
+            Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
+            r.registerConditionalMethodSubstitution(config.useAESCTRIntrinsics, CounterModeSubstitutions.class, "implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,
+                            int.class);
         }
     }
 
@@ -626,32 +615,31 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        if (config.useCRC32Intrinsics) {
-            Registration r = new Registration(plugins, CRC32.class, bytecodeProvider);
-            r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
-            } else {
-                r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
-                r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
-            }
+    private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, CRC32.class, replacements);
+        r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "update", int.class, int.class);
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
+        } else {
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32Intrinsics, CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
         }
     }
 
-    private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        if (config.useCRC32CIntrinsics) {
-            Registration r = new Registration(plugins, "java.util.zip.CRC32C", bytecodeProvider);
-            r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
-            r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
+    private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            Registration r = new Registration(plugins, "java.util.zip.CRC32C", replacements);
+            r.registerConditionalMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerConditionalMethodSubstitution(config.useCRC32CIntrinsics, CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
         }
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
-        if (config.useVectorizedMismatchIntrinsic) {
-            Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", bytecodeProvider);
-            r.registerMethodSubstitution(ArraysSupportSubstitutions.class, "vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class);
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+            r.registerConditionalMethodSubstitution(config.useVectorizedMismatchIntrinsic, ArraysSupportSubstitutions.class, "vectorizedMismatch", Object.class, long.class, Object.class, long.class,
+                            int.class, int.class);
         }
     }
 }

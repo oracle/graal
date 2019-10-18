@@ -87,7 +87,7 @@ public final class VMError {
     }
 
     public static RuntimeException unimplemented() {
-        throw new HostedError("unimplemented");
+        throw new UnsupportedOperationException("unimplemented");
     }
 
     public static RuntimeException unsupportedFeature(String msg) {

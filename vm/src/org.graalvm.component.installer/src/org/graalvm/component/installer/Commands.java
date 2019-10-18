@@ -189,4 +189,7 @@ public interface Commands {
 
     String OPTION_VERSION = "V";
     String LONG_OPTION_VERSION = "use-version";
+
+    String OPTION_UNINSTALL_DEPENDENT = "D";
+    String LONG_OPTION_UNINSTALL_DEPENDENT = "remove-deps";
 }

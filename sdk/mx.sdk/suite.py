@@ -65,7 +65,13 @@ suite = {
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"],
+    },
+    "lafo-maven" : {
+      "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
+      "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"],
+      "mavenId" : "lafo",
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -196,6 +202,17 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
     },
+    "org.graalvm.home.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.home",
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,SDK",
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -255,6 +272,7 @@ suite = {
         "org.graalvm.collections.test",
         "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
+        "org.graalvm.home.test",
       ],
       "distDependencies" : [
         "GRAAL_SDK",

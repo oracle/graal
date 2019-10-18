@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,16 +99,19 @@ final class PolyglotLanguageInstance implements VMObject {
         Assumption useDirectSingleContext = currentExclusive ? null : singleContext;
         Assumption useInnerContext = mayBeUsedInInnerContext ? language.engine.noInnerContexts : null;
 
-        if (useDirectSingleContext == null && useInnerContext == null) {
-            // no checks can use direct reference
-            this.directContextSupplier = PolyglotReferences.createAlwaysSingleContext(language, currentExclusive);
+        if (language.engine.conservativeContextReferences) {
+            this.directContextSupplier = language.getConservativeContextReference();
         } else {
-            this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language,
-                            useInnerContext,
-                            useDirectSingleContext,
-                            language.getContextReference(), currentExclusive);
+            if (useDirectSingleContext == null && useInnerContext == null) {
+                // no checks can use direct reference
+                this.directContextSupplier = PolyglotReferences.createAlwaysSingleContext(language, currentExclusive);
+            } else {
+                this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language,
+                                useInnerContext,
+                                useDirectSingleContext,
+                                language.getContextReference(), currentExclusive);
+            }
         }
-
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
     }
 

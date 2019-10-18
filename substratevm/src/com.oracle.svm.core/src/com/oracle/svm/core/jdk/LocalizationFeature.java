@@ -22,33 +22,59 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.jdk;
 
+// Checkstyle: stop
+
+import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.ResourceBundle;
+import java.util.spi.LocaleServiceProvider;
 
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.util.locale.provider.LocaleProviderAdapter;
+import sun.util.locale.provider.ResourceBundleBasedAdapter;
+import sun.util.resources.LocaleData;
 
-@AutomaticFeature
-public final class LocalizationFeature implements Feature {
+// Checkstyle: resume
+
+public abstract class LocalizationFeature implements Feature {
+
+    /**
+     * The Locale that the native image is built for. Currently, switching the Locale at run time is
+     * not supported because the resource bundles are only included for one Locale. We use the
+     * Locale that is set for the image generator.
+     */
+    protected final Locale imageLocale = Locale.getDefault();
+
+    protected LocalizationSupport support;
 
     public static class Options {
+        @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
+        public static final HostedOptionKey<String[]> IncludeResourceBundles = new HostedOptionKey<>(null);
+
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
     }
@@ -105,14 +131,22 @@ public final class LocalizationFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg0) {
-        ImageSingletons.add(LocalizationSupport.class, new LocalizationSupport());
+        support = new LocalizationSupport();
+        ImageSingletons.add(LocalizationSupport.class, support);
+        ImageSingletons.add(LocalizationFeature.class, this);
 
-        /*
-         * The JDK performs dynamic lookup of charsets by name, which leads to dynamic class
-         * loading. We cannot do that, because we need to know all classes ahead of time to perform
-         * our static analysis. Therefore, we load and register all standard charsets here. Features
-         * that require more than this can add additional charsets.
-         */
+        addCharsets();
+        addProviders();
+        addResourceBundles();
+    }
+
+    /**
+     * The JDK performs dynamic lookup of charsets by name, which leads to dynamic class loading. We
+     * cannot do that, because we need to know all classes ahead of time to perform our static
+     * analysis. Therefore, we load and register all standard charsets here. Features that require
+     * more than this can add additional charsets.
+     */
+    private static void addCharsets() {
         if (Options.AddAllCharsets.getValue()) {
             for (Charset c : Charset.availableCharsets().values()) {
                 addCharset(c);
@@ -128,24 +162,6 @@ public final class LocalizationFeature implements Feature {
         }
     }
 
-    @Override
-    public void afterCompilation(AfterCompilationAccess access) {
-        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        access.registerAsImmutable(support, LocalizationFeature::isImmutable);
-    }
-
-    private static boolean isImmutable(Object object) {
-        if (object instanceof sun.util.locale.BaseLocale || object instanceof java.util.Locale) {
-            /* These classes have a mutable hash code field. */
-            return false;
-        }
-        if (object instanceof java.util.Map) {
-            /* The maps have lazily initialized cache fields (see JavaUtilSubstitutions). */
-            return false;
-        }
-        return true;
-    }
-
     public static void addCharset(Charset charset) {
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
         charsets.put(charset.name().toLowerCase(), charset);
@@ -157,6 +173,103 @@ public final class LocalizationFeature implements Feature {
         charset.newDecoder();
         if (charset.canEncode()) {
             charset.newEncoder();
+        }
+    }
+
+    /*
+     * LocaleServiceProviderPool.spiClasses does not contain all the classes we need, so we list
+     * them manually here.
+     */
+    @SuppressWarnings({"unchecked"}) //
+    private static final Class<LocaleServiceProvider>[] spiClasses = (Class<LocaleServiceProvider>[]) new Class<?>[]{
+                    java.text.spi.BreakIteratorProvider.class,
+                    java.text.spi.CollatorProvider.class,
+                    java.text.spi.DateFormatProvider.class,
+                    java.text.spi.DateFormatSymbolsProvider.class,
+                    java.text.spi.DecimalFormatSymbolsProvider.class,
+                    java.text.spi.NumberFormatProvider.class,
+                    java.util.spi.CurrencyNameProvider.class,
+                    java.util.spi.LocaleNameProvider.class,
+                    java.util.spi.TimeZoneNameProvider.class,
+                    java.util.spi.CalendarDataProvider.class,
+                    java.util.spi.CalendarNameProvider.class};
+
+    private void addProviders() {
+        for (Class<LocaleServiceProvider> providerClass : spiClasses) {
+            LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, imageLocale));
+
+            support.adaptersByClass.put(providerClass, adapter);
+            LocaleProviderAdapter existing = support.adaptersByType.put(adapter.getAdapterType(), adapter);
+            assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
+
+            LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
+            support.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool(provider));
+        }
+    }
+
+    protected void addResourceBundles() {
+        addBundleToCache(localeData(java.util.spi.CalendarDataProvider.class).getCalendarData(imageLocale));
+        addBundleToCache(localeData(java.util.spi.CurrencyNameProvider.class).getCurrencyNames(imageLocale));
+        addBundleToCache(localeData(java.util.spi.LocaleNameProvider.class).getLocaleNames(imageLocale));
+        addBundleToCache(localeData(java.util.spi.TimeZoneNameProvider.class).getTimeZoneNames(imageLocale));
+        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getBreakIteratorInfo(imageLocale));
+        addBundleToCache(localeData(java.text.spi.BreakIteratorProvider.class).getCollationData(imageLocale));
+        addBundleToCache(localeData(java.text.spi.DateFormatProvider.class).getDateFormatData(imageLocale));
+        addBundleToCache(localeData(java.text.spi.NumberFormatProvider.class).getNumberFormatData(imageLocale));
+        /* Note that JDK 11 support overrides this method to register more bundles. */
+
+        final String[] alwaysRegisteredResourceBundles = new String[]{
+                        "sun.util.logging.resources.logging"
+        };
+        for (String bundleName : alwaysRegisteredResourceBundles) {
+            addBundleToCache(bundleName);
+        }
+
+        for (String bundleName : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
+            addBundleToCache(bundleName);
+        }
+    }
+
+    protected LocaleData localeData(Class<? extends LocaleServiceProvider> providerClass) {
+        return ((ResourceBundleBasedAdapter) LocaleProviderAdapter.getAdapter(providerClass, imageLocale)).getLocaleData();
+    }
+
+    protected void addBundleToCache(ResourceBundle bundle) {
+        addBundleToCache(bundle.getBaseBundleName(), bundle);
+    }
+
+    public void addBundleToCache(String bundleName) {
+        if (bundleName.isEmpty()) {
+            return;
+        }
+        addBundleToCache(bundleName, ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader()));
+    }
+
+    private void addBundleToCache(String bundleName, ResourceBundle bundle) {
+        /*
+         * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
+         * down to the root.
+         */
+        for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
+            RuntimeClassInitialization.initializeAtBuildTime(cur.getClass());
+            cur.keySet();
+        }
+
+        support.resourceBundles.put(bundleName, bundle);
+    }
+
+    /*
+     * The field ResourceBundle.parent is not public. There is a backdoor to access it via
+     * SharedSecrets, but the package of SharedSecrets changed from JDK 8 to JDK 11 so it is
+     * inconvenient to use it. Reflective access is easier.
+     */
+    private static final Field PARENT_FIELD = ReflectionUtil.lookupField(ResourceBundle.class, "parent");
+
+    private static ResourceBundle getParent(ResourceBundle bundle) {
+        try {
+            return (ResourceBundle) PARENT_FIELD.get(bundle);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 }

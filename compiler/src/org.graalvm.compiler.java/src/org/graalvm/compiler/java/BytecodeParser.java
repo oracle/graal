@@ -3221,7 +3221,7 @@ public class BytecodeParser implements GraphBuilderContext {
             lastInstr = loopBegin;
 
             // Create phi functions for all local variables and operand stack slots.
-            frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis(), stampFromValueForForcedPhis());
+            frameState.insertLoopPhis(liveness, block.loopId, loopBegin, forceLoopPhis() || this.graphBuilderConfig.replaceLocalsWithConstants(), stampFromValueForForcedPhis());
             loopBegin.setStateAfter(createFrameState(block.startBci, loopBegin));
 
             /*
@@ -3569,8 +3569,28 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             this.controlFlowSplit = true;
-            FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
-            FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
+            FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, false);
+            FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, true);
+
+            if (this.graphBuilderConfig.replaceLocalsWithConstants() && condition instanceof CompareNode) {
+                CompareNode compareNode = (CompareNode) condition;
+                if (compareNode.condition() == CanonicalCondition.EQ) {
+                    ValueNode constantNode = null;
+                    ValueNode nonConstantNode = null;
+                    if (compareNode.getX() instanceof ConstantNode) {
+                        constantNode = compareNode.getX();
+                        nonConstantNode = compareNode.getY();
+                    } else if (compareNode.getY() instanceof ConstantNode) {
+                        constantNode = compareNode.getY();
+                        nonConstantNode = compareNode.getX();
+                    }
+
+                    if (constantNode != null && nonConstantNode != null) {
+                        this.getEntryState(trueBlock).replaceValue(nonConstantNode, constantNode);
+                    }
+                }
+            }
+
             ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
             postProcessIfNode(ifNode);
             append(ifNode);

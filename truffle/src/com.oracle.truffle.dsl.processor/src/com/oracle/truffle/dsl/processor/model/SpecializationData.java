@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
@@ -243,14 +241,14 @@ public final class SpecializationData extends TemplateMethod {
         this.kind = kind;
     }
 
-    static final String[] DYNAMIC_RESULT_VALUES = new String[]{
-                    "get", ContextReference.class.getCanonicalName(),
-                    "get", LanguageReference.class.getCanonicalName(),
-    };
-
     static final class FindDynamicBindingVisitor extends AbstractDSLExpressionVisitor {
 
         boolean found;
+
+        final String[] resultValues = new String[]{
+                        "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_ContextReference.asElement()).getQualifiedName().toString(),
+                        "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_LanguageReference.asElement()).getQualifiedName().toString(),
+        };
 
         @Override
         public void visitCall(Call binary) {
@@ -261,9 +259,9 @@ public final class SpecializationData extends TemplateMethod {
                 return;
             }
             String className = ((TypeElement) enclosingElement).getQualifiedName().toString();
-            for (int i = 0; i < DYNAMIC_RESULT_VALUES.length; i = i + 2) {
-                String searchMethod = DYNAMIC_RESULT_VALUES[i];
-                String searchClass = DYNAMIC_RESULT_VALUES[i + 1];
+            for (int i = 0; i < resultValues.length; i = i + 2) {
+                String searchMethod = resultValues[i];
+                String searchClass = resultValues[i + 1];
                 if (searchMethod.equals(methodName) && className.equals(searchClass)) {
                     found = true;
                 }
@@ -412,7 +410,7 @@ public final class SpecializationData extends TemplateMethod {
                 if (type == null) {
                     type = child.findAnyGenericExecutableType(context);
                 }
-                if (type.hasUnexpectedValue(context)) {
+                if (type.hasUnexpectedValue()) {
                     return true;
                 }
                 if (ElementUtils.needsCastTo(type.getReturnType(), parameter.getType())) {

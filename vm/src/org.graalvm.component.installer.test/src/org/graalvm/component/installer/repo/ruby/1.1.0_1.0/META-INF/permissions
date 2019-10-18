@@ -1,0 +1,7 @@
+bin/truffleruby = rwxrwxrwx
+bin/rake = rwxrwxrwx
+jre/bin/truffleruby = rwxrwxrwx
+jre/bin/rake = rwxrwxrwx
+LICENSE_TRUFFLERUBY.md = rwxrwxrwx
+jre/languages/ruby/release = rw-rw-r--
+jre/languages/ruby/lib/cext/include/sulong/polyglot.h = rw-rw-r--

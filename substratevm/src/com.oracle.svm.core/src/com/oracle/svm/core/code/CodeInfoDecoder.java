@@ -218,13 +218,13 @@ public final class CodeInfoDecoder {
     private static long loadEntryOffset(CodeInfo info, long ip) {
         counters().lookupEntryOffsetCount.inc();
         long index = Long.divideUnsigned(ip, indexGranularity());
-        return NonmovableByteArrayReader.getU4(info.getCodeInfoIndex(), index * Integer.BYTES);
+        return NonmovableByteArrayReader.getU4(CodeInfoAccess.getCodeInfoIndex(info), index * Integer.BYTES);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
     static int loadEntryFlags(CodeInfo info, long curOffset) {
         counters().loadEntryFlagsCount.inc();
-        return NonmovableByteArrayReader.getU1(info.getCodeInfoEncodings(), curOffset);
+        return NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), curOffset);
     }
 
     private static final int INVALID_SIZE_ENCODING = 0;
@@ -239,11 +239,11 @@ public final class CodeInfoDecoder {
             case FS_NO_CHANGE:
                 return sizeEncoding;
             case FS_SIZE_S1:
-                return NonmovableByteArrayReader.getS1(info.getCodeInfoEncodings(), offsetFS(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS1(CodeInfoAccess.getCodeInfoEncodings(info), offsetFS(entryOffset, entryFlags));
             case FS_SIZE_S2:
-                return NonmovableByteArrayReader.getS2(info.getCodeInfoEncodings(), offsetFS(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS2(CodeInfoAccess.getCodeInfoEncodings(info), offsetFS(entryOffset, entryFlags));
             case FS_SIZE_S4:
-                return NonmovableByteArrayReader.getS4(info.getCodeInfoEncodings(), offsetFS(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFS(entryOffset, entryFlags));
             default:
                 throw shouldNotReachHere();
         }
@@ -254,11 +254,11 @@ public final class CodeInfoDecoder {
             case EX_NO_HANDLER:
                 return CodeInfoQueryResult.NO_EXCEPTION_OFFSET;
             case EX_OFFSET_S1:
-                return NonmovableByteArrayReader.getS1(info.getCodeInfoEncodings(), offsetEX(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS1(CodeInfoAccess.getCodeInfoEncodings(info), offsetEX(entryOffset, entryFlags));
             case EX_OFFSET_S2:
-                return NonmovableByteArrayReader.getS2(info.getCodeInfoEncodings(), offsetEX(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS2(CodeInfoAccess.getCodeInfoEncodings(info), offsetEX(entryOffset, entryFlags));
             case EX_OFFSET_S4:
-                return NonmovableByteArrayReader.getS4(info.getCodeInfoEncodings(), offsetEX(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetEX(entryOffset, entryFlags));
             default:
                 throw shouldNotReachHere();
         }
@@ -271,9 +271,9 @@ public final class CodeInfoDecoder {
             case RM_EMPTY_MAP:
                 return CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
             case RM_INDEX_U2:
-                return NonmovableByteArrayReader.getU2(info.getCodeInfoEncodings(), offsetRM(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getU2(CodeInfoAccess.getCodeInfoEncodings(info), offsetRM(entryOffset, entryFlags));
             case RM_INDEX_U4:
-                return NonmovableByteArrayReader.getU4(info.getCodeInfoEncodings(), offsetRM(entryOffset, entryFlags));
+                return NonmovableByteArrayReader.getU4(CodeInfoAccess.getCodeInfoEncodings(info), offsetRM(entryOffset, entryFlags));
             default:
                 throw shouldNotReachHere();
         }
@@ -305,8 +305,8 @@ public final class CodeInfoDecoder {
             case FI_NO_DEOPT:
                 return false;
             case FI_DEOPT_ENTRY_INDEX_S4:
-                int frameInfoIndex = NonmovableByteArrayReader.getS4(info.getCodeInfoEncodings(), offsetFI(entryOffset, entryFlags));
-                return FrameInfoDecoder.isFrameInfoMatch(frameInfoIndex, info.getFrameInfoEncodings(), encodedBci);
+                int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
+                return FrameInfoDecoder.isFrameInfoMatch(frameInfoIndex, CodeInfoAccess.getFrameInfoEncodings(info), encodedBci);
             case FI_INFO_ONLY_INDEX_S4:
                 /*
                  * We have frame information, but only for debugging purposes. This is not a
@@ -320,9 +320,9 @@ public final class CodeInfoDecoder {
 
     static boolean initFrameInfoReader(CodeInfo info, long entryOffset, ReusableTypeReader frameInfoReader) {
         int entryFlags = loadEntryFlags(info, entryOffset);
-        int frameInfoIndex = NonmovableByteArrayReader.getS4(info.getCodeInfoEncodings(), offsetFI(entryOffset, entryFlags));
+        int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         frameInfoReader.setByteIndex(frameInfoIndex);
-        frameInfoReader.setData(info.getFrameInfoEncodings());
+        frameInfoReader.setData(CodeInfoAccess.getFrameInfoEncodings(info));
         return extractFI(entryFlags) != FI_NO_DEOPT;
     }
 
@@ -341,14 +341,14 @@ public final class CodeInfoDecoder {
             default:
                 throw shouldNotReachHere();
         }
-        int frameInfoIndex = NonmovableByteArrayReader.getS4(info.getCodeInfoEncodings(), offsetFI(entryOffset, entryFlags));
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(info.getFrameInfoEncodings(), frameInfoIndex), info,
+        int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
+        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info,
                         FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
     private static long advanceIP(CodeInfo info, long entryOffset, long entryIP) {
-        int deltaIP = NonmovableByteArrayReader.getU1(info.getCodeInfoEncodings(), offsetIP(entryOffset));
+        int deltaIP = NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), offsetIP(entryOffset));
         if (deltaIP == DELTA_END_OF_TABLE) {
             return Long.MAX_VALUE;
         } else {

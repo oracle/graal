@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -680,7 +680,7 @@ public final class Context implements AutoCloseable {
      * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
      * </ul>
      * <p>
-     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * The returned context can <b>not</b> be used to {@link #enter() enter} , {@link #leave()
      * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
      * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
@@ -1222,7 +1222,7 @@ public final class Context implements AutoCloseable {
          *
          * @return the {@link Builder}
          * @see ZoneId#systemDefault()
-         * @since 20.0.0 beta 2
+         * @since 19.2.0
          */
         public Builder timeZone(final ZoneId zone) {
             this.zone = zone;
@@ -1435,10 +1435,11 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
+                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");

@@ -31,66 +31,27 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.util.ModuleSupport;
 
-public class LocalizationSupport {
-    protected final Map<String, Charset> charsets;
-    protected final Map<String, ResourceBundle> cache;
+//Checkstyle: stop
+import sun.util.locale.provider.LocaleProviderAdapter;
+//Checkstyle: resume
 
-    public static class Options {
-        @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> IncludeResourceBundles = new HostedOptionKey<>(null);
-    }
+/**
+ * Holder for localization information that is computed during image generation and used at run
+ * time.
+ */
+public final class LocalizationSupport {
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public LocalizationSupport() {
-        charsets = new HashMap<>();
-        cache = new HashMap<>();
-        /* Multi-version jar loading will the the bundles appropriate for the platform version. */
-        LocalizationResourceBundles.initialize(this);
-        includeResourceBundles();
-    }
+    final Map<String, Charset> charsets = new HashMap<>();
+    final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> adaptersByClass = new HashMap<>();
+    final Map<LocaleProviderAdapter.Type, LocaleProviderAdapter> adaptersByType = new HashMap<>();
+    final Map<Class<? extends LocaleServiceProvider>, Object> providerPools = new HashMap<>();
+    final Map<String, ResourceBundle> resourceBundles = new HashMap<>();
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addBundleToCache(String bundleName) {
-        if (bundleName.isEmpty()) {
-            return;
-        }
-        final ResourceBundle bundle = getBundleInDefaultLocale(bundleName);
-        addBundleToCache(bundleName, bundle);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResourceBundle getBundleInDefaultLocale(String bundleName) {
-        RuntimeClassInitialization.initializeAtBuildTime(bundleName);
-        return ModuleSupport.getResourceBundle(bundleName, Locale.getDefault(), Thread.currentThread().getContextClassLoader());
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    void addBundleToCache(String bundleName, ResourceBundle bundle) {
-        /* Ensure that the bundle contents are loaded. */
-        bundle.keySet();
-        cache.put(bundleName, bundle);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    void includeResourceBundles() {
-        for (String bundle : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
-            addBundleToCache(bundle);
-        }
-    }
-
-    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(Options.IncludeResourceBundles, "");
+    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
 
     /**
      * Get cached resource bundle.
@@ -98,7 +59,7 @@ public class LocalizationSupport {
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) throws MissingResourceException {
-        ResourceBundle result = cache.get(baseName);
+        ResourceBundle result = resourceBundles.get(baseName);
         if (result == null) {
             String errorMessage = "Resource bundle not found " + baseName + ". " +
                             "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";

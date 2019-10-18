@@ -98,6 +98,12 @@ tool-info.txt:
 	@echo "  FC: $(FC)" >> $@
 	@cat $@
 
+ifdef GRAALVM_LLVM_HOME
+%.cpp.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%.cc.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%.C.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+endif
+
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^

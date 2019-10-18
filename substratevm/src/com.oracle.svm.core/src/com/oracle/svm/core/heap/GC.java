@@ -36,15 +36,6 @@ public interface GC {
     void collectCompletely(GCCause cause);
 
     /*
-     * Registered walkers of object reference roots. Since these walkers are used during collection,
-     * they must not move, either by being in the image heap, or by being pinned.
-     */
-
-    void registerObjectReferenceWalker(ObjectReferenceWalker walker);
-
-    void unregisterObjectReferenceWalker(ObjectReferenceWalker walker);
-
-    /*
      * Registered collection watchers.
      */
 

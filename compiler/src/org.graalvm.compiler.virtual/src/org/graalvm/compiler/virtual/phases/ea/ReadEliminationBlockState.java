@@ -152,6 +152,7 @@ public final class ReadEliminationBlockState extends EffectsBlockState<ReadElimi
     }
 
     public ReadEliminationBlockState(ReadEliminationBlockState other) {
+        super(other);
         readCache = EconomicMap.create(Equivalence.DEFAULT, other.readCache);
     }
 

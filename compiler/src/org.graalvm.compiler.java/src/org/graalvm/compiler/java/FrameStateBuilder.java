@@ -328,8 +328,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), parent.getNonIntrinsicAncestor(), true, null, null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
-            return newFrameState;
+            return outerFrameState.duplicateModified(graph, outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
@@ -1027,5 +1026,18 @@ public final class FrameStateBuilder implements SideEffectsState {
             sideEffects = new ArrayList<>(4);
         }
         sideEffects.add(sideEffect);
+    }
+
+    public void replaceValue(ValueNode oldValue, ValueNode newValue) {
+        for (int i = 0; i < locals.length; ++i) {
+            if (locals[i] == oldValue) {
+                locals[i] = newValue;
+            }
+        }
+        for (int i = 0; i < stack.length; ++i) {
+            if (stack[i] == oldValue) {
+                stack[i] = newValue;
+            }
+        }
     }
 }

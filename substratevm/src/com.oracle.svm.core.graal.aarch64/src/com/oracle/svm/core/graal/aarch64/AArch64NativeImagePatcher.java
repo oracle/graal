@@ -39,7 +39,7 @@ import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 
 @AutomaticFeature
-@Platforms({Platform.AArch64.class})
+@Platforms({Platform.AARCH64.class})
 class AArch64NativeImagePatcherFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
