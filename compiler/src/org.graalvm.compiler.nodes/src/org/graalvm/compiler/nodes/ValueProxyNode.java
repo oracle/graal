@@ -71,7 +71,7 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
         }
 
         ValueNode curValue = value;
-        if (curValue.isConstant()) {
+        if (curValue.getNodeClass().isLeafNode()) {
             return curValue;
         }
         if (loopPhiProxy && !loopExit.loopBegin().isPhiAtMerge(curValue)) {
