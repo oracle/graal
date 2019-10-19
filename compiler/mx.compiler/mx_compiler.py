@@ -1239,11 +1239,11 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             boot_jars = _graal_config().boot_jars
             if not export_truffle:
                 truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
-                for src_jar in _graal_config().jvmci_parent_jars:
+                for src_jar in _graal_config().truffle_jars:
                     _copy_file(src_jar, join(truffle_dir, basename(src_jar)))
-                if _graal_config().jvmci_parent_jars:
+                for jvmci_parent_jar in _graal_config().jvmci_parent_jars:
                     with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                        fp.write(os.pathsep.join([join('..', 'truffle', basename(jvmci_parent_jar)) for jvmci_parent_jar in _graal_config().jvmci_parent_jars]))
+                        fp.write(join('..', 'truffle', basename(jvmci_parent_jar)))
             else:
                 boot_jars += _graal_config().jvmci_parent_jars
 
@@ -1290,7 +1290,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
                 vm_name = vm_name + ':' + s.name + '_' + s.version()
-            for d in _graal_config().boot_dists + _graal_config().jvmci_parent_dists:
+            for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
@@ -1336,6 +1336,7 @@ def _graal_config():
             self.jvmci_parent_jars = []
             self.boot_dists = []
             self.boot_jars = []
+            self.truffle_jars = []
             self.jars = []
 
             for component in mx_sdk_vm.graalvm_components():
@@ -1352,6 +1353,9 @@ def _graal_config():
                     d = mx.distribution(jar)
                     self.boot_dists.append(d)
                     self.boot_jars.append(d.classpath_repr())
+
+            self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
+            self.truffle_jars = [jar.classpath_repr() for jar in self.truffle_dists]
 
             self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
             self.jars = self.jvmci_jars + self.jvmci_parent_jars + self.boot_jars
