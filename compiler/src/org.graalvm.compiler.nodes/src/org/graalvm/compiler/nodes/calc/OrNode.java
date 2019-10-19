@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -60,7 +61,7 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return canonical(null, op, stamp, x, y, view);
+        return canonical(null, op, x, y, view);
     }
 
     @Override
@@ -76,34 +77,42 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
             return ret;
         }
 
-        return canonical(this, getOp(forX, forY), stamp(view), forX, forY, view);
+        return canonical(this, getOp(forX, forY), forX, forY, view);
     }
 
-    private static ValueNode canonical(OrNode self, BinaryOp<Or> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
+    private static ValueNode canonical(OrNode self, BinaryOp<Or> op, ValueNode forX, ValueNode forY, NodeView view) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return forX;
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return new OrNode(forY, forX);
         }
+
+        Stamp rawXStamp = forX.stamp(view);
+        Stamp rawYStamp = forY.stamp(view);
+        if (rawXStamp instanceof IntegerStamp && rawYStamp instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) rawXStamp;
+            IntegerStamp yStamp = (IntegerStamp) rawYStamp;
+            if (((~xStamp.downMask()) & yStamp.upMask()) == 0) {
+                return forX;
+            } else if (((~yStamp.downMask()) & xStamp.upMask()) == 0) {
+                return forY;
+            }
+        }
+
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
                 return forX;
             }
 
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
-                long rawY = ((PrimitiveConstant) c).asLong();
-                long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp));
-                if ((rawY & mask) == mask) {
-                    return ConstantNode.forIntegerStamp(stamp, mask);
-                }
-            }
             return reassociate(self != null ? self : (OrNode) new OrNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
         }
+
         if (forX instanceof NotNode && forY instanceof NotNode) {
             return new NotNode(AndNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view));
         }
+
         return self != null ? self : new OrNode(forX, forY).maybeCommuteInputs();
     }
 

@@ -61,7 +61,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return canonical(null, op, stamp, x, y, view);
+        return canonical(null, op, x, y, view);
     }
 
     @Override
@@ -77,16 +77,29 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         }
 
         NodeView view = NodeView.from(tool);
-        return canonical(this, getOp(forX, forY), stamp(view), forX, forY, view);
+        return canonical(this, getOp(forX, forY), forX, forY, view);
     }
 
-    private static ValueNode canonical(AndNode self, BinaryOp<And> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
+    private static ValueNode canonical(AndNode self, BinaryOp<And> op, ValueNode forX, ValueNode forY, NodeView view) {
         if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
             return forX;
         }
         if (forX.isConstant() && !forY.isConstant()) {
             return new AndNode(forY, forX);
         }
+
+        Stamp rawXStamp = forX.stamp(view);
+        Stamp rawYStamp = forY.stamp(view);
+        if (rawXStamp instanceof IntegerStamp && rawYStamp instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) rawXStamp;
+            IntegerStamp yStamp = (IntegerStamp) rawYStamp;
+            if (((~xStamp.downMask()) & yStamp.upMask()) == 0) {
+                return forY;
+            } else if (((~yStamp.downMask()) & xStamp.upMask()) == 0) {
+                return forX;
+            }
+        }
+
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
@@ -95,20 +108,11 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
 
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
                 long rawY = ((PrimitiveConstant) c).asLong();
-                long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp));
-                if ((rawY & mask) == 0) {
-                    return ConstantNode.forIntegerStamp(stamp, 0);
-                }
                 if (forX instanceof SignExtendNode) {
                     SignExtendNode ext = (SignExtendNode) forX;
                     if (rawY == ((1L << ext.getInputBits()) - 1)) {
                         return new ZeroExtendNode(ext.getValue(), ext.getResultBits());
                     }
-                }
-                IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
-                if (((xStamp.upMask() | xStamp.downMask()) & ~rawY) == 0) {
-                    // No bits are set which are outside the mask, so the mask will have no effect.
-                    return forX;
                 }
             }
 
