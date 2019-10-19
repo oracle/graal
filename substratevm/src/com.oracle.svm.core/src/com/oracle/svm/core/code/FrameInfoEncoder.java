@@ -515,8 +515,8 @@ public class FrameInfoEncoder {
     @Uninterruptible(reason = "Safe for GC, but called from uninterruptible code.", calleeMustBe = false)
     private static void afterInstallation(CodeInfo info) {
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(info.getFrameInfoEncodings())) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(info.getFrameInfoObjectConstants())));
+                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoEncodings(info))) +
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoObjectConstants(info))));
     }
 
     private NonmovableArray<Byte> encodeFrameDatas() {
@@ -632,7 +632,8 @@ public class FrameInfoEncoder {
 
     void verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, new ReusableTypeReader(info.getFrameInfoEncodings(), expectedData.indexInEncodings),
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
+                            new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.indexInEncodings),
                             info, FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }

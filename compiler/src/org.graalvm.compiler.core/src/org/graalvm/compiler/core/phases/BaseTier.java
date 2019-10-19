@@ -39,10 +39,12 @@ public class BaseTier<C> extends PhaseSuite<C> {
     }
 
     public CanonicalizerPhase createCanonicalizerPhase(OptionValues options) {
-        CanonicalizerPhase result = CanonicalizerPhase.create();
+        CanonicalizerPhase canonicalizer = null;
         if (ImmutableCode.getValue(options)) {
-            result.disableReadCanonicalization();
+            canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
+        } else {
+            canonicalizer = CanonicalizerPhase.create();
         }
-        return result;
+        return canonicalizer;
     }
 }

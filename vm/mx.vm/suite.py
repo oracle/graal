@@ -32,7 +32,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "40ed4d772c02b0af95ddb431928efc768dce07e9",
+                "version": "15e9a5205c5ce75562e94551e38baa0466c9a492",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "40ed4d772c02b0af95ddb431928efc768dce07e9",
+                "version": "15e9a5205c5ce75562e94551e38baa0466c9a492",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -74,7 +74,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "7d475cf51bb2fc3c75b181426016ea6821693f8e",
+                "version": "f015d9bd22df91b02c5a7443b0be8db64c5cc4f1",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -83,7 +83,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "35c73b945c8b9b18613954cea626b0b7c4bdfc72",
+                "version": "a80312d5b4539b8cb25bf3b27ee8e3906b2a926b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -98,8 +98,8 @@ suite = {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "1.8+",
-            "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
+            "checkstyleVersion" : "8.8",
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -109,7 +109,7 @@ suite = {
                 "org.graalvm.component.installer"
             ],
             "javaCompliance" : "1.8+",
-            "checkstyle": "com.oracle.graalvm.locator",
+            "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
         },
     },

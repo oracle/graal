@@ -163,9 +163,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void beforeAnalysis(BeforeAnalysisAccess access) {
 
+        access.registerReachabilityHandler(SecurityServicesFeature::registerServicesForReflection, method(access, "java.security.Provider$Service", "newInstance", Object.class));
+
+        access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
+                        method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                        method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+
+        if (isPosix()) {
+            access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerServicesForReflection(BeforeAnalysisAccess access) {
         boolean enableAllSecurityServices = SubstrateOptions.EnableAllSecurityServices.getValue();
 
         Function<String, Class<?>> consParamClassAccessor = getConsParamClassAccessor(access);
@@ -208,14 +220,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                     throw VMError.shouldNotReachHere(e);
                 }
             }
-        }
-
-        access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
-                        method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
-                        method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
-
-        if (isPosix()) {
-            access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
         }
     }
 

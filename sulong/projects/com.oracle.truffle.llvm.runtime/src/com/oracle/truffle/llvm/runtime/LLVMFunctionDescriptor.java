@@ -382,7 +382,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
-        assert intrinsicProvider.isIntrinsified(name);
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name, nodeFactory);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }

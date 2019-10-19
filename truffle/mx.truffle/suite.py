@@ -120,6 +120,9 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
+      # if warnings as errors is enabled. See GR-14683.
+      "forceJavac" : "true",
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,Truffle",
@@ -702,11 +705,30 @@ suite = {
       "subDir": "src",
       "sourceDirs": ["src"],
       "dependencies": [
-        "TRUFFLE_API",
+        "truffle:TRUFFLE_API",
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8+",
-      "checkstyleVersion" : "8.8",
-      "workingSets" : "Truffle",
+      "license": "GPLv2-CPE",
+    },
+
+    "com.oracle.graalvm.locator.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "overlayTarget" : "com.oracle.graalvm.locator",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8",
+      "checkPackagePrefix" : "false",
+    },
+
+    "com.oracle.graalvm.locator.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "overlayTarget" : "com.oracle.graalvm.locator",
+      "checkstyle" : "com.oracle.truffle.api",
+      "multiReleaseJarVersion" : "11",
+      "javaCompliance" : "11+",
+      "checkPackagePrefix" : "false",
     },
    },
 

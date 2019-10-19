@@ -2,7 +2,7 @@
 	"name": "graalvm-r",
 	"displayName": "GraalVM R",
 	"description": "Support for GraalVM R",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "OracleLabs",
 	"icon": "images/graalvm-r-logo.png",

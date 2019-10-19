@@ -146,7 +146,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         /*
          * Because of restrictions that the memory graph of snippets matches the original node,
          * pretend that we kill any.

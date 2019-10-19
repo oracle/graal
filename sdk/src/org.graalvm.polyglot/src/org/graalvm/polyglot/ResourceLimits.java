@@ -56,8 +56,6 @@ import java.util.function.Predicate;
  * <p>
  * The following resource limits are supported:
  * <ul>
- * <li>{@link Builder#cpuTimeLimit(Duration, Duration) Time} limit per context. Allows to limit the
- * amount of time spent per context.
  * <li>{@link Builder#statementLimit(long, Predicate) Statement count} limit per context. Allows to
  * limit the amount of statements executed per context.
  * </ul>
@@ -75,29 +73,6 @@ import java.util.function.Predicate;
  *         assert false;
  *     } catch (PolyglotException e) {
  *         // triggered after 500 iterations of while(true);
- *         // context is closed and can no longer be used
- *         assert e.isCancelled();
- *     }
- * }
- * </pre>
- * </code>
- *
- * <h3>Time Limit Example</h3>
- *
- * <code>
- * <pre>
- * ResourceLimits limits = ResourceLimits.newBuilder()
- *                   .timeLimit(Duration.ofMillis(500),
- *                              Duration.ofMillis(5))
- *                   .build();
- * try (Context context = Context.newBuilder("js")
- *                            .resourceLimits(limits)
- *                        .build();) {
- *     try {
- *         context.eval("js", "while(true);");
- *         assert false;
- *     } catch (PolyglotException e) {
- *         // triggered after 500ms;
  *         // context is closed and can no longer be used
  *         assert e.isCancelled();
  *     }
@@ -154,13 +129,13 @@ public final class ResourceLimits {
          * overwrites previous statement limit configurations. If the statement limit is exceeded
          * then the {@link #onLimit(Consumer) onLimit} listener is notified.
          * <p>
-         * By default there is no statement limit applied. The limit may be set to 0 to disable the
-         * statement limit. In addition to the limit a source filter may be set to indicate for
-         * which sources the limit should be applied. If the source filter is <code>null</code> then
-         * it will be applied to all {@link Source#isInternal() internal} and public sources. The
-         * provided limit must not be negative otherwise an {@link IllegalArgumentException} is
-         * thrown. If a {@link Context.Builder#engine(Engine) shared engine} is used then the same
-         * source filter instance must be used for all contexts of an engine. Otherwise an
+         * By default there is no statement limit applied. The limit may be set to 0 to disable it.
+         * In addition to the limit a source filter may be set to indicate for which sources the
+         * limit should be applied. If the source filter is <code>null</code> then it will be
+         * applied to all {@link Source#isInternal() internal} and public sources. The provided
+         * limit must not be negative otherwise an {@link IllegalArgumentException} is thrown. If a
+         * {@link Context.Builder#engine(Engine) shared engine} is used then the same source filter
+         * instance must be used for all contexts of an engine. Otherwise an
          * {@link IllegalArgumentException} is thrown when the context is
          * {@link Context.Builder#build() built}. The limit itself may vary between contexts.
          * <p>
@@ -168,9 +143,15 @@ public final class ResourceLimits {
          * Therefore, new inner contexts cannot be used to exceed the statement limit.
          * <p>
          * Note that attaching a statement limit to a context reduces the throughput of all guest
-         * applications with that use the same engine. The statement counter needs to be updated
-         * with every statement that is executed. It is recommended to benchmark the use of the
-         * statement limit before it is used in production.
+         * applications with the same engine. The statement counter needs to be updated with every
+         * statement that is executed. It is recommended to benchmark the use of the statement limit
+         * before it is used in production.
+         * <p>
+         * Note that the complexity of a single statement may not be constant time depending on the
+         * guest language. For example, statements that execute JavaScript builtins, like
+         * <code>Array.sort</code>, may account for a single statement, but its execution time is
+         * dependent on the size of the array. The statement count limit is therefore not suitable
+         * to perform time boxing and must be combined with other more reliable measures.
          *
          * @see ResourceLimits Example Usage
          * @since 19.3
@@ -211,12 +192,39 @@ public final class ResourceLimits {
          * The time limit is applied to the context and all inner contexts it spawns. Therefore, new
          * inner contexts cannot be used to exceed the time limit.
          *
+         * <p>
+         * <h3>Time Limit Example</h3>
+         *
+         * <code>
+         * <pre>
+         * ResourceLimits limits = ResourceLimits.newBuilder()
+         *                   .timeLimit(Duration.ofMillis(500),
+         *                              Duration.ofMillis(5))
+         *                   .build();
+         * try (Context context = Context.newBuilder("js")
+         *                            .resourceLimits(limits)
+         *                        .build();) {
+         *     try {
+         *         context.eval("js", "while(true);");
+         *         assert false;
+         *     } catch (PolyglotException e) {
+         *         // triggered after 500ms;
+         *         // context is closed and can no longer be used
+         *         assert e.isCancelled();
+         *     }
+         * }
+         * </pre>
+         * </code>
+         *
          * @see ThreadMXBean#getThreadCpuTime(long)
          * @see ResourceLimits Example Usage
          * @since 19.3
          */
         @SuppressWarnings("hiding")
-        public Builder cpuTimeLimit(Duration timeLimit, Duration accuracy) {
+        /*
+         * Not ready for prime time yet. We need to solve GR-18742.
+         */
+        Builder cpuTimeLimit(Duration timeLimit, Duration accuracy) {
             if (timeLimit == null && accuracy == null) {
                 // fall through to allow reset
             } else if (timeLimit == null || accuracy == null) {

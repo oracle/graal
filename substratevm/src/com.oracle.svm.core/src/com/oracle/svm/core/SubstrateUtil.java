@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -415,13 +416,15 @@ public class SubstrateUtil {
         if (deoptFrame != null) {
             return deoptFrame.getSourceTotalFrameSize();
         }
-        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
-        if (codeInfo.isNonNull()) {
-            Object tether = CodeInfoAccess.acquireTether(codeInfo);
+
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNonNull()) {
+            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
             try {
+                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 return getTotalFrameSize0(ip, codeInfo);
             } finally {
-                CodeInfoAccess.releaseTether(codeInfo, tether);
+                CodeInfoAccess.releaseTether(untetheredInfo, tether);
             }
         }
         return -1;

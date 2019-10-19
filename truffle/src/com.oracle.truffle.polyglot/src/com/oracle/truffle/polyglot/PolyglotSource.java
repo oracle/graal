@@ -312,8 +312,8 @@ class PolyglotSource extends AbstractSourceImpl {
             synchronized (this) {
                 res = defaultFileSystemContext;
                 if (res == null) {
-                    ClassLoader loader = engineImpl.getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
-                    res = EngineAccessor.LANGUAGE.createFileSystemContext(FileSystems.newDefaultFileSystem(), FileSystems.newFileTypeDetectorsSupplier(LanguageCache.languages(loader).values()));
+                    res = EngineAccessor.LANGUAGE.createFileSystemContext(FileSystems.newDefaultFileSystem(),
+                                    FileSystems.newFileTypeDetectorsSupplier(LanguageCache.languages().values()));
                     defaultFileSystemContext = res;
                 }
             }

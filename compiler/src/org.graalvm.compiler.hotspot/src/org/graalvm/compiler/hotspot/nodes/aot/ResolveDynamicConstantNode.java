@@ -64,7 +64,7 @@ public class ResolveDynamicConstantNode extends DeoptimizingFixedWithNextNode im
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

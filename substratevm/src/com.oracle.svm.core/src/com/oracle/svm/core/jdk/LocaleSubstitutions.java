@@ -111,6 +111,7 @@ final class Target_sun_util_locale_provider_LocaleProviderAdapter {
 
 @Substitute
 @TargetClass(sun.util.locale.provider.LocaleServiceProviderPool.class)
+@SuppressWarnings({"static-method"})
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
 
     private final LocaleServiceProvider cachedProvider;
@@ -129,7 +130,6 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     }
 
     @Substitute
-    @SuppressWarnings({"static-method"})
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private boolean hasProviders() {
         return false;
@@ -161,6 +161,20 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     @KeepOriginal //
     @TargetElement(onlyWith = JDK11OrLater.class) //
     static native void config(Class<? extends Object> caller, String message);
+
+    /**
+     * Since we only put the pre-initialized resource bundles for one locale into the image, it does
+     * not make sense to return more than a single Locale here.
+     */
+    @Substitute
+    private static Locale[] getAllAvailableLocales() {
+        return new Locale[]{ImageSingletons.lookup(LocalizationFeature.class).imageLocale};
+    }
+
+    @Substitute
+    private Locale[] getAvailableLocales() {
+        return new Locale[]{ImageSingletons.lookup(LocalizationFeature.class).imageLocale};
+    }
 }
 
 @Delete

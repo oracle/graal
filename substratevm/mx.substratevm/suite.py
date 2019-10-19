@@ -630,24 +630,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.jline": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core",
-                "truffle:JLINE",
-            ],
-            "checkstyle": "com.oracle.svm.truffle",
-            "javaCompliance": "8+",
-            "annotationProcessors": [
-                "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
-                "compiler:GRAAL_OPTIONS_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "spotbugs": "false",
-        },
-
         "com.oracle.svm.polyglot": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -840,7 +822,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM basic library-support components",
             "dependencies": [
-                "com.oracle.svm.jline",
                 "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
@@ -850,9 +831,6 @@ suite = {
                 "SVM",
                 "OBJECTFILE",
                 "compiler:GRAAL",
-            ],
-            "exclude": [
-                "truffle:JLINE",
             ],
         },
 

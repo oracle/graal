@@ -94,7 +94,9 @@ public class MathUtil {
             if (before.predecessor() instanceof FixedBinaryNode) {
                 FixedBinaryNode binaryPredecessor = (FixedBinaryNode) before.predecessor();
                 if (fixedDiv.dataFlowEquals(binaryPredecessor)) {
-                    fixedDiv.safeDelete();
+                    if (fixedDiv.isAlive()) {
+                        fixedDiv.safeDelete();
+                    }
                     return binaryPredecessor;
                 }
             }

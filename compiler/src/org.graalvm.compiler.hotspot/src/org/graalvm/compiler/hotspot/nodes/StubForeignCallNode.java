@@ -72,7 +72,7 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
+    public LocationIdentity[] getKilledLocationIdentities() {
         LocationIdentity[] killedLocations = foreignCalls.getKilledLocations(descriptor);
         killedLocations = Arrays.copyOf(killedLocations, killedLocations.length + 1);
         killedLocations[killedLocations.length - 1] = HotSpotReplacementsUtil.PENDING_EXCEPTION_LOCATION;

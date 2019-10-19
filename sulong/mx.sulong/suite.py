@@ -309,7 +309,7 @@ suite = {
       ],
       "javaProperties" : {
         "llvm.bin.dir" : "<path:SULONG_LLVM_ORG>/bin",
-        "llvm.home": "<sulong_home>",
+        "llvm.home": "<path:SULONG_HOME>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
@@ -320,17 +320,10 @@ suite = {
 
     "bootstrap-toolchain-launchers": {
       "subDir": "projects",
-      "class" : "ToolchainLauncherProject",
-      "native": True,
-      "vpath": True,
-      "platformDependent": True,
-      "buildEnv" : {
-        "MX_EXE" : "<mx_exe>",
-        "SUITE_DIR" : "<path:bootstrap-toolchain-launchers>/../..",
-        "PLATFORM" : "native",
-      },
+      "class" : "BootstrapToolchainLauncherProject",
       "buildDependencies" : [
         "SULONG_LLVM_ORG",
+        "com.oracle.truffle.llvm.toolchain.launchers",
       ],
       "license" : "BSD-new",
     },
@@ -471,11 +464,6 @@ suite = {
         "OS" : "<os>",
       },
       "license" : "BSD-new",
-    },
-    "sulong-doc": {
-      "class": "SulongDocsProject",
-      "outputDir": "",
-      "prefix": "",
     },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
@@ -1093,15 +1081,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testDistribution" : True,
-    },
-    "SULONG_DOC": {
-      "native": True, # Not Java
-      "relpath": True,
-      "dependencies": [
-        "sulong-doc",
-      ],
-      "description": "Sulong documentation, license",
-      "license" : "BSD-new",
     },
     "SULONG_LEGACY" : {
       "native" : True,

@@ -531,7 +531,8 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
         try {
-            return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.toRealPath(path, options));
+            Path realPath = fileSystemContext.fileSystem.toRealPath(normalizedPath, options);
+            return new TruffleFile(fileSystemContext, realPath, realPath);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {

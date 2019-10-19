@@ -103,4 +103,9 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
     public Stamp getAccessStamp() {
         return stamp(NodeView.DEFAULT);
     }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
+    }
 }

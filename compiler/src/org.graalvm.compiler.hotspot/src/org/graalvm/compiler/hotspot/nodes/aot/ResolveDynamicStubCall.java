@@ -93,7 +93,7 @@ public class ResolveDynamicStubCall extends AbstractMemoryCheckpoint implements 
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

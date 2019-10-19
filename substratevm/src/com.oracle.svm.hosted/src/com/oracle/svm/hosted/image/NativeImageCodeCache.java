@@ -55,6 +55,7 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
@@ -207,10 +208,10 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(codeInfo, new InstantReferenceAdjuster());
-        codeInfo.setCodeStart(firstMethod);
-        codeInfo.setCodeSize(codeSize);
+        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        imageCodeInfo.setCodeStart(firstMethod);
+        imageCodeInfo.setCodeSize(codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
@@ -223,10 +224,10 @@ public abstract class NativeImageCodeCache {
              * Missing deoptimization entry points lead to hard-to-debug transient failures, so we
              * want the verification on all the time and not just when assertions are on.
              */
-            verifyDeoptEntries(codeInfo);
+            verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder, codeInfo);
+        assert verifyMethods(codeInfoEncoder, imageCodeInfo);
     }
 
     private void verifyDeoptEntries(CodeInfo codeInfo) {

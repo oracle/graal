@@ -74,7 +74,7 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
     }
 

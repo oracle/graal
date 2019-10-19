@@ -1059,7 +1059,13 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, providers, CanonicalizerPhase.create());
+                    CanonicalizerPhase canonicalizer = null;
+                    if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
+                        canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
+                    } else {
+                        canonicalizer = CanonicalizerPhase.create();
+                    }
+                    LoopTransformations.fullUnroll(loop, providers, canonicalizer);
                     CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
                     loop.deleteUnusedNodes();
                 }
@@ -1278,7 +1284,7 @@ public class SnippetTemplate {
 
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location
-            LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
+            LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getKilledLocationIdentity();
             if (locationIdentity.isAny()) {
                 assert !(memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) : replacee + " kills ANY_LOCATION, but snippet does not";
                 // if the replacee kills ANY_LOCATION, the snippet can kill arbitrary locations

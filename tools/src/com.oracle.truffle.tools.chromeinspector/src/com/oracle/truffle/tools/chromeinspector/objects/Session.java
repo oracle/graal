@@ -176,12 +176,14 @@ class Session extends AbstractInspectorObject {
 
     private Object connect() {
         if (iss != null) {
-            throw new IllegalStateException("The inspector session is already connected");
+            throw new InspectorStateException("The inspector session is already connected");
         }
         InspectorExecutionContext execContext = contextSupplier.get();
         iss = InspectServerSession.create(execContext, false, new ConnectionWatcher());
         iss.setJSONMessageListener(getListeners());
         execContext.setSynchronous(true);
+        // Enable the Runtime by default
+        iss.sendCommand(new Command("{\"id\":0,\"method\":\"Runtime.enable\"}"));
         return NullObject.INSTANCE;
     }
 
@@ -284,6 +286,9 @@ class Session extends AbstractInspectorObject {
         }
         if (callback != null) {
             getListeners().addCallback(id, callback);
+        }
+        if (iss == null) {
+            throw new InspectorStateException("The inspector session is not connected.");
         }
         iss.sendCommand(new Command(id, method, params));
     }

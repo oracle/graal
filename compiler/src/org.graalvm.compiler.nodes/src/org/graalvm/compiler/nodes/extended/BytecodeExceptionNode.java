@@ -100,7 +100,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

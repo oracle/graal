@@ -30,8 +30,9 @@
 import sys
 import tarfile
 import os
+import pipes
 import tempfile
-from os.path import join
+from os.path import join, exists, basename
 import shutil
 import subprocess
 from argparse import ArgumentParser
@@ -754,32 +755,6 @@ def opt(args=None, version=None, out=None, err=None):
     """runs opt"""
     return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
 
-# Project classes
-
-import glob
-
-class ArchiveProject(mx.ArchivableProject):
-    def __init__(self, suite, name, deps, workingSets, theLicense, **args):
-        mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense)
-        assert 'prefix' in args
-        assert 'outputDir' in args
-
-    def output_dir(self):
-        return join(self.dir, self.outputDir)
-
-    def archive_prefix(self):
-        return self.prefix
-
-    def getResults(self):
-        return mx.ArchivableProject.walk(self.output_dir())
-
-class SulongDocsProject(ArchiveProject):  # pylint: disable=too-many-ancestors
-    doc_files = (glob.glob(join(_suite.dir, 'LICENSE')) +
-        glob.glob(join(_suite.dir, '*.md')))
-
-    def getResults(self):
-        return [join(_suite.dir, f) for f in self.doc_files]
-
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
@@ -896,22 +871,64 @@ class ToolchainConfig(object):
         ]
 
 
-class ToolchainLauncherProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **attrs):
-        results = ["bin/" + e for e in suite.toolchain._supported_exes()]
-        projectDir = attrs.pop('dir', None)
-        if projectDir:
-            d = join(suite.dir, projectDir)
-        elif subDir is None:
-            d = join(suite.dir, name)
-        else:
-            d = join(suite.dir, subDir, name)
-        super(ToolchainLauncherProject, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **attrs)
+class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
+        super(BootstrapToolchainLauncherProject, self).__init__(suite, name, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kwArgs)
 
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(ToolchainLauncherProject, self).getBuildEnv(replaceVar=replaceVar)
-        env['RESULTS'] = ' '.join(self.results)
-        return env
+    def launchers(self):
+        for tool in self.suite.toolchain._supported_tools():
+            for exe in self.suite.toolchain._tool_to_aliases(tool):
+                result = join(self.get_output_root(), exe)
+                yield result, tool, join('bin', exe)
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for result, _, prefixed in self.launchers():
+            yield result, prefixed
+
+    def getBuildTask(self, args):
+        return BootstrapToolchainLauncherBuildTask(self, args, 1)
+
+
+class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
+    def __str__(self):
+        return "Generating " + self.subject.name
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([result for result, _, _ in self.subject.launchers()])
+
+    def needsBuild(self, newestInput):
+        sup = super(BootstrapToolchainLauncherBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+
+        for result, tool, _ in self.subject.launchers():
+            if not exists(result):
+                return True, result + ' does not exist'
+            with open(result, "r") as f:
+                on_disk = f.read()
+            if on_disk != self.contents(tool):
+                return True, 'command line changed for ' + basename(result)
+
+        return False, 'up to date'
+
+    def build(self):
+        mx.ensure_dir_exists(self.subject.get_output_root())
+        for result, tool, _ in self.subject.launchers():
+            with open(result, "w") as f:
+                f.write(self.contents(tool))
+            os.chmod(result, 0o755)
+
+    def clean(self, forBuild=False):
+        if exists(self.subject.get_output_root()):
+            mx.rmtree(self.subject.get_output_root())
+
+    def contents(self, tool):
+        java = mx.get_jdk().java
+        classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
+        jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        main_class = self.subject.suite.toolchain._tool_to_main(tool)
+        command = [java] + jvm_args + [main_class, '"$@"']
+        return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
@@ -932,7 +949,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI', 'LLVM.org toolchain'],
+    dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',

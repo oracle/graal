@@ -167,6 +167,31 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testExistsToCanonicalFileInconsistence() throws IOException {
+        TruffleFile tmp = languageEnv.createTempDirectory(null, "testExistsToCanonicalFileInconsistence");
+        TruffleFile existing = tmp.resolve("existing");
+        existing.createDirectory();
+        Assert.assertTrue(existing.exists());
+        Assert.assertTrue(existing.isDirectory());
+        TruffleFile existingCanonical = existing.getCanonicalFile();
+
+        TruffleFile nonNormalizedExisting = tmp.resolve("non-existing/../existing");
+        Assert.assertTrue(nonNormalizedExisting.exists());
+        Assert.assertTrue(nonNormalizedExisting.isDirectory());
+        TruffleFile existingCanonical2 = nonNormalizedExisting.getCanonicalFile();
+        Assert.assertEquals(existingCanonical, existingCanonical2);
+
+        TruffleFile nonExisting = tmp.resolve("non-existing");
+        Assert.assertFalse(nonExisting.exists());
+        try {
+            nonExisting.getCanonicalFile();
+            Assert.fail("Expected IOException");
+        } catch (IOException ioe) {
+            // expected
+        }
+    }
+
     public static class BaseDetector implements TruffleFile.FileTypeDetector {
 
         private static Map<Class<? extends BaseDetector>, BaseDetector> INSTANCES = new HashMap<>();

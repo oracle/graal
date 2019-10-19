@@ -80,10 +80,10 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
             if (n instanceof MemoryCheckpoint) {
                 if (n instanceof MemoryCheckpoint.Single) {
                     MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
-                    processLocation(n, single.getLocationIdentity(), currentState);
+                    processLocation(n, single.getKilledLocationIdentity(), currentState);
                 } else if (n instanceof MemoryCheckpoint.Multi) {
                     MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;
-                    for (LocationIdentity location : multi.getLocationIdentities()) {
+                    for (LocationIdentity location : multi.getKilledLocationIdentities()) {
                         processLocation(n, location, currentState);
                     }
                 }

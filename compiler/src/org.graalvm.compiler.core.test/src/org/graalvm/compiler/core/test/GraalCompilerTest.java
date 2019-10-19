@@ -1119,6 +1119,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph;
     }
 
+    protected StructuredGraph getFinalGraph(ResolvedJavaMethod method, OptionValues options) {
+        StructuredGraph graph = parseForCompile(method, options);
+        applyFrontEnd(graph);
+        return graph;
+    }
+
     @SuppressWarnings("try")
     protected void applyFrontEnd(StructuredGraph graph) {
         DebugContext debug = graph.getDebug();

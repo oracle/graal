@@ -769,12 +769,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type) {
-        LLVMExpressionNode callNode = new LLVMCallNode(type, functionNode, argNodes, true);
-        return LLVMValueProfilingNode.create(callNode, type.getReturnType());
-    }
-
-    @Override
     public LLVMWriteNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot) {
         if (llvmType instanceof VectorType) {
             return LLVMWriteVectorNodeGen.create(slot, result);

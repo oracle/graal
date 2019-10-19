@@ -62,7 +62,7 @@ public final class ReflectionFeature implements GraalFeature {
         access.registerSubstitutionProcessor(subst);
         ImageSingletons.add(ReflectionSubstitution.class, subst);
 
-        reflectionData = new ReflectionDataBuilder();
+        reflectionData = new ReflectionDataBuilder(access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());

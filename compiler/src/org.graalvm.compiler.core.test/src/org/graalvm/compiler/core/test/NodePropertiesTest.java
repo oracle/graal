@@ -164,13 +164,11 @@ public class NodePropertiesTest extends GraalCompilerTest {
         HighTierContext htc = getDefaultHighTierContext();
         ImprovementSavingCalculator c1 = new ImprovementSavingCalculator();
         StructuredGraph g1 = parseForCompile(getResolvedJavaMethod("test1Snippet"));
-        CanonicalizerPhase canonicalizer1 = this.createCanonicalizerPhase();
-        canonicalizer1.setCustomSimplification(c1);
+        CanonicalizerPhase canonicalizer1 = this.createCanonicalizerPhase().copyWithCustomSimplification(c1);
         canonicalizer1.apply(g1, htc);
         ImprovementSavingCalculator c2 = new ImprovementSavingCalculator();
         StructuredGraph g2 = parseForCompile(getResolvedJavaMethod("test2Snippet"));
-        CanonicalizerPhase canonicalizer2 = this.createCanonicalizerPhase();
-        canonicalizer2.setCustomSimplification(c2);
+        CanonicalizerPhase canonicalizer2 = this.createCanonicalizerPhase().copyWithCustomSimplification(c2);
         canonicalizer2.apply(g2, htc);
         Assert.assertEquals(0, c1.savedCycles);
         Assert.assertEquals(0, c2.savedCycles);
