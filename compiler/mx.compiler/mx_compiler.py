@@ -1241,11 +1241,13 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
                 for src_jar in _graal_config().truffle_jars:
                     _copy_file(src_jar, join(truffle_dir, basename(src_jar)))
-                for jvmci_parent_jar in _graal_config().jvmci_parent_jars:
+                # for jvmci_parent_jar in _graal_config().jvmci_parent_jars:
                     with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                        fp.write(join('..', 'truffle', basename(jvmci_parent_jar)))
+                        # fp.write(join('..', 'truffle', basename(jvmci_parent_jar)))
+                        fp.write(join('..', 'truffle', basename(src_jar)))
             else:
-                boot_jars += _graal_config().jvmci_parent_jars
+                # boot_jars += _graal_config().jvmci_parent_jars
+                boot_jars += _graal_config().truffle_jars
 
             for src_jar in boot_jars:
                 _copy_file(src_jar, join(boot_dir, basename(src_jar)))
