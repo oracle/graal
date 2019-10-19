@@ -87,11 +87,13 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class LLVMContext {
+
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
     private final Toolchain toolchain;
@@ -149,6 +151,9 @@ public final class LLVMContext {
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
     private final LLVMNativePointer sigErr;
+
+    // pThread state
+    private final LLVMPThreadContext pThreadContext;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -219,6 +224,7 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
+        pThreadContext = new LLVMPThreadContext(this);
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {
@@ -382,6 +388,9 @@ public final class LLVMContext {
     }
 
     void finalizeContext() {
+        // join all created pthread - threads
+        pThreadContext.joinAllThreads();
+
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -815,6 +824,10 @@ public final class LLVMContext {
                 System.err.println(String.format("Function %s \t count: %d", s, sorted.get(s)));
             }
         }
+    }
+
+    public LLVMPThreadContext getpThreadContext() {
+        return pThreadContext;
     }
 
     public static class ExternalLibrary {

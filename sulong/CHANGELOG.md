@@ -24,6 +24,8 @@ New features:
 
 * The toolchain Java API can be used to query the toolchain path using the `PATH` name.
 
+* Added intrinsics for pthread thread management functions.
+
 Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building
