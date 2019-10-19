@@ -40,16 +40,13 @@
  */
 package com.oracle.truffle.api.test.source;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.io.IOException;
-import java.net.URL;
-import java.util.Collections;
-import java.util.Enumeration;
-import static org.junit.Assert.assertNotNull;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import java.nio.charset.Charset;
 
 public final class CommonMIMETypeLocator extends TruffleLocator {
     public static final class Detector implements FileTypeDetector {
@@ -71,33 +68,6 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
 
     @Override
     public void locate(Response response) {
-        response.registerClassLoader(new CommonLoader());
-    }
-
-    private static class CommonLoader extends ClassLoader {
-        CommonLoader() {
-            super(getSystemClassLoader());
-        }
-
-        @Override
-        protected URL findResource(String name) {
-            if (name.equals("META-INF/truffle/language")) {
-                return getResource("com/oracle/truffle/api/test/source/CommonMIMETypeLocator");
-            }
-            return super.findResource(name);
-        }
-
-        @Override
-        protected Enumeration<URL> findResources(String name) throws IOException {
-            if (name.equals("META-INF/truffle/language")) {
-                URL locator = ClassLoader.getSystemClassLoader().getResource(
-                                "com/oracle/truffle/api/test/source/CommonMIMETypeLocator");
-                assertNotNull("We have to find a locator registration", locator);
-                return Collections.enumeration(Collections.singleton(locator));
-            }
-            Enumeration<URL> ret = getParent().getResources(name);
-            return ret;
-        }
     }
 
     public static class LocatorLanguage extends ProxyLanguage {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,11 +51,16 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleLanguage;
 
 public class LanguageCacheTest {
 
@@ -75,9 +79,9 @@ public class LanguageCacheTest {
     private static Map<String, Object> invokeLanguageCacheCreateLanguages(ClassLoader loader) throws Throwable {
         try {
             final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, LanguageCacheTest.class.getClassLoader());
-            final Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", ClassLoader.class);
+            final Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", List.class);
             createLanguages.setAccessible(true);
-            return (Map<String, Object>) createLanguages.invoke(null, loader);
+            return (Map<String, Object>) createLanguages.invoke(null, Arrays.asList(LanguageCacheTest.class.getClassLoader(), loader));
         } catch (InvocationTargetException ite) {
             throw ite.getCause();
         } catch (ReflectiveOperationException re) {

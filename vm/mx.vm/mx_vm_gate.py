@@ -131,6 +131,7 @@ def gate_body(args, tasks):
                         "-Dgraal.TruffleCompileImmediately=true",
                         "-Dgraal.TruffleBackgroundCompilation=false",
                         "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dgraalvm.locatorDisabled=true",
                         "-Dgraal.PrintCompilation=true",
                         "-Dgraal.LogFile={0}".format(compiler_log_file),
                         "truffle"])

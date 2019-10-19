@@ -71,7 +71,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.TruffleJDKServices;
-import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
@@ -236,7 +235,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (ClassLoader loader : TruffleLocator.loaders()) {
+        for (ClassLoader loader : EngineAccessor.locatorOrDefaultLoaders()) {
             try {
                 Class<?> c = loader.loadClass(className);
                 if (!TruffleOptions.AOT) {

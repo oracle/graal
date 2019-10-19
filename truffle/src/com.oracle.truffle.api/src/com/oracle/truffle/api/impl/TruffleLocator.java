@@ -40,16 +40,15 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
-import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Locator that allows the users of the Truffle API to find implementations of languages to be
@@ -69,29 +68,27 @@ public abstract class TruffleLocator {
      *
      * @return set of classloaders to search registrations in
      */
-    public static Set<ClassLoader> loaders() {
-        Iterable<TruffleLocator> allLocators;
+    public static List<ClassLoader> loaders() {
         TruffleLocator locator = Truffle.getRuntime().getCapability(TruffleLocator.class);
         if (locator != null) {
-            allLocators = Collections.singleton(locator);
+            List<ClassLoader> found = new ArrayList<>();
+            Response response = new Response(found);
+            locator.locate(response);
+            if (found.isEmpty()) {
+                // use default
+                return null;
+            }
+            return found;
         } else {
-            allLocators = Collections.emptyList();
+            return null;
         }
-        Set<ClassLoader> found = new LinkedHashSet<>();
-        Response response = new Response(found);
-        for (TruffleLocator test : allLocators) {
-            test.locate(response);
-        }
-        found.add(ClassLoader.getSystemClassLoader());
-        found.add(TruffleLocator.class.getClassLoader());
-        return found;
     }
 
     static void initializeNativeImageTruffleLocator() {
         assert TruffleOptions.AOT : "Only supported in AOT mode.";
         if (nativeImageLocator != null) {
             if (ImageInfo.inImageBuildtimeCode() || NATIVE_IMAGE_LOCATOR_INITIALIZED.compareAndSet(false, true)) {
-                nativeImageLocator.locate(new Response(new HashSet<>()));
+                nativeImageLocator.locate(new Response(new ArrayList<>()));
             }
         }
     }
@@ -110,9 +107,9 @@ public abstract class TruffleLocator {
      * @since 0.18
      */
     public static final class Response {
-        private final Set<ClassLoader> loaders;
+        private final List<ClassLoader> loaders;
 
-        Response(Set<ClassLoader> loaders) {
+        Response(List<ClassLoader> loaders) {
             this.loaders = loaders;
         }
 

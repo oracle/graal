@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -75,6 +76,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -94,8 +96,20 @@ final class EngineAccessor extends Accessor {
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
-    static Collection<ClassLoader> allLoaders() {
-        return TruffleOptions.AOT ? Collections.emptyList() : ACCESSOR.loaders();
+    private static List<ClassLoader> locatorLoaders() {
+        return TruffleOptions.AOT ? Collections.emptyList() : TruffleLocator.loaders();
+    }
+
+    private static List<ClassLoader> defaultLoaders() {
+        return Arrays.<ClassLoader> asList(EngineAccessor.class.getClassLoader(), ClassLoader.getSystemClassLoader(), Thread.currentThread().getContextClassLoader());
+    }
+
+    static List<ClassLoader> locatorOrDefaultLoaders() {
+        List<ClassLoader> loaders = locatorLoaders();
+        if (loaders == null) {
+            loaders = defaultLoaders();
+        }
+        return loaders;
     }
 
     private EngineAccessor() {
@@ -733,7 +747,7 @@ final class EngineAccessor extends Accessor {
             if (language == null) {
                 return LanguageCache.languageMimes().keySet();
             } else {
-                LanguageCache lang = LanguageCache.languages(null).get(language);
+                LanguageCache lang = LanguageCache.languages().get(language);
                 if (lang != null) {
                     return lang.getMimeTypes();
                 } else {
@@ -744,7 +758,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isCharacterBasedSource(String language, String mimeType) {
-            LanguageCache cache = LanguageCache.languages(null).get(language);
+            LanguageCache cache = LanguageCache.languages().get(language);
             if (cache == null) {
                 return true;
             }

@@ -104,6 +104,21 @@ suite = {
             "javaCompliance" : "1.8+",
             "license": "GPLv2-CPE",
         },
+        "com.oracle.graalvm.locator.jdk8" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "overlayTarget" : "com.oracle.graalvm.locator",
+            "javaCompliance" : "8",
+            "checkPackagePrefix" : "false",
+        },
+        "com.oracle.graalvm.locator.jdk11" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "overlayTarget" : "com.oracle.graalvm.locator",
+            "multiReleaseJarVersion" : "11",
+            "javaCompliance" : "11+",
+            "checkPackagePrefix" : "false",
+        },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
