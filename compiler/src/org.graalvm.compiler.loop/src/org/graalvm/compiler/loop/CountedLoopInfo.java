@@ -142,6 +142,40 @@ public class CountedLoopInfo {
     }
 
     /**
+     * Determine if the loop might be entered. Returns {@code false} if we can tell statically that
+     * the loop cannot be entered; returns {@code true} if the loop might possibly be entered,
+     * including in the case where we cannot be sure statically.
+     *
+     * @return false if the loop can definitely not be entered, true otherwise
+     */
+    public boolean loopMightBeEntered() {
+        Stamp stamp = iv.valueNode().stamp(NodeView.DEFAULT);
+
+        ValueNode max;
+        ValueNode min;
+        if (iv.direction() == Direction.Up) {
+            max = end;
+            min = iv.initNode();
+        } else {
+            assert iv.direction() == Direction.Down;
+            max = iv.initNode();
+            min = end;
+        }
+        if (oneOff) {
+            max = add(max, ConstantNode.forIntegerStamp(stamp, 1));
+        }
+
+        LogicNode entryCheck = getCounterIntegerHelper().createCompareNode(min, max, NodeView.DEFAULT);
+        if (entryCheck.isContradiction()) {
+            // We can definitely not enter this loop.
+            return false;
+        } else {
+            // We don't know for sure that the loop can't be entered, so assume it can.
+            return true;
+        }
+    }
+
+    /**
      * @return true if the loop has constant bounds.
      */
     public boolean isConstantMaxTripCount() {
