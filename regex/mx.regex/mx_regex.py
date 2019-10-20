@@ -40,7 +40,7 @@
 #
 
 import mx
-import mx_sdk
+import mx_sdk_vm
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner
 
@@ -53,7 +53,7 @@ def _tregex_tests_gate_runner(args, tasks):
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='TRegex',
     short_name='rgx',

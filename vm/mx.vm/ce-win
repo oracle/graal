@@ -1,6 +1,5 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/graal-js
 DISABLE_INSTALLABLES=js,njs,slg,rgx,nfi,ni
-DISABLE_LIBPOLYGLOT=true
 FORCE_BASH_LAUNCHERS=true
+SKIP_LIBRARIES=true
 EXCLUDE_COMPONENTS=nju,gu
-SKIP_LIBRARIES=native-image-agent

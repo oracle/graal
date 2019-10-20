@@ -40,7 +40,7 @@ from mx_gate import Task
 import mx_gate
 import mx_unittest
 import mx_benchmark
-import mx_sdk
+import mx_sdk_vm
 
 import sys
 
@@ -156,7 +156,7 @@ def _tools_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='GraalVM Chrome Inspector',
     short_name='ins',
@@ -169,7 +169,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='AgentScript',
     short_name='ats',
@@ -182,7 +182,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='GraalVM Profiler',
     short_name='pro',
@@ -195,7 +195,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='GraalVM Coverage',
     short_name='cov',
@@ -208,7 +208,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',
     short_name='vvm',
@@ -221,11 +221,11 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
 ))
 
 for mode in ['jvm', 'native']:
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],

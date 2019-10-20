@@ -40,7 +40,7 @@ from argparse import ArgumentParser
 import mx
 import mx_gate
 import mx_subst
-import mx_sdk
+import mx_sdk_vm
 import re
 import mx_benchmark
 import mx_sulong_benchmarks
@@ -857,7 +857,7 @@ class ToolchainConfig(object):
 
     def get_launcher_configs(self):
         return [
-            mx_sdk.LauncherConfig(
+            mx_sdk_vm.LauncherConfig(
                 destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
                 jar_distributions=[self.suite.name + ":" + self.dist],
                 main_class=self._tool_to_main(tool),
@@ -942,7 +942,7 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
                                    suite=_suite)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Sulong',
     short_name='slg',
@@ -956,7 +956,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
-        mx_sdk.LanguageLauncherConfig(
+        mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
@@ -966,7 +966,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ] + _suite.toolchain.get_launcher_configs()
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
     short_name='llp',

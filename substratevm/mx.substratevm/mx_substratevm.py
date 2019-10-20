@@ -45,7 +45,7 @@ import mx
 import mx_compiler
 import mx_gate
 import mx_unittest
-import mx_sdk
+import mx_sdk_vm
 import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
@@ -817,7 +817,7 @@ def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
     mx.run_maven(maven_args, cwd=proj_dir)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
@@ -848,11 +848,11 @@ def _native_image_launcher_extra_jvm_args():
     jdk = mx.get_jdk(tag='default')
     # Support for com.oracle.svm.driver.NativeImage$JDK9Plus
     res = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-    if not mx_sdk.jdk_enables_jvmci_by_default(jdk):
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(jdk):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image',
     short_name='ni',
@@ -863,14 +863,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dependencies=['SubstrateVM', 'nil'],
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
-        mx_sdk.LauncherConfig(
+        mx_sdk_vm.LauncherConfig(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
         ),
-        mx_sdk.LauncherConfig(
+        mx_sdk_vm.LauncherConfig(
             destination="bin/<exe:native-image-configure>",
             jar_distributions=["substratevm:SVM_CONFIGURE"],
             main_class="com.oracle.svm.configure.ConfigurationTool",
@@ -880,7 +880,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         )
     ],
     library_configs=[
-        mx_sdk.LibraryConfig(
+        mx_sdk_vm.LibraryConfig(
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
@@ -894,7 +894,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     installable=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image licence files',
     short_name='nil',
@@ -908,7 +908,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     priority=1,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM LLVM',
     short_name='svml',
@@ -926,7 +926,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Polyglot Native API',
     short_name='polynative',
@@ -954,7 +954,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     has_polyglot_lib_entrypoints=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=suite,
     name='Native Image JUnit',
     short_name='nju',
@@ -966,42 +966,41 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
 ))
 
-if 'LIBGRAAL' in os.environ:
-    jar_distributions = [
-        'substratevm:GRAAL_HOTSPOT_LIBRARY',
-        'compiler:GRAAL_LIBGRAAL_JNI',
-        'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
-    jdk8 = mx.get_jdk(mx.JavaCompliance(8), cancel='GRAAL_MANAGEMENT_LIBGRAAL will be not added', purpose="configure jvmcicompiler", tag=mx.DEFAULT_JDK_TAG)
-    if jdk8:
-        jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
-    mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
-        suite=suite,
-        name='LibGraal',
-        short_name='lg',
-        dir_name=False,
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        jar_distributions=[],
-        builder_jar_distributions=[],
-        support_distributions=[],
-        library_configs=[
-            mx_sdk.LibraryConfig(
-                destination="<lib:jvmcicompiler>",
-                jvm_library=True,
-                jar_distributions=jar_distributions,
-                build_args=[
-                    '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
-                    '--initialize-at-build-time',
-                    '-H:-UseServiceLoaderFeature',
-                    '-H:+AllowFoldMethods',
-                    '-H:+ReportExceptionStackTraces',
-                    '-Djdk.vm.ci.services.aot=true',
-                    '-Dtruffle.TruffleRuntime='
-                ],
-            ),
-        ],
-    ))
+jar_distributions = [
+    'substratevm:GRAAL_HOTSPOT_LIBRARY',
+    'compiler:GRAAL_LIBGRAAL_JNI',
+    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
+jdk8 = mx.get_jdk(mx.JavaCompliance(8), cancel='GRAAL_MANAGEMENT_LIBGRAAL will be not added', purpose="configure jvmcicompiler", tag=mx.DEFAULT_JDK_TAG)
+if jdk8:
+    jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='LibGraal',
+    short_name='lg',
+    dir_name=False,
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['SubstrateVM'],
+    jar_distributions=[],
+    builder_jar_distributions=[],
+    support_distributions=[],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination="<lib:jvmcicompiler>",
+            jvm_library=True,
+            jar_distributions=jar_distributions,
+            build_args=[
+                '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
+                '--initialize-at-build-time',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+AllowFoldMethods',
+                '-H:+ReportExceptionStackTraces',
+                '-Djdk.vm.ci.services.aot=true',
+                '-Dtruffle.TruffleRuntime='
+            ],
+        ),
+    ],
+))
 
 
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
