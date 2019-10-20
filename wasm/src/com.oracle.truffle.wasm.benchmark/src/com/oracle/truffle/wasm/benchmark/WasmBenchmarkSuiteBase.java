@@ -104,10 +104,6 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Iteration)
         public void setupIteration() {
-            // TODO: Find a way to capture stdout.
-            // capturedStdout = new ByteArrayOutputStream();
-            // System.setOut(new PrintStream(capturedStdout));
-
             // Reset result.
             result = null;
 
@@ -127,6 +123,12 @@ public abstract class WasmBenchmarkSuiteBase {
 
             // Reset system output stream.
             System.setOut(System.out);
+        }
+
+        @Setup(Level.Invocation)
+        public void setupInvocation() {
+            capturedStdout = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(capturedStdout));
         }
 
         public Value mainFunction() {
