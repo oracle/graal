@@ -75,8 +75,6 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new LoopSafepointEliminationPhase());
 
-        appendPhase(new LoopSafepointInsertionPhase());
-
         appendPhase(new GuardLoweringPhase());
 
         if (MitigateSpeculativeExecutionAttacks.getValue(options) == GuardTargets || MitigateSpeculativeExecutionAttacks.getValue(options) == NonDeoptGuardTargets) {
@@ -88,6 +86,8 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()));
+
+        appendPhase(new LoopSafepointInsertionPhase());
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
 
