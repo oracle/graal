@@ -67,16 +67,17 @@ private LLVMExpressionNode astRoot = null;
 private DebugExprNodeFactory NF = null;
 
 public boolean IsCast() {
-    TokenSource tokenSource = _input.getTokenSource();
-	Token peek = tokenSource.nextToken();
-	if (peek.getType() == LAPR) {
-	    while(peek.getType() == ASTERISC) peek = tokenSource.nextToken();
-	    int tokenType = peek.getType();
-	    if(tokenType == SIGNED || tokenType == UNSIGNED || tokenType == INT || tokenType == LONG
-	        || tokenType == CHAR || tokenType == SHORT || tokenType == FLOAT || tokenType == DOUBLE
-	        || tokenType == TYPEOF ) return true;
-	}
-	return false;
+    if (_input.LA(1) == LAPR) {
+        int i = 2;
+        while (_input.LA(i) == ASTERISC) {
+            i++;
+        }
+        int tokenType = _input.LA(i);
+        if(tokenType == SIGNED || tokenType == UNSIGNED || tokenType == INT || tokenType == LONG
+            || tokenType == CHAR || tokenType == SHORT || tokenType == FLOAT || tokenType == DOUBLE
+            || tokenType == TYPEOF ) return true;
+    }
+    return false;
 }
 
 public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
@@ -296,7 +297,7 @@ castExpr returns [DebugExpressionPair p] :
   DebugExprTypeofNode typeNode = null;
   }
   (
-    { if(IsCast()) }
+    { IsCast() }?
         (
             LAPR
             (

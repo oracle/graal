@@ -150,16 +150,17 @@ public class DebugExpressionParser extends Parser {
 	private DebugExprNodeFactory NF = null;
 
 	public boolean IsCast() {
-	    TokenSource tokenSource = _input.getTokenSource();
-		Token peek = tokenSource.nextToken();
-		if (peek.getType() == LAPR) {
-		    while(peek.getType() == ASTERISC) peek = tokenSource.nextToken();
-		    int tokenType = peek.getType();
-		    if(tokenType == SIGNED || tokenType == UNSIGNED || tokenType == INT || tokenType == LONG
-		        || tokenType == CHAR || tokenType == SHORT || tokenType == FLOAT || tokenType == DOUBLE
-		        || tokenType == TYPEOF ) return true;
-		}
-		return false;
+	    if (_input.LA(1) == LAPR) {
+	        int i = 2;
+	        while (_input.LA(i) == ASTERISC) {
+	            i++;
+	        }
+	        int tokenType = _input.LA(i);
+	        if(tokenType == SIGNED || tokenType == UNSIGNED || tokenType == INT || tokenType == LONG
+	            || tokenType == CHAR || tokenType == SHORT || tokenType == FLOAT || tokenType == DOUBLE
+	            || tokenType == TYPEOF ) return true;
+	    }
+	    return false;
 	}
 
 	public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
@@ -464,8 +465,8 @@ public class DebugExpressionParser extends Parser {
 			match(LAPR);
 			setState(99);
 			_errHandler.sync(this);
-			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__3) | (1L << LAPR) | (1L << ASTERISC) | (1L << PLUS) | (1L << MINUS) | (1L << EXCLAM) | (1L << TILDA) | (1L << IDENT) | (1L << NUMBER) | (1L << FLOATNUMBER) | (1L << CHARCONST))) != 0)) {
+			switch ( getInterpreter().adaptivePredict(_input,4,_ctx) ) {
+			case 1:
 				{
 				{
 				setState(87);
@@ -490,8 +491,8 @@ public class DebugExpressionParser extends Parser {
 					_la = _input.LA(1);
 				}
 				}
+				break;
 			}
-
 			setState(101);
 			match(RAPR);
 			}
@@ -672,7 +673,8 @@ public class DebugExpressionParser extends Parser {
 			switch ( getInterpreter().adaptivePredict(_input,7,_ctx) ) {
 			case 1:
 				{
-				 if(IsCast()) 
+				setState(122);
+				if (!( IsCast() )) throw new FailedPredicateException(this, " IsCast() ");
 				{
 				setState(123);
 				match(LAPR);
@@ -1804,6 +1806,21 @@ public class DebugExpressionParser extends Parser {
 		return _localctx;
 	}
 
+	public boolean sempred(RuleContext _localctx, int ruleIndex, int predIndex) {
+		switch (ruleIndex) {
+		case 6:
+			return castExpr_sempred((CastExprContext)_localctx, predIndex);
+		}
+		return true;
+	}
+	private boolean castExpr_sempred(CastExprContext _localctx, int predIndex) {
+		switch (predIndex) {
+		case 0:
+			return  IsCast() ;
+		}
+		return true;
+	}
+
 	public static final String _serializedATN =
 		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\60\u017a\4\2\t\2"+
 		"\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13"+
@@ -1852,7 +1869,7 @@ public class DebugExpressionParser extends Parser {
 		"\3\2\2\2ij\5\6\4\2jk\b\6\1\2kw\3\2\2\2lm\5\f\7\2mn\5\16\b\2no\b\6\1\2"+
 		"ow\3\2\2\2pq\7\6\2\2qr\7\13\2\2rs\5&\24\2st\7\f\2\2tu\b\6\1\2uw\3\2\2"+
 		"\2vi\3\2\2\2vl\3\2\2\2vp\3\2\2\2w\13\3\2\2\2xy\t\2\2\2yz\b\7\1\2z\r\3"+
-		"\2\2\2{\u008a\b\b\1\2|}\b\b\1\2}\u0087\7\13\2\2~\177\5&\24\2\177\u0080"+
+		"\2\2\2{\u008a\b\b\1\2|}\6\b\2\2}\u0087\7\13\2\2~\177\5&\24\2\177\u0080"+
 		"\b\b\1\2\u0080\u0088\3\2\2\2\u0081\u0082\7+\2\2\u0082\u0083\7\13\2\2\u0083"+
 		"\u0084\7,\2\2\u0084\u0085\b\b\1\2\u0085\u0086\3\2\2\2\u0086\u0088\7\f"+
 		"\2\2\u0087~\3\2\2\2\u0087\u0081\3\2\2\2\u0088\u0089\3\2\2\2\u0089\u008b"+
