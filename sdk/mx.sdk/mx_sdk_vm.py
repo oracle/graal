@@ -407,6 +407,18 @@ def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
 
 
+_base_jdk = None
+def base_jdk():
+    global _base_jdk
+    if _base_jdk is None:
+        _base_jdk = mx.get_jdk(tag='default')
+    return _base_jdk
+
+
+def base_jdk_version():
+    return base_jdk().javaCompliance.value
+
+
 def jdk_enables_jvmci_by_default(jdk):
     """
     Gets the default value for the EnableJVMCI VM option in `jdk`.

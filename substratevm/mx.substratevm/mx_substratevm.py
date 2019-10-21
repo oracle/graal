@@ -970,9 +970,10 @@ jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
     'compiler:GRAAL_LIBGRAAL_JNI',
     'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
-jdk8 = mx.get_jdk(mx.JavaCompliance(8), cancel='GRAAL_MANAGEMENT_LIBGRAAL will be not added', purpose="configure jvmcicompiler", tag=mx.DEFAULT_JDK_TAG)
-if jdk8:
+
+if mx_sdk_vm.base_jdk_version() == 8:
     jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='LibGraal',
