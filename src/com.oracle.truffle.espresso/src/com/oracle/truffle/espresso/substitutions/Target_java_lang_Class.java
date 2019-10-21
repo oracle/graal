@@ -494,7 +494,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static int getModifiers(@Host(Class.class) StaticObject self) {
-        return self.getMirrorKlass().getModifiers();
+        return self.getMirrorKlass().getClassModifiers();
     }
 
     @Substitution(hasReceiver = true)
@@ -706,7 +706,7 @@ public final class Target_java_lang_Class {
     public static @Host(Class[].class) StaticObject getDeclaredClasses0(@Host(Class.class) StaticObject self) {
         Meta meta = self.getKlass().getMeta();
         Klass klass = self.getMirrorKlass();
-        if (klass.isPrimitive() || !klass.isInstanceClass()) {
+        if (klass.isPrimitive() || klass.isArray()) {
             return meta.Class.allocateArray(0);
         }
         ObjectKlass instanceKlass = (ObjectKlass) klass;

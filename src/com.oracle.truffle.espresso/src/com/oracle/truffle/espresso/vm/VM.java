@@ -1164,10 +1164,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         Klass klass = clazz.getMirrorKlass();
         if (klass.isPrimitive()) {
             final int primitiveFlags = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
-            assert klass.getFlags() == primitiveFlags;
-            return klass.getFlags();
+            assert klass.getModifiers() == primitiveFlags;
+            return klass.getModifiers();
         }
-        return klass.getFlags() & Constants.JVM_ACC_WRITTEN_FLAGS;
+        return klass.getModifiers() & Constants.JVM_ACC_WRITTEN_FLAGS;
     }
 
     @VmImpl
@@ -1176,10 +1176,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         Klass klass = clazz.getMirrorKlass();
         if (klass.isPrimitive()) {
             final int primitiveModifiers = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
-            assert klass.getModifiers() == primitiveModifiers;
-            return klass.getModifiers();
+            assert klass.getClassModifiers() == primitiveModifiers;
+            return klass.getClassModifiers();
         }
-        return klass.getModifiers();
+        return klass.getClassModifiers();
     }
 
     @VmImpl

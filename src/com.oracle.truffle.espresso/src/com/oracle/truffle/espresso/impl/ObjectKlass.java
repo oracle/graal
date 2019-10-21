@@ -34,6 +34,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
@@ -198,7 +199,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public int getFlags() {
+    public final int getModifiers() {
         return linkedKlass.getFlags();
     }
 
@@ -805,26 +806,30 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    @Override
-    public final int getModifiers() {
-        int modifiers = computedModifiers;
-        if (modifiers == -1) {
-            modifiers = getFlags();
-            if (innerClasses != null) {
-                for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
-                    if (entry.innerClassIndex != 0) {
-                        Symbol<Name> innerClassName = pool.classAt(entry.innerClassIndex).getName(pool);
-                        if (innerClassName.equals(this.getName())) {
-                            modifiers = entry.innerClassAccessFlags;
-                            break;
-                        }
+    @TruffleBoundary
+    private int computeModifiers() {
+        int modifiers = getModifiers();
+        if (innerClasses != null) {
+            for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+                if (entry.innerClassIndex != 0) {
+                    Symbol<Name> innerClassName = pool.classAt(entry.innerClassIndex).getName(pool);
+                    if (innerClassName.equals(this.getName())) {
+                        modifiers = entry.innerClassAccessFlags;
+                        break;
                     }
                 }
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            computedModifiers = modifiers;
         }
+        return modifiers;
+    }
 
+    @Override
+    public final int getClassModifiers() {
+        int modifiers = computedModifiers;
+        if (modifiers == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computedModifiers = modifiers = computeModifiers();
+        }
         // Remember to strip ACC_SUPER bit
         return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
     }

@@ -783,6 +783,12 @@ public final class ClassfileParser {
         int outerClassIndex = stream.readU2();
         int innerNameIndex = stream.readU2();
         int innerClassAccessFlags = stream.readU2();
+
+        if ((innerClassAccessFlags & ACC_INTERFACE) != 0 && majorVersion < JAVA_6_VERSION) {
+            // Set abstract bit for old class files for backward compatibility
+            innerClassAccessFlags |= ACC_ABSTRACT;
+        }
+
         if (innerClassIndex != 0) {
             pool.classAt(innerClassIndex).validate(pool);
         }

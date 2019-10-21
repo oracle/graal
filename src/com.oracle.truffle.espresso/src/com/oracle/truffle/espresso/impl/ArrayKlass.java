@@ -61,7 +61,7 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final int getFlags() {
+    public final int getModifiers() {
         return (getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED /*
                                                                                                * array
                                                                                                * of
@@ -72,9 +72,14 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final int getModifiers() {
-        // ACC_SUPER is kept for backward compatibility, should be ignored.
-        return getFlags();
+    public final int getClassModifiers() {
+        return (getElementalType().getClassModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED /*
+                                                                                                    * array
+                                                                                                    * of
+                                                                                                    * static
+                                                                                                    * inner
+                                                                                                    * class
+                                                                                                    */)) | ACC_FINAL | ACC_ABSTRACT;
     }
 
     @Override

@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
@@ -692,7 +693,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         }, id);
     }
 
-    public abstract int getFlags();
+    /**
+     * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
+     */
+    public abstract int getModifiers();
+
+    /**
+     * Returns the modifiers for the guest Class, it takes into account inner classes which are
+     * public at the JVM level, but protected/private at the Java level.
+     */
+    public abstract int getClassModifiers();
 
     public final StaticObject allocateInstance() {
         return InterpreterToVM.newObject(this);
