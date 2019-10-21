@@ -1027,8 +1027,17 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true)
     public static void park(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time) {
+        if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
+            return;
+        }
+
         EspressoContext context = self.getKlass().getContext();
         StaticObject thread = context.getCurrentThread();
+
+        if (Target_java_lang_Thread.checkInterrupt(thread)) {
+            return;
+        }
+
         Target_java_lang_Thread.fromRunnable(thread, context.getMeta(), time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);

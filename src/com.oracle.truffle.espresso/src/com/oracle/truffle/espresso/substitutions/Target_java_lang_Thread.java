@@ -266,7 +266,7 @@ public final class Target_java_lang_Thread {
         self.setHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
     }
 
-    private static boolean checkInterrupt(StaticObject self) {
+    static boolean checkInterrupt(StaticObject self) {
         Boolean interrupt = (Boolean) self.getHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED);
         return interrupt != null && interrupt;
     }
