@@ -544,18 +544,15 @@ expr returns [DebugExpressionPair p] :
 //.
 
 dType returns [DebugExprType ty] :
-  {
-  DebugExprType tempTy = null;
-  }
   (
-  baseType { tempTy = $baseType.ty; }
+  baseType { $ty = $baseType.ty; }
   )
   (
-  ('*')                                             { $ty = tempTy.createPointer(); }
+    ('*')                                             { $ty = $ty.createPointer(); }
   )*
   ('['
-    ( (t=NUMBER)                                      { $ty = tempTy.createArrayType(Integer.parseInt($t.getText()));}
-    |                                               { $ty = tempTy.createArrayType(-1); }
+    ( (t=NUMBER)                                      { $ty = $ty.createArrayType(Integer.parseInt($t.getText()));}
+    |                                                 { $ty = $ty.createArrayType(-1); }
     )
   ']')*;
 
