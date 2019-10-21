@@ -134,29 +134,17 @@ public class PathExhibitor {
     }
 
     protected void findPathInBootImageHeap(final Object targetObject, PathElements result) {
-        // Look in each of the partitions of the heap.
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject, result);
-    }
+        Heap.getHeap().walkImageHeapObjects(new ObjectVisitor() {
+            @Override
+            public boolean visitObject(Object obj) {
+                if (!result.isSpaceAvailable()) {
+                    return false;
+                }
 
-    protected void findPathInBootImageHeap(final Object targetObject, final Object firstObject, final Object lastObject, PathElements result) {
-        if (firstObject == null || lastObject == null || !result.isSpaceAvailable()) {
-            return;
-        }
-        final Pointer targetPointer = Word.objectToUntrackedPointer(targetObject);
-        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        Pointer current = firstPointer;
-        while (current.belowOrEqual(lastPointer)) {
-            final Object bihObject = current.toObject();
-            bootImageHeapObjRefVisitor.initialize(current, targetPointer, result);
-            if (!InteriorObjRefWalker.walkObject(bihObject, bootImageHeapObjRefVisitor)) {
-                break;
+                bootImageHeapObjRefVisitor.initialize(obj, targetObject, result);
+                return InteriorObjRefWalker.walkObject(obj, bootImageHeapObjRefVisitor);
             }
-            current = LayoutEncoding.getObjectEnd(bihObject);
-        }
+        });
     }
 
     protected void findPathInHeap(final Object obj, PathElements result) {
@@ -281,10 +269,11 @@ public class PathExhibitor {
         protected BootImageHeapObjRefVisitor() {
         }
 
-        public void initialize(final Pointer container, final Pointer target, PathElements res) {
-            containerPointer = container;
-            targetPointer = target;
-            result = res;
+        @SuppressWarnings("hiding")
+        public void initialize(Object container, Object target, PathElements result) {
+            this.container = container;
+            this.target = target;
+            this.result = result;
         }
 
         @Override
@@ -295,8 +284,7 @@ public class PathExhibitor {
             final Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
             if (referent == target) {
                 final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
-                element = BootImageHeapElement.factory(container, offset);
-                result.add(BootImageHeapElement.factory(containerObject, offset, referentPointer));
+                result.add(BootImageHeapElement.factory(container, offset));
                 return result.isSpaceAvailable();
             }
             return true;
