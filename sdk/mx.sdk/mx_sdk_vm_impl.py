@@ -211,8 +211,8 @@ def _get_jdk_base(jdk):
         jdk_base = '.'
     return jdk_dir, jdk_base
 
-_src_jdk = mx.get_jdk(tag='default')
-_src_jdk_version = _src_jdk.javaCompliance.value
+_src_jdk = mx_sdk_vm.base_jdk()
+_src_jdk_version = mx_sdk_vm.base_jdk_version()
 
 # Example:
 #   macOS:
