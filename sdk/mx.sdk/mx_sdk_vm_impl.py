@@ -2590,8 +2590,7 @@ def _force_bash_launchers(launcher):
     only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
     if only:
         only = [lib for lib in only.split(',') if not lib.startswith('lib:')]
-        if launcher_name not in only:
-            return True
+        return launcher_name not in only
 
     forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if has_vm_suite() else 'true'))
     if isinstance(forced, bool):
@@ -2611,8 +2610,7 @@ def _skip_libraries(library):
     only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
     if only:
         only = [lib[4:] for lib in only.split(',') if lib.startswith('lib:')]
-        if library_name not in only:
-            return True
+        return library_name not in only
 
     skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if has_vm_suite() else 'true'))
     if isinstance(skipped, bool):
