@@ -526,21 +526,21 @@ public final class FrameStateBuilder implements SideEffectsState {
             ValueNode value = locals[i];
             if (value != null && value != TWO_SLOT_MARKER && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                locals[i] = ProxyNode.forValue(value, loopExit, graph);
+                locals[i] = ProxyNode.forValue(value, loopExit);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stack[i];
             if (value != null && value != TWO_SLOT_MARKER && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                stack[i] = ProxyNode.forValue(value, loopExit, graph);
+                stack[i] = ProxyNode.forValue(value, loopExit);
             }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             ValueNode value = lockedObjects[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                lockedObjects[i] = ProxyNode.forValue(value, loopExit, graph);
+                lockedObjects[i] = ProxyNode.forValue(value, loopExit);
             }
         }
     }

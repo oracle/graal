@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -274,7 +275,7 @@ public class FloatingReadPhase extends Phase {
                 }
                 mergedStatesCount++;
             }
-            newState.lastMemorySnapshot.put(key, merged);
+            newState.getMap().put(key, merged);
         }
         return newState;
 
@@ -301,6 +302,16 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
+
+            if (node instanceof LoopExitNode) {
+                final LoopExitNode loopExitNode = (LoopExitNode) node;
+                final EconomicSet<LocationIdentity> modifiedInLoop = modifiedInLoops.get(loopExitNode.loopBegin());
+                final boolean anyModified = modifiedInLoop.contains(LocationIdentity.any());
+                state.getMap().replaceAll((locationIdentity, memoryNode) -> (anyModified || modifiedInLoop.contains(locationIdentity))
+                                ? ProxyNode.forMemory(memoryNode, loopExitNode, locationIdentity)
+                                : memoryNode);
+            }
+
             if (node instanceof MemoryAnchorNode) {
                 processAnchor((MemoryAnchorNode) node, state);
                 return state;
@@ -321,7 +332,7 @@ public class FloatingReadPhase extends Phase {
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
             if (createMemoryMapNodes && node instanceof ReturnNode) {
-                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.lastMemorySnapshot)));
+                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
             }
             return state;
         }
@@ -367,10 +378,10 @@ public class FloatingReadPhase extends Phase {
 
         private static void processIdentity(LocationIdentity identity, MemoryCheckpoint checkpoint, MemoryMapImpl state) {
             if (identity.isAny()) {
-                state.lastMemorySnapshot.clear();
+                state.getMap().clear();
             }
             if (identity.isMutable()) {
-                state.lastMemorySnapshot.put(identity, checkpoint);
+                state.getMap().put(identity, checkpoint);
             }
         }
 
@@ -406,7 +417,7 @@ public class FloatingReadPhase extends Phase {
                  * side it needs to choose by putting in the location identity on both successors.
                  */
                 InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) node.predecessor();
-                result.lastMemorySnapshot.put(invoke.getKilledLocationIdentity(), (MemoryCheckpoint) node);
+                result.getMap().put(invoke.getKilledLocationIdentity(), (MemoryCheckpoint) node);
             }
             return result;
         }
@@ -418,13 +429,13 @@ public class FloatingReadPhase extends Phase {
             if (modifiedLocations.contains(LocationIdentity.any())) {
                 // create phis for all locations if ANY is modified in the loop
                 modifiedLocations = EconomicSet.create(Equivalence.DEFAULT, modifiedLocations);
-                modifiedLocations.addAll(initialState.lastMemorySnapshot.getKeys());
+                modifiedLocations.addAll(initialState.getMap().getKeys());
             }
 
             for (LocationIdentity location : modifiedLocations) {
                 createMemoryPhi(loop, initialState, phis, location);
             }
-            initialState.lastMemorySnapshot.putAll(phis);
+            initialState.getMap().putAll(phis);
 
             LoopInfo<MemoryMapImpl> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
 

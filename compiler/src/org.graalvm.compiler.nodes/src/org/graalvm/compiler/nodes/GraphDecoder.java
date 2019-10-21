@@ -1748,7 +1748,7 @@ class LoopDetector implements Runnable {
                                 "Value flowing out of loop, but we are not prepared to insert a ProxyNode");
 
                 ProxyPlaceholder proxyPlaceholder = (ProxyPlaceholder) value;
-                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit, graph);
+                ValueProxyNode proxy = ProxyNode.forValue(proxyPlaceholder.value, loopExit);
                 proxyPlaceholder.setValue(proxy);
                 newValues.add(proxy);
             }
