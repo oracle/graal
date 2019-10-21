@@ -334,7 +334,7 @@ multExpr returns [DebugExpressionPair p] :
   )
   ( ('*' castExpr                    { $p = NF.createArithmeticOp(ArithmeticOperation.MUL, $p, $castExpr.p); })
   | ('/' castExpr                    { $p = NF.createDivNode($p, $castExpr.p); })
-  | ('%' castExpr                    { $p = NF.createDivNode($p, $castExpr.p); })
+  | ('%' castExpr                    { $p = NF.createRemNode($p, $castExpr.p); })
   )*;
 
 
@@ -371,8 +371,8 @@ addExpr returns [DebugExpressionPair p] :
 
 shiftExpr returns [DebugExpressionPair p] :
   (addExpr { $p = $addExpr.p; })
-  ( ('>>' addExpr { $p = NF.createShiftLeft($p, $addExpr.p); })
-  | ('<<' addExpr { $p = NF.createShiftRight($p, $addExpr.p); })
+  ( ('<<' addExpr { $p = NF.createShiftLeft($p, $addExpr.p); })
+  | ('>>' addExpr { $p = NF.createShiftRight($p, $addExpr.p); })
   )*;
 
 

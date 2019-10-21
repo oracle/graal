@@ -812,7 +812,7 @@ public class DebugExpressionParser extends Parser {
 					match(MODULAR);
 					setState(154);
 					_localctx.castExpr = castExpr();
-					 _localctx.p =  NF.createDivNode(_localctx.p, _localctx.castExpr.p); 
+					 _localctx.p =  NF.createRemNode(_localctx.p, _localctx.castExpr.p); 
 					}
 					}
 					break;
@@ -950,22 +950,22 @@ public class DebugExpressionParser extends Parser {
 				setState(189);
 				_errHandler.sync(this);
 				switch (_input.LA(1)) {
-				case SHIFTR:
+				case SHIFTL:
 					{
 					{
 					setState(181);
-					match(SHIFTR);
+					match(SHIFTL);
 					setState(182);
 					_localctx.addExpr = addExpr();
 					 _localctx.p =  NF.createShiftLeft(_localctx.p, _localctx.addExpr.p); 
 					}
 					}
 					break;
-				case SHIFTL:
+				case SHIFTR:
 					{
 					{
 					setState(185);
-					match(SHIFTL);
+					match(SHIFTR);
 					setState(186);
 					_localctx.addExpr = addExpr();
 					 _localctx.p =  NF.createShiftRight(_localctx.p, _localctx.addExpr.p); 
@@ -1884,8 +1884,8 @@ public class DebugExpressionParser extends Parser {
 		"\5\20\t\2\u00ad\u00ae\b\n\1\2\u00ae\u00b0\3\2\2\2\u00af\u00a7\3\2\2\2"+
 		"\u00af\u00ab\3\2\2\2\u00b0\u00b3\3\2\2\2\u00b1\u00af\3\2\2\2\u00b1\u00b2"+
 		"\3\2\2\2\u00b2\23\3\2\2\2\u00b3\u00b1\3\2\2\2\u00b4\u00b5\5\22\n\2\u00b5"+
-		"\u00b6\b\13\1\2\u00b6\u00c1\3\2\2\2\u00b7\u00b8\7\30\2\2\u00b8\u00b9\5"+
-		"\22\n\2\u00b9\u00ba\b\13\1\2\u00ba\u00c0\3\2\2\2\u00bb\u00bc\7\31\2\2"+
+		"\u00b6\b\13\1\2\u00b6\u00c1\3\2\2\2\u00b7\u00b8\7\31\2\2\u00b8\u00b9\5"+
+		"\22\n\2\u00b9\u00ba\b\13\1\2\u00ba\u00c0\3\2\2\2\u00bb\u00bc\7\30\2\2"+
 		"\u00bc\u00bd\5\22\n\2\u00bd\u00be\b\13\1\2\u00be\u00c0\3\2\2\2\u00bf\u00b7"+
 		"\3\2\2\2\u00bf\u00bb\3\2\2\2\u00c0\u00c3\3\2\2\2\u00c1\u00bf\3\2\2\2\u00c1"+
 		"\u00c2\3\2\2\2\u00c2\25\3\2\2\2\u00c3\u00c1\3\2\2\2\u00c4\u00c5\5\24\13"+
