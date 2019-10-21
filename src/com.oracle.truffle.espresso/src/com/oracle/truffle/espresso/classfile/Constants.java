@@ -52,6 +52,8 @@ public final class Constants {
     public static final int ACC_FINALIZER = 0x00010000;
     public static final int ACC_INNER_CLASS = 0x00020000;
 
+    public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
+
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
                     ACC_SUPER | // Only very old compilers.
