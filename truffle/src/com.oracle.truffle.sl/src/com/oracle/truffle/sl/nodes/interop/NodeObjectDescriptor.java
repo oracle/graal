@@ -56,10 +56,11 @@ public final class NodeObjectDescriptor implements TruffleObject {
 
     static final String NAME = "name";
     static final String KIND = StandardTags.DeclarationTag.KIND;
+    private static final TruffleObject KEYS_NAME = new NodeObjectDescriptorKeys(false);
+    private static final TruffleObject KEYS_NAME_KIND = new NodeObjectDescriptorKeys(true);
 
     private final String name;
     private final String kind;
-    @CompilerDirectives.CompilationFinal private volatile TruffleObject keys;
 
     public NodeObjectDescriptor(String name, String kind) {
         assert name != null;
@@ -105,11 +106,11 @@ public final class NodeObjectDescriptor implements TruffleObject {
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        if (keys == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            keys = new NodeObjectDescriptorKeys(kind != null);
+        if (kind == null) {
+            return KEYS_NAME;
+        } else {
+            return KEYS_NAME_KIND;
         }
-        return keys;
     }
 
     static boolean isInstance(TruffleObject object) {

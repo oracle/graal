@@ -462,7 +462,7 @@ public abstract class TruffleLanguage<C> {
          * Example: in JavaScript this is '<code>.</code>'.
          *
          * @return a list of completion trigger characters of this language, can be empty.
-         * @since 1.0
+         * @since 20.0.0
          */
         String[] completionTriggerCharacters() default {};
 
@@ -474,7 +474,7 @@ public abstract class TruffleLanguage<C> {
          * Example: in JavaScript this is '<code>(</code>'.
          *
          * @return a list of signature help trigger characters of that language, can be empty.
-         * @since 1.0
+         * @since 20.0.0
          */
         String[] signatureHelpTriggerCharacters() default {};
 
@@ -1099,12 +1099,13 @@ public abstract class TruffleLanguage<C> {
     /**
      * Try to box a primitive value into a language-specific TruffleObject of this language.
      *
+     * @param context the current context of the language
      * @param primitive a primitive value
      * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
      *         cannot be boxed into a language-specific TruffleObject.
-     * @since 1.0
+     * @since 20.0.0
      */
-    protected Object boxPrimitive(@SuppressWarnings("unused") Object primitive) {
+    protected Object boxPrimitive(C context, @SuppressWarnings("unused") Object primitive) {
         return null;
     }
 
@@ -2596,7 +2597,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         Object boxPrimitive(Object primitive) {
-            return getSpi().boxPrimitive(primitive);
+            return getSpi().boxPrimitive(context, primitive);
         }
 
         Iterable<Scope> findTopScopes() {

@@ -731,7 +731,7 @@ public abstract class TruffleInstrument {
          *
          * @param languageInfo a language
          * @return a list of completion trigger characters of that language, can be empty.
-         * @since 1.0
+         * @since 20.0.0
          */
         public List<String> getCompletionTriggerCharacters(LanguageInfo languageInfo) {
             Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
@@ -745,7 +745,7 @@ public abstract class TruffleInstrument {
          *
          * @param languageInfo a language
          * @return a list of signature help trigger characters of that language, can be empty.
-         * @since 1.0
+         * @since 20.0.0
          */
         public List<String> getSignatureHelpTriggerCharacters(LanguageInfo languageInfo) {
             Object polyglotLanguage = InstrumentAccessor.nodesAccess().getPolyglotLanguage(languageInfo);
@@ -753,19 +753,15 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Try to box a primitive value into a language-specific TruffleObject.
+         * Box a primitive value into a language-specific TruffleObject.
          *
-         * @param languageId a language id
+         * @param languageInfo a language
          * @param primitive a primitive value
          * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
          *         cannot be boxed into a language-specific TruffleObject.
-         * @since 1.0
+         * @since 20.0.0
          */
-        public Object boxPrimitive(String languageId, Object primitive) {
-            LanguageInfo languageInfo = getLanguages().get(languageId);
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
-            }
+        public Object boxPrimitive(LanguageInfo languageInfo, Object primitive) {
             final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
             return InstrumentAccessor.langAccess().boxPrimitive(env, primitive);
         }

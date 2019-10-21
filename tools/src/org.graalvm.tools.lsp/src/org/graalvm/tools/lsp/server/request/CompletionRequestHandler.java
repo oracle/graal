@@ -379,7 +379,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         Object boxedObject;
         Object keys = null;
         if (InteropUtils.isPrimitive(object)) {
-            boxedObject = env.boxPrimitive(langInfo.getId(), object);
+            boxedObject = env.boxPrimitive(langInfo, object);
             if (boxedObject == null) {
                 LOG.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
                 return false;
@@ -465,7 +465,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             }
             langInfo = getObjectLanguageInfo(langInfo, obj);
         } else {
-            Object boxedObject = env.boxPrimitive(langInfo.getId(), obj);
+            Object boxedObject = env.boxPrimitive(langInfo, obj);
             if (boxedObject instanceof TruffleObject) {
                 truffleObj = (TruffleObject) boxedObject;
             }

@@ -268,7 +268,7 @@ public final class StandardTags {
      * of a method declaration. Furthermore, nodes tagged with {@link DeclarationTag} have to
      * provide a {@link Node#getSourceSection() source section}.
      *
-     * @since 1.0
+     * @since 20.0.0
      */
     @Tag.Identifier("DECLARATION")
     public static final class DeclarationTag extends Tag {
@@ -276,21 +276,21 @@ public final class StandardTags {
         /**
          * Property of the node object that contains name of the declared element.
          *
-         * @since 1.0
+         * @since 20.0.0
          */
         public static final String NAME = "name";
 
         /**
          * Property of the node object that contains kind of the declared element.
          *
-         * @since 1.0
+         * @since 20.0.0
          */
         public static final String KIND = "kind";
 
         /**
          * Property of the node object that contains the container name of the declared element.
          *
-         * @since 1.0
+         * @since 20.0.0
          */
         public static final String CONTAINER = "container";
 
@@ -314,7 +314,7 @@ public final class StandardTags {
      * object} that has a <code>name</code> property. Furthermore, nodes tagged with
      * {@link ReadVariableTag} have to provide a {@link Node#getSourceSection() source section}.
      *
-     * @since 1.0
+     * @since 20.0.0
      */
     @Tag.Identifier("READ_VARIABLE")
     public static final class ReadVariableTag extends Tag {
@@ -322,7 +322,7 @@ public final class StandardTags {
         /**
          * Property of the node object that contains name of the variable.
          *
-         * @since 1.0
+         * @since 20.0.0
          */
         public static final String NAME = "name";
 
@@ -346,7 +346,7 @@ public final class StandardTags {
      * object} that has a <code>name</code> property. Furthermore, nodes tagged with
      * {@link WriteVariableTag} have to provide a {@link Node#getSourceSection() source section}.
      *
-     * @since 1.0
+     * @since 20.0.0
      */
     @Tag.Identifier("WRITE_VARIABLE")
     public static final class WriteVariableTag extends Tag {
@@ -354,7 +354,7 @@ public final class StandardTags {
         /**
          * Property of the node object that contains name of the variable.
          *
-         * @since 1.0
+         * @since 20.0.0
          */
         public static final String NAME = "name";
 
