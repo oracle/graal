@@ -758,7 +758,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region SetStatic*Field
 
     @JniImpl
-    public void SetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, Object val) {
+    public void SetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, @Host(Object.class) StaticObject val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
@@ -825,7 +825,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Set*Field
 
     @JniImpl
-    public void SetObjectField(StaticObject obj, long fieldHandle, Object val) {
+    public void SetObjectField(StaticObject obj, long fieldHandle, @Host(Object.class) StaticObject val) {
         Field field = fieldIds.getObject(fieldHandle);
         field.set(obj, val);
     }
