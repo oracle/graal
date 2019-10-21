@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.AccessControlContext;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,16 +45,20 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
-import com.oracle.truffle.espresso.impl.Field;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -67,11 +72,15 @@ import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.Callback;
@@ -92,6 +101,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -524,6 +534,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         return ste;
     }
 
+    private static void checkTag(ConstantPool pool, int index, ConstantPool.Tag expected) {
+        ConstantPool.Tag target = pool.tagAt(index);
+        if (target != expected) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(IllegalArgumentException.class, "Wrong type at constant pool index");
+        }
+    }
+
     @VmImpl
     @JniImpl
     public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObject jcpool) {
@@ -533,42 +550,49 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public static @Host(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.CLASS);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl
     @JniImpl
     public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.DOUBLE);
         return jcpool.getMirrorKlass().getConstantPool().doubleAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.FLOAT);
         return jcpool.getMirrorKlass().getConstantPool().floatAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static @Host(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.STRING);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedStringAt(index);
     }
 
     @VmImpl
     @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
-        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.UTF8);
+        return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().symbolAt(index).toString());
     }
 
     @VmImpl
     @JniImpl
     public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.INTEGER);
         return jcpool.getMirrorKlass().getConstantPool().intAt(index);
     }
 
     @VmImpl
     @JniImpl
     public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+        checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.LONG);
         return jcpool.getMirrorKlass().getConstantPool().longAt(index);
     }
 
@@ -580,13 +604,21 @@ public final class VM extends NativeEnv implements ContextAccess {
         final byte[] bytes = new byte[len];
         buf.get(bytes);
 
-        // TODO(peterssen): Name is in binary form, but separator can be either / or . .
         Symbol<Type> type = null;
         if (name != null) {
-            type = getTypes().fromClassGetName(name);
+            String internalName = name;
+            if (!name.startsWith("[")) {
+                // Force 'L' type.
+                internalName = "L" + name + ";";
+            }
+            if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), false)) {
+                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, name);
+            }
+            type = getTypes().fromClassGetName(internalName);
         }
 
         StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
+        assert clazz != null;
         assert pd != null;
         clazz.setHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN, pd);
         return clazz;
@@ -766,9 +798,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return false;
     }
 
-    @VmImpl
-    @JniImpl
-    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+    private static FrameInstance getCallerFrame(int depth) {
         // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
         // Non-Espresso frames (e.g TruffleNFI) are ignored.
         // The call stack should look like this:
@@ -782,33 +812,58 @@ public final class VM extends NativeEnv implements ContextAccess {
         int callerDepth = (depth == JVM_CALLER_DEPTH) ? 2 : depth + 1;
 
         final int[] depthCounter = new int[]{callerDepth};
-        CallTarget caller = Truffle.getRuntime().iterateFrames(
-                        new FrameInstanceVisitor<CallTarget>() {
+        FrameInstance target = Truffle.getRuntime().iterateFrames(
+                        new FrameInstanceVisitor<FrameInstance>() {
                             @Override
-                            public CallTarget visitFrame(FrameInstance frameInstance) {
-                                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-                                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
-                                    RootNode rootNode = callTarget.getRootNode();
-                                    if (rootNode instanceof EspressoRootNode) {
-                                        if (--depthCounter[0] < 0) {
-                                            return frameInstance.getCallTarget();
-                                        }
-                                    }
+                            public FrameInstance visitFrame(FrameInstance frameInstance) {
+                                Method m = getMethodFromFrame(frameInstance);
+                                if (m != null && --depthCounter[0] < 0) {
+                                    return frameInstance;
                                 }
                                 return null;
                             }
                         });
-
-        // System.err.print("JVM_GetCallerClass: ");
-        RootCallTarget callTarget = (RootCallTarget) caller;
-        RootNode rootNode = callTarget.getRootNode();
-        if (rootNode instanceof EspressoRootNode) {
-            // System.err.println(((EspressoRootNode)
-            // rootNode).getMethod().getDeclaringKlass().getName().toString());
-            return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().mirror();
+        if (target != null) {
+            return target;
         }
-
         throw EspressoError.shouldNotReachHere();
+    }
+
+    private static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
+        if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+            RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+            RootNode rootNode = callTarget.getRootNode();
+            if (rootNode instanceof EspressoRootNode) {
+                return ((EspressoRootNode) rootNode);
+            }
+        }
+        return null;
+    }
+
+    private static Method getMethodFromFrame(FrameInstance frameInstance) {
+        EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
+        if (root != null) {
+            return root.getMethod();
+        }
+        return null;
+    }
+
+    private static Method getCallerMethod(int depth) {
+        FrameInstance callerFrame = getCallerFrame(depth);
+        if (callerFrame == null) {
+            return null;
+        }
+        return getMethodFromFrame(callerFrame);
+    }
+
+    @VmImpl
+    @JniImpl
+    public static @Host(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+        Method callerMethod = getCallerMethod(depth);
+        if (callerMethod == null) {
+            return StaticObject.NULL;
+        }
+        return callerMethod.getDeclaringKlass().mirror();
     }
 
     @VmImpl
@@ -820,15 +875,9 @@ public final class VM extends NativeEnv implements ContextAccess {
                         new FrameInstanceVisitor<Object>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
-                                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-                                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
-                                    RootNode rootNode = callTarget.getRootNode();
-                                    if (rootNode instanceof EspressoRootNode) {
-                                        Method m = ((EspressoRootNode) rootNode).getMethod();
-                                        if (!isIgnoredBySecurityStackWalk(m, getMeta()) && !m.isNative()) {
-                                            result.add(m.getDeclaringKlass().mirror());
-                                        }
-                                    }
+                                Method m = getMethodFromFrame(frameInstance);
+                                if (m != null && !isIgnoredBySecurityStackWalk(m, getMeta()) && !m.isNative()) {
+                                    result.add(m.getDeclaringKlass().mirror());
                                 }
                                 return null;
                             }
@@ -850,24 +899,258 @@ public final class VM extends NativeEnv implements ContextAccess {
         return false;
     }
 
+    private boolean isAuthorized(StaticObject context, Klass klass) {
+        if (!StaticObject.isNull(getMeta().System.getStatics().getField(getMeta().System_securityManager))) {
+            if (getMeta().ProtectionDomain_impliesCreateAccessControlContext == null) {
+                return true;
+            }
+            if ((boolean) getMeta().AccessControlContext_isAuthorized.invokeDirect(context)) {
+                return true;
+            }
+            StaticObject pd = Target_java_lang_Class.getProtectionDomain0(klass.mirror());
+            if (pd != StaticObject.NULL) {
+                return (boolean) getMeta().ProtectionDomain_impliesCreateAccessControlContext.invokeDirect(pd);
+            }
+        }
+        return true;
+    }
+
+    private @Host(AccessControlContext.class) StaticObject createACC(@Host(ProtectionDomain[].class) StaticObject context,
+                    boolean isPriviledged,
+                    @Host(AccessControlContext.class) StaticObject priviledgedContext) {
+        Klass accKlass = getMeta().AccessControlContext;
+        StaticObject acc = accKlass.allocateInstance();
+        acc.setField(getMeta().ACC_context, context);
+        acc.setField(getMeta().ACC_privilegedContext, priviledgedContext);
+        acc.setBooleanField(getMeta().ACC_isPrivileged, isPriviledged);
+        if (getMeta().ACC_isAuthorized != null) {
+            acc.setBooleanField(getMeta().ACC_isAuthorized, true);
+        }
+        return acc;
+    }
+
+    private @Host(AccessControlContext.class) StaticObject createDummyACC() {
+        Klass pdKlass = getMeta().ProtectionDomain;
+        StaticObject pd = pdKlass.allocateInstance();
+        getMeta().ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
+        StaticObject context = StaticObject.wrap(new StaticObject[]{pd});
+        return createACC(context, false, StaticObject.NULL);
+    }
+
+    static private class PrivilegedStack {
+        public static Supplier<PrivilegedStack> supplier = new Supplier<PrivilegedStack>() {
+            @Override
+            public PrivilegedStack get() {
+                return new PrivilegedStack();
+            }
+        };
+
+        private Element top;
+
+        public void push(FrameInstance frame, StaticObject context) {
+            top = new Element(frame, context, top);
+        }
+
+        public void pop() {
+            assert top != null : "poping empty privileged stack !";
+            top = top.next;
+        }
+
+        public boolean compare(FrameInstance frame) {
+            return top != null && top.compare(frame);
+        }
+
+        public StaticObject peekContext() {
+            assert top != null;
+            return top.context;
+        }
+
+        static private class Element {
+            long frameID;
+            StaticObject context;
+            Element next;
+
+            public Element(FrameInstance frame, StaticObject context, Element next) {
+                this.frameID = initPrivilegedFrame(frame);
+                this.context = context;
+                this.next = next;
+            }
+
+            public boolean compare(FrameInstance other) {
+                try {
+                    FrameSlot slot = privilegedFrameSlots.get(getMethodFromFrame(other).identity());
+                    return slot != null && other.getFrame(FrameInstance.FrameAccess.READ_ONLY).getLong(slot) == frameID;
+                } catch (FrameSlotTypeException e) {
+                    return false;
+                }
+            }
+
+            // Dummy.
+            private static final Object frameIdSlotIdentifier = new Object();
+
+            private static final EconomicMap<Method, FrameSlot> privilegedFrameSlots = EconomicMap.create(Equivalence.IDENTITY);
+
+            private static long newFrameID = 0L;
+
+            /**
+             * Injects the frame ID in the frame. Spawns a new frame slot in the frame descriptor of
+             * the corresponding RootNode if needed.
+             * 
+             * @param frame the current privileged frame.
+             * @return the frame ID of the frame.
+             */
+            private static long initPrivilegedFrame(FrameInstance frame) {
+                Method m = getMethodFromFrame(frame);
+                FrameSlot slot = privilegedFrameSlots.get(m.identity());
+                if (slot == null) {
+                    slot = initSlot(frame, m);
+                }
+                assert slot == privilegedFrameSlots.get(m.identity());
+                long id = ++newFrameID;
+                frame.getFrame(FrameInstance.FrameAccess.READ_WRITE).setLong(slot, id);
+                return id;
+            }
+
+            /**
+             * Responsible for spawning the frame slot of root nodes that haven't yet been
+             * encountered by JVM_doPrivileged.
+             */
+            private static FrameSlot initSlot(FrameInstance frame, Method m) {
+                synchronized (privilegedFrameSlots) {
+                    FrameSlot result = privilegedFrameSlots.get(m.identity());
+                    if (result != null) {
+                        return result;
+                    }
+                    result = getEspressoRootFromFrame(frame).getFrameDescriptor().addFrameSlot(frameIdSlotIdentifier, FrameSlotKind.Long);
+                    privilegedFrameSlots.put(m, result);
+                    return result;
+                }
+            }
+        }
+    }
+
+    private static final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
+
     @VmImpl
     @JniImpl
-    public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader() {
-        StaticObject result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("unused")
+    public @Host(Object.class) StaticObject JVM_DoPrivileged(@Host(Class.class) StaticObject cls,
+                    @Host(typeName = "PrivilegedAction OR PrivilegedActionException") StaticObject action,
+                    @Host(AccessControlContext.class) StaticObject context,
+                    boolean wrapException) {
+        if (StaticObject.isNull(action)) {
+            throw getMeta().throwEx(NullPointerException.class);
+        }
+        FrameInstance callerFrame = getCallerFrame(0);
+        assert callerFrame != null : "No caller ?";
+        Klass caller = getMethodFromFrame(callerFrame).getDeclaringKlass();
+        StaticObject acc = context;
+        if (!StaticObject.isNull(context)) {
+            if (!isAuthorized(context, caller)) {
+                acc = createDummyACC();
+            }
+        }
+        Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
+        if (run == null || !run.isPublic() || run.isStatic()) {
+            getMeta().throwEx(InternalError.class);
+        }
+
+        // Prepare the privileged stack
+        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        stack.push(callerFrame, acc);
+
+        // Execute the action.
+        StaticObject result = StaticObject.NULL;
+        try {
+            result = (StaticObject) run.invokeDirect(action);
+        } catch (EspressoException e) {
+            if (getMeta().Exception.isAssignableFrom(e.getException().getKlass()) &&
+                            !getMeta().RuntimeException.isAssignableFrom(e.getException().getKlass())) {
+                StaticObject wrapper = getMeta().PrivilegedActionException.allocateInstance();
+                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
+                throw new EspressoException(wrapper);
+            }
+            throw e;
+        } finally {
+            stack.pop();
+        }
+        return result;
+    }
+
+    @VmImpl
+    @JniImpl
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("unused")
+    public @Host(Object.class) StaticObject JVM_GetStackAccessControlContext(@Host(Class.class) StaticObject cls) {
+        ArrayList<StaticObject> domains = new ArrayList<>();
+        final PrivilegedStack stack = privilegedStackThreadLocal.get();
+        final boolean[] isPrivileged = new boolean[]{false};
+
+        StaticObject context = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+            StaticObject prevDomain = StaticObject.NULL;
+
             public StaticObject visitFrame(FrameInstance frameInstance) {
-                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
-                    RootNode rootNode = callTarget.getRootNode();
-                    if (rootNode instanceof EspressoRootNode) {
-                        StaticObject loader = ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
-                        if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
-                            return loader;
-                        }
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    if (stack.compare(frameInstance)) {
+                        isPrivileged[0] = true;
+                    }
+                    StaticObject domain = Target_java_lang_Class.getProtectionDomain0(m.getDeclaringKlass().mirror());
+                    if (domain != prevDomain && domain != StaticObject.NULL) {
+                        domains.add(domain);
+                        prevDomain = domain;
+                    }
+                    if (isPrivileged[0]) {
+                        return stack.peekContext();
                     }
                 }
                 return null;
             }
         });
+
+        if (domains.isEmpty()) {
+            if (isPrivileged[0] && StaticObject.isNull(context)) {
+                return StaticObject.NULL;
+            }
+            return createACC(StaticObject.NULL, isPrivileged[0], context == null ? StaticObject.NULL : context);
+        }
+
+        StaticObject guestContext = StaticObject.createArray(getMeta().ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
+        return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    public @Host(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@Host(Class.class) StaticObject cls) {
+        return getContext().getHost2Guest(Thread.currentThread()).getField(getMeta().Thread_inheritedAccessControlContext);
+    }
+
+    @VmImpl
+    @JniImpl
+    public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader() {
+        StaticObject result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+            public StaticObject visitFrame(FrameInstance frameInstance) {
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    Klass holder = m.getDeclaringKlass();
+                    Meta meta = holder.getMeta();
+                    // vfst.skip_reflection_related_frames(); // Only needed for 1.4 reflection
+                    if (meta.MethodAccessorImpl.isAssignableFrom(holder) || meta.ConstructorAccessorImpl.isAssignableFrom(holder)) {
+                        return null;
+                    }
+
+                    StaticObject loader = holder.getDefiningClassLoader();
+                    // if (loader != NULL && !SystemDictionary::is_ext_class_loader(loader))
+                    if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
+                        return loader;
+                    }
+                }
+                return null;
+            }
+        });
+
         return result == null ? StaticObject.NULL : result;
     }
 
@@ -881,10 +1164,30 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
-        Klass klass = getRegistries().loadKlassWithBootClassLoader(getTypes().fromClassGetName(name));
+        if (name == null) {
+            return StaticObject.NULL;
+        }
+
+        String internalName = name;
+        if (!name.startsWith("[")) {
+            // Force 'L' type.
+            internalName = "L" + name + ";";
+        }
+
+        if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), false)) {
+            return StaticObject.NULL;
+        }
+
+        Symbol<Type> type = getTypes().fromClassGetName(internalName);
+        if (Types.isPrimitive(type)) {
+            return StaticObject.NULL;
+        }
+
+        Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
         if (klass == null) {
             return StaticObject.NULL;
         }
+
         return klass.mirror();
     }
 
@@ -1026,7 +1329,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                 // For a 0 index, give an empty name.
                 String hostName = "";
                 if (entry.getNameIndex() != 0) {
-                    hostName = method.getConstantPool().utf8At(entry.getNameIndex(), "parameter name").toString();
+                    hostName = method.getConstantPool().symbolAt(entry.getNameIndex(), "parameter name").toString();
                 }
                 parameterInit.invokeDirect(/* this */ instance,
                                 /* name */ getMeta().toGuestString(hostName),
@@ -1107,7 +1410,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(String[].class) StaticObject JVM_GetSystemPackages() {
-        String[] packages = getRegistries().getBootClassRegistry().getPackagePaths();
+        String[] packages = getRegistries().getBootClassRegistry().getPackages();
         StaticObject[] array = new StaticObject[packages.length];
         for (int i = 0; i < packages.length; i++) {
             array[i] = getMeta().toGuestString(packages[i]);

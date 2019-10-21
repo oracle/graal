@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile;
-
-import org.graalvm.collections.EconomicMap;
+package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.meta.ModifiersProvider;
 
-public final class Attributes {
-    private static final EconomicMap<Symbol<Name>, Attribute> EMPTY = EconomicMap.create(0);
+public abstract class Member<T extends Descriptor> implements ModifiersProvider {
 
-    private final EconomicMap<Symbol<Name>, Attribute> map;
+    protected final Symbol<Name> name;
+    protected final Symbol<T> descriptor;
 
-    public Attributes(final Attribute[] attributes) {
-        if (attributes.length == 0) {
-            map = EMPTY;
-        } else {
-            map = EconomicMap.create(attributes.length);
-        }
-        for (Attribute a : attributes) {
-            map.put(a.getName(), a);
-        }
+    protected Member(Symbol<T> descriptor, Symbol<Name> name) {
+        this.name = name;
+        this.descriptor = descriptor;
     }
 
-    public Attribute get(Symbol<Name> name) {
-        return map.get(name);
+    public Symbol<Name> getName() {
+        return name;
     }
+
+    public final Symbol<T> getDescriptor() {
+        return descriptor;
+    }
+
+    public abstract ObjectKlass getDeclaringKlass();
 }

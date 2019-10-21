@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -281,47 +281,47 @@ public final class ObjectKlass extends Klass {
                 }
                 switch (f.getKind()) {
                     case Boolean: {
-                        boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
+                        boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
                         f.set(getStatics(), c);
                         break;
                     }
                     case Byte: {
-                        byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
+                        byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Short: {
-                        short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
+                        short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Char: {
-                        char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
+                        char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Int: {
-                        int c = getConstantPool().intAt(a.getConstantvalueIndex());
+                        int c = getConstantPool().intAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Float: {
-                        float c = getConstantPool().floatAt(a.getConstantvalueIndex());
+                        float c = getConstantPool().floatAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Long: {
-                        long c = getConstantPool().longAt(a.getConstantvalueIndex());
+                        long c = getConstantPool().longAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Double: {
-                        double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
+                        double c = getConstantPool().doubleAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }
                     case Object: {
-                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
+                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
                         f.set(getStatics(), c);
                         break;
                     }

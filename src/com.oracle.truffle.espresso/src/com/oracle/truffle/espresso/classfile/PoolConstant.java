@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,16 +39,17 @@ public interface PoolConstant {
 
     String toString(ConstantPool pool);
 
-    // TODO(garcia) call this function after parsing CP to verify each Pool constant is well-formed.
-
     /**
-     * Throws VerifyError if the constant is ill-formed (/ex: a StringConstant does not refer to an
-     * UTF8Constant)
-     * 
+     * Throws guest ClassFormatError if the constant is ill-formed (/ex: a StringConstant does not
+     * refer to an UTF8Constant).
+     *
+     * Resolved entries are not validated.
+     *
      * @param pool The constant pool in which this constant appears.
      */
     @SuppressWarnings("unused")
-    default void checkValidity(ConstantPool pool) {
+    default void validate(ConstantPool pool) {
+        /* nop */
     }
 
     static byte u1(int i) {

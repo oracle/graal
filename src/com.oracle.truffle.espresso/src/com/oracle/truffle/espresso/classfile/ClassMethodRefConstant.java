@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,6 +193,23 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             return new Resolved(method);
         }
 
+        @Override
+        public void validate(ConstantPool pool) {
+            super.validate(pool);
+            // If the name of the method of a CONSTANT_Methodref_info structure begins with a '<'
+            // ('\u003c'), then the name must be the special name <init>, representing an instance
+            // initialization method (§2.9). The return type of such a method must be void.
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
+            Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+            if (name.equals(Name.INIT)) {
+                Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
+                int len = descriptor.length();
+                // descriptor.endsWith(")V");
+                if (len <= 2 || (descriptor.byteAt(len - 2) != ')' || descriptor.byteAt(len - 1) != 'V')) {
+                    throw ConstantPool.classFormatError("<init> method should have ()V signature");
+                }
+            }
+        }
     }
 
     final class Resolved implements InterfaceMethodRefConstant, Resolvable.ResolvedConstant {

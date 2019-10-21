@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
 
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
@@ -71,11 +69,8 @@ public interface BootstrapMethodConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
-                throw new VerifyError("ill-formed BootstrapMethodConstant");
-            }
-            pool.at(nameAndTypeIndex).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
         }
     }
 }

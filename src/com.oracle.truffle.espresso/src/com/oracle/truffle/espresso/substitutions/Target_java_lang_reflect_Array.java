@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,6 +128,10 @@ public final class Target_java_lang_reflect_Array {
             if (d < 0) {
                 throw meta.throwEx(meta.NegativeArraySizeException);
             }
+        }
+        if (dimensions.length == 1) {
+            // getArrayClass(0) is undefined.
+            return meta.getInterpreterToVM().newMultiArray(component, dimensions);
         }
         return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }

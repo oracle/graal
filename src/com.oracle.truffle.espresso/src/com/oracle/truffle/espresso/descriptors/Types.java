@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,9 @@ public final class Types {
     public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
         Symbol<Type> type = (Symbol<Type>) descriptor;
         // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
+        if (!isValid(type)) {
+            return null;
+        }
         return type;
     }
 
@@ -174,42 +176,6 @@ public final class Types {
         return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
-    public static void verifyClassName(String className) {
-        int index = 0;
-        int length = className.length();
-        while (index < length && className.charAt(index) == '[') {
-            index++;
-        }
-        if (index > 255) {
-            throw new ClassFormatError("Array with more than 255 dimensions " + className);
-        }
-        char separator = 0;
-        int prevSeparator = index;
-        while (index < length) {
-            char ch = className.charAt(index);
-            if (ch == '.' || ch == '/') {
-                if (separator == 0) {
-                    separator = ch;
-                } else {
-                    if (separator != ch) {
-                        throw new ClassFormatError("Inconsistent separator in classname: " + className);
-                    }
-                    if (index == prevSeparator + 1) {
-                        throw new ClassFormatError("Invalid type descriptor: " + className);
-                    }
-                    prevSeparator = index;
-                }
-            } else if (ch == ';') {
-                if (index + 1 < length) {
-                    throw new ClassFormatError("Invalid type descriptor: " + className);
-                }
-            } else if (ch == '[') {
-                throw new ClassFormatError("Invalid type descriptor: " + className);
-            }
-            index++;
-        }
-    }
-
     public Symbol<Type> arrayOf(Symbol<Type> type) {
         return arrayOf(type, 1);
     }
@@ -276,14 +242,26 @@ public final class Types {
         return dims;
     }
 
-    public static void verify(Symbol<Type> type) throws ClassFormatError {
-        if (!isValid(type)) {
-            throw new ClassFormatError("Invalid type descriptor " + type);
-        }
-    }
-
     private static boolean isValid(Symbol<Type> type) {
-        int endIndex = Types.skipValidTypeDescriptor(type, 0, true);
+        if (type.length() == 0) {
+            return false;
+        }
+        if (type.length() == 1) {
+            return isPrimitive(type);
+        }
+        char first = (char) type.byteAt(0);
+        int beginIndex;
+        if (first == '[') {
+            beginIndex = 0;
+            while (beginIndex < type.length() && type.byteAt(beginIndex) == '[') {
+                ++beginIndex;
+            }
+        } else if (first == 'L') {
+            beginIndex = 0;
+        } else {
+            return false;
+        }
+        int endIndex = skipValidTypeDescriptor(type, beginIndex, true);
         return endIndex == type.length();
     }
 
@@ -314,8 +292,7 @@ public final class Types {
 
     static ByteSequence checkType(ByteSequence sequence) {
         // FIXME(peterssen): Do check.
-        return sequence;
-        // throw EspressoError.unimplemented();
+        return Validation.validTypeDescriptor(sequence, true) ? sequence : null;
     }
 
     public static String checkType(String type) {
@@ -340,9 +317,7 @@ public final class Types {
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
         Symbol<Type> type = (Symbol<Type>) symbol;
-        // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
-        return type;
+        return isValid(type) ? type : null;
     }
 
     public final Symbol<Type> fromName(Symbol<Name> name) {

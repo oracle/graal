@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,8 +111,6 @@ public final class ClassRegistries {
             classLoaders.add(classLoader);
         }
 
-        // System.err.println("loadKlass: " + type + " " + classLoader);
-
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
@@ -150,22 +148,6 @@ public final class ClassRegistries {
             classLoaders.add(classLoader);
         }
         return registry.defineKlass(type, bytes);
-    }
-
-    @TruffleBoundary
-    public Klass putKlass(Symbol<Type> type, ObjectKlass klass, StaticObject classLoader) {
-        assert classLoader != null;
-
-        ClassRegistry registry = StaticObject.isNull(classLoader)
-                        ? bootClassRegistry
-                        : registries.computeIfAbsent(classLoader, new Function<StaticObject, ClassRegistry>() {
-                            @Override
-                            public ClassRegistry apply(StaticObject cl) {
-                                return new GuestClassRegistry(context, cl);
-                            }
-                        });
-
-        return registry.putKlass(type, klass);
     }
 
     public final BootClassRegistry getBootClassRegistry() {

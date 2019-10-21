@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,21 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.api.Option;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.options.*;
-
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionMap;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.Option;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {

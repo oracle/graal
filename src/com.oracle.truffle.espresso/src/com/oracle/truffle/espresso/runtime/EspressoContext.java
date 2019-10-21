@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -231,13 +230,6 @@ public final class EspressoContext {
 
         initializeKnownClass(Type.Object);
 
-        // Primitive classes have no dependencies.
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive()) {
-                initializeKnownClass(kind.getType());
-            }
-        }
-
         for (Symbol<Type> type : Arrays.asList(
                         Type.String,
                         Type.System,
@@ -279,7 +271,16 @@ public final class EspressoContext {
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
+    /**
+     * The order in which methods are called and fields are set here is important, it mimics
+     * HotSpot's implementation.
+     */
     private void createMainThread() {
+
+        StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
+        meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
+                        .invokeDirect(systemThreadGroup);
+
         StaticObject mainThread = meta.Thread.allocateInstance();
         StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
@@ -289,9 +290,27 @@ public final class EspressoContext {
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setIntField(meta.Thread_state, Target_java_lang_Thread.State.RUNNABLE.value);
         putHost2Guest(Thread.currentThread(), mainThread);
+        meta.Thread_priority.set(mainThread, Thread.NORM_PRIORITY);
+
+        // Allow guest Thread.currentThread() to work.
+        mainThread.setHiddenField(this.meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+        host2guest.put(Thread.currentThread(), mainThread);
         activeThreads.add(Thread.currentThread());
-        // Lock object used by NIO.
-        meta.Thread_blockerLock.set(mainThread, meta.Object.allocateInstance());
+
+        StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
+        meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
+                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .invokeDirect(mainThreadGroup,
+                                        /* parent */ systemThreadGroup,
+                                        /* name */ meta.toGuestString("main"));
+
+        meta.Thread // public Thread(ThreadGroup group, String name)
+                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .invokeDirect(mainThread,
+                                        /* group */ mainThreadGroup,
+                                        /* name */ meta.toGuestString("main"));
+
+        meta.Thread_threadStatus.set(mainThread, /* JVMTI_THREAD_STATE_ALIVE */ 0x01 + /* JVMTI_THREAD_STATE_RUNNABLE */ 0x04);
     }
 
     public void interruptActiveThreads() {

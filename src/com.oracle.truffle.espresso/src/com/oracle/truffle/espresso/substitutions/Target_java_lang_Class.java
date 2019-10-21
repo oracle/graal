@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,14 +38,16 @@ import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -60,8 +62,31 @@ public final class Target_java_lang_Class {
     public static @Host(Class.class) StaticObject getPrimitiveClass(
                     @Host(String.class) StaticObject name) {
 
-        String hostName = MetaUtil.toInternalName(Meta.toHostString(name));
-        return name.getKlass().getMeta().getRegistries().loadKlassWithBootClassLoader(JavaKind.fromTypeString(hostName).getType()).mirror();
+        String hostName = Meta.toHostString(name);
+
+        Meta meta = name.getKlass().getMeta();
+        switch (hostName) {
+            case "boolean":
+                return meta._boolean.mirror();
+            case "byte":
+                return meta._byte.mirror();
+            case "char":
+                return meta._char.mirror();
+            case "short":
+                return meta._short.mirror();
+            case "int":
+                return meta._int.mirror();
+            case "float":
+                return meta._float.mirror();
+            case "double":
+                return meta._double.mirror();
+            case "long":
+                return meta._long.mirror();
+            case "void":
+                return meta._void.mirror();
+            default:
+                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+        }
     }
 
     @Substitution
@@ -73,6 +98,7 @@ public final class Target_java_lang_Class {
     }
 
     // TODO(peterssen): Remove substitution, use JVM_FindClassFromCaller.
+    @TruffleBoundary
     @Substitution
     public static @Host(Class.class) StaticObject forName0(
                     @Host(String.class) StaticObject name,
@@ -87,8 +113,30 @@ public final class Target_java_lang_Class {
             throw meta.throwExWithMessage(meta.NullPointerException, name);
         }
 
+        String hostName = Meta.toHostString(name);
+        if (hostName.indexOf('/') >= 0) {
+            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+        }
+
+        hostName = hostName.replace('.', '/');
+        if (!hostName.startsWith("[")) {
+            // Possible ambiguity, force "L" type: "void" -> Lvoid; "B" -> LB;
+            hostName = "L" + hostName + ";";
+        }
+
+        if (!Validation.validTypeDescriptor(ByteSequence.create(hostName), false)) {
+            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+        }
+
+        Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
+
         try {
-            Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
+            Klass klass = null;
+            if (Types.isArray(type)) {
+                klass = meta.resolveSymbol(type, loader);
+            } else {
+                klass = meta.loadKlass(type, loader);
+            }
 
             if (klass == null) {
                 throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
@@ -109,9 +157,22 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getName0(@Host(Class.class) StaticObject self) {
-        String name = self.getMirrorKlass().getType().toString();
+        Klass klass = self.getMirrorKlass();
+        String name = klass.getType().toString();
         // Conversion from internal form.
-        return self.getKlass().getMeta().toGuestString(MetaUtil.internalNameToJava(name, true, true));
+        String externalName = MetaUtil.internalNameToJava(name, true, true);
+
+        // Reflection relies on anonymous classes including a '/' on the name, to avoid generating
+        // (invalid) fast method accessors. See
+        // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
+        if (klass.isAnonymous()) {
+            // A small improvement over HotSpot here, which uses the class identity hash code.
+            externalName += "/" + klass.getID(); // VM.JVM_IHashCode(self);
+        }
+
+        // Class names must be interned.
+        Meta meta = klass.getMeta();
+        return meta.getStrings().intern(meta.toGuestString(externalName));
     }
 
     @Substitution(hasReceiver = true)
@@ -264,7 +325,7 @@ public final class Target_java_lang_Class {
                 SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
                 StaticObject genericSignature = StaticObject.NULL;
                 if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
+                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
                     genericSignature = meta.toGuestString(sig);
                 }
 
@@ -374,7 +435,7 @@ public final class Target_java_lang_Class {
                 SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
                 StaticObject genericSignature = StaticObject.NULL;
                 if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
+                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
                     genericSignature = meta.toGuestString(sig);
                 }
 
@@ -633,7 +694,7 @@ public final class Target_java_lang_Class {
             ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
             SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
             if (signature != null) {
-                String sig = klass.getConstantPool().utf8At(signature.getSignatureIndex(), "signature").toString();
+                String sig = klass.getConstantPool().symbolAt(signature.getSignatureIndex(), "signature").toString();
                 return klass.getMeta().toGuestString(sig);
             }
         }

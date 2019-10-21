@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,15 +79,15 @@ public final class Meta implements ContextAccess {
         Object_array = Object.array();
 
         // Primitives.
-        _boolean = knownPrimitive(Type._boolean);
-        _byte = knownPrimitive(Type._byte);
-        _char = knownPrimitive(Type._char);
-        _short = knownPrimitive(Type._short);
-        _float = knownPrimitive(Type._float);
-        _int = knownPrimitive(Type._int);
-        _double = knownPrimitive(Type._double);
-        _long = knownPrimitive(Type._long);
-        _void = knownPrimitive(Type._void);
+        _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
+        _byte = new PrimitiveKlass(context, JavaKind.Byte);
+        _char = new PrimitiveKlass(context, JavaKind.Char);
+        _short = new PrimitiveKlass(context, JavaKind.Short);
+        _float = new PrimitiveKlass(context, JavaKind.Float);
+        _int = new PrimitiveKlass(context, JavaKind.Int);
+        _double = new PrimitiveKlass(context, JavaKind.Double);
+        _long = new PrimitiveKlass(context, JavaKind.Long);
+        _void = new PrimitiveKlass(context, JavaKind.Void);
 
         _boolean_array = _boolean.array();
         _byte_array = _byte.array();
@@ -203,6 +203,7 @@ public final class Meta implements ContextAccess {
         Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
 
         MethodAccessorImpl = knownKlass(Type.MethodAccessorImpl);
+        ConstructorAccessorImpl = knownKlass(Type.ConstructorAccessorImpl);
 
         Parameter = knownKlass(Type.Parameter);
 
@@ -228,24 +229,27 @@ public final class Meta implements ContextAccess {
         Thread = knownKlass(Type.Thread);
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
         HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
+        HIDDEN_INTERRUPTED = Thread.lookupHiddenField(Name.HIDDEN_INTERRUPTED);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
         Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
+        Thread_threadStatus = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        Thread_inheritedAccessControlContext = Thread.lookupDeclaredField(Name.inheritedAccessControlContext, Type.AccessControlContext);
         Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
         Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
-        toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
+        VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
 
         sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
         constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.Object);
@@ -253,19 +257,31 @@ public final class Meta implements ContextAccess {
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
+        System_securityManager = System.lookupDeclaredField(Name.security, Type.SecurityManager);
+
+        ProtectionDomain = knownKlass(Type.ProtectionDomain);
+        ProtectionDomain_impliesCreateAccessControlContext = ProtectionDomain.lookupDeclaredMethod(Name.impliesCreateAccessControlContext, Signature._boolean);
+        ProtectionDomain_init_CodeSource_PermissionCollection = ProtectionDomain.lookupDeclaredMethod(Name.INIT, Signature.CodeSource_PermissionCollection);
+
+        AccessControlContext = knownKlass(Type.AccessControlContext);
+        AccessControlContext_isAuthorized = AccessControlContext.lookupDeclaredMethod(Name.isAuthorized, Signature._boolean);
+        ACC_context = AccessControlContext.lookupDeclaredField(Name.context, Type.ProtectionDomain_array);
+        ACC_privilegedContext = AccessControlContext.lookupDeclaredField(Name.privilegedContext, Type.AccessControlContext);
+        ACC_isPrivileged = AccessControlContext.lookupDeclaredField(Name.isPrivileged, Type._boolean);
+        ACC_isAuthorized = AccessControlContext.lookupDeclaredField(Name.isAuthorized, Type._boolean);
 
         MethodType = knownKlass(Type.MethodType);
-        toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
+        MethodType_toMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
+        MethodType_fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
 
         MemberName = knownKlass(Type.MemberName);
         HIDDEN_VMINDEX = MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
         HIDDEN_VMTARGET = MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
-        getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
-        MNclazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
-        MNname = MemberName.lookupDeclaredField(Name.name, Type.String);
-        MNtype = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
-        MNflags = MemberName.lookupDeclaredField(Name.flags, Type._int);
+        MemberName_getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
+        MemberName_clazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
+        MemberName_name = MemberName.lookupDeclaredField(Name.name, Type.String);
+        MemberName_type = MemberName.lookupDeclaredField(Name.type, Type.MethodType);
+        MemberName_flags = MemberName.lookupDeclaredField(Name.flags, Type._int);
 
         MethodHandle = knownKlass(Type.MethodHandle);
         invokeExact = MethodHandle.lookupDeclaredMethod(Name.invokeExact, Signature.Object_ObjectArray);
@@ -276,25 +292,25 @@ public final class Meta implements ContextAccess {
         linkToSpecial = MethodHandle.lookupDeclaredMethod(Name.linkToSpecial, Signature.Object_ObjectArray);
         linkToStatic = MethodHandle.lookupDeclaredMethod(Name.linkToStatic, Signature.Object_ObjectArray);
         linkToVirtual = MethodHandle.lookupDeclaredMethod(Name.linkToVirtual, Signature.Object_ObjectArray);
-        MHtype = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
-        form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
+        MethodHandle_type = MethodHandle.lookupDeclaredField(Name.type, Type.MethodType);
+        MethodHandle_form = MethodHandle.lookupDeclaredField(Name.form, Type.LambdaForm);
 
         MethodHandles = knownKlass(Type.MethodHandles);
         lookup = MethodHandles.lookupDeclaredMethod(Name.lookup, Signature.lookup_signature);
 
         CallSite = knownKlass(Type.CallSite);
-        CStarget = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
+        CallSite_target = CallSite.lookupDeclaredField(Name.target, Type.MethodHandle);
 
         LambdaForm = knownKlass(Type.LambdaForm);
-        vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
-        isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
-        compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
+        LambdaForm_vmentry = LambdaForm.lookupDeclaredField(Name.vmentry, Type.MemberName);
+        LambdaForm_isCompiled = LambdaForm.lookupDeclaredField(Name.isCompiled, Type._boolean);
+        LambdaForm_compileToBytecode = LambdaForm.lookupDeclaredMethod(Name.compileToBytecode, Signature.compileToBytecode);
 
         MethodHandleNatives = knownKlass(Type.MethodHandleNatives);
-        linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
-        linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
-        linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
-        findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
+        MethodHandleNatives_linkMethod = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.linkMethod_signature);
+        MethodHandleNatives_linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
+        MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
+        MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
 
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
         AssertionStatusDirectives_classes = AssertionStatusDirectives.lookupField(Name.classes, Type.String_array);
@@ -405,6 +421,7 @@ public final class Meta implements ContextAccess {
     public final Field Method_parameterTypes;
 
     public final ObjectKlass MethodAccessorImpl;
+    public final ObjectKlass ConstructorAccessorImpl;
 
     public final ObjectKlass Parameter;
 
@@ -471,38 +488,53 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_HOST_THREAD;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
+    public final Field Thread_threadStatus;
     public final Method Thread_exit;
     public final Method Thread_run;
     public final Method Thread_checkAccess;
     public final Method Thread_stop;
     public final Field HIDDEN_IS_ALIVE;
+    public final Field HIDDEN_INTERRUPTED;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
     public final Field Thread_blockerLock;
     public final Field Thread_daemon;
+    public final Field Thread_inheritedAccessControlContext;
     public final Field Thread_state;
 
     public final ObjectKlass sun_misc_VM;
-    public final Method toThreadState;
+    public final Method VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
     public final Method System_exit;
+    public final Field System_securityManager;
+
+    public final ObjectKlass ProtectionDomain;
+    public final Method ProtectionDomain_impliesCreateAccessControlContext;
+    public final Method ProtectionDomain_init_CodeSource_PermissionCollection;
+
+    public final ObjectKlass AccessControlContext;
+    public final Method AccessControlContext_isAuthorized;
+    public final Field ACC_context;
+    public final Field ACC_privilegedContext;
+    public final Field ACC_isPrivileged;
+    public final Field ACC_isAuthorized;
 
     public final ObjectKlass MethodType;
-    public final Method toMethodDescriptorString;
+    public final Method MethodType_toMethodDescriptorString;
 
     public final ObjectKlass MemberName;
-    public final Method getSignature;
-    public final Method fromMethodDescriptorString;
+    public final Method MemberName_getSignature;
+    public final Method MethodType_fromMethodDescriptorString;
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;
-    public final Field MNclazz;
-    public final Field MNname;
-    public final Field MNtype;
-    public final Field MNflags;
+    public final Field MemberName_clazz;
+    public final Field MemberName_name;
+    public final Field MemberName_type;
+    public final Field MemberName_flags;
 
     public final ObjectKlass MethodHandle;
     public final Method invoke;
@@ -513,25 +545,25 @@ public final class Meta implements ContextAccess {
     public final Method linkToSpecial;
     public final Method linkToStatic;
     public final Method linkToVirtual;
-    public final Field MHtype;
-    public final Field form;
+    public final Field MethodHandle_type;
+    public final Field MethodHandle_form;
 
     public final ObjectKlass MethodHandles;
     public final Method lookup;
 
     public final ObjectKlass CallSite;
-    public final Field CStarget;
+    public final Field CallSite_target;
 
     public final ObjectKlass LambdaForm;
-    public final Field vmentry;
-    public final Field isCompiled;
-    public final Method compileToBytecode;
+    public final Field LambdaForm_vmentry;
+    public final Field LambdaForm_isCompiled;
+    public final Method LambdaForm_compileToBytecode;
 
     public final ObjectKlass MethodHandleNatives;
-    public final Method linkMethod;
-    public final Method linkMethodHandleConstant;
-    public final Method findMethodHandleType;
-    public final Method linkCallSite;
+    public final Method MethodHandleNatives_linkMethod;
+    public final Method MethodHandleNatives_linkMethodHandleConstant;
+    public final Method MethodHandleNatives_findMethodHandleType;
+    public final Method MethodHandleNatives_linkCallSite;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -707,33 +739,83 @@ public final class Meta implements ContextAccess {
 
     @TruffleBoundary
     public ObjectKlass knownKlass(Symbol<Type> type) {
+        assert !Types.isArray(type);
+        assert !Types.isPrimitive(type);
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
 
     @TruffleBoundary
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
+        assert !hostClass.isPrimitive();
         // Resolve non-primitive classes using BCL.
         return knownKlass(getTypes().fromClass(hostClass));
     }
 
-    public PrimitiveKlass knownPrimitive(Symbol<Type> primitiveType) {
-        assert Types.isPrimitive(primitiveType);
-        // Resolve primitive classes using BCL.
-        return (PrimitiveKlass) getRegistries().loadKlassWithBootClassLoader(primitiveType);
-    }
-
-    public PrimitiveKlass knownPrimitive(java.lang.Class<?> primitiveClass) {
-        // assert isKnownClass(hostClass);
-        assert primitiveClass.isPrimitive();
-        // Resolve primitive classes using BCL.
-        return knownPrimitive(getTypes().fromClass(primitiveClass));
-    }
-
+    /**
+     * Performs class loading according to {§5.3. Creation and Loading}. This method directly asks
+     * the given class loader to perform the load, even for internal primitive types. This is the
+     * method to use when loading symbols that are not directly taken from a constant pool, for
+     * example, when loading a class whose name is given by a guest string..
+     * 
+     * @param type The symbolic type.
+     * @param classLoader The class loader
+     * @return The asked Klass.
+     */
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         return getRegistries().loadKlass(type, classLoader);
+    }
+
+    /**
+     * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
+     * corresponding Klass.
+     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns
+     * immediately returns the corresponding primitive. Thus, primitives are not 'loaded'.
+     * <li>If the symbol is a symbolic references, it asks the given ClassLoader to load the
+     * corresponding Klass.
+     * <li>If the symbol represents an array, recursively resolve its elemental type, and returns
+     * the array Klass need.
+     * 
+     * @param type The symbolic type
+     * @param classLoader The class loader of the constant pool holder.
+     * @return The asked Klass.
+     */
+    public Klass resolveSymbol(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+        // Resolution only resolves references. Bypass loading for primitives.
+        if (type.length() == 1) {
+            switch (type.byteAt(0)) {
+                case 'B': // byte
+                    return _byte;
+                case 'C': // char
+                    return _char;
+                case 'D': // double
+                    return _double;
+                case 'F': // float
+                    return _float;
+                case 'I': // int
+                    return _int;
+                case 'J': // long
+                    return _long;
+                case 'S': // short
+                    return _short;
+                case 'V': // void
+                    return _void;
+                case 'Z': // boolean
+                    return _boolean;
+                default:
+            }
+        }
+        if (Types.isArray(type)) {
+            Klass elemental = resolveSymbol(getTypes().getElementalType(type), classLoader);
+            if (elemental == null) {
+                return null;
+            }
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
+        }
+        return loadKlass(type, classLoader);
     }
 
     @TruffleBoundary

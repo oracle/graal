@@ -253,6 +253,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.FieldRefConstant;
@@ -269,6 +270,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -520,9 +522,7 @@ public final class MethodVerifier implements ContextAccess {
      */
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
-        if ((m.isAbstract() || m.isNative()) && codeAttribute != null) {
-            throw new ClassFormatError("Abstract method has code: " + m);
-        }
+        assert !((m.isAbstract() || m.isNative()) && codeAttribute != null) : "Abstract method has code: " + m;
         if (codeAttribute == null) {
             if (m.isAbstract() || m.isNative()) {
                 return;
@@ -957,6 +957,13 @@ public final class MethodVerifier implements ContextAccess {
             if (endBCI < 0) {
                 throw new ClassFormatError("negative branch target: " + endBCI);
             }
+            if (handler.catchTypeCPI() != 0) {
+                Klass catchType = pool.resolvedKlassAt(thisKlass, handler.catchTypeCPI());
+                if (!getMeta().Throwable.isAssignableFrom(catchType)) {
+                    throw new VerifyError("Illegal exception handler catch type: " + catchType);
+                }
+            }
+
             if (endBCI != code.endBCI()) {
                 if (BCIstates[endBCI] == UNREACHABLE) {
                     throw new ClassFormatError("Jump to the middle of an instruction: " + endBCI);
@@ -1221,12 +1228,12 @@ public final class MethodVerifier implements ContextAccess {
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodHandleConstant in classfile version < 51");
                 }
                 return MethodHandle;
             case METHODTYPE:
-                if (majorVersion < 51) {
+                if (majorVersion < ClassfileParser.JAVA_7_VERSION) {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return MethodType;
@@ -1294,7 +1301,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LDC: 
                 case LDC_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
@@ -1307,7 +1314,7 @@ public final class MethodVerifier implements ContextAccess {
                 }
                 case LDC2_W: {
                     PoolConstant pc = poolAt(code.readCPI(BCI));
-                    pc.checkValidity(pool);
+                    pc.validate(pool);
                     Operand op = ldcFromTag(pc);
                     if (!isType2(op)) {
                         throw new VerifyError("Loading non-Long or Double with LDC2_W, please use LDC or LDC_W.");
@@ -1618,7 +1625,7 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.INVOKEDYNAMIC) {
             throw new VerifyError("Invalid CP constant for INVOKEDYNAMIC: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
         Symbol<Name> name = idc.getName(pool);
@@ -1630,9 +1637,7 @@ public final class MethodVerifier implements ContextAccess {
 
         // Check and pop arguments
         Operand[] parsedSig = getOperandSig(idc.getSignature(pool));
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("No return descriptor for method");
-        }
+        assert parsedSig.length > 0 : "Empty descriptor for method";
         for (int i = parsedSig.length - 2; i >= 0; i--) {
             stack.pop(parsedSig[i]);
         }
@@ -1649,10 +1654,10 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != CLASS) {
             throw new VerifyError(s + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         ClassConstant cc = (ClassConstant) pc;
+        assert Validation.validClassNameEntry(cc.getName(pool));
         Symbol<Type> type = getTypes().fromName(cc.getName(pool));
-        Types.verify(type);
         return type;
     }
 
@@ -1768,19 +1773,19 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for PUTFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
+        assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> fieldDesc = frc.getType(pool);
-        Types.verify(fieldDesc);
         Operand toPut = stack.pop(kindToOperand(fieldDesc));
 
         checkInit(toPut);
         if (curOpcode == PUTFIELD) {
             // Pop and check verifier
+            assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
-            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             if (receiver.isArrayType()) {
@@ -1798,16 +1803,16 @@ public final class MethodVerifier implements ContextAccess {
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
             throw new VerifyError("Invalid CP constant for GETFIELD: " + pc.toString());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
+        assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> type = frc.getType(pool);
-        Types.verify(type);
         if (curOpcode == GETFIELD) {
             // Pop and check receiver
+            assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
-            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
@@ -1914,7 +1919,7 @@ public final class MethodVerifier implements ContextAccess {
         if (!(pc instanceof MethodRefConstant)) {
             throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
         }
-        pc.checkValidity(pool);
+        pc.validate(pool);
         return (MethodRefConstant) pc;
     }
 
@@ -1930,10 +1935,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
-        // Check signature is well formed.
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("Method ref with no return value !");
-        }
+        assert parsedSig.length > 0 : "Method ref with no return value !";
 
         // Pop arguments
         for (int i = parsedSig.length - 2; i >= 0; i--) {
@@ -1968,9 +1970,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
         // Check signature is well formed.
-        if (parsedSig.length == 0) {
-            throw new ClassFormatError("Method ref with no return value !");
-        }
+        assert parsedSig.length > 0 : "Method ref with no return value !";
 
         // Pop arguments
         // Check signature conforms with count argument
@@ -1990,8 +1990,9 @@ public final class MethodVerifier implements ContextAccess {
             throw new VerifyError("Inconsistent redundant argument count for INVOKEINTERFACE.");
         }
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         checkInit(stack.popRef(methodHolderOp));
@@ -2013,9 +2014,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         // Only INVOKESPECIAL can call <init>
         if (isInstanceInit(calledMethodName)) {
@@ -2023,8 +2022,7 @@ public final class MethodVerifier implements ContextAccess {
         }
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
-        Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
 
         if (!(returnOp == Void)) {
             stack.push(returnOp);
@@ -2036,26 +2034,21 @@ public final class MethodVerifier implements ContextAccess {
         MethodRefConstant mrc = getMethodRefConstant(BCI);
 
         // Checks versioning
-        if (majorVersion <= 51 && mrc.tag() == INTERFACE_METHOD_REF) {
+        if (majorVersion <= ClassfileParser.JAVA_7_VERSION && mrc.tag() == INTERFACE_METHOD_REF) {
             throw new VerifyError("invokeSpecial refers to an interface method with classfile version " + majorVersion);
         }
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         if (isInstanceInit(calledMethodName)) {
-            if (returnOp != Void) {
-                throw new ClassFormatError("<init> method with non-void return type.");
-            }
             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
                 if (methodName != Name.INIT) {
@@ -2112,9 +2105,7 @@ public final class MethodVerifier implements ContextAccess {
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
         // Check guest is not invoking <clinit>
-        if (isClassInit(calledMethodName)) {
-            throw new ClassFormatError("Invocation of class initializer!");
-        }
+        assert !isClassInit(calledMethodName) : "Invocation of class initializer!";
 
         // Only INVOKESPECIAL can call <init>
         if (isInstanceInit(calledMethodName)) {
@@ -2123,8 +2114,9 @@ public final class MethodVerifier implements ContextAccess {
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
+        assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
-        Types.verify(methodHolder);
+
         Operand methodHolderOp = kindToOperand(methodHolder);
         Operand stackOp = checkInit(stack.popRef(methodHolderOp));
 

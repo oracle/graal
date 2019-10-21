@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 import static com.oracle.truffle.espresso.nodes.BytecodesNode.resolveKlassCount;
+
 
 import java.util.Objects;
 
@@ -68,7 +68,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.utf8At(classNameIndex);
+            return pool.symbolAt(classNameIndex);
         }
 
         /**
@@ -102,9 +102,7 @@ public interface ClassConstant extends PoolConstant {
             try {
                 EspressoContext context = pool.getContext();
                 Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
-                Klass klass = context.getRegistries().loadKlass(
-                                type, accessingKlass.getDefiningClassLoader());
-
+                Klass klass = context.getMeta().resolveSymbol(type, accessingKlass.getDefiningClassLoader());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
@@ -116,7 +114,7 @@ public interface ClassConstant extends PoolConstant {
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
                 if (pool.getContext().getMeta().ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
-                    throw pool.getContext().getMeta().throwEx(NoClassDefFoundError.class);
+                    throw pool.getContext().getMeta().throwExWithMessage(NoClassDefFoundError.class, klassName.toString());
                 }
                 throw e;
             } catch (VirtualMachineError e) {
@@ -130,11 +128,8 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(classNameIndex).tag() != UTF8) {
-                throw new VerifyError("Ill-formed constant: " + tag());
-            }
-            pool.at(classNameIndex).checkValidity(pool);
+        public void validate(ConstantPool pool) {
+            pool.utf8At(classNameIndex).validateClassName();
         }
     }
 
@@ -175,9 +170,7 @@ public interface ClassConstant extends PoolConstant {
             Symbol<Name> klassName = getName(pool);
             try {
                 EspressoContext context = pool.getContext();
-                Klass klass = context.getRegistries().loadKlass(
-                                context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
-
+                Klass klass = context.getMeta().resolveSymbol(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");

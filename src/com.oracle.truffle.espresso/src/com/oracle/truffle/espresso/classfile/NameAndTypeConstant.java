@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
-
 public interface NameAndTypeConstant extends PoolConstant {
 
     /**
@@ -47,11 +45,13 @@ public interface NameAndTypeConstant extends PoolConstant {
      */
     Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-    Symbol<Symbol.Signature> getSignature(ConstantPool pool);
+    default void validateMethod(ConstantPool pool) {
+        validateMethod(pool, true);
+    }
 
-    int getNameIndex();
+    void validateMethod(ConstantPool pool, boolean allowClinit);
 
-    int getTypeIndex();
+    void validateField(ConstantPool pool);
 
     @Override
     default Tag tag() {
@@ -64,15 +64,6 @@ public interface NameAndTypeConstant extends PoolConstant {
     }
 
     final class Indexes implements NameAndTypeConstant {
-        @Override
-        public int getNameIndex() {
-            return nameIndex;
-        }
-
-        @Override
-        public int getTypeIndex() {
-            return typeIndex;
-        }
 
         private final char nameIndex;
         private final char typeIndex;
@@ -84,27 +75,35 @@ public interface NameAndTypeConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.utf8At(nameIndex);
+            return pool.symbolAt(nameIndex);
         }
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return pool.utf8At(typeIndex);
+            return pool.symbolAt(typeIndex);
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public Symbol<Symbol.Signature> getSignature(ConstantPool pool) {
-            return (Symbol<Symbol.Signature>) getDescriptor(pool);
-        }
-
-        @Override
-        public void checkValidity(ConstantPool pool) {
-            if (pool.at(nameIndex).tag() != UTF8 || pool.at(typeIndex).tag() != UTF8) {
-                throw new VerifyError("Ill-formed constant: " + tag());
+        public void validate(ConstantPool pool) {
+            Symbol<? extends Descriptor> descriptor = getDescriptor(pool);
+            if (descriptor.length() > 0 && descriptor.byteAt(0) == '(') {
+                validateMethod(pool);
+            } else {
+                // Fails with empty name.
+                validateField(pool);
             }
-            pool.at(nameIndex).checkValidity(pool);
-            pool.at(typeIndex).checkValidity(pool);
+        }
+
+        @Override
+        public void validateMethod(ConstantPool pool, boolean allowClinit) {
+            pool.utf8At(nameIndex).validateMethodName(allowClinit);
+            pool.utf8At(typeIndex).validateSignature();
+        }
+
+        @Override
+        public void validateField(ConstantPool pool) {
+            pool.utf8At(nameIndex).validateFieldName();
+            pool.utf8At(typeIndex).validateType(false);
         }
     }
 }

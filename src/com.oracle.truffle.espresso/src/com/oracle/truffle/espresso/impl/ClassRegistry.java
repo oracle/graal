@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,7 +132,38 @@ public abstract class ClassRegistry implements ContextAccess {
      * @param type the symbolic reference to the Klass we want to load
      * @return The Klass corresponding to given type
      */
-    protected abstract Klass loadKlass(Symbol<Type> type);
+    protected Klass loadKlass(Symbol<Type> type) {
+        if (Types.isArray(type)) {
+            Klass elemental = loadKlass(getTypes().getElementalType(type));
+            if (elemental == null) {
+                return null;
+            }
+            return elemental.getArrayClass(Types.getArrayDimensions(type));
+        }
+
+        loadKlassCountInc();
+
+        // Double-checked locking on the symbol (globally unique).
+        Klass klass = classes.get(type);
+        if (klass == null) {
+            synchronized (type) {
+                klass = classes.get(type);
+                if (klass == null) {
+                    klass = loadKlassImpl(type);
+                }
+            }
+        } else {
+            // Grabbing a lock to fetch the class is not considered a hit.
+            loadKlassCacheHitsInc();
+        }
+        return klass;
+    }
+
+    protected abstract Klass loadKlassImpl(Symbol<Type> type);
+
+    protected abstract void loadKlassCountInc();
+
+    protected abstract void loadKlassCacheHitsInc();
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
@@ -154,26 +185,23 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         Meta meta = getMeta();
-        if (typeOrNull != null && classes.containsKey(typeOrNull)) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + typeOrNull + " already defined in the BCL");
-        }
-
         String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass = getParserKlass(bytes, strType);
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
+
+        Klass maybeLoaded = findLoadedKlass(type);
+        if (maybeLoaded != null) {
+            throw meta.throwExWithMessage(LinkageError.class, "Class " + type + " already defined");
+        }
+
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
         return createAndPutKlass(meta, parserKlass, type, superKlassType);
     }
 
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
-        ParserKlass parserKlass = null;
-        try {
-            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
-        } catch (NoClassDefFoundError ncdfe) {
-            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, ncdfe.getMessage());
-        }
-
+        // May throw guest ClassFormatError, NoClassDefFoundError.
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
         if (StaticObject.notNull(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
             throw getMeta().throwExWithMessage(SecurityException.class, "Define class in prohibited package name: " + parserKlass.getName());
         }
@@ -234,13 +262,10 @@ public abstract class ClassRegistry implements ContextAccess {
             }
         }
 
-        getRegistries().recordConstraint(type, klass, getClassLoader());
-
         Klass previous = classes.putIfAbsent(type, klass);
-        if (previous != null) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
-        }
+        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
+        getRegistries().recordConstraint(type, klass, getClassLoader());
         return klass;
     }
 
@@ -261,16 +286,5 @@ public abstract class ClassRegistry implements ContextAccess {
             throw meta.throwExWithMessage(IncompatibleClassChangeError.class, "Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
-    }
-
-    public ObjectKlass putKlass(Symbol<Type> type, final ObjectKlass klass) {
-        if (classes.containsKey(type)) {
-            throw getMeta().throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
-        }
-        Klass previous = classes.put(type, klass);
-        if (previous != null) {
-            throw getMeta().throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
-        }
-        return klass;
     }
 }

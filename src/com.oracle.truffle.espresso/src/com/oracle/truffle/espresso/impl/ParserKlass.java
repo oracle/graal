@@ -23,13 +23,16 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.Attributes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+/**
+ * Immutable raw representation of classes in Espresso, this is the output of the parser, super
+ * klass/interfaces are not resolved.
+ */
 public final class ParserKlass {
 
     private final Symbol<Name> name;
@@ -47,10 +50,52 @@ public final class ParserKlass {
     @CompilationFinal(dimensions = 1) //
     private final ParserField[] fields; // name + type + attributes
 
-    private final Attributes attributes;
+    @CompilationFinal(dimensions = 1) //
+    private final Attribute[] attributes;
 
+    /**
+     * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
+     */
+    private final ConstantPool pool;
+
+    private final int thisKlassIndex;
+
+    public ParserKlass(ConstantPool pool,
+                    int flags,
+                    Symbol<Name> name,
+                    Symbol<Type> type,
+                    Symbol<Type> superKlass,
+                    final Symbol<Type>[] superInterfaces,
+                    final ParserMethod[] methods,
+                    final ParserField[] fields,
+                    Attribute[] attributes,
+                    int thisKlassIndex) {
+        this.pool = pool;
+        this.flags = flags;
+        this.name = name;
+        this.type = type;
+        this.superKlass = superKlass;
+        this.superInterfaces = superInterfaces;
+        this.methods = methods;
+        this.fields = fields;
+        this.attributes = attributes;
+        this.thisKlassIndex = thisKlassIndex;
+    }
+
+    /**
+     * Returns class flags, it includes VM internal flags that should be filtered-out.
+     */
     public int getFlags() {
         return flags;
+    }
+
+    /**
+     * The class name.
+     *
+     * @return class name
+     */
+    public Symbol<Name> getName() {
+        return name;
     }
 
     public Symbol<Type> getType() {
@@ -65,6 +110,10 @@ public final class ParserKlass {
         return superInterfaces;
     }
 
+    public ConstantPool getConstantPool() {
+        return pool;
+    }
+
     ParserMethod[] getMethods() {
         return methods;
     }
@@ -73,40 +122,16 @@ public final class ParserKlass {
         return fields;
     }
 
-    public ConstantPool getConstantPool() {
-        return pool;
+    Attribute getAttribute(Symbol<Name> attributeName) {
+        for (Attribute attribute : attributes) {
+            if (attributeName.equals(attribute.getName())) {
+                return attribute;
+            }
+        }
+        return null;
     }
 
-    /**
-     * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
-     */
-    private final ConstantPool pool;
-
-    public ParserKlass(ConstantPool pool,
-                    int flags,
-                    Symbol<Name> name,
-                    Symbol<Type> type,
-                    Symbol<Type> superKlass,
-                    final Symbol<Type>[] superInterfaces,
-                    final ParserMethod[] methods,
-                    final ParserField[] fields,
-                    Attribute[] attributes) {
-        this.pool = pool;
-        this.flags = flags;
-        this.name = name;
-        this.type = type;
-        this.superKlass = superKlass;
-        this.superInterfaces = superInterfaces;
-        this.methods = methods;
-        this.fields = fields;
-        this.attributes = new Attributes(attributes);
-    }
-
-    Attribute getAttribute(Symbol<Name> attrName) {
-        return attributes.get(attrName);
-    }
-
-    public Symbol<Name> getName() {
-        return name;
+    public int getThisKlassIndex() {
+        return thisKlassIndex;
     }
 }

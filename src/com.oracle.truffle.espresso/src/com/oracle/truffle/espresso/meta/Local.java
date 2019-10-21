@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.meta;
 
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.classfile.Utf8Constant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -35,13 +36,13 @@ public final class Local {
 
     public static final Local[] EMPTY_ARRAY = new Local[0];
 
-    private final Symbol<Name> name;
-    private final Symbol<Name> type;
+    private final Utf8Constant name;
+    private final Utf8Constant type;
     private final int startBci;
     private final int endBci;
     private final int slot;
 
-    public Local(Symbol<Name> name, Symbol<Name> type, int startBci, int endBci, int slot) {
+    public Local(Utf8Constant name, Utf8Constant type, int startBci, int endBci, int slot) {
         this.name = name;
         this.startBci = startBci;
         this.endBci = endBci;
@@ -57,11 +58,11 @@ public final class Local {
         return endBci;
     }
 
-    public Symbol<Name> getName() {
+    public Utf8Constant getName() {
         return name;
     }
 
-    public Symbol<Name> getType() {
+    public Utf8Constant getType() {
         return type;
     }
 

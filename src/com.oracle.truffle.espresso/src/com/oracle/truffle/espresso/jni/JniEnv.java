@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -614,7 +614,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 Klass klass = clazz.getMirrorKlass();
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                method = klass.lookupMethod(methodName, methodSignature, klass);
+                if (Name.CLINIT.equals(methodName)) {
+                    // Never search superclasses for static initializers.
+                    method = klass.lookupDeclaredMethod(methodName, methodSignature);
+                } else {
+                    method = klass.lookupMethod(methodName, methodSignature);
+                }
             }
         }
         if (method == null || !method.isStatic()) {
@@ -1492,7 +1497,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public StaticObject FindClass(String name) {
-        StaticObject internalName = getMeta().toGuestString(name);
+        if (name == null || name.contains(".")) {
+            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, name);
+        }
+        StaticObject internalName = getMeta().toGuestString(name.replace("/", "."));
         assert getMeta().Class_forName_String.isStatic();
         try {
             return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);

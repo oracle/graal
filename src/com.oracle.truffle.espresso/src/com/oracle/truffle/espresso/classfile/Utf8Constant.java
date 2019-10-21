@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,21 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Validation;
 
 public final class Utf8Constant implements PoolConstant {
+
+    private static final int VALID_CLASS_NAME = 0x01;
+    private static final int VALID_METHOD_NAME = 0x02;
+    private static final int VALID_METHOD_NAME_OR_CLINIT = 0x4;
+    private static final int VALID_FIELD_NAME = 0x08;
+    private static final int VALID_SIGNATURE = 0x10;
+
+    private static final int VALID_UTF8 = 0x20;
+    private static final int VALID_TYPE = 0x40;
+    private static final int VALID_TYPE_OR_VOID = 0x80;
+
+    private byte validationCache;
 
     @Override
     public final Tag tag() {
@@ -42,6 +55,72 @@ public final class Utf8Constant implements PoolConstant {
     public <T> Symbol<T> value() {
         // TODO(peterssen): Maybe assert signature/type is valid.
         return (Symbol<T>) value;
+    }
+
+    @Override
+    public void validate(ConstantPool pool) {
+        validateUTF8();
+    }
+
+    public void validateUTF8() {
+        if ((validationCache & VALID_UTF8) == 0) {
+            if (!Validation.validModifiedUTF8(value())) {
+                throw ConstantPool.classFormatError("Ill-formed modified-UTF8 entry");
+            }
+            validationCache |= VALID_UTF8;
+        }
+    }
+
+    public void validateClassName() {
+        validateUTF8();
+        if ((validationCache & VALID_CLASS_NAME) == 0) {
+            if (!Validation.validClassNameEntry(value)) {
+                throw ConstantPool.classFormatError("Invalid class name entry: " + value);
+            }
+            validationCache |= VALID_CLASS_NAME;
+        }
+    }
+
+    public void validateType(boolean allowVoid) {
+        validateUTF8();
+        int mask = allowVoid ? VALID_TYPE_OR_VOID : VALID_TYPE;
+        if ((validationCache & mask) == 0) {
+            if (!Validation.validTypeDescriptor(value, allowVoid)) {
+                throw ConstantPool.classFormatError("Invalid type descriptor: " + value);
+            }
+            validationCache |= mask;
+        }
+    }
+
+    public void validateMethodName(boolean allowClinit) {
+        validateUTF8();
+        int mask = allowClinit ? VALID_METHOD_NAME_OR_CLINIT : VALID_METHOD_NAME;
+        if ((validationCache & mask) == 0) {
+            if (!Validation.validMethodName(value, allowClinit)) {
+                throw ConstantPool.classFormatError("Invalid method name: " + value);
+            }
+            validationCache |= mask;
+        }
+    }
+
+    public void validateFieldName() {
+        validateUTF8();
+        if ((validationCache & VALID_FIELD_NAME) == 0) {
+            if (!Validation.validUnqualifiedName(value)) {
+                throw ConstantPool.classFormatError("Invalid field name: " + value);
+            }
+            validationCache |= VALID_FIELD_NAME;
+        }
+    }
+
+    public void validateSignature() {
+        validateUTF8();
+        if ((validationCache & VALID_SIGNATURE) == 0) {
+            if (!Validation.validSignatureDescriptor(value)) {
+                throw ConstantPool.classFormatError("Invalid signature descriptor: " + value);
+            }
+            validationCache |= VALID_SIGNATURE;
+        }
     }
 
     @Override

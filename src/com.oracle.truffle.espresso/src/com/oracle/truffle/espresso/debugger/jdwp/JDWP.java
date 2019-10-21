@@ -355,7 +355,7 @@ class JDWP {
                     reply.writeLong(Ids.getIdAsLong(field));
                     reply.writeString(field.getName().toString());
                     reply.writeString(field.getType().toString());
-                    reply.writeString(field.getGenericSignature());
+                    reply.writeString(field.getGenericSignature().toString());
                     reply.writeInt(field.getModifiers());
                 }
                 return reply;

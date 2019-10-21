@@ -37,9 +37,10 @@ public final class MHInvokeBasicNode extends EspressoMethodNode {
 
     public MHInvokeBasicNode(Method method) {
         super(method);
-        Meta meta = method.getContext().getMeta();
-        this.form = meta.form.getFieldIndex();
-        this.vmentry = meta.vmentry.getFieldIndex();
+
+        Meta meta = getMeta();
+        this.form = meta.MethodHandle_form.getFieldIndex();
+        this.vmentry = meta.LambdaForm_vmentry.getFieldIndex();
         this.hidden_vmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
         this.callNode = IndirectCallNode.create();
     }

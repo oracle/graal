@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile;
+package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.meta.ModifiersProvider;
 
-public final class DoubleConstant implements PoolConstant {
+public abstract class Member<T extends Descriptor> implements ModifiersProvider {
 
-    @Override
-    public Tag tag() {
-        return Tag.DOUBLE;
+    protected final Symbol<Name> name;
+    protected final Symbol<T> descriptor;
+
+    protected Member(Symbol<T> descriptor, Symbol<Name> name) {
+        this.name = name;
+        this.descriptor = descriptor;
     }
 
-    private final double value;
-
-    DoubleConstant(double value) {
-        this.value = value;
+    public Symbol<Name> getName() {
+        return name;
     }
 
-    public double value() {
-        return value;
+    public final Symbol<T> getDescriptor() {
+        return descriptor;
     }
 
-    @Override
-    public String toString(ConstantPool pool) {
-        return String.valueOf(value);
-    }
+    public abstract ObjectKlass getDeclaringKlass();
 }

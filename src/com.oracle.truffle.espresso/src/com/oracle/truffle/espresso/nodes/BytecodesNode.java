@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -274,11 +274,11 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -1441,7 +1441,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
 
     @TruffleBoundary
     private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) ((ObjectKlass) getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
+        return (BootstrapMethodsAttribute) (getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
@@ -1634,7 +1634,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
             invoke = InvokeVirtualNodeGen.create(resolutionSeed, top, curBCI);
-        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
+        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinalFlagSet() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
             invoke = new InvokeSpecialNode(resolutionSeed, top, curBCI);
         } else {
             // @formatter:off
@@ -1713,12 +1713,12 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
 
         // Preparing Bootstrap call.
         StaticObject name = meta.toGuestString(specifier.getName(pool));
-        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+        Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
 
-        StaticObject memberName = (StaticObject) meta.linkCallSite.invokeDirect(
+        StaticObject memberName = (StaticObject) meta.MethodHandleNatives_linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bootstrapmethodMethodHandle,
@@ -1749,18 +1749,18 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.loadKlass(paramType, declaringKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbol(paramType, declaringKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
             throw meta.throwEx(NoClassDefFoundError.class);
         }
         StaticObject rtype;
         try {
-            rtype = meta.loadKlass(rt, declaringKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbol(rt, declaringKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
             throw meta.throwEx(BootstrapMethodError.class);
         }
-        return (StaticObject) meta.findMethodHandleType.invokeDirect(
+        return (StaticObject) meta.MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
                         rtype, StaticObject.createArray(meta.Class_Array, ptypes));
     }
@@ -2139,10 +2139,10 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i + start] = peekInt(frame, argAt);    break;
-                case Byte    : args[i + start] = peekInt(frame, argAt);    break;
-                case Short   : args[i + start] = peekInt(frame, argAt);    break;
-                case Char    : args[i + start] = peekInt(frame, argAt);    break;
+                case Boolean : // Fall through
+                case Byte    : // Fall through
+                case Short   : // Fall through
+                case Char    : // Fall through
                 case Int     : args[i + start] = peekInt(frame, argAt);    break;
                 case Float   : args[i + start] = peekFloat(frame, argAt);  break;
                 case Long    : args[i + start] = peekLong(frame, argAt);   break;
