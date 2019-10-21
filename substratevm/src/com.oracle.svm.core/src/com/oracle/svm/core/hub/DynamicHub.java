@@ -690,6 +690,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(name = "getCanonicalName", onlyWith = JDK8OrEarlier.class)
     private native String getCanonicalNameJDK8OrEarlier();
 
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "sentinel string comparison")
     @Substitute
     @TargetElement(name = "getCanonicalName", onlyWith = JDK11OrLater.class)
     private String getCanonicalNameJDK11OrLater() {
