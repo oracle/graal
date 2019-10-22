@@ -1780,13 +1780,14 @@ x-GraalVM-Polyglot-Part: {polyglot}
         dependencies = set()
         # `known_allowed_dependencies` is a workaround for GR-18947
         known_allowed_dependencies = {"llvm-toolchain"}
-        for c in main_component.direct_dependencies():
-            d = get_installable_distribution(c.name, fatalIfMissing=False)
-            if d:
-                if c.installable_id in known_allowed_dependencies:
-                    dependencies.add(c.installable_id)
-                else:
-                    mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
+        for comp in self.components:
+            for c in comp.direct_dependencies():
+                d = get_installable_distribution(c.name, fatalIfMissing=False)
+                if d:
+                    if c.installable_id in known_allowed_dependencies:
+                        dependencies.add(c.installable_id)
+                    else:
+                        mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
         dependencies = sorted(dependencies)
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
