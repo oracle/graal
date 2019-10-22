@@ -851,6 +851,9 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 JDWPCallFrame[] frames = controller.getSuspendedInfo().getStackFrames();
+                if (length == -1) {
+                    length = frames.length;
+                }
                 reply.writeInt(length);
 
                 for (int i = startFrame; i < startFrame + length; i++) {
