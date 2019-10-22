@@ -278,7 +278,9 @@ enum OSReturn {
     V(JVM_UnloadLibrary) \
     V(JVM_Write) \
     V(JVM_Yield) \
-    V(JVM_handle_linux_signal)
+    V(JVM_handle_linux_signal) \
+    /* Invocation API */ \
+    V(JNI_GetCreatedJavaVMs)
 
 #ifdef __cplusplus
 extern "C" {
@@ -745,6 +747,8 @@ int (*JVM_handle_linux_signal)(int sig,
                           void* ucVoid,
                           int abort_if_unrecognized);
 
+// Invocation API
+jint (*JNI_GetCreatedJavaVMs)(JavaVM **vm_buf, jsize buf_len, jsize *numVMs);
 };
 
 struct MokapotEnv_ {
