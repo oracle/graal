@@ -171,6 +171,33 @@ public final class ObjectKlass extends Klass {
         }
         this.itableLength = iKlassTable.length;
         this.initState = LINKED;
+        assert verifyTables();
+    }
+
+    private boolean verifyTables() {
+        if (vtable != null) {
+            for (int i = 0; i < vtable.length; i++) {
+                if (isInterface()) {
+                    if (vtable[i].getITableIndex() != i) {
+                        return false;
+                    }
+                } else {
+                    if (vtable[i].getVTableIndex() != i) {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (itable != null) {
+            for (Method[] table : itable) {
+                for (int i = 0; i < table.length; i++) {
+                    if (table[i].getITableIndex() != i) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     @Override
@@ -252,6 +279,7 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (Throwable e) {
                     System.err.println("Host exception happened during class initialization");
+                    e.printStackTrace();
                     setErroneous();
                     throw e;
                 }
@@ -524,17 +552,18 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
-        for (Method m : vtable) {
+    final int lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
+        for (int i = 0; i < vtable.length; i++) {
+            Method m = vtable[i];
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
-                    return m;
+                    return i;
                 } else if (sameRuntimePackage(subClass)) {
-                    return m;
+                    return i;
                 }
             }
         }
-        return null;
+        return -1;
     }
 
     final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
