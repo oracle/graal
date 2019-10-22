@@ -602,7 +602,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        return [key for key, value in self.daCapoIterations().items() if value != -1]
+        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
+        if mx_compiler.jdk.javaCompliance >= '9' and "batik" in bench_list:
+            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
+            bench_list.remove("batik")
+        return bench_list
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
