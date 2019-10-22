@@ -1727,6 +1727,7 @@ public abstract class Source {
          *
          * @since 19.3
          */
+        @Override
         public LiteralBuilder content(CharSequence characters) {
             buildThrowsIOException = false;
             return super.content(characters);
@@ -1737,6 +1738,7 @@ public abstract class Source {
          *
          * @since 19.3
          */
+        @Override
         public LiteralBuilder content(ByteSequence bytes) {
             buildThrowsIOException = false;
             return super.content(bytes);
