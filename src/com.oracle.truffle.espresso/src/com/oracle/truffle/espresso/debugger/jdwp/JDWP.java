@@ -43,7 +43,7 @@ import java.util.List;
 
 class JDWP {
 
-    public static Object suspenStartupLock = new Object();
+    public static Object suspendStartupLock = new Object();
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
 
@@ -1179,6 +1179,33 @@ class JDWP {
                         writeValue(sigbyte, value, reply, true);
                     }
                     // TODO(Gregersen) - verify sigbyte against actual value type
+                }
+                return reply;
+            }
+        }
+
+        static class SET_VALUES {
+            public static final int ID = 2;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadId = input.readLong();
+                long frameId = input.readLong();
+                int slots = input.readInt();
+
+                JDWPCallFrame frame = (JDWPCallFrame) Ids.fromId((int)frameId);
+
+                StaticObject thisValue = frame.getThisValue();
+                Object[] variables = frame.getVariables();
+                int offset = thisValue != null ? 1 : 0;
+
+                // below assumes the debugger asks for slot values in increasing order
+                for (int i = 0; i < slots; i++) {
+                    int slot = input.readInt();
+                    byte kind = input.readByte();
+                    variables[slot - offset] = readValue(kind, input);
                 }
                 return reply;
             }

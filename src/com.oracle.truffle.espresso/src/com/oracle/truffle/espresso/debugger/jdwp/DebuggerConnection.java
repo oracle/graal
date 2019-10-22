@@ -156,8 +156,8 @@ public class DebuggerConnection implements JDWPCommands {
                             if (currentTime > limit) {
                                 started = true;
                                 // allow the main thread to continue starting up the program
-                                synchronized (JDWP.suspenStartupLock) {
-                                    JDWP.suspenStartupLock.notifyAll();
+                                synchronized (JDWP.suspendStartupLock) {
+                                    JDWP.suspendStartupLock.notifyAll();
                                 }
                                 processPacket(Packet.fromByteArray(connection.readPacket()));
                             } else {
@@ -395,6 +395,10 @@ public class DebuggerConnection implements JDWPCommands {
                         switch (packet.cmd) {
                             case JDWP.StackFrame.GET_VALUES.ID: {
                                 reply = JDWP.StackFrame.GET_VALUES.createReply(packet);
+                                break;
+                            }
+                            case JDWP.StackFrame.SET_VALUES.ID: {
+                                reply = JDWP.StackFrame.SET_VALUES.createReply(packet);
                                 break;
                             }
                             case JDWP.StackFrame.THIS_OBJECT.ID: {

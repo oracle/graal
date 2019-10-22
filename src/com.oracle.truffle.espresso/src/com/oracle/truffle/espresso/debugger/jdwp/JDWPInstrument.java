@@ -50,9 +50,9 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
             if (controller.shouldWaitForAttach()) {
                 doConnect();
                 // take all initial commands from the debugger before resuming to main thread
-                synchronized (JDWP.suspenStartupLock) {
+                synchronized (JDWP.suspendStartupLock) {
                     try {
-                        JDWP.suspenStartupLock.wait();
+                        JDWP.suspendStartupLock.wait();
                     } catch (InterruptedException e) {
                         throw new RuntimeException("JDWP connection interrupted");
                     }
