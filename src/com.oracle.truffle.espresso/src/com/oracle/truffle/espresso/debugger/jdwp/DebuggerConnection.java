@@ -297,6 +297,12 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.ObjectReference.INVOKE_METHOD.ID:
                                 reply = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet);
                                 break;
+                            case JDWP.ObjectReference.DISABLE_COLLECTION.ID:
+                                reply = JDWP.ObjectReference.DISABLE_COLLECTION.createReply(packet);
+                                break;
+                            case JDWP.ObjectReference.ENABLE_COLLECTION.ID:
+                                reply = JDWP.ObjectReference.ENABLE_COLLECTION.createReply(packet);
+                                break;
                             case JDWP.ObjectReference.IS_COLLECTED.ID:
                                 reply = JDWP.ObjectReference.IS_COLLECTED.createReply(packet);
                                 break;

@@ -723,6 +723,32 @@ class JDWP {
             }
         }
 
+        static class DISABLE_COLLECTION {
+            public static final int ID = 7;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long objectId = input.readLong();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                GCPrevention.disableGC(object);
+                return reply;
+            }
+        }
+
+        static class ENABLE_COLLECTION {
+            public static final int ID = 8;
+
+            static PacketStream createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                long objectId = input.readLong();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                GCPrevention.enableGC(object);
+                return reply;
+            }
+        }
+
         static class IS_COLLECTED {
             public static final int ID = 9;
 
