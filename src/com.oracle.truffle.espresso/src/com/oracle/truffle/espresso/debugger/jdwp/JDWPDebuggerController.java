@@ -218,13 +218,16 @@ public class JDWPDebuggerController {
             suspendedInfo = new SuspendedInfo(event, strategy, callFrames, currentThread);
 
             for (Breakpoint bp : event.getBreakpoints()) {
-                if (!bp.isOneShot()) {
-                    //System.out.println("BP at suspension point: " + bp.getLocationDescription());
-                    VMEventListeners.getDefault().breakpointHit(breakpointInfos.get(bp), currentThread);
+                //System.out.println("BP at suspension point: " + bp.getLocationDescription());
+                // register the thread as suspended before sending the breakpoint hit event.
+                // The debugger will verify thread status as part of registering if a breakpoint is hit
+                if (strategy == SuspendStrategy.EVENT_THREAD) {
+                    ThreadSuspension.suspendThread(currentThread);
                 }
+                VMEventListeners.getDefault().breakpointHit(breakpointInfos.get(bp), currentThread);
             }
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(strategy, currentThread, callFrames[0]);
+            suspend(strategy, callFrames[0]);
         }
 
         private boolean checkExclusionFilters(SuspendedEvent event) {
@@ -347,7 +350,7 @@ public class JDWPDebuggerController {
             return null;
         }
 
-        private void suspend(byte strategy, StaticObject thread, JDWPCallFrame currentFrame) {
+        private void suspend(byte strategy, JDWPCallFrame currentFrame) {
             switch(strategy) {
                 case SuspendStrategy.NONE:
                     // nothing to suspend
@@ -355,8 +358,6 @@ public class JDWPDebuggerController {
                 case SuspendStrategy.EVENT_THREAD:
                     synchronized (suspendLock) {
                         try {
-                            ThreadSuspension.suspendThread(thread);
-
                             // if during stepping, send a step completed event back to the debugger
                             if (commandRequestId != -1) {
                                 VMEventListeners.getDefault().stepCompleted(commandRequestId, currentFrame);

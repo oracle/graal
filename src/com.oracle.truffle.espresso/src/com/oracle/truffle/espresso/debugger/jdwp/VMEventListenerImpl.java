@@ -78,6 +78,12 @@ public class VMEventListenerImpl implements VMEventListener {
             stream.writeString(klass.getType().toString());
             stream.writeInt(klass.getState()); // class status
             connection.queuePacket(stream);
+            // give the debugger a little time to send breakpoint requests
+            try {
+                Thread.sleep(30);
+            } catch (Exception e) {
+                // ignore
+            }
         }
     }
 
