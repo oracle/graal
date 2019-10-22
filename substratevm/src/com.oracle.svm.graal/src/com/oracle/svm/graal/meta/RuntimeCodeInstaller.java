@@ -46,6 +46,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -269,7 +270,9 @@ public class RuntimeCodeInstaller {
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
-        protectCodeMemory(code, codeSize);
+        if (!SubstrateOptions.RWXCodeCache.getValue()) {
+            protectCodeMemory(code, codeSize);
+        }
 
         createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;

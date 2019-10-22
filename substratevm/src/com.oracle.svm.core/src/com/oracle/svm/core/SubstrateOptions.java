@@ -207,6 +207,10 @@ public class SubstrateOptions {
     @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
 
+    @APIOption(name = "rwx-code-cache")//
+    @Option(help = "Allocate code cache with RWX access permissions")//
+    public static final HostedOptionKey<Boolean> RWXCodeCache = new HostedOptionKey<>(false);
+
     /*
      * Object and array allocation options.
      */

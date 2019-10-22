@@ -112,11 +112,15 @@ public final class RuntimeCodeInfoAccess {
         continueVisiting = continueVisiting &&
                         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
         if (impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
-            // unprotect here, as the GC might need to modify Java values embedded in the code
-            CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, true, false);
+            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                // unprotect here, as the GC might need to modify Java values embedded in the code
+                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, true, false);
+            }
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getObjectsReferenceMapEncoding(), impl.getObjectsReferenceMapIndex(), visitor);
-            CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, false, true);
+            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, false, true);
+            }
         }
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
