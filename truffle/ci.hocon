@@ -45,9 +45,10 @@ builds += [
   ${solaris-sparcv9} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-oraclejdk-11"
-  }
+# GR-19023
+#  ${solaris-sparcv9} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
+#    name: "gate-truffle-solaris-lite-oraclejdk-11"
+#  }
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
   }
