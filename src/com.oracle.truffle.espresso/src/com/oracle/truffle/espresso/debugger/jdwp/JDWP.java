@@ -151,7 +151,7 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeBoolean(true); // canWatchFieldModification
                 reply.writeBoolean(true); // canWatchFieldAccess
-                reply.writeBoolean(true); // canGetBytecodes
+                reply.writeBoolean(false); // canGetBytecodes
                 reply.writeBoolean(true); // canGetSyntheticAttribute
                 reply.writeBoolean(false); // canGetOwnedMonitorInfo
                 reply.writeBoolean(false); // canGetCurrentContendedMonitor
@@ -169,7 +169,7 @@ class JDWP {
                 // TODO(Gregersen) - figure out what capabilities we want to expose
                 reply.writeBoolean(true); // canWatchFieldModification
                 reply.writeBoolean(true); // canWatchFieldAccess
-                reply.writeBoolean(true); // canGetBytecodes
+                reply.writeBoolean(false); // canGetBytecodes
                 reply.writeBoolean(true); // canGetSyntheticAttribute
                 reply.writeBoolean(false); // canGetOwnedMonitorInfo
                 reply.writeBoolean(false); // canGetCurrentContendedMonitor
@@ -520,6 +520,10 @@ class JDWP {
             }
         }
 
+        // TODO(Gregersen) - current disabled by Capabilities.
+        // Enabling causes the NetBeans debugger to send wrong stepping
+        // events for step into/over so diabled for now. Perhaps the bytecode
+        // returned from method.getCode() is incorrect?
         static class BYTECODES {
             public static final int ID = 3;
 
