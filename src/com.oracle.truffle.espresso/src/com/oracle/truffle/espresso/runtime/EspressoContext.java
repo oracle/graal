@@ -259,10 +259,8 @@ public final class EspressoContext {
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
                         .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.Thread.allocateInstance();
-        meta.Thread_priority.set(mainThread, Thread.NORM_PRIORITY);
         // Allow guest Thread.currentThread() to work.
-        mainThread.setHiddenField(this.meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        meta.Thread_threadStatus.set(mainThread, Target_java_lang_Thread.State.RUNNABLE.value);
+        mainThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
@@ -280,6 +278,7 @@ public final class EspressoContext {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
+        mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
     }
 
     public void interruptActiveThreads() {
