@@ -91,4 +91,24 @@ public final class TruffleJDKServices {
     public static <S> void addUses(Class<S> service) {
         throw shouldNotReachHere();
     }
+
+    /**
+     * Returns the unnamed module configured for a classloader.
+     *
+     * @param classLoader the class loader to return the unnamed module for.
+     */
+    public static Object getUnnamedModule(ClassLoader classLoader) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Returns <code>true</code> if the member class is visible to the given module.
+     *
+     * @param lookupModule the module to use for lookups.
+     * @param memberClass the class or the declaring class of the member to check.
+     */
+    public static boolean verifyModuleVisibility(Object lookupModule, Class<?> memberClass) {
+        throw shouldNotReachHere();
+    }
+
 }
