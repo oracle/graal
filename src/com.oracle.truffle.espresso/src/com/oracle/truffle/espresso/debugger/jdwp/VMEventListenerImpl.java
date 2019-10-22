@@ -22,20 +22,22 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
+import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.debugger.BreakpointInfo;
 import com.oracle.truffle.espresso.debugger.SuspendStrategy;
 import com.oracle.truffle.espresso.debugger.VMEventListener;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
 
 public class VMEventListenerImpl implements VMEventListener {
 
     private final SocketConnection connection;
-    private HashSet<ClassPrepareRequest> classPrepareRequests = new HashSet<>();
+    private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
+    private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private int threadStartedRequestId;
     private int threadDeathRequestId;
 
@@ -45,7 +47,24 @@ public class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void addClassPrepareRequest(ClassPrepareRequest request) {
-        classPrepareRequests.add(request);
+        classPrepareRequests.put(request.getRequestId(), request);
+    }
+
+    @Override
+    public void removeClassPrepareRequest(int requestId) {
+        classPrepareRequests.remove(requestId);
+    }
+
+    @Override
+    public void addBreakpointRequest(int requestId, BreakpointInfo info) {
+        breakpointRequests.put(requestId, info);
+    }
+
+    @Override
+    public void removeBreakpointRequest(int requestId) {
+        BreakpointInfo remove = breakpointRequests.remove(requestId);
+        Breakpoint breakpoint = remove.getBreakpoint();
+        breakpoint.dispose();
     }
 
     @Override
@@ -56,7 +75,7 @@ public class VMEventListenerImpl implements VMEventListener {
         // check if event should be reported based on the current patterns
         String dotName = klass.getName().toString().replace('/', '.');
         boolean send = false;
-        Iterator<ClassPrepareRequest> it = classPrepareRequests.iterator();
+        Iterator<ClassPrepareRequest> it = classPrepareRequests.values().iterator();
         ClassPrepareRequest request = null;
 
         while (!send && it.hasNext()) {

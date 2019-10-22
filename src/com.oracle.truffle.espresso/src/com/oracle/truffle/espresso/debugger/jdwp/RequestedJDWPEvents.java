@@ -151,6 +151,7 @@ public class RequestedJDWPEvents {
                 Method method = (Method) Ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
                 callback.createLineBreakpointCommand(slashName, line, suspendPolicy, info);
+                eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 break;
             case 8:
                 System.out.println("unhandled modcount 8");
@@ -193,8 +194,46 @@ public class RequestedJDWPEvents {
 
         byte eventKind = input.readByte();
         int requestId = input.readInt();
-        // TODO(Gregersen) - actually clear events for this request
-        //System.out.println("clear request for " + eventKind + " for request " + requestId);
+        RequestFilter requestFilter = EventFilters.getDefault().getRequestFilter(requestId);
+
+        if (requestFilter != null) {
+            byte kind = requestFilter.getEventKind();
+            if (kind == eventKind) {
+                switch (eventKind) {
+                    case SINGLE_STEP:
+                        //System.out.println("clear single step not implemented");
+                        break;
+                    case METHOD_EXIT_WITH_RETURN_VALUE:
+                        break;
+                    case BREAKPOINT:
+                        eventListener.removeBreakpointRequest(requestFilter.getRequestId());
+                        break;
+                    case CLASS_PREPARE:
+                        eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
+                        break;
+                    case THREAD_START:
+                        eventListener.addThreadStartedRequestId(packet.id);
+
+                        break;
+                    case THREAD_DEATH:
+                        eventListener.addThreadDiedRequestId(packet.id);
+
+                        break;
+                    case CLASS_UNLOAD:
+                        eventListener.addClassUnloadRequestId(packet.id);
+
+                        break;
+                    default:
+                        System.out.println("unhandled event clear kind " + eventKind);
+                        break;
+                }
+            } else {
+                reply.errorCode(102);
+            }
+        } else {
+            reply.errorCode(102); // TODO(Gregersen) - add INVALID_EVENT_TYPE constant
+        }
+
         return reply;
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.debugger;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+
 public class BreakpointInfo {
 
     private final int requestId;
@@ -29,6 +31,8 @@ public class BreakpointInfo {
     private final long classId;
     private final long methodId;
     private final long bci;
+
+    private Breakpoint breakpoint;
 
     public BreakpointInfo(int requestId, byte tag, long classId, long methodId, long bci) {
         this.requestId = requestId;
@@ -61,5 +65,13 @@ public class BreakpointInfo {
     @Override
     public String toString() {
         return "typeTag: " + typeTag + ", classId: " + classId + ", methodId: " + methodId + ", bci: " + bci;
+    }
+
+    public void setBreakpoint(Breakpoint bp) {
+        this.breakpoint = bp;
+    }
+
+    public Breakpoint getBreakpoint() {
+        return breakpoint;
     }
 }

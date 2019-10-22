@@ -39,6 +39,11 @@ public interface VMEventListener {
     void addThreadDiedRequestId(int id);
 
     void addClassPrepareRequest(ClassPrepareRequest request);
+    void removeClassPrepareRequest(int requestId);
+
+    void addBreakpointRequest(int requestId, BreakpointInfo info);
+    void removeBreakpointRequest(int requestId);
+
 
     void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
 }
