@@ -1003,12 +1003,18 @@ public final class Target_sun_misc_Unsafe {
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
     public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+        if (StaticObject.isNull(object)) {
+            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+        }
         U.monitorEnter(object);
     }
 
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
     public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+        if (StaticObject.isNull(object)) {
+            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+        }
         U.monitorExit(object);
     }
 
@@ -1165,5 +1171,14 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         return f.getAndSetObject(holder, value);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Substitution(hasReceiver = true)
+    public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object) {
+        if (StaticObject.isNull(object)) {
+            throw self.getKlass().getMeta().throwEx(NullPointerException.class);
+        }
+        return U.tryMonitorEnter(object);
     }
 }
