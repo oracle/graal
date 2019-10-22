@@ -85,13 +85,13 @@ public final class JsrScope {
      *         {@code int[]} with {@code value.chars().toArray()}.
      */
     public String getAncestry() {
-        StringBuilder sb = new StringBuilder();
+        String result = "";
         for (JsrScope s = this; s != null; s = s.parent) {
             if (!s.isEmpty()) {
-                sb.append(s.returnAddress);
+                result = s.returnAddress + result;
             }
         }
-        return sb.reverse().toString();
+        return result;
     }
 
     /**
