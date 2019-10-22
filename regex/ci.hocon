@@ -22,9 +22,10 @@ builds += [
   ${solaris-sparcv9} ${oraclejdk8} ${gateLite} ${regexWeekly} {
     name: "gate-regex-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${oraclejdk11} ${gateLite} ${regexWeekly} {
-    name: "gate-regex-solaris-lite-oraclejdk-11"
-  }
+# GR-19023
+#  ${solaris-sparcv9} ${oraclejdk11} ${gateLite} ${regexWeekly} {
+#    name: "gate-regex-solaris-lite-oraclejdk-11"
+#  }
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${regexWeekly} {
     name: "gate-regex-mac-lite-8"
   }

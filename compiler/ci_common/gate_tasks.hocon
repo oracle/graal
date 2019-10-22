@@ -32,7 +32,8 @@ builds += [
 
   # Solaris SPARC
   ${gateTest}          ${oraclejdk8}      ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
-  ${gateTest}          ${labsjdk-ee-11}   ${gateSolarisSPARC} {name: "gate-compiler-test-labsjdk-ee-11-solaris-sparcv9",                   timelimit: "1:00:00"}
+#  GR-19023
+#  ${gateTest}          ${labsjdk-ee-11}   ${gateSolarisSPARC} {name: "gate-compiler-test-labsjdk-ee-11-solaris-sparcv9",                   timelimit: "1:00:00"}
   ${gateTestCTW}       ${oraclejdk8}      ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
   ${gateTestCTWWeekly} ${labsjdk-ee-11}   ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-labsjdk-ee-11-solaris-sparcv9",             timelimit: "1:50:00"} ${graalWeekly}
   ${gateTest}          ${oraclejdk8Debug} ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",   timelimit: "1:50:00"} ${graalWeekly}
