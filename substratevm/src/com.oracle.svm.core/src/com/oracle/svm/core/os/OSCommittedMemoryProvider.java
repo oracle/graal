@@ -165,6 +165,22 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
     }
 
     @Override
+    public boolean protect(PointerBase start, UnsignedWord nbytes, boolean read, boolean write, boolean execute) {
+        int access = VirtualMemoryProvider.Access.NONE;
+        if (read) {
+            access |= VirtualMemoryProvider.Access.READ;
+        }
+        if (write) {
+            access |= VirtualMemoryProvider.Access.WRITE;
+        }
+        if (execute) {
+            access |= VirtualMemoryProvider.Access.EXECUTE;
+        }
+        int success = VirtualMemoryProvider.get().protect(start, nbytes, access);
+        return success == 0;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         final UnsignedWord pageSize = getGranularity();

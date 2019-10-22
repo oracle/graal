@@ -26,6 +26,7 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -118,4 +119,18 @@ public interface CommittedMemoryProvider {
      */
     default void afterGarbageCollection(boolean completeCollection) {
     }
+
+    /**
+     * Change access permissions for a block of committed memory that was allocated with
+     * {@link #allocate}.
+     *
+     * @param start The start of the memory block
+     * @param nbytes Length of the memory block
+     * @param read enable/disable read access
+     * @param write enable/disable write access
+     * @param execute enable/disable instruction fetch
+     * @return true on success, false otherwise
+     */
+    boolean protect(PointerBase start, UnsignedWord nbytes, boolean read, boolean write, boolean execute);
+
 }

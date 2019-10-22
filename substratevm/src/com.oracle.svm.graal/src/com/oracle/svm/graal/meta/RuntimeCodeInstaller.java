@@ -269,6 +269,8 @@ public class RuntimeCodeInstaller {
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
+        protectCodeMemory(code, codeSize);
+
         createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;
     }
@@ -411,6 +413,10 @@ public class RuntimeCodeInstaller {
             throw new OutOfMemoryError();
         }
         return (Pointer) result;
+    }
+
+    protected void protectCodeMemory(Pointer start, long size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryReadOnly((CodePointer) start, WordFactory.unsigned(size));
     }
 
     protected void releaseCodeMemory(Pointer start, long size) {

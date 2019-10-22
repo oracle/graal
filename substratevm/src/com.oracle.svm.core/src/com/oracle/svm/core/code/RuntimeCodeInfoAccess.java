@@ -112,8 +112,11 @@ public final class RuntimeCodeInfoAccess {
         continueVisiting = continueVisiting &&
                         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
         if (impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
+            // unprotect here, as the GC might need to modify Java values embedded in the code
+            CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, true, false);
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getObjectsReferenceMapEncoding(), impl.getObjectsReferenceMapIndex(), visitor);
+            CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, false, true);
         }
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
@@ -168,6 +171,10 @@ public final class RuntimeCodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
         CommittedMemoryProvider.get().free(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
+    }
+
+    public static void makeCodeMemoryReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
+        CommittedMemoryProvider.get().protect(codeStart, codeSize, true, false, true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
@@ -227,4 +234,5 @@ public final class RuntimeCodeInfoAccess {
         assert CodeInfoAccess.isValid(info);
         return (CodeInfoImpl) info;
     }
+
 }
