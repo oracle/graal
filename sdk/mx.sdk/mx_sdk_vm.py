@@ -436,7 +436,7 @@ def jdk_enables_jvmci_by_default(jdk):
     return getattr(jdk, '.enables_jvmci_by_default')
 
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -454,6 +454,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                         "error" - raise an error
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
+    :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     """
     assert callable(with_source)
 
@@ -555,6 +556,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                 dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
         jlink = [jdk.javac.replace('javac', 'jlink')]
 
         if jdk_enables_jvmci_by_default(jdk):
@@ -579,6 +581,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         jlink.append('-J-Dlink.debug=true')
         jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+        # https://bugs.openjdk.java.net/browse/JDK-8232080
+        output = mx.OutputCapture()
+        mx.run([jlink_exe, '--list-plugins'], out=output)
+        if '--add-options=' in output.data:
+            assert '--vendor-version=' in output.data
+            jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions')
+            if vendor_info is not None:
+                for name, value in vendor_info.items():
+                    jlink.append('--' + name + '=' + value)
 
         # TODO: investigate the options below used by OpenJDK to see if they should be used:
         # --release-info: this allow extra properties to be written to the <jdk>/release file
