@@ -2,7 +2,23 @@
 
 [![https://graalvm.slack.com](https://img.shields.io/badge/slack-join%20channel-inactive)](https://join.slack.com/t/graalvm/shared_invite/enQtNzk0NTc5MzUyNzg5LTAwY2YyODQ4MzJjMGJjZGQzMWY2ZDA3NWI3YzEzNDRlNGQ1MTZkYzkzM2JkYjIxMTY2NGQzNjUxOGQzZGExZmU)
 
-GraalVM is a universal virtual machine for running applications written in JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure, Kotlin, and LLVM-based languages such as C and C++.
+GraalVM is a universal virtual machine for running applications written in
+JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure,
+Kotlin, and LLVM-based languages such as C and C++. It offers the following
+benefits:
+
+* **Performance**: GraalVM leverages years of research into compiler technology to give you better
+peak performance on average than any other JVM.
+* **Ahead-of-time compilation**: Ahead-of-time (AOT) compiled native images improve application start-up time and
+reduce memory footprint.
+* **Interoperability**: Combining programming languages in the same runtime maximizes your resources and
+increases code efficiency. Use whichever programming language is best fit for
+purpose, in any combination. Match the correct code to the use case you need.
+* **Embeddability**: GraalVM Polyglot SDK removes isolation between programming languages and gives
+you a next-generation runtime environment where you no longer need to write
+separate applications to use different languages.
+* **Tooling**: GraalVM takes advantage of JVM-based tooling and provides a common set of tools,
+such as debugging and profiling, that you can use for all your code.
 
 The project website at [https://www.graalvm.org](https://www.graalvm.org) describes how to [get started](https://www.graalvm.org/docs/getting-started/), how to [stay connected](https://www.graalvm.org/community/), and how to [contribute](https://www.graalvm.org/community/contributors/).
 
@@ -40,7 +56,7 @@ images or shared objects.
 
 ## Related Repositories
 
-GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and the GraalVM compiler. These are:
+GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using the Truffle framework and the GraalVM compiler. These are:
 * [GraalJS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2019 compatible) and Node.js 10.16.3
 * [FastR](https://github.com/oracle/fastr) - R Language 3.6.1
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
