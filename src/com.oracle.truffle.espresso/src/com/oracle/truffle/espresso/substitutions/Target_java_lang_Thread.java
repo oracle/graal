@@ -33,6 +33,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.lang.reflect.InvocationTargetException;
+
 // @formatter:off
 // Checkstyle: stop
 /**
@@ -286,17 +288,22 @@ public final class Target_java_lang_Thread {
     public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
-            Thread host = getHostFromGuestThread(self);
-            if (host != null && host.isInterrupted()) {
+            Thread hostThread = getHostFromGuestThread(self);
+            if (hostThread != null && hostThread.isInterrupted()) {
                 try {
-                    isInterrupted.invoke(host, true);
+                    callHostThreadIsInterrupted(hostThread);
                 } catch (Throwable e) {
-                    throw EspressoError.shouldNotReachHere();
+                    throw EspressoError.shouldNotReachHere(e);
                 }
             }
             setInterrupt(self, false);
         }
         return result;
+    }
+
+    @TruffleBoundary
+    private static void callHostThreadIsInterrupted(Thread hostThread) throws IllegalAccessException, InvocationTargetException {
+        isInterrupted.invoke(hostThread, true);
     }
 
     @TruffleBoundary
