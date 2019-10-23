@@ -42,3 +42,7 @@ void get_types(void (*ret)(polyglot_typeid typeid)) {
 void do_memmove(void *target, void *source, size_t n) {
   memmove(target, source, n);
 }
+
+void do_memset(void *target, int c, size_t n) {
+  memset(target, c, n);
+}
