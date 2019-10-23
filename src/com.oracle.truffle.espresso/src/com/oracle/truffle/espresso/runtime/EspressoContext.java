@@ -288,7 +288,7 @@ public final class EspressoContext {
         meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
         meta.Thread_priority.set(mainThread, 5);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        mainThread.setIntField(meta.Thread_state, Target_java_lang_Thread.State.RUNNABLE.value);
+        mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
         putHost2Guest(Thread.currentThread(), mainThread);
         meta.Thread_priority.set(mainThread, Thread.NORM_PRIORITY);
 

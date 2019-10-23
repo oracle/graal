@@ -116,7 +116,7 @@ public final class Target_java_lang_Thread {
                     } catch (EspressoException uncaught) {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
-                        self.setIntField(meta.Thread_state, State.TERMINATED.value);
+                        self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                         meta.Thread_exit.invokeDirect(self);
                         synchronized (self) {
                             // Notify waiting threads you are done working
@@ -130,7 +130,7 @@ public final class Target_java_lang_Thread {
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
             context.registerThread(hostThread);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
-            self.setIntField(meta.Thread_state, State.RUNNABLE.value);
+            self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             context.putHost2Guest(hostThread, self);
             hostThread.start();
         } else {
@@ -156,7 +156,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static boolean isAlive(@Host(Thread.class) StaticObject self) {
-        int state = self.getIntField(self.getKlass().getMeta().Thread_state);
+        int state = self.getIntField(self.getKlass().getMeta().Thread_threadStatus);
         return state != State.NEW.value && state != State.TERMINATED.value;
     }
 

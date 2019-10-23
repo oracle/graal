@@ -246,7 +246,6 @@ public final class Meta implements ContextAccess {
         Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
         Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
-        Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
         VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
@@ -501,7 +500,6 @@ public final class Meta implements ContextAccess {
     public final Field Thread_blockerLock;
     public final Field Thread_daemon;
     public final Field Thread_inheritedAccessControlContext;
-    public final Field Thread_state;
 
     public final ObjectKlass sun_misc_VM;
     public final Method VM_toThreadState;
