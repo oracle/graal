@@ -57,7 +57,7 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ### 2019
 
-- Peter Hofer, Codrut Stancu, Vojin Jovanovic, Peter Kessler, Christian Wimmer, Thomas Wuerthinger, Oleg Pliss, Paul Woegerer
+-  Christian Wimmer, Peter Hofer, Codrut Stancu, Vojin Jovanovic, Peter Kessler, Thomas Wuerthinger, Oleg Pliss, Paul Woegerer
 [**Initialize Once, Start Fast: Application Initialization at Build Time**](https://dl.acm.org/citation.cfm?id=3360610)
 In _Proceedings of the ACM on Programming Languages_
 
