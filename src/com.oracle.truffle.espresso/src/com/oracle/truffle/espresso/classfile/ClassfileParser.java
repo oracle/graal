@@ -49,7 +49,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-import static com.oracle.truffle.espresso.classfile.Constants.RECOGNIZED_INNER_CLASS_MODIFIERS;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
@@ -764,7 +763,6 @@ public final class ClassfileParser {
                 }
                 classFlags |= ACC_INNER_CLASS;
                 classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
-                classFlags |= (innerClassInfo.innerClassAccessFlags & RECOGNIZED_INNER_CLASS_MODIFIERS);
             }
             for (int j = 0; j < i; ++j) {
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
@@ -783,6 +781,12 @@ public final class ClassfileParser {
         int outerClassIndex = stream.readU2();
         int innerNameIndex = stream.readU2();
         int innerClassAccessFlags = stream.readU2();
+
+        if ((innerClassAccessFlags & ACC_INTERFACE) != 0 && majorVersion < JAVA_6_VERSION) {
+            // Set abstract bit for old class files for backward compatibility
+            innerClassAccessFlags |= ACC_ABSTRACT;
+        }
+
         if (innerClassIndex != 0) {
             pool.classAt(innerClassIndex).validate(pool);
         }

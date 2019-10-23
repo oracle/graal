@@ -587,8 +587,8 @@ jclass JVM_GetComponentType(JNIEnv *env, jclass cls) {
 }
 
 jint JVM_GetClassModifiers(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassModifiers);
-  return 0;
+  IMPLEMENTED(JVM_GetClassModifiers);
+  return (*getEnv())->JVM_GetClassModifiers(env, cls);
 }
 
 jobjectArray JVM_GetDeclaredClasses(JNIEnv *env, jclass ofClass) {

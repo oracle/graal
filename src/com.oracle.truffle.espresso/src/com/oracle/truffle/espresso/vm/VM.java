@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
@@ -47,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.classfile.Constants;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -1167,7 +1171,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public static int JVM_GetClassAccessFlags(@Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
-        return klass.getModifiers();
+        if (klass.isPrimitive()) {
+            final int primitiveFlags = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
+            assert klass.getModifiers() == primitiveFlags;
+            return klass.getModifiers();
+        }
+        return klass.getModifiers() & Constants.JVM_ACC_WRITTEN_FLAGS;
+    }
+
+    @VmImpl
+    @JniImpl
+    public static int JVM_GetClassModifiers(@Host(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass();
+        if (klass.isPrimitive()) {
+            final int primitiveModifiers = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
+            assert klass.getClassModifiers() == primitiveModifiers;
+            return klass.getClassModifiers();
+        }
+        return klass.getClassModifiers();
     }
 
     @VmImpl
