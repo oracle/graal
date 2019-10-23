@@ -27,6 +27,8 @@ package com.oracle.svm.core.os;
 import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.zero;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -60,7 +62,7 @@ class OSCommittedMemoryProviderFeature implements Feature {
     }
 }
 
-public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
+public class OSCommittedMemoryProvider extends VirtualMemoryCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
     public OSCommittedMemoryProvider() {
     }
@@ -94,7 +96,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
      */
     @Override
     public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        final int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
+        final int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE | (executable ? VirtualMemoryProvider.Access.EXECUTE : 0);
 
         if (alignment.equal(UNALIGNED)) {
             Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, access);
@@ -162,22 +164,6 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             }
         }
         return start;
-    }
-
-    @Override
-    public boolean protect(PointerBase start, UnsignedWord nbytes, boolean read, boolean write, boolean execute) {
-        int access = VirtualMemoryProvider.Access.NONE;
-        if (read) {
-            access |= VirtualMemoryProvider.Access.READ;
-        }
-        if (write) {
-            access |= VirtualMemoryProvider.Access.WRITE;
-        }
-        if (execute) {
-            access |= VirtualMemoryProvider.Access.EXECUTE;
-        }
-        int success = VirtualMemoryProvider.get().protect(start, nbytes, access);
-        return success == 0;
     }
 
     @Override

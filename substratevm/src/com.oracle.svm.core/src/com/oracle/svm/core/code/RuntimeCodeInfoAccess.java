@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -114,12 +116,12 @@ public final class RuntimeCodeInfoAccess {
         if (impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
             if (!SubstrateOptions.RWXCodeCache.getValue()) {
                 // unprotect here, as the GC might need to modify Java values embedded in the code
-                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, true, false);
+                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
             }
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getObjectsReferenceMapEncoding(), impl.getObjectsReferenceMapIndex(), visitor);
             if (!SubstrateOptions.RWXCodeCache.getValue()) {
-                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), true, false, true);
+                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
             }
         }
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
@@ -178,7 +180,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static void makeCodeMemoryReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
-        CommittedMemoryProvider.get().protect(codeStart, codeSize, true, false, true);
+        CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
