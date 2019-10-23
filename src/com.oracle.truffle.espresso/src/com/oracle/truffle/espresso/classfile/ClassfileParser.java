@@ -764,7 +764,6 @@ public final class ClassfileParser {
                 }
                 classFlags |= ACC_INNER_CLASS;
                 classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
-                classFlags |= (innerClassInfo.innerClassAccessFlags & RECOGNIZED_INNER_CLASS_MODIFIERS);
             }
             for (int j = 0; j < i; ++j) {
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
