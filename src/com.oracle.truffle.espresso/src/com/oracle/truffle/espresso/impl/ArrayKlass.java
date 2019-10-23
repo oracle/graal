@@ -62,24 +62,14 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public final int getModifiers() {
-        return (getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED /*
-                                                                                               * array
-                                                                                               * of
-                                                                                               * static
-                                                                                               * inner
-                                                                                               * class
-                                                                                               */)) | ACC_FINAL | ACC_ABSTRACT;
+        // Arrays (of static inner class) may have protected access.
+        return (getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
     }
 
     @Override
     public final int getClassModifiers() {
-        return (getElementalType().getClassModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED /*
-                                                                                                    * array
-                                                                                                    * of
-                                                                                                    * static
-                                                                                                    * inner
-                                                                                                    * class
-                                                                                                    */)) | ACC_FINAL | ACC_ABSTRACT;
+        // Arrays (of static inner class) may have protected access.
+        return (getElementalType().getClassModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
     }
 
     @Override
