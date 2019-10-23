@@ -160,22 +160,6 @@ public class JDWPDebuggerController {
         }
     }
 
-    public void stepIntoSpecific(SourceLocation location) {
-        SuspendedInfo susp = suspendedInfo;
-        if (susp != null) {
-            // this can be implemented in multiple ways. One way that doesn't
-            // require changes to the Truffle Debug API is to use a one-shot breakpoint
-            Source source = null;
-            try {
-                source = location.getSource();
-                Breakpoint bp = Breakpoint.newBuilder(source).oneShot().lineIs(location.getLineNumber()).build();
-                debuggerSession.install(bp);
-            } catch (NoSuchSourceLineException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void stepOut() {
         SuspendedInfo susp = suspendedInfo;
         if (susp != null) {

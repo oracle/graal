@@ -83,13 +83,6 @@ public class DebuggerConnection implements JDWPCommands {
         debuggerCommand.setBreakpointInfo(info);
         queue.add(debuggerCommand);
     }
-    @Override
-    public void createStepIntoSpecificCommand(String slashClassName, int line, byte suspendPolicy) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO_SPECIFIC);
-        Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashClassName);
-        debuggerCommand.setSourceLocation(new SourceLocation(type, line, controller.getContext()));
-        queue.add(debuggerCommand);
-    }
 
     private class CommandProcessorThread implements Runnable {
 
@@ -105,7 +98,6 @@ public class DebuggerConnection implements JDWPCommands {
                         case STEP_OVER: controller.stepOver(); break;
                         case STEP_OUT: controller.stepOut(); break;
                         case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand); break;
-                        case STEP_INTO_SPECIFIC: controller.stepIntoSpecific(debuggerCommand.getSourceLocation()); break;
                         case RESUME: controller.resume(); break;
                     }
                 }

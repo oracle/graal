@@ -30,5 +30,4 @@ public interface JDWPCommands {
     void stepOut(int requestId);
 
     void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
-    void createStepIntoSpecificCommand(String slashClassName, int line, byte suspendPolicy);
 }

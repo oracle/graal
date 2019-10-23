@@ -31,7 +31,6 @@ class DebuggerCommand {
     enum Kind {
         STEP_INTO,
         STEP_OVER,
-        STEP_INTO_SPECIFIC,
         STEP_OUT,
         SUBMIT_BREAKPOINT,
         RESUME

@@ -82,7 +82,6 @@ public final class EspressoContext {
     private final Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
-    private JDWPDebuggerController controller;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -194,7 +193,7 @@ public final class EspressoContext {
     private void jdwpInit() {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (JDWPOptions != null) {
-            this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
+            JDWPDebuggerController controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
             controller.initialize(JDWPOptions, this);
         }
     }
@@ -388,9 +387,6 @@ public final class EspressoContext {
             getVM().dispose();
             getJNI().dispose();
         }
-    }
-    public JDWPDebuggerController getJDWPController() {
-        return controller;
     }
 
     public Substitutions getSubstitutions() {
