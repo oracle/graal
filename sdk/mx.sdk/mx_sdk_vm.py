@@ -183,7 +183,7 @@ class GraalVmComponent(object):
                  boot_jars=None,
                  jvmci_parent_jars=None,
                  priority=None,
-                 installable=False,
+                 installable=None,
                  post_install_msg=None,
                  installable_id=None,
                  dependencies=None):
@@ -241,6 +241,8 @@ class GraalVmComponent(object):
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
+        if installable is None:
+            installable = isinstance(self, GraalVmLanguage)
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
@@ -361,6 +363,9 @@ def register_graalvm_component(component):
 
 
 def graalvm_component_by_name(name):
+    """
+    :rtype: GraalVmComponent
+    """
     if name in _graalvm_components:
         return _graalvm_components[name]
     elif name in _graalvm_components_by_name:

@@ -63,6 +63,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
+    installable=False,
 ))
 
 add_gate_runner(_suite, _tregex_tests_gate_runner)
