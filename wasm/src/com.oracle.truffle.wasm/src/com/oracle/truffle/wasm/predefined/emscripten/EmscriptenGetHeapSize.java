@@ -45,7 +45,8 @@ public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
     public Object execute(VirtualFrame frame) {
         logger.finest("EmscriptenGetHeapSize EXECUTE");
 
-        return (int) memory.byteSize();
+        final long byteSize = memory.byteSize();
+        return (int) byteSize;
     }
 
     @Override

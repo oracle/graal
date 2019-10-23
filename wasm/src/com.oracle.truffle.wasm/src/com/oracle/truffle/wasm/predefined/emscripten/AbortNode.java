@@ -44,7 +44,7 @@ public class AbortNode extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        final int code = (int) frame.getArguments()[0];
+        final int code = frame.getArguments().length > 0 ? (int) frame.getArguments()[0] : 0;
         throw fail(code);
     }
 

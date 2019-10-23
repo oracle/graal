@@ -95,6 +95,9 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         body.execute(context, frame);
 
         long returnValue = pop(frame, 0);
+        if (getCallTarget().toString().contains("wasm-function:6") && returnValue == 0x44c) {
+            System.err.println("culprit");
+        }
         switch (body.returnTypeId()) {
             case 0x00:
             case ValueTypes.VOID_TYPE:

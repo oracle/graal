@@ -419,6 +419,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // to resume after the instruction that invoked the current frame.
                     int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
                     unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
+                    if (getRootNode().getCallTarget().toString().contains("wasm-function:6") && pop(frame, 0) == 0x44C) {
+                        System.err.println("Got the return of the culprit.");
+                    }
                     logger.finest("return");
                     return Integer.MAX_VALUE;
                 }
@@ -947,9 +950,24 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             case I32_STORE: {
                                 stackPointer--;
                                 int value = popInt(frame, stackPointer);
+                                if (value == 0xffff8063) {
+                                    System.err.println("Found the first problematic store.");
+                                }
+                                if (value == 0xffff8064) {
+                                    System.err.println("Found the second problematic store.");
+                                }
                                 stackPointer--;
                                 int baseAddress = popInt(frame, stackPointer);
                                 int address = baseAddress + memOffset;
+                                if (address == 1028) {
+                                    System.err.println("modifying dlmalloc's gm->smallmap: " + value + "(0x" + Integer.toHexString(value) + ")");
+                                }
+                                if (address == 1036) {
+                                    System.err.println("modifying dlmalloc's gm->dvsize: " + value + "(0x" + Integer.toHexString(value) + ")");
+                                }
+                                if (address == 1040) {
+                                    System.err.println("modifying dlmalloc's gm->topsize: " + value + "(0x" + Integer.toHexString(value) + ")");
+                                }
                                 memory.validateAddress(address, 32);
                                 memory.store_i32(address, value);
                                 break;

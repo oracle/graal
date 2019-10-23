@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.wasm.binary.constants;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 public final class Instructions {
 
     public static final int UNREACHABLE = 0x00;
@@ -219,4 +222,41 @@ public final class Instructions {
     public static final int I64_REINTERPRET_F64 = 0xBD;
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
+
+    private static String[] decodingTable = new String[256];
+
+    static {
+        try {
+            for (Field f : Instructions.class.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers()) && f.getType().isPrimitive()) {
+                    int code = f.getInt(null);
+                    String representation = f.getName().toLowerCase();
+                    if (representation.startsWith("i32") || representation.startsWith("i64") ||
+                                    representation.startsWith("f32") || representation.startsWith("f64") ||
+                                    representation.startsWith("local") || representation.startsWith("global")) {
+                        representation = representation.replaceFirst("_", ".");
+                    }
+                    decodingTable[code] = representation;
+                }
+            }
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    static String rawDecode(byte[] instructions, int offset, int before, int after) {
+        StringBuilder result = new StringBuilder();
+        for (int i = offset - before; i <= offset + after; i++) {
+            if (i == offset) {
+                result.append("-> ");
+            } else {
+                result.append("   ");
+            }
+            final int opcode = Byte.toUnsignedInt(instructions[i]);
+            String representation = decodingTable[opcode];
+            result.append(String.format("%03d", opcode)).append(" ").append(representation).append("\n");
+        }
+        return result.toString();
+    }
 }

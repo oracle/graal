@@ -47,6 +47,7 @@ public class EmscriptenModule extends PredefinedModule {
         final WasmMemory memory = defineMemory(context, module, "memory", 32, 4096);
         defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null, memory));
         defineFunction(module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemory(language, null, memory));
+        defineFunction(module, "_abort", types(), types(), new AbortNode(language, null, memory));
         defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null, memory));
         defineFunction(module, "_emscripten_get_heap_size", types(), types(I32_TYPE), new EmscriptenGetHeapSize(language, null, memory));
         defineFunction(module, "_emscripten_resize_heap", types(I32_TYPE), types(I32_TYPE), new EmscriptenResizeHeap(language, null, memory));
@@ -60,7 +61,6 @@ public class EmscriptenModule extends PredefinedModule {
         defineFunction(module, "___syscall146", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("___syscall146", language, null, memory));
         defineFunction(module, "___syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("___syscall54", language, null, memory));
         defineFunction(module, "___syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("___syscall6", language, null, memory));
-        defineFunction(module, "_abort", types(), types(), new UnimplementedNode("_abort", language, null, memory));
         defineFunction(module, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, null, memory));
         defineGlobal(context, module, "__table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
         defineGlobal(context, module, "__memory_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
