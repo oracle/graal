@@ -24,7 +24,7 @@
 from argparse import ArgumentParser
 
 import mx
-import mx_sdk
+import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from mx_unittest import unittest
@@ -37,19 +37,22 @@ class EspressoDefaultTags:
     jackpot = 'jackpot'
     meta = 'meta'
 
-def _run_espresso(args):
 
-    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + args)
+def _espresso_command(args):
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    return (
+        vm_args
+        + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
+        + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
+    )
+
+
+def _run_espresso(args, cwd=None):
+    mx.run_java(_espresso_command(args), cwd=cwd)
+
 
 def _run_espresso_meta(args):
-
-    mx.run_java(mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
-                + [mx.distribution('ESPRESSO_LAUNCHER').mainClass]
-                + args)
+    mx.run_java(['-Xss5m'] + _espresso_command(_espresso_command(args)))
 
 
 def _run_espresso_playground(args):
@@ -83,20 +86,17 @@ def _espresso_gate_runner(args, tasks):
 #########################
 add_gate_runner(_suite, _espresso_gate_runner)
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Espresso',
     short_name='java',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=[
-        'espresso:ESPRESSO',
-    ],
-    support_distributions=[
-        'espresso:ESPRESSO_SUPPORT',
-    ],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['espresso:ESPRESSO'],
+    support_distributions=['espresso:ESPRESSO_SUPPORT'],
     launcher_configs=[
-        mx_sdk.LanguageLauncherConfig(
+        mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:espresso>',
             jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
             main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
@@ -105,6 +105,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         )
     ],
 ))
+
+mx_sdk_vm.register_vm_config('espresso.svm', ['cmp', 'java', 'nfi', 'sdk', 'svm', 'tfl', 'tflm'], _suite)
 
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
