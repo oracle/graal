@@ -823,13 +823,35 @@ class JDWP {
         static class STATUS {
             public static final int ID = 4;
 
+            public static final int JVMTI_THREAD_STATE_ALIVE = 0x0001;
+            public static final int JVMTI_THREAD_STATE_TERMINATED = 0x0002;
+            public static final int JVMTI_THREAD_STATE_RUNNABLE = 0x0004;
+            public static final int JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER = 0x0400;
+            public static final int JVMTI_THREAD_STATE_WAITING = 0x0080;
+            public static final int JVMTI_THREAD_STATE_WAITING_INDEFINITELY = 0x0010;
+            public static final int JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT = 0x0020;
+            public static final int JVMTI_THREAD_STATE_SLEEPING = 0x0040;
+            public static final int JVMTI_THREAD_STATE_IN_OBJECT_WAIT = 0x0100;
+            public static final int JVMTI_THREAD_STATE_PARKED = 0x0200;
+            public static final int JVMTI_THREAD_STATE_SUSPENDED = 0x100000;
+            public static final int JVMTI_THREAD_STATE_INTERRUPTED = 0x200000;
+            public static final int JVMTI_THREAD_STATE_IN_NATIVE = 0x400000;
+
+            public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK =
+                    JVMTI_THREAD_STATE_TERMINATED |
+                    JVMTI_THREAD_STATE_ALIVE |
+                    JVMTI_THREAD_STATE_RUNNABLE |
+                    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
+                    JVMTI_THREAD_STATE_WAITING |
+                    JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
+                    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
+
             static PacketStream createReply(Packet packet, EspressoContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
                 StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
-                int espressoThreadState = (int) context.getMeta().Thread_state.get(thread);
-                int threadStatus = getThreadStatus(espressoThreadState);
-                //System.out.println("thread state for thread " + thread + " is: " + threadStatus);
+                int jvmtiThreadStatus = (int) context.getMeta().Thread_threadStatus.get(thread);
+                int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(threadStatus);
                 //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread));
@@ -837,20 +859,29 @@ class JDWP {
                 return reply;
             }
 
-            private static int getThreadStatus(int espressoThreadState) {
-                switch (espressoThreadState) {
-                    case 0:
-                    case 4:
-                        return ThreadStatusConstants.RUNNING;
-                    case 16:
-                    case 32:
-                        return ThreadStatusConstants.WAIT;
-                    case 1024:
-                        return ThreadStatusConstants.MONITOR;
-                    case 2:
-                        return ThreadStatusConstants.ZOMBIE;
-                    default: return ThreadStatusConstants.ZOMBIE;
+            private static int getThreadStatus(int jvmtiThreadStatus) {
+                int masked = jvmtiThreadStatus & JVMTI_JAVA_LANG_THREAD_STATE_MASK;
+
+                if ((masked & JVMTI_THREAD_STATE_TERMINATED) != 0) {
+                    return ThreadStatusConstants.ZOMBIE;
                 }
+                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_RUNNABLE) != 0) {
+                    return ThreadStatusConstants.RUNNING;
+                }
+                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER) != 0) {
+                    return ThreadStatusConstants.WAIT;
+                }
+                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_WAITING | JVMTI_THREAD_STATE_WAITING_INDEFINITELY) != 0) {
+                    return ThreadStatusConstants.WAIT;
+                }
+                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_WAITING | JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT) != 0) {
+                    return ThreadStatusConstants.WAIT;
+                }
+                if (masked == 0) {
+                    // new threads are returned as running
+                    return ThreadStatusConstants.RUNNING;
+                }
+                return ThreadStatusConstants.RUNNING;
             }
         }
 
