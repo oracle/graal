@@ -105,11 +105,12 @@ class NativeImageVM(GraalVm):
             self.extra_run_args = []
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
-            self.extra_benchmark_name = []
-            self.extra_benchmark_dir = []
+            self.benchmark_name = None
+            self.benchmark_output_dir = None
             self.needs_config = True
             self.config_dir = None
             self.profile_dir = None
+            self.log_dir = None
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -129,13 +130,17 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, 'extra-run-arg', self.extra_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-agent-run-arg', self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-profile-run-arg', self.extra_profile_run_args)
-                    found |= add_to_list(trimmed_arg, 'extra-benchmark-name-arg', self.extra_benchmark_name)
-                    found |= add_to_list(trimmed_arg, 'extra-benchmark-files-dir', self.extra_benchmark_dir)
                     if trimmed_arg.startswith('needs-config='):
-                        self.needs_config = arg[len('needs-config='):] == 'true'
+                        self.needs_config = trimmed_arg[len('needs-config='):] == 'true'
                         found = True
                     if trimmed_arg.startswith('config-dir='):
-                        self.config_dir = arg[len('config-dir'):]
+                        self.config_dir = trimmed_arg[len('config-dir='):]
+                        found = True
+                    if trimmed_arg.startswith('benchmark-output-dir='):
+                        self.benchmark_output_dir = trimmed_arg[len('benchmark-output-dir='):]
+                        found = True
+                    if trimmed_arg.startswith('benchmark-name='):
+                        self.benchmark_name = trimmed_arg[len('benchmark-name='):]
                         found = True
                     if not found:
                         mx.abort("Invalid benchmark argument: " + arg)
@@ -152,13 +157,13 @@ class NativeImageVM(GraalVm):
         self.is_llvm = is_llvm
 
     @staticmethod
-    def supported_vm_args():
+    def supported_vm_arg_prefixes():
         """
             This list is intentionally restrictive. We want to be sure that what we add is correct on the case-by-case
             basis. In the future we can convert this from a failure into a warning.
             :return: a list of args supported by native image.
         """
-        return ['-D', '-Xmx', '-Xmn']
+        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC']
 
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
@@ -198,9 +203,9 @@ class NativeImageVM(GraalVm):
                 classpath_arguments += [vm_arg, vm_args[i + 1]]
                 i += 2
             else:
-                if not (vm_arg.startswith('-D') or vm_arg in NativeImageVM.supported_vm_args()):
+                if not any(vm_arg.startswith(elem) for elem in NativeImageVM.supported_vm_arg_prefixes()):
                     mx.abort('Unsupported argument ' + vm_arg + '.' +
-                             ' Currently supported argument prefixes are: ' + str(NativeImageVM.supported_vm_args()))
+                             ' Currently supported argument prefixes are: ' + str(NativeImageVM.supported_vm_arg_prefixes()))
                 image_vm_args.append(vm_arg)
                 i += 1
 
@@ -215,12 +220,14 @@ class NativeImageVM(GraalVm):
             config = NativeImageVM.BenchmarkConfig()
             original_java_run_args = config.parse(args)
             executable, classpath_arguments, system_properties, image_run_args = NativeImageVM.extract_benchmark_arguments(original_java_run_args)
-            executable_suffix = ('-' + config.extra_benchmark_name[0]) if config.extra_benchmark_name else ''
+            executable_suffix = ('-' + config.benchmark_name) if config.benchmark_name else ''
             executable_name = (os.path.splitext(os.path.basename(executable[1]))[0] + executable_suffix if executable[0] == '-jar' else executable[0] + executable_suffix).lower()
-            image_path = os.path.join(image_cwd, executable_name)
-            non_tmp_dir = os.path.abspath(config.extra_benchmark_dir[0]) if config.extra_benchmark_dir else None
-            config.profile_dir = mx.mkdtemp(suffix='profile-' + executable_name, prefix='native-image', dir=non_tmp_dir)
+            non_tmp_dir = os.path.abspath(config.benchmark_output_dir) if config.benchmark_output_dir else None
+            config.output_dir = mx.mkdtemp(suffix='bench-' + executable_name, prefix='native-image', dir=non_tmp_dir)
+            config.profile_dir = config.output_dir
+            config.log_dir = config.output_dir
             profile_path = os.path.join(config.profile_dir, executable_name + '.iprof')
+            image_path = os.path.join(config.output_dir, executable_name)
 
             # Agent configuration and/or HotSpot profiling
             needs_config = (config.config_dir is None) and config.needs_config
@@ -229,8 +236,7 @@ class NativeImageVM(GraalVm):
                 hotspot_run_args = []
 
                 if needs_config:
-                    config_dir_name = 'config-' + executable_name
-                    config.config_dir = mx.mkdtemp(suffix=config_dir_name, prefix='native-image', dir=non_tmp_dir)
+                    config.config_dir = os.path.join(config.output_dir, 'config')
                     hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
                 if self.hotspot_pgo:
@@ -242,11 +248,16 @@ class NativeImageVM(GraalVm):
                     hotspot_run_args += image_run_args
 
                 hotspot_args = hotspot_vm_args + classpath_arguments + executable + system_properties + hotspot_run_args
-
-                mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while:')
-                exit_code = super(NativeImageVM, self).run_java(hotspot_args,
-                                                    out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-                mx.log("Hotspot run finished with exit code " + str(exit_code) + ".")
+                hs_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stdout.log'))
+                hs_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-hot-spot-stderr.log'))
+                with open(hs_stdout_path, 'a') as hs_stdout, open(hs_stderr_path, 'a') as hs_stderr:
+                    mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while...')
+                    mx.log('Command: ' + ' '.join(['java'] + hotspot_args))
+                    mx.log('The standard output saved to ' + hs_stdout_path)
+                    mx.log('The standard error saved to ' + hs_stderr_path)
+                    exit_code = super(NativeImageVM, self).run_java(
+                        hotspot_args, out=hs_stdout.write, err=hs_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                    mx.log("Hotspot run finished with exit code " + str(exit_code) + ".")
 
             base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             base_image_build_args += ['--no-fallback']
@@ -254,7 +265,7 @@ class NativeImageVM(GraalVm):
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
             base_image_build_args += executable
-            base_image_build_args += ['-H:Name=' + executable_name, '-H:Path=' + image_cwd]
+            base_image_build_args += ['-H:Name=' + executable_name, '-H:Path=' + config.output_dir]
             if needs_config:
                 base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
             if self.is_llvm:
@@ -279,7 +290,13 @@ class NativeImageVM(GraalVm):
 
                 mx.log('Running the instrumented image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-                mx.run(image_run_cmd, out=out, err=err, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
+                inst_stdout_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stdout.log'))
+                inst_stderr_path = os.path.abspath(os.path.join(config.log_dir, executable_name + '-instrument-' + str(i) + '-stderr.log'))
+                with open(inst_stdout_path, 'a') as inst_stdout, open(inst_stderr_path, 'a') as inst_stderr:
+                    mx.log('The standard output saved to ' + inst_stdout_path)
+                    mx.log('The standard error saved to ' + inst_stderr_path)
+                    mx.run(image_run_cmd, out=inst_stdout.write,
+                           err=inst_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
 
                 i += 1
 
