@@ -241,6 +241,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -277,6 +278,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
@@ -327,6 +329,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     private final BytecodeStream bs;
 
+    private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
+
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
         super(method);
@@ -334,7 +338,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         this.bs = new BytecodeStream(method.getCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
         this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
-        this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
+        this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize() + method.usesMonitors());
         this.SOEinfo = getMethod().getSOEHandlerInfo();
     }
 
@@ -386,6 +390,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             // @formatter:on
             // Checkstyle: resume
             n += expectedkind.getSlotCount();
+        }
+        if (getMethod().usesMonitors() > 0) {
+            frame.setObject(stackSlots[monitorSlot()], new MonitorStack());
         }
     }
 
@@ -907,8 +914,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                         case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
-                        case MONITORENTER: InterpreterToVM.monitorEnter(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
-                        case MONITOREXIT: InterpreterToVM.monitorExit(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                        case MONITORENTER: monitorEnter(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                        case MONITOREXIT: monitorExit(frame, nullCheck(peekAndReleaseObject(frame, top - 1))); break;
 
                         case WIDE:
                             CompilerAsserts.neverPartOfCompilation();
@@ -1030,7 +1037,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                     }
                     putObject(frame, 0, e.getException());
                     top++;
-                    curBCI = handler.getHandlerBCI();
+                    int targetBCI = handler.getHandlerBCI();
+                    checkBackEdge(curBCI, targetBCI, top, NOP);
+                    curBCI = targetBCI;
                     if (DEBUG_CATCH) {
                         reportCatch(e, curBCI, this);
                     }
@@ -1073,11 +1082,89 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                     reportVMError(e, curBCI, this);
                     throw new EspressoException(ex);
                 }
+            } catch (EspressoExitException e) {
+                if (getMethod().usesMonitors() > 0) {
+                    getMonitorStack(frame).abort();
+                }
+                throw e;
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = bs.nextBCI(curBCI);
         }
+    }
 
+    private void monitorExit(VirtualFrame frame, StaticObject monitor) {
+        unregisterMonitor(frame, monitor);
+        InterpreterToVM.monitorExit(monitor);
+    }
+
+    private void unregisterMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).exit(monitor, this);
+    }
+
+    private void monitorEnter(VirtualFrame frame, StaticObject monitor) {
+        registerMonitor(frame, monitor);
+        InterpreterToVM.monitorEnter(monitor);
+    }
+
+    private void registerMonitor(VirtualFrame frame, StaticObject monitor) {
+        getMonitorStack(frame).enter(monitor);
+    }
+
+    private int monitorSlot() {
+        return getMethod().getMaxStackSize();
+    }
+
+    private MonitorStack getMonitorStack(VirtualFrame frame) {
+        Object frameResult = FrameUtil.getObjectSafe(frame, stackSlots[monitorSlot()]);
+        assert frameResult instanceof MonitorStack;
+        return (MonitorStack) frameResult;
+    }
+
+    private static class MonitorStack {
+        private static int DEFAULT_CAPACITY = 4;
+
+        private StaticObject[] monitors = new StaticObject[DEFAULT_CAPACITY];
+        private int top = 0;
+        private int capacity = DEFAULT_CAPACITY;
+
+        private void enter(StaticObject monitor) {
+            if (top >= capacity) {
+                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+            }
+            monitors[top++] = monitor;
+        }
+
+        private void exit(StaticObject monitor, BytecodeNode node) {
+            Object topMonitor = monitors[top - 1];
+            if (monitor == topMonitor) {
+                // Balanced locking: simply pop.
+                monitors[--top] = null;
+            } else {
+                node.unbalancedMonitorProfile.enter();
+                // Unbalanced locking: do the linear search.
+                int i = top - 1;
+                for (; i >= 0; i--) {
+                    if (monitors[i] == monitor) {
+                        System.arraycopy(monitors, i + 1, monitors, i, top - 1 - i);
+                        monitors[--top] = null;
+                        return;
+                    }
+                }
+                // monitor not found. Not against the specs.
+            }
+        }
+
+        private void abort() {
+            for (int i = 0; i < top; i++) {
+                StaticObject monitor = monitors[i];
+                try {
+                    InterpreterToVM.monitorExit(monitor);
+                } catch (Throwable e) {
+                    /* ignore */
+                }
+            }
+        }
     }
 
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
@@ -1112,12 +1199,21 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
         int newTop = top + Bytecodes.stackEffectOf(opCode);
-        if (targetBCI < curBCI) {
+        if (targetBCI <= curBCI) {
+            checkStopping(curBCI, targetBCI);
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
             }
         }
         return newTop;
+    }
+
+    private void checkStopping(int curBCI, int targetBCI) {
+        if (getContext().shouldCheckDeprecationStatus()) {
+            if (targetBCI <= curBCI) {
+                Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
+            }
+        }
     }
 
     @TruffleBoundary

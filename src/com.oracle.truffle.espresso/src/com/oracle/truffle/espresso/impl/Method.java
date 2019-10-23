@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITORENTER;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
@@ -119,6 +121,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // Multiple maximally-specific interface methods. Fail on call.
     @CompilationFinal private boolean poisonPill = false;
+
+    // Whether we need to use an additional frame slot for monitor unlock on kill.
+    @CompilationFinal private byte usesMonitors = -1;
 
     // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
@@ -398,7 +403,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         if (codeAttribute == null) {
                             throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
-                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize() + usesMonitors());
                         EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
@@ -407,6 +412,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         return callTarget;
+    }
+
+    public byte usesMonitors() {
+        if (codeAttribute != null) {
+            if (usesMonitors != -1) {
+                return usesMonitors;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            BytecodeStream bs = new BytecodeStream(codeAttribute.getCode());
+            int bci = 0;
+            while (bci < bs.endBCI()) {
+                int opcode = bs.currentBC(bci);
+                if (opcode == MONITORENTER || opcode == MONITOREXIT) {
+                    usesMonitors = 1;
+                    return usesMonitors;
+                }
+                bci = bs.nextBCI(bci);
+            }
+            usesMonitors = 0;
+            return usesMonitors;
+        }
+        return 0;
     }
 
     public static FrameDescriptor initFrameDescriptor(int slotCount) {
