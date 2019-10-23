@@ -89,4 +89,42 @@ public class TruffleJDKServices {
             module.addUses(service);
         }
     }
+
+    public static Object getUnnamedModule(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return null;
+        }
+        return classLoader.getUnnamedModule();
+    }
+
+    public static boolean verifyModuleVisibility(Object module, Class<?> memberClass) {
+        Module lookupModule = (Module) module;
+        assert lookupModule != null;
+        if (lookupModule == null) {
+            return true;
+        }
+        Module memberModule = memberClass.getModule();
+        if (lookupModule == memberModule) {
+            return true;
+        } else {
+            String pkg = memberClass.getPackageName();
+            if (lookupModule.isNamed()) {
+                if (memberModule.isNamed()) {
+                    // both modules are named. check whether they are exported.
+                    return memberModule.isExported(pkg, lookupModule);
+                } else {
+                    // no access from named modules to unnamed modules
+                    return false;
+                }
+            } else {
+                if (memberModule.isNamed()) {
+                    // unnamed modules see all exported packages
+                    return memberModule.isExported(pkg);
+                } else {
+                    // full access from unnamed modules to unnamed modules
+                    return true;
+                }
+            }
+        }
+    }
 }
