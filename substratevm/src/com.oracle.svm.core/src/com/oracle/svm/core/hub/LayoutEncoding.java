@@ -47,8 +47,8 @@ public class LayoutEncoding {
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
     private static final int ARRAY_INDEX_SHIFT_MASK = 255;
     private static final int ARRAY_BASE_SHIFT = 8 + ARRAY_INDEX_SHIFT_SHIFT;
-    private static final int ARRAY_BASE_MASK = 255;
     private static final int ARRAY_TAG_BITS = 2;
+    private static final int ARRAY_BASE_MASK = (1 << (Integer.SIZE - ARRAY_TAG_BITS - ARRAY_BASE_SHIFT)) - 1;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
     private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00; // 0xC0000000 >> 30
     private static final int ARRAY_TAG_OBJECT_VALUE = ~0x01; // 0x80000000 >> 30
