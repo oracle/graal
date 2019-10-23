@@ -179,6 +179,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
+    protected boolean patchContext(LLVMContext context, Env newEnv) {
+        boolean compatible = Configurations.areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions());
+        if (!compatible) {
+            return false;
+        }
+        return context.patchContext(newEnv);
+    }
+
+    @Override
     protected void finalizeContext(LLVMContext context) {
         context.finalizeContext();
     }
