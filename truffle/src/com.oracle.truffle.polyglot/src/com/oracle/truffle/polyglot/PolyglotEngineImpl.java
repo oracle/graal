@@ -746,10 +746,20 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    void addContext(PolyglotContextImpl context) {
+    synchronized void addContext(PolyglotContextImpl context) {
+        if (limits != null) {
+            limits.validate(context.config.limits);
+        }
         workContextReferenceQueue();
-        assert Thread.holdsLock(this);
         contexts.add(context.weakReference);
+
+        if (context.config.limits != null) {
+            EngineLimits l = limits;
+            if (l == null) {
+                limits = l = new EngineLimits(this);
+            }
+            l.initialize(context.config.limits, context);
+        }
     }
 
     synchronized void removeContext(PolyglotContextImpl context) {
@@ -1355,26 +1365,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         if (context == null) {
             context = new PolyglotContextImpl(this, config);
         }
+        Context api = impl.getAPIAccess().newContext(context);
+        context.creatorApi = api;
+        context.currentApi = impl.getAPIAccess().newContext(context);
+
+        // the engine might be a different one after preinitialization.
         PolyglotEngineImpl engine = context.getEngine();
-        synchronized (engine) {
-            if (engine.limits != null) {
-                engine.limits.validate(polyglotLimits);
-            }
-            engine.addContext(context);
-
-            if (polyglotLimits != null) {
-                EngineLimits l = engine.limits;
-                if (l == null) {
-                    engine.limits = l = new EngineLimits(engine);
-                }
-                l.initialize(polyglotLimits, context);
-            }
-
-            Context api = engine.impl.getAPIAccess().newContext(context);
-            context.creatorApi = api;
-            context.currentApi = engine.impl.getAPIAccess().newContext(context);
-            return api;
-        }
+        engine.addContext(context);
+        return api;
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
