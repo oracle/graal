@@ -95,8 +95,8 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
   ]
 }
 
-bench-scala-dacapo-all-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
-  setup: ${bench-scala-dacapo.setup} ${hwloc.scala.bench-common.setup}
+bench-scala-dacapo-all-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common} {
+  setup: ${bench-scala-dacapo.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -123,8 +123,8 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.benc
   ]
 }
 
-bench-scala-dacapo-all-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.bench-common} {
-  setup: ${bench-scala-dacapo-timing.setup} ${hwloc.scala.bench-common.setup}
+bench-scala-dacapo-all-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-common} {
+  setup: ${bench-scala-dacapo-timing.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
