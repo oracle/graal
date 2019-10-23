@@ -27,7 +27,7 @@ Use
 
 for brief help.
 
-Alternatively, you can download a component package from the catalog.
+Alternatively, you can download a component package from the [component catalog](https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties).
 With the already downloaded component JAR file, the component can be installed as
 
 >`gu -L install component.jar`
