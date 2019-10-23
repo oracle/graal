@@ -40,8 +40,8 @@ import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
-    int PAGE_SIZE = 1 << 16;
-    int LONG_SIZE = 8;
+    static final int PAGE_SIZE = 1 << 16;
+    static final int LONG_SIZE = 8;
 
     public abstract void validateAddress(long address, int size);
 
@@ -202,10 +202,10 @@ public abstract class WasmMemory implements TruffleObject {
     }
 
     @ExportMessage
-    public void writeArrayElement(long index, Object value) throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (!isArrayElementReadable(index)) {
+    public void writeArrayElement(long index64, Object value) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (!isArrayElementReadable(index64)) {
             transferToInterpreter();
-            throw InvalidArrayIndexException.create(index);
+            throw InvalidArrayIndexException.create(index64);
         }
         long rawValue;
         if (value instanceof Integer || value instanceof Long) {
@@ -217,7 +217,7 @@ public abstract class WasmMemory implements TruffleObject {
         } else {
             throw UnsupportedMessageException.create();
         }
-        long address = index * LONG_SIZE;
+        long address = index64 * LONG_SIZE;
         store_i64(address, rawValue);
     }
 }
