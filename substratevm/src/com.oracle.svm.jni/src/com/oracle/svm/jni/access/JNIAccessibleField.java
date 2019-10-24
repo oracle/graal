@@ -59,7 +59,9 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * {@link StaticFieldsSupport#getStaticObjectFields()}.
      */
     public static WordBase getOffsetFromId(JNIFieldId id) {
-        return ((UnsignedWord) id).and(ID_OFFSET_MASK);
+        UnsignedWord result = ((UnsignedWord) id).and(ID_OFFSET_MASK);
+        assert result.notEqual(0);
+        return result;
     }
 
     private final String name;
