@@ -73,12 +73,8 @@ public final class GraalVMLocator extends TruffleLocator
         Path homePath = homeFinder.getHomeFolder();
         if (homePath != null) {
             String home = homePath.toString();
-            if (System.getProperty("graalvm.home") == null) {
-                // automatically set graalvm.home
-                System.setProperty("graalvm.home", home);
-            }
             if (System.getProperty("org.graalvm.home") == null) {
-                // automatically set graalvm.home
+                // automatically set org.graalvm.home
                 System.setProperty("org.graalvm.home", home);
             }
         }
