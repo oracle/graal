@@ -38,7 +38,7 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.jtt.JTTTest;
-import org.graalvm.compiler.test.ExportingClassLoader;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.test;
+package org.graalvm.compiler.api.test;
 
 import java.io.IOException;
 import java.lang.module.ModuleDescriptor.Requires;
