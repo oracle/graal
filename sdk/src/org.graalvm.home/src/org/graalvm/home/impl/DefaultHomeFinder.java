@@ -113,22 +113,8 @@ public final class DefaultHomeFinder extends HomeFinder {
         }
     }
 
-    private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
-    private static final String GRAALVM_VERSION;
-    static {
-        String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
-        String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (version != null && altVersion == null) {
-            GRAALVM_VERSION = version;
-        } else if (altVersion != null && version == null) {
-            GRAALVM_VERSION = altVersion;
-        } else if (version != null && version.equals(altVersion)) {
-            GRAALVM_VERSION = version;
-        } else {
-            GRAALVM_VERSION = null;
-        }
-    }
+    private static final String GRAALVM_VERSION = System.getProperty(GRAALVM_VERSION_PROPERTY);
 
     private volatile Boolean verbose;
     private volatile Path graalHome;
