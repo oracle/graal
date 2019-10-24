@@ -128,8 +128,10 @@ public abstract class WasmBenchmarkSuiteBase {
             // Validate result.
             WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
 
-            // Reset context and zero out memory.
-            resetContext.execute(true);
+            // Note: we deliberately not reset the context here.
+            // It would be slow, and the invariant we expect from the benchmarks
+            // is that they can handle VM-state side-effects.
+            // We may support benchmark-specific teardown actions in the future (at the invocation level).
         }
 
         @Setup(Level.Invocation)
