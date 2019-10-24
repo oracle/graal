@@ -963,7 +963,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             build_args=[],
             language='llvm',
         ),
-    ] + _suite.toolchain.get_launcher_configs()
+    ] + _suite.toolchain.get_launcher_configs(),
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
