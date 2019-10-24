@@ -29,9 +29,10 @@ download-hsdis : {
   ]
 }
 
-oraclejdk8 :        { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
-oraclejdk8Only :    { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
-oraclejdk8Debug :   { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8 :          { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8Only :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
+oraclejdk8Debug :     { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
