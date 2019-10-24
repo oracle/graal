@@ -20,24 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.debugger.exception.NoSuchSourceLineException;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 
 public class SourceLocation {
 
     private final int lineNumber;
-    private final EspressoContext context;
-    private final Symbol<Type> type;
+    private final JDWPContext context;
+    private final String slashName;
 
-    public SourceLocation(Symbol<Type> type, int lineNumber, EspressoContext context) {
+    public SourceLocation(String slashName, int lineNumber, JDWPContext context) {
         this.lineNumber = lineNumber;
         this.context = context;
-        this.type = type;
+        this.slashName = slashName;
     }
 
     public int getLineNumber() {
@@ -45,15 +42,11 @@ public class SourceLocation {
     }
 
     public Source getSource() throws NoSuchSourceLineException {
-        return new SourceLocator(context).lookupSource(type, lineNumber);
+        return new SourceLocator(context).lookupSource(slashName, lineNumber);
     }
 
     @Override
     public String toString() {
-        return "Location: " + type.toString() + ":" + lineNumber;
-    }
-
-    public Symbol<Type> getType() {
-        return type;
+        return "Location: " + slashName + ":" + lineNumber;
     }
 }

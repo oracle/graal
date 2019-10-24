@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.regex.Pattern;
 
@@ -31,7 +31,7 @@ public class RequestFilter {
     private final int requestId;
     private final byte eventKind;
     private Pattern[] classExcludePatterns;
-    private Klass[] refTypePatterns;
+    private klassRef[] klassRefPatterns;
     private int nextIndex;
     private boolean stepping;
     private int eventLimit = Integer.MAX_VALUE;
@@ -40,7 +40,7 @@ public class RequestFilter {
         this.requestId = requestId;
         this.eventKind = eventKind;
         this.classExcludePatterns = new Pattern[modifiers];
-        this.refTypePatterns = new Klass[modifiers];
+        this.klassRefPatterns = new klassRef[modifiers];
     }
 
     public int getRequestId() {
@@ -64,19 +64,19 @@ public class RequestFilter {
         return stepping;
     }
 
-    public void addRefTypeLimit(Klass refType) {
-        refTypePatterns[nextIndex] = refType;
+    public void addRefTypeLimit(klassRef klassRef) {
+        klassRefPatterns[nextIndex] = klassRef;
         nextIndex++;
     }
 
-    public Klass[] getRefTypePatterns() {
-        return refTypePatterns;
+    public klassRef[] getKlassRefPatterns() {
+        return klassRefPatterns;
     }
 
-    public boolean isKlassExcluded(Klass klass) {
+    public boolean isKlassExcluded(klassRef klass) {
         for (Pattern pattern : classExcludePatterns) {
             if (pattern != null) {
-                if (pattern.matcher(klass.getName().toString()).matches()) {
+                if (pattern.matcher(klass.getNameAsString()).matches()) {
                     return true;
                 }
             }

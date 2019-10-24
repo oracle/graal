@@ -23,11 +23,8 @@
 package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.debugger.BreakpointInfo;
-import com.oracle.truffle.espresso.debugger.SuspendStrategy;
-import com.oracle.truffle.espresso.debugger.VMEventListener;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,13 +33,17 @@ import java.util.regex.Matcher;
 public class VMEventListenerImpl implements VMEventListener {
 
     private final SocketConnection connection;
+    private final Ids ids;
+    private final JDWPContext context;
     private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private int threadStartedRequestId;
     private int threadDeathRequestId;
 
-    public VMEventListenerImpl(SocketConnection connection) {
+    public VMEventListenerImpl(SocketConnection connection, JDWPContext context) {
         this.connection = connection;
+        this.ids = context.getIds();
+        this.context = context;
     }
 
     @Override
@@ -68,12 +69,15 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void classPrepared(ObjectKlass klass, StaticObject currentThread) {
+    public void classPrepared(klassRef klass, Thread currentThread) {
+        // we will get the host thread, so convert to guest thread
+        Object guestThread = context.getHost2GuestThread(currentThread);
+
         // prepare the event and ship
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         // check if event should be reported based on the current patterns
-        String dotName = klass.getName().toString().replace('/', '.');
+        String dotName = klass.getNameAsString().replace('/', '.');
         boolean send = false;
         Iterator<ClassPrepareRequest> it = classPrepareRequests.values().iterator();
         ClassPrepareRequest request = null;
@@ -91,11 +95,11 @@ public class VMEventListenerImpl implements VMEventListener {
             stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
             stream.writeInt(request.getRequestId());
 
-            stream.writeLong(Ids.getIdAsLong(currentThread));
+            stream.writeLong(ids.getIdAsLong(guestThread));
             stream.writeByte(TypeTag.CLASS);
-            stream.writeLong(Ids.getIdAsLong(klass));
-            stream.writeString(klass.getType().toString());
-            stream.writeInt(klass.getState()); // class status
+            stream.writeLong(ids.getIdAsLong(klass));
+            stream.writeString(klass.getTypeAsString());
+            stream.writeInt(klass.getStatus()); // class status
             connection.queuePacket(stream);
             // give the debugger a little time to send breakpoint requests
             try {
@@ -107,7 +111,7 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void breakpointHIt(BreakpointInfo info, StaticObject currentThread) {
+    public void breakpointHIt(BreakpointInfo info, Object currentThread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(SuspendStrategy.EVENT_THREAD); // TODO(Gregersen) - implemented suspend policies
@@ -115,7 +119,7 @@ public class VMEventListenerImpl implements VMEventListener {
 
         stream.writeByte(RequestedJDWPEvents.BREAKPOINT);
         stream.writeInt(info.getRequestId());
-        long threadId = Ids.getIdAsLong(currentThread);
+        long threadId = ids.getIdAsLong(currentThread);
         stream.writeLong(threadId);
 
         // location
@@ -123,7 +127,6 @@ public class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(info.getClassId());
         stream.writeLong(info.getMethodId());
         stream.writeLong(info.getBci());
-        //System.out.println("sending BP hit at index: " + info.getBci());
         connection.queuePacket(stream);
     }
 
@@ -148,30 +151,30 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void classUnloaded(ObjectKlass klass) {
+    public void classUnloaded(klassRef klass) {
         // TODO(Gregersen) - not implemented yet
     }
 
     @Override
-    public void threadStarted(StaticObject thread) {
+    public void threadStarted(Object thread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(SuspendStrategy.NONE);
         stream.writeInt(1); // # events in reply
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
-        stream.writeLong(Ids.getIdAsLong(thread));
+        stream.writeLong(ids.getIdAsLong(thread));
         //System.out.println("Thread: " + thread + " started with ID: " + Ids.getIdAsLong(thread) + " based on request: " + threadStartedRequestId) ;
         connection.queuePacket(stream);
     }
 
     @Override
-    public void threadDied(StaticObject thread) {
+    public void threadDied(Object thread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(SuspendStrategy.NONE);
         stream.writeInt(1); // # events in reply
         stream.writeByte(RequestedJDWPEvents.THREAD_DEATH);
         stream.writeInt(threadDeathRequestId);
-        stream.writeLong(Ids.getIdAsLong(thread));
+        stream.writeLong(ids.getIdAsLong(thread));
         connection.queuePacket(stream);
     }
 

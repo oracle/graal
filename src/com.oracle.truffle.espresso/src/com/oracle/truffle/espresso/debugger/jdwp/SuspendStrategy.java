@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 public class SuspendStrategy {
     public static final byte NONE = 0;

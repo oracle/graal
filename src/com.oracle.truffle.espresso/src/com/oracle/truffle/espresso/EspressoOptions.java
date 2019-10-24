@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.truffle.espresso.debugger.api.JDWPOptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -144,30 +145,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
 
-    public static class JDWPOptions {
-        public final String transport;
-        public final String address;
-        public final boolean server;
-        public final boolean suspend;
-
-        JDWPOptions(String transport, String address, boolean server, boolean suspend) {
-            this.transport = transport;
-            this.address = address;
-            this.server = server;
-            this.suspend = suspend;
-        }
-
-        @Override
-        public String toString() {
-            return "JDWPOptions{" +
-                            "transport=" + transport + "," +
-                            "address=" + address + "," +
-                            "server=" + server + "," +
-                            "suspend=" + suspend + "}";
-        }
-    }
-
-    private static final OptionType<JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
+    private static final OptionType<com.oracle.truffle.espresso.debugger.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 
                         private boolean yesOrNo(String key, String value) {

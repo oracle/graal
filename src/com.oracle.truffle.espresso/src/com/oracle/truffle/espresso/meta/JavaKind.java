@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.espresso.debugger.jdwp.TagConstants;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -509,5 +510,20 @@ public enum JavaKind {
 
     public boolean isStackInt() {
         return isStackInt;
+    }
+
+    public byte toTagConstant() {
+        switch (this) {
+            case Boolean: return TagConstants.BOOLEAN;
+            case Byte: return TagConstants.BYTE;
+            case Short: return TagConstants.SHORT;
+            case Char: return TagConstants.CHAR;
+            case Int: return TagConstants.INT;
+            case Float: return TagConstants.FLOAT;
+            case Long: return TagConstants.LONG;
+            case Double: return TagConstants.DOUBLE;
+            case Object: return TagConstants.OBJECT;
+            default: return -1;
+        }
     }
 }

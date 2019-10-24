@@ -22,17 +22,16 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class SuspendedInfo {
 
     private SuspendedEvent event;
     private int suspendStrategy;
     private JDWPCallFrame[] stackFrames;
-    private StaticObject thread;
+    private Object thread;
     private DebuggerCommand.Kind stepKind;
 
-    SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, StaticObject thread) {
+    SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, Object thread) {
         this.event = event;
         this.suspendStrategy = strategy;
         this.stackFrames = stackFrames;
@@ -51,7 +50,7 @@ public class SuspendedInfo {
         return stackFrames;
     }
 
-    public StaticObject getThread() {
+    public Object getThread() {
         return thread;
     }
 

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.Utf8Constant;
+import com.oracle.truffle.espresso.debugger.api.LocalRef;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -32,7 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 /**
  * Describes the type and bytecode index range in which a local variable is live.
  */
-public final class Local {
+public final class Local implements LocalRef {
 
     public static final Local[] EMPTY_ARRAY = new Local[0];
 
@@ -87,5 +88,15 @@ public final class Local {
     @Override
     public String toString() {
         return "LocalImpl<name=" + name + ", type=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
+    }
+
+    @Override
+    public String getNameAsString() {
+        return name.toString();
+    }
+
+    @Override
+    public String getTypeAsString() {
+        return type.toString();
     }
 }

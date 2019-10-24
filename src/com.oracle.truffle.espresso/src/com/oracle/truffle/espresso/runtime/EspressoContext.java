@@ -35,9 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.debugger.VMEventListeners;
-import com.oracle.truffle.espresso.debugger.jdwp.JDWPDebuggerController;
-import com.oracle.truffle.espresso.debugger.jdwp.JDWPInstrument;
+import com.oracle.truffle.espresso.debugger.jdwp.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 
@@ -184,18 +182,10 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        jdwpInit();
+        new JDWPContextImpl(this, getEnv(), getLanguage()).jdwpInit();
         spawnVM();
         this.initialized = true;
         VMInitializedListeners.getDefault().fire();
-    }
-
-    private void jdwpInit() {
-        // enable JDWP instrumenter only if options are set (assumed valid if non-null)
-        if (JDWPOptions != null) {
-            JDWPDebuggerController controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
-            controller.initialize(JDWPOptions, this);
-        }
     }
 
     public Source findOrCreateSource(Method method) {
@@ -443,7 +433,7 @@ public final class EspressoContext {
 
     public final boolean InlineFieldAccessors;
     public final EspressoOptions.VerifyMode Verify;
-    public final EspressoOptions.JDWPOptions JDWPOptions;
+    public final com.oracle.truffle.espresso.debugger.api.JDWPOptions JDWPOptions;
 
     // endregion Options
 }

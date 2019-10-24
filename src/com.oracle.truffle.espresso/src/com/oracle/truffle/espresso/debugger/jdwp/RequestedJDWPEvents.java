@@ -22,11 +22,9 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.BreakpointInfo;
-import com.oracle.truffle.espresso.debugger.VMEventListener;
-import com.oracle.truffle.espresso.debugger.VMEventListeners;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
+import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.regex.Pattern;
 
@@ -58,11 +56,13 @@ public class RequestedJDWPEvents {
 
     private final SocketConnection connection;
     private final VMEventListener eventListener;
+    private final Ids ids;
 
-    RequestedJDWPEvents(SocketConnection connection) {
+    RequestedJDWPEvents(SocketConnection connection, JDWPContext context) {
         this.connection = connection;
-        eventListener = new VMEventListenerImpl(connection);
+        eventListener = new VMEventListenerImpl(connection, context);
         VMEventListeners.getDefault().registerListener(eventListener);
+        this.ids = context.getIds();
     }
 
     public PacketStream registerEvent(Packet packet, JDWPCommands callback) {
@@ -129,7 +129,7 @@ public class RequestedJDWPEvents {
                 break;
             case 4:
                 long refTypeId = stream.readLong();
-                filter.addRefTypeLimit((Klass) Ids.fromId((int) refTypeId));
+                filter.addRefTypeLimit((klassRef) ids.fromId((int) refTypeId));
                 break;
             case 5: // class prepare positive pattern
                 String classPattern = stream.readString();
@@ -146,9 +146,9 @@ public class RequestedJDWPEvents {
                 long bci = stream.readLong();
                 BreakpointInfo info = new BreakpointInfo(filter.getRequestId(), typeTag, classId, methodId, bci);
 
-                Klass klass = (Klass) Ids.fromId((int) classId);
-                String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(klass.getType().toString());
-                Method method = (Method) Ids.fromId((int) methodId);
+                klassRef klass = (klassRef) ids.fromId((int) classId);
+                String slashName = klass.getTypeAsString();
+                MethodRef method = (MethodRef) ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
                 callback.createLineBreakpointCommand(slashName, line, suspendPolicy, info);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);

@@ -22,30 +22,25 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Local;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.debugger.api.FieldRef;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
+import com.oracle.truffle.espresso.debugger.api.JDWPVirtualMachine;
+import com.oracle.truffle.espresso.debugger.api.LineNumberTableRef;
+import com.oracle.truffle.espresso.debugger.api.LocalRef;
+import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.oracle.truffle.espresso.debugger.jdwp.TagConstants.BOOLEAN;
 
 class JDWP {
 
     public static Object suspendStartupLock = new Object();
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
+    public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
     static class VirtualMachine {
         public static final int ID = 1;
@@ -53,13 +48,13 @@ class JDWP {
         static class VERSION {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPVirtualMachine vm) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeString(EspressoVirtualMachine.VM_Description);
+                reply.writeString(vm.getVmDescription());
                 reply.writeInt(1);
                 reply.writeInt(6);
-                reply.writeString(EspressoVirtualMachine.vmVersion);
-                reply.writeString(EspressoVirtualMachine.vmName);
+                reply.writeString(vm.getVmVersion());
+                reply.writeString(vm.getVmName());
                 return reply;
             }
         }
@@ -67,26 +62,20 @@ class JDWP {
         static class CLASSES_BY_SIGNATURE {
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 // get the requested classes
                 PacketStream input = new PacketStream(packet);
                 String signature = input.readString();
                 String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(signature);
-                Symbol<Symbol.Type> type = controller.getContext().getTypes().fromClassGetName(slashName);
-                Klass[] loaded = controller.getContext().getRegistries().findLoadedClassAny(type);
+                klassRef[] loaded = context.findLoadedClass(slashName);
+
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(loaded.length);
-                for (Klass klass : loaded) {
+                for (klassRef klass : loaded) {
                     reply.writeByte(TypeTag.getKind(klass));
-                    reply.writeLong(Ids.getIdAsLong(klass));
-                    if (klass instanceof ObjectKlass) {
-                        ObjectKlass objectKlass = (ObjectKlass) klass;
-                        reply.writeInt(ClassStatusConstants.fromEspressoStatus(objectKlass.getState()));
-                    } else {
-                        reply.writeInt(ClassStatusConstants.fromEspressoStatus(ObjectKlass.INITIALIZED));
-                    }
+                    reply.writeLong(context.getIds().getIdAsLong(klass));
+                    reply.writeInt(klass.getStatus());
                 }
-
                 return reply;
             }
         }
@@ -94,12 +83,12 @@ class JDWP {
         static class ALL_THREADS {
             public static final int ID = 4;
 
-            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject[] allThreads = controller.getContext().getAllGuestThreads();
+                Object[] allThreads = context.getAllGuestThreads();
                 reply.writeInt(allThreads.length);
-                for (StaticObject t : allThreads) {
-                    reply.writeLong(Ids.getIdAsLong(t));
+                for (Object t : allThreads) {
+                    reply.writeLong(context.getIds().getIdAsLong(t));
                 }
                 return reply;
             }
@@ -108,13 +97,13 @@ class JDWP {
         static class IDSIZES {
             public static final int ID = 7;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPVirtualMachine vm) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeInt(EspressoVirtualMachine.sizeofFieldRef);
-                reply.writeInt(EspressoVirtualMachine.sizeofMethodRef);
-                reply.writeInt(EspressoVirtualMachine.sizeofObjectRef);
-                reply.writeInt(EspressoVirtualMachine.sizeofClassRef);
-                reply.writeInt(EspressoVirtualMachine.sizeofFrameRef);
+                reply.writeInt(vm.getSizeOfFieldRef());
+                reply.writeInt(vm.getSizeOfMethodRef());
+                reply.writeInt(vm.getSizeofObjectRefRef());
+                reply.writeInt(vm.getSizeOfClassRef());
+                reply.writeInt(vm.getSizeOfFrameRef());
                 return reply;
             }
         }
@@ -132,14 +121,14 @@ class JDWP {
         static class CREATE_STRING {
             public static final int ID = 11;
 
-            static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 String utf = input.readString();
                 // we must create a new StaticObject instance representing the String
-                Meta meta = controller.getContext().getMeta();
-                StaticObject createdString = meta.toGuestString(utf, meta);
+
+                Object string = context.toGuestString(utf);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeLong(Ids.getIdAsLong(createdString));
+                reply.writeLong(context.getIds().getIdAsLong(string));
                 return reply;
             }
         }
@@ -210,14 +199,14 @@ class JDWP {
         static class CLASSLOADER {
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
-                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+                klassRef klass = (klassRef) context.getIds().fromId((int) refTypeId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject loader = klass.getDefiningClassLoader();
-                reply.writeLong(Ids.getIdAsLong(loader));
+                Object loader = klass.getDefiningClassLoader();
+                reply.writeLong(context.getIds().getIdAsLong(loader));
                 return reply;
             }
         }
@@ -225,35 +214,28 @@ class JDWP {
         static class GET_VALUES {
             public static final int ID = 6;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                long refTypeId = input.readLong();
-                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+                /* long refTypeId = */
+                input.readLong();
 
                 int fields = input.readInt();
                 reply.writeInt(fields);
 
                 for (int i = 0; i < fields; i++) {
                     long fieldId = input.readLong();
-                    Field field = (Field) Ids.fromId((int)fieldId);
+                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
 
-                    byte tag = TagConstants.fromJavaKind(field.getKind());
+                    byte tag = field.getTagConstant();
 
-                    Object value = field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
+                    Object value = context.getStaticFieldValue(field);
+
                     if (tag == TagConstants.OBJECT) {
-                        // check specifically for String
-                        if (value instanceof StaticObject) {
-                            StaticObject staticObject = (StaticObject) value;
-                            if (staticObject.isArray()) {
-                                tag = TagConstants.ARRAY;
-                            } else if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString())) {
-                                tag = TagConstants.STRING;
-                            }
-                        }
+                        tag = context.getSpecificObjectTag(value);
                     }
-                    writeValue(tag, value, reply, true);
+                    writeValue(tag, value, reply, true, context);
                 }
                 return reply;
             }
@@ -262,16 +244,16 @@ class JDWP {
         static class SOURCE_FILE {
             public static final int ID = 7;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+                klassRef klass = (klassRef) context.getIds().fromId((int) refTypeId);
 
                 String sourceFile = "Generated";
-                Method[] methods = klass.getDeclaredMethods();
-                for (Method method : methods) {
+                MethodRef[] methods = klass.getDeclaredMethods();
+                for (MethodRef method : methods) {
                     if (method.getSourceFile() != null && !"Generated".equals(method.getSourceFile())) {
                         sourceFile = method.getSourceFile();
                         break;
@@ -285,17 +267,17 @@ class JDWP {
         static class INTERFACES {
             public static final int ID = 10;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Klass klass = (Klass) Ids.fromId((int)refTypeId);
-                ObjectKlass[] interfaces = klass.getInterfaces();
+                klassRef klass = (klassRef) context.getIds().fromId((int) refTypeId);
+                klassRef[] interfaces = klass.getImplementedInterfaces();
 
                 reply.writeInt(interfaces.length);
-                for (ObjectKlass itf : interfaces) {
-                    reply.writeLong(Ids.getIdAsLong(itf));
+                for (klassRef itf : interfaces) {
+                    reply.writeLong(context.getIds().getIdAsLong(itf));
                 }
                 return reply;
             }
@@ -307,17 +289,17 @@ class JDWP {
         static class CLASS_OBJECT {
             public static final int ID = 11;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Klass klass = (Klass) Ids.fromId((int)refTypeId);
+                klassRef klass = (klassRef) context.getIds().fromId((int) refTypeId);
 
                 // wrap this in ClassIdObject
                 ClassObjectId id = new ClassObjectId(klass);
                 classObjectIds.add(id);
-                reply.writeLong(Ids.getIdAsLong(id));
+                reply.writeLong(context.getIds().getIdAsLong(id));
                 return reply;
             }
         }
@@ -325,15 +307,14 @@ class JDWP {
         static class SIGNATURE_WITH_GENERIC {
             public static final int ID = 13;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Klass klass = (Klass) Ids.fromId((int) refTypeId);
-                Symbol<Symbol.Type> type = klass.getType();
+                klassRef klass = (klassRef) context.getIds().fromId((int) refTypeId);
 
-                reply.writeString(type.toString());
+                reply.writeString(klass.getTypeAsString());
                 reply.writeString(""); // TODO(Gregersen) - generic signature
                 return reply;
             }
@@ -342,20 +323,20 @@ class JDWP {
         static class FIELDS_WITH_GENERIC {
             public static final int ID = 14;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
-                Klass refType = (Klass) Ids.fromId((int) refTypeId);
+                klassRef klassRef = (klassRef) context.getIds().fromId((int) refTypeId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Field[] declaredFields = refType.getDeclaredFields();
+                FieldRef[] declaredFields = klassRef.getDeclaredFields();
                 int numDeclaredFields = declaredFields.length;
                 reply.writeInt(numDeclaredFields);
-                for (Field field : declaredFields) {
-                    reply.writeLong(Ids.getIdAsLong(field));
-                    reply.writeString(field.getName().toString());
-                    reply.writeString(field.getType().toString());
-                    reply.writeString(field.getGenericSignature().toString());
+                for (FieldRef field : declaredFields) {
+                    reply.writeLong(context.getIds().getIdAsLong(field));
+                    reply.writeString(field.getNameAsString());
+                    reply.writeString(field.getTypeAsString());
+                    reply.writeString(field.getGenericSignatureAsString());
                     reply.writeInt(field.getModifiers());
                 }
                 return reply;
@@ -365,19 +346,19 @@ class JDWP {
         static class METHODS_WITH_GENERIC {
             public static final int ID = 15;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
-                Klass refType = (Klass) Ids.fromId((int) refTypeId);
+                klassRef klassRef = (klassRef) context.getIds().fromId((int) refTypeId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Method[] declaredMethods = refType.getDeclaredMethods();
+                MethodRef[] declaredMethods = klassRef.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
-                for (Method method : declaredMethods) {
-                    reply.writeLong(Ids.getIdAsLong(method));
-                    reply.writeString(method.getName().toString());
-                    reply.writeString(method.getRawSignature().toString());
+                for (MethodRef method : declaredMethods) {
+                    reply.writeLong(context.getIds().getIdAsLong(method));
+                    reply.writeString(method.getNameAsString());
+                    reply.writeString(method.getSignatureAsString());
                     reply.writeString(""); // TODO(Gregersen) - get the generic signature
                     reply.writeInt(method.getModifiers());
                 }
@@ -385,15 +366,16 @@ class JDWP {
             }
         }
 
+        /*
         static class CONSTANT_POOL {
             public static final int ID = 18;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long refTypeId = input.readLong();
-                Klass refType = (Klass) Ids.fromId((int) refTypeId);
+                RefType refType = (RefType) context.getIds().fromId((int) refTypeId);
 
                 ConstantPool pool = refType.getConstantPool();
                 reply.writeInt(pool.length() + 1);
@@ -403,6 +385,8 @@ class JDWP {
                 return reply;
             }
         }
+    */
+
     }
 
     static class ClassType {
@@ -412,19 +396,19 @@ class JDWP {
 
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long classId = input.readLong();
-                Klass refType = (Klass) Ids.fromId((int) classId);
-                boolean isJavaLangObject = refType.isJavaLangObject();
+                klassRef klassRef = (klassRef) context.getIds().fromId((int) classId);
+                boolean isJavaLangObject = JAVA_LANG_OBJECT.equals(klassRef.getTypeAsString());
 
                 if (isJavaLangObject) {
                     reply.writeLong(0);
                 } else {
-                    ObjectKlass superKlass = refType.getSuperKlass();
-                    reply.writeLong(Ids.getIdAsLong(superKlass));
+                    klassRef superKlass = klassRef.getSuperClass();
+                    reply.writeLong(context.getIds().getIdAsLong(superKlass));
                 }
                 return reply;
             }
@@ -434,27 +418,25 @@ class JDWP {
 
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long classId = input.readLong();
-                Klass refType = (Klass) Ids.fromId((int) classId);
+                klassRef klassRef = (klassRef) context.getIds().fromId((int) classId);
                 int values = input.readInt();
 
                 for (int i = 0; i < values; i++) {
                     long fieldId = input.readLong();
-                    Field field = (Field) Ids.fromId((int)fieldId);
-                    byte tag = TagConstants.fromJavaKind(field.getKind());
-                    if (tag == TagConstants.OBJECT) {
-                        if (JAVA_LANG_STRING.equals(field.getType().toString())) {
-                            tag = TagConstants.STRING;
-                        }
-                    }
-                    Object value = readValue(tag, input);
-                    field.set(refType.getStatics(), value);
-                }
+                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    byte tag = field.getTagConstant();
 
+                    if (tag == TagConstants.OBJECT) {
+                        tag = context.getSpecificObjectTag(field.getTypeAsString());
+                    }
+                    Object value = readValue(tag, input, context);
+                    context.setStaticFieldValue(field, klassRef, value);
+                }
                 return reply;
             }
         }
@@ -476,28 +458,28 @@ class JDWP {
                 }
             }
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
                 long methodId = input.readLong();
 
-                Klass refType = (Klass) Ids.fromId((int) refTypeId);
-                Method method = (Method) Ids.fromId((int) methodId);
+                klassRef klassRef = (klassRef) context.getIds().fromId((int) refTypeId);
+                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
                 //System.out.println("asked for lines for: " + refType.getName().toString() + "." + method.getName());
 
-                LineNumberTable table = method.getLineNumberTable();
+                LineNumberTableRef table = method.getLineNumberTable();
 
                 if (table != null) {
-                    LineNumberTable.Entry[] entries = table.getEntries();
-                    long start = method.isNative() ? -1 : Integer.MAX_VALUE;
-                    long end = method.isNative() ? -1 : 0;
+                    LineNumberTableRef.EntryRef[] entries = table.getEntries();
+                    long start = method.isMethodNative() ? -1 : Integer.MAX_VALUE;
+                    long end = method.isMethodNative() ? -1 : 0;
                     int lines = entries.length;
                     Line[] allLines = new Line[lines];
 
                     for (int i = 0; i < entries.length; i++) {
-                        LineNumberTable.Entry entry = entries[i];
+                        LineNumberTableRef.EntryRef entry = entries[i];
                         int bci = entry.getBCI();
                         int line = entry.getLineNumber();
                         if (bci < start) {
@@ -527,13 +509,13 @@ class JDWP {
         static class BYTECODES {
             public static final int ID = 3;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 input.readLong(); // ref type
                 long methodId = input.readLong();
-                Method method = (Method) Ids.fromId((int) methodId);
+                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
 
                 byte[] code = method.getCode();
 
@@ -547,37 +529,37 @@ class JDWP {
         static class VARIABLE_TABLE_WITH_GENERIC {
             public static final int ID = 5;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
                 long methodId = input.readLong();
 
-                Method method = (Method) Ids.fromId((int)methodId);
-                Klass[] params = method.resolveParameterKlasses();
+                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                klassRef[] params = method.getParameters();
                 int argCnt = 0; // the number of words in the frame used by the arguments
-                for (Klass klass : params)  {
+                for (klassRef klass : params) {
                     if (klass.isPrimitive()) {
-                        if (klass.getJavaKind() == JavaKind.Double || klass.getJavaKind() == JavaKind.Long) {
+                        byte tag = klass.getTagConstant();
+                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
                             argCnt += 2;
                         } else {
                             argCnt++;
                         }
                     }
                 }
-                Local[] locals = method.getLocalVariableTable().getLocals();
+                LocalRef[] locals = method.getLocalVariableTable().getLocals();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(argCnt);
                 reply.writeInt(locals.length);
-                for (Local local : locals) {
+                for (LocalRef local : locals) {
                     reply.writeLong(local.getStartBCI());
-                    reply.writeString(local.getName().toString());
-                    reply.writeString(local.getType().toString());
+                    reply.writeString(local.getNameAsString());
+                    reply.writeString(local.getTypeAsString());
                     reply.writeString(""); // TODO(Gregersen) - generic signature
                     reply.writeInt(local.getEndBCI() - local.getStartBCI());
                     reply.writeInt(local.getSlot());
                 }
-
                 return reply;
             }
         }
@@ -589,27 +571,17 @@ class JDWP {
         static class REFERENCE_TYPE {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                Object object = Ids.fromId((int) objectId);
+                Object object = context.getIds().fromId((int) objectId);
                 // can be either a ClassObjectId or a StaticObject
-                Klass klass;
-                if (object instanceof StaticObject) {
-                    if (StaticObject.NULL == object) {
-                        // null object
-                        klass = NullKlass.getKlass(context);
-                    } else {
-                        klass = ((StaticObject) object).getKlass();
-                    }
-                } else {
-                    klass = ((ClassObjectId) object).getRefType();
-                }
+                klassRef klassRef = context.getRefType(object);
 
-                reply.writeByte(TypeTag.getKind(klass));
-                reply.writeLong(Ids.getIdAsLong(klass));
+                reply.writeByte(TypeTag.getKind(klassRef));
+                reply.writeLong(context.getIds().getIdAsLong(klassRef));
 
                 return reply;
             }
@@ -618,10 +590,10 @@ class JDWP {
         static class GET_VALUES {
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
-                StaticObject staticObject = (StaticObject) Ids.fromId((int) objectId);
+                Object object = context.getIds().fromId((int) objectId);
                 int numFields = input.readInt();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
@@ -629,20 +601,15 @@ class JDWP {
 
                 for (int i = 0; i < numFields; i++) {
                     long fieldId = input.readLong();
-                    Field field = (Field) Ids.fromId((int) fieldId);
-                    Object value = field.get(staticObject);
-                    byte tag = TagConstants.fromJavaKind(field.getKind());
+                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+
+                    Object value = field.getValue(object);
+                    byte tag = field.getTagConstant();
+
                     if (tag == TagConstants.OBJECT) {
-                        if (value instanceof StaticObject) {
-                            if (((StaticObject) value).isArray()) {
-                                tag = TagConstants.ARRAY;
-                            }
-                            else if (JAVA_LANG_STRING.equals(((StaticObject) value).getKlass().getType().toString())) {
-                                tag = TagConstants.STRING;
-                            }
-                        }
+                        tag = context.getSpecificObjectTag(value);
                     }
-                    writeValue(tag, value, reply, true);
+                    writeValue(tag, value, reply, true, context);
                 }
                 return reply;
             }
@@ -651,23 +618,21 @@ class JDWP {
         static class SET_VALUES {
             public static final int ID = 3;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
-                StaticObject staticObject = (StaticObject) Ids.fromId((int) objectId);
+                Object object = context.getIds().fromId((int) objectId);
                 int numFields = input.readInt();
 
                 for (int i = 0; i < numFields; i++) {
                     long fieldId = input.readLong();
-                    Field field = (Field) Ids.fromId((int) fieldId);
-                    byte tag = TagConstants.fromJavaKind(field.getKind());
+                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    byte tag = field.getTagConstant();
                     if (tag == TagConstants.OBJECT) {
-                        if (JAVA_LANG_STRING.equals(field.getType().toString())) {
-                            tag = TagConstants.STRING;
-                        }
+                        tag = context.getSpecificObjectTag(field.getTypeAsString());
                     }
-                    Object value = readValue(tag, input);
-                    field.set(staticObject, value);
+                    Object value = readValue(tag, input, context);
+                    field.setValue(object, value);
                 }
                 return new PacketStream().replyPacket().id(packet.id);
             }
@@ -676,7 +641,7 @@ class JDWP {
         static class INVOKE_METHOD {
             public static final int ID = 6;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 long threadId = input.readLong();
@@ -687,32 +652,22 @@ class JDWP {
                 Object[] args = new Object[arguments];
                 for (int i = 0; i < arguments; i++) {
                     byte valueKind = input.readByte();
-                    args[i] = readValue(valueKind, input);
+                    args[i] = readValue(valueKind, input, context);
                     // TODO(Gregersen) - convert to guest objects and locate real objects by IDs
                 }
                 int options = input.readInt(); // TODO(Gregersen) - handle invocation options
 
-                Object callee = Ids.fromId((int)objectId);
-                Method method = (Method) Ids.fromId((int)methodId);
-                StaticObject thread = (StaticObject) Ids.fromId((int) threadId);
+                Object callee = context.getIds().fromId((int) objectId);
+                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                Object thread = context.getIds().fromId((int) threadId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 try {
-                    Object value = method.invokeWithConversions(callee, args);
+                    Object value = method.invokeMethod(callee, args);
                     if (value != null) {
-                        if (value instanceof StaticObject) {
-                            StaticObject staticObject = (StaticObject) value;
-                            byte tag = TagConstants.fromJavaKind(staticObject.getKlass().getJavaKind());
-                            if (tag == TagConstants.OBJECT) {
-                                // check specifically for String
-                                if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString())) {
-                                    tag = TagConstants.STRING;
-                                }
-                            }
-                            writeValue(tag, value, reply, true);
-                        }
-                    }
-                    else { // return value in null
+                        byte tag = context.getTag(value);
+                        writeValue(tag, value, reply, true, context);
+                    } else { // return value is null
                         reply.writeByte(TagConstants.OBJECT);
                         reply.writeLong(0);
                     }
@@ -721,7 +676,7 @@ class JDWP {
                 } catch (Throwable t) {
                     reply.writeLong(0);
                     reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(Ids.getIdAsLong(t));
+                    reply.writeLong(context.getIds().getIdAsLong(t));
                 }
                 return reply;
             }
@@ -730,11 +685,11 @@ class JDWP {
         static class DISABLE_COLLECTION {
             public static final int ID = 7;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                Object object = context.getIds().fromId((int) objectId);
                 GCPrevention.disableGC(object);
                 return reply;
             }
@@ -743,11 +698,11 @@ class JDWP {
         static class ENABLE_COLLECTION {
             public static final int ID = 8;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
+                Object object = context.getIds().fromId((int) objectId);
                 GCPrevention.enableGC(object);
                 return reply;
             }
@@ -756,12 +711,12 @@ class JDWP {
         static class IS_COLLECTED {
             public static final int ID = 9;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject object = (StaticObject) Ids.fromId((int) objectId);
-                reply.writeBoolean(object == StaticObject.NULL);
+                Object object = context.getIds().fromId((int) objectId);
+                reply.writeBoolean(object == context.getNullObject());
                 return reply;
             }
         }
@@ -773,16 +728,16 @@ class JDWP {
         static class VALUE {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
-                StaticObject string = (StaticObject) Ids.fromId((int) objectId);
+                Object string = context.getIds().fromId((int) objectId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                if (string == StaticObject.NULL) {
+                if (string == context.getNullObject()) {
                     reply.writeString("null");
                 } else {
-                    reply.writeString(string.asString());
+                    reply.writeString(context.getStringValue(string));
                 }
                 return reply;
             }
@@ -795,11 +750,11 @@ class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
-                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
-                String threadName = context.getMeta().Thread_name.get(thread).toString();
+                Object thread = context.getIds().fromId((int) threadId);
+                String threadName = context.getThreadName(thread);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeString(threadName);
@@ -813,7 +768,7 @@ class JDWP {
             static PacketStream createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
-                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                Object thread = controller.getContext().getIds().fromId((int) threadId);
                 controller.resume(); // TODO(Gregersen) - resume the specified thread
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 return reply;
@@ -839,22 +794,22 @@ class JDWP {
 
             public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK =
                     JVMTI_THREAD_STATE_TERMINATED |
-                    JVMTI_THREAD_STATE_ALIVE |
-                    JVMTI_THREAD_STATE_RUNNABLE |
-                    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
-                    JVMTI_THREAD_STATE_WAITING |
-                    JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
-                    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
+                            JVMTI_THREAD_STATE_ALIVE |
+                            JVMTI_THREAD_STATE_RUNNABLE |
+                            JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
+                            JVMTI_THREAD_STATE_WAITING |
+                            JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
+                            JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
-                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
-                int jvmtiThreadStatus = (int) context.getMeta().Thread_threadStatus.get(thread);
+                Object thread = context.getIds().fromId((int) threadId);
+                int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(threadStatus);
-                //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread));
+                //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread) + " with status: " + threadStatus);
                 reply.writeInt(ThreadSuspension.isSuspended(thread));
                 return reply;
             }
@@ -888,14 +843,14 @@ class JDWP {
         static class THREAD_GROUP {
             public static final int ID = 5;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
-                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                Object thread = context.getIds().fromId((int) threadId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                StaticObject threadGroup = (StaticObject) context.getMeta().Thread_group.get(thread);
-                reply.writeLong(Ids.getIdAsLong(threadGroup));
+                Object threadGroup = context.getThreadGroup(thread);
+                reply.writeLong(context.getIds().getIdAsLong(threadGroup));
                 return reply;
             }
         }
@@ -919,7 +874,7 @@ class JDWP {
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     JDWPCallFrame frame = frames[i];
-                    reply.writeLong(Ids.getIdAsLong(frame));
+                    reply.writeLong(controller.getContext().getIds().getIdAsLong(frame));
                     reply.writeByte(frame.getTypeTag());
                     reply.writeLong(frame.getClassId());
                     reply.writeLong(frame.getMethodId());
@@ -939,11 +894,11 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 // verify that we're replying for the currently suspended thread
-                if (Ids.fromId((int) threadId) == StaticObject.NULL) {
+                if (controller.getContext().getIds().fromId((int) threadId) == controller.getContext().getNullObject()) {
                     reply.errorCode(20); // TODO(Gregersen) - setup and use error code constant
                     return reply;
                 }
-                if (controller.getSuspendedInfo().getThread() != Ids.fromId((int) threadId)) {
+                if (controller.getSuspendedInfo().getThread() != controller.getContext().getIds().fromId((int) threadId)) {
                     reply.errorCode(10); // TODO(Gregersen) - setup and use error code constant
                     return reply;
                 }
@@ -956,10 +911,10 @@ class JDWP {
         static class SUSPEND_COUNT {
             public static final int ID = 12;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
-                StaticObject thread = (StaticObject) Ids.fromId((int)threadId);
+                Object thread = context.getIds().fromId((int) threadId);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
                 //System.out.println("Suspension count: " + suspensionCount);
@@ -975,10 +930,10 @@ class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadGroupId = input.readLong();
-                StaticObject threadGroup = (StaticObject) Ids.fromId((int)threadGroupId);
+                Object threadGroup = context.getIds().fromId((int) threadGroupId);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeString("threadGroup-1"); // TODO(Gregersen) - implement retrieving threadgroup name
                 return reply;
@@ -992,13 +947,13 @@ class JDWP {
         static class LENGTH {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long arrayId = input.readLong();
-                StaticObject array = (StaticObject) Ids.fromId((int)arrayId);
+                Object array = context.getIds().fromId((int) arrayId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeInt(array.length());
+                reply.writeInt(context.getArrayLength(array));
                 return reply;
             }
         }
@@ -1006,7 +961,7 @@ class JDWP {
         static class GET_VALUES {
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long arrayId = input.readLong();
                 int index = input.readInt();
@@ -1014,33 +969,15 @@ class JDWP {
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                StaticObject array = (StaticObject) Ids.fromId((int)arrayId);
-                ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
-                byte tag = TagConstants.fromJavaKind(arrayKlass.getComponentType().getJavaKind());
-                boolean tagged = false;
+                Object array = context.getIds().fromId((int) arrayId);
+                byte tag = context.getTypeTag(array);
+                boolean isPrimitive = TagConstants.isPrimitive(tag);
 
-                if (arrayKlass.getDimension() > 1) {
-                    tag = TagConstants.ARRAY;
-                    tagged = true;
-                }
-                if (tag == TagConstants.OBJECT) {
-                    tagged = true;
-                    if (JAVA_LANG_STRING.equals(arrayKlass.getComponentType().getType().toString())) {
-                        tag = TagConstants.STRING;
-                    }
-                }
                 reply.writeByte(tag);
                 reply.writeInt(length);
                 for (int i = index; i < index + length; i++) {
-                    Object theValue;
-                    if (!tagged) {
-                        // primitive array type needs wrapping
-                        Object boxedArray = array.unwrap();
-                        theValue = Array.get(boxedArray, i);
-                    } else {
-                        theValue = array.get(i);
-                    }
-                    writeValue(tag, theValue, reply, tagged);
+                    Object theValue = context.getArrayValue(array, i);
+                    writeValue(tag, theValue, reply, !isPrimitive, context);
                 }
                 return reply;
             }
@@ -1049,78 +986,72 @@ class JDWP {
         static class SET_VALUES {
             public static final int ID = 3;
 
-            static PacketStream createReply(Packet packet, Meta meta) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
 
                 long arrayId = input.readLong();
                 int index = input.readInt();
                 int values = input.readInt();
 
-                StaticObject array = (StaticObject) Ids.fromId((int) arrayId);
-                byte tag = TagConstants.fromJavaKind(array.getKlass().getComponentType().getJavaKind());
-                if (tag == TagConstants.OBJECT) {
-                    if (JAVA_LANG_STRING.equals(array.getKlass().getComponentType().getType().toString())) {
-                        tag = TagConstants.STRING;
-                    }
-                }
-                if (((ArrayKlass) array.getKlass()).getDimension() > 1) {
-                    tag = TagConstants.ARRAY;
-                }
-                setArrayValues(meta, input, index, values, array, tag);
+                Object array = context.getIds().fromId((int) arrayId);
+                byte tag = context.getTypeTag(array);
+
+                setArrayValues(context, input, index, values, array, tag);
 
                 return new PacketStream().replyPacket().id(packet.id);
             }
 
-            private static void setArrayValues(Meta meta, PacketStream input, int index, int values, StaticObject array, byte tag) {
+            private static void setArrayValues(JDWPContext context, PacketStream input, int index, int values, Object array, byte tag) {
                 for (int i = index; i < index + values; i++) {
                     switch (tag) {
-                        case TagConstants.BOOLEAN:
+                        case BOOLEAN:
                             boolean bool = input.readBoolean();
-                            boolean[] boolArray = array.unwrap();
+                            boolean[] boolArray = context.getUnboxedArray(array);
                             boolArray[i] = bool;
                             break;
                         case TagConstants.BYTE:
                             byte b = input.readByte();
-                            byte[] byteArray = array.unwrap();
+                            byte[] byteArray = context.getUnboxedArray(array);
                             byteArray[i] = b;
                             break;
                         case TagConstants.SHORT:
                             short s = input.readShort();
-                            short[] shortArray = array.unwrap();
+                            short[] shortArray = context.getUnboxedArray(array);
                             shortArray[i] = s;
                             break;
                         case TagConstants.CHAR:
                             char c = input.readChar();
-                            char[] charArray = array.unwrap();
+                            char[] charArray = context.getUnboxedArray(array);
                             charArray[i] = c;
                             break;
                         case TagConstants.INT:
                             int j = input.readInt();
-                            int[] intArray = array.unwrap();
+                            int[] intArray = context.getUnboxedArray(array);
                             intArray[i] = j;
                             break;
                         case TagConstants.FLOAT:
                             float f = input.readFloat();
-                            float[] floatArray = array.unwrap();
+                            float[] floatArray = context.getUnboxedArray(array);
                             floatArray[i] = f;
                             break;
                         case TagConstants.LONG:
                             long l = input.readLong();
-                            long[] longArray = array.unwrap();
+                            long[] longArray = context.getUnboxedArray(array);
                             longArray[i] = l;
                             break;
                         case TagConstants.DOUBLE:
                             double d = input.readDouble();
-                            double[] doubleArray = array.unwrap();
+                            double[] doubleArray = context.getUnboxedArray(array);
                             doubleArray[i] = d;
                             break;
                         case TagConstants.ARRAY:
                         case TagConstants.STRING:
                         case TagConstants.OBJECT:
-                            StaticObject so = (StaticObject) Ids.fromId((int)input.readLong());
-                            array.putObject(so, i, meta);
+                            Object value = context.getIds().fromId((int) input.readLong());
+                            context.setArrayValue(array, i, value);
                             break;
-                        default: throw EspressoError.shouldNotReachHere();
+                        default:
+                            throw new RuntimeException("should not reach here");
                     }
                 }
             }
@@ -1134,22 +1065,22 @@ class JDWP {
 
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet, EspressoContext context) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long classLoaderId = input.readLong();
 
-                StaticObject classLoader = (StaticObject) Ids.fromId((int) classLoaderId);
+                Object classLoader = context.getIds().fromId((int) classLoaderId);
 
                 // TODO(Gregersen) - we will need all classes for which this classloader was the initiating loader
-                Klass[] klasses = context.getRegistries().getLoadedClassesByLoader(classLoader);
+                klassRef[] klasses = context.getInitiatedClasses(classLoader);
 
                 reply.writeInt(klasses.length);
 
-                for (Klass klass : klasses) {
+                for (klassRef klass : klasses) {
                     reply.writeByte(TypeTag.getKind(klass));
-                    reply.writeLong(Ids.getIdAsLong(klass));
+                    reply.writeLong(context.getIds().getIdAsLong(klass));
                 }
                 return reply;
             }
@@ -1174,7 +1105,7 @@ class JDWP {
         static class GET_VALUES {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1183,8 +1114,8 @@ class JDWP {
                 int slots = input.readInt();
                 reply.writeInt(slots);
 
-                JDWPCallFrame frame = (JDWPCallFrame) Ids.fromId((int)frameId);
-                StaticObject thisValue = frame.getThisValue();
+                JDWPCallFrame frame = (JDWPCallFrame) context.getIds().fromId((int) frameId);
+                Object thisValue = frame.getThisValue();
                 Object[] variables = frame.getVariables();
                 int offset = thisValue != null ? 1 : 0;
 
@@ -1194,22 +1125,17 @@ class JDWP {
                     Object value = variables[slot - offset];
 
                     byte sigbyte = input.readByte();
-                    if (sigbyte == TagConstants.ARRAY) {
-                        // Array type
-                        reply.writeByte(TagConstants.ARRAY);
-                        reply.writeLong(Ids.getIdAsLong(value));
-                    } else if (sigbyte == TagConstants.OBJECT) {
-                        if (value instanceof StaticObject) {
-                            StaticObject staticObject = (StaticObject) value;
-                            if (JAVA_LANG_STRING.equals(staticObject.getKlass().getType().toString())) {
-                                sigbyte = TagConstants.STRING;
-                            }
-                            writeValue(sigbyte, value, reply, true);
-                        }
-                    } else {
-                        writeValue(sigbyte, value, reply, true);
-                    }
                     // TODO(Gregersen) - verify sigbyte against actual value type
+                    if (sigbyte == TagConstants.ARRAY) {
+                        reply.writeByte(sigbyte);
+                        reply.writeLong(context.getIds().getIdAsLong(value));
+                    } else if (sigbyte == TagConstants.OBJECT) {
+                        sigbyte = context.getSpecificObjectTag(value);
+                        reply.writeByte(sigbyte);
+                        reply.writeLong(context.getIds().getIdAsLong(value));
+                    } else {
+                        writeValue(sigbyte, value, reply, true, context);
+                    }
                 }
                 return reply;
             }
@@ -1218,7 +1144,7 @@ class JDWP {
         static class SET_VALUES {
             public static final int ID = 2;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1226,9 +1152,9 @@ class JDWP {
                 long frameId = input.readLong();
                 int slots = input.readInt();
 
-                JDWPCallFrame frame = (JDWPCallFrame) Ids.fromId((int)frameId);
+                JDWPCallFrame frame = (JDWPCallFrame) context.getIds().fromId((int) frameId);
 
-                StaticObject thisValue = frame.getThisValue();
+                Object thisValue = frame.getThisValue();
                 Object[] variables = frame.getVariables();
                 int offset = thisValue != null ? 1 : 0;
 
@@ -1236,7 +1162,7 @@ class JDWP {
                 for (int i = 0; i < slots; i++) {
                     int slot = input.readInt();
                     byte kind = input.readByte();
-                    variables[slot - offset] = readValue(kind, input);
+                    variables[slot - offset] = readValue(kind, input, context);
                 }
                 return reply;
             }
@@ -1245,20 +1171,19 @@ class JDWP {
         static class THIS_OBJECT {
             public static final int ID = 3;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long threadId = input.readLong();
                 long frameId = input.readLong();
 
-                JDWPCallFrame frame = (JDWPCallFrame) Ids.fromId((int)frameId);
-                StaticObject thisValue = frame.getThisValue();
+                JDWPCallFrame frame = (JDWPCallFrame) context.getIds().fromId((int) frameId);
+                Object thisValue = frame.getThisValue();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeByte(TagConstants.OBJECT);
 
                 if (thisValue != null) {
-                    reply.writeLong(Ids.getIdAsLong(thisValue));
-                }
-                else {
+                    reply.writeLong(context.getIds().getIdAsLong(thisValue));
+                } else {
                     reply.writeLong(0);
                 }
                 return reply;
@@ -1272,44 +1197,55 @@ class JDWP {
         static class REFLECTED_TYPE {
             public static final int ID = 1;
 
-            static PacketStream createReply(Packet packet) {
+            static PacketStream createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long classObjectId = input.readLong();
 
-                ClassObjectId id = (ClassObjectId) Ids.fromId((int)classObjectId);
+                ClassObjectId id = (ClassObjectId) context.getIds().fromId((int) classObjectId);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                reply.writeByte(TypeTag.getKind(id.getRefType()));
-                reply.writeLong(Ids.getIdAsLong(id.getRefType()));
+                reply.writeByte(TypeTag.getKind(id.getKlassRef()));
+                reply.writeLong(context.getIds().getIdAsLong(id.getKlassRef()));
                 return reply;
             }
         }
     }
 
-    private static Object readValue(byte valueKind, PacketStream input) {
+    private static Object readValue(byte valueKind, PacketStream input, JDWPContext context) {
         switch (valueKind) {
-            case TagConstants.BOOLEAN: return input.readBoolean();
-            case TagConstants.BYTE: return input.readByte();
-            case TagConstants.SHORT: return input.readShort();
-            case TagConstants.CHAR: return input.readChar();
-            case TagConstants.INT: return input.readInt();
-            case TagConstants.FLOAT: return input.readFloat();
-            case TagConstants.LONG: return input.readLong();
-            case TagConstants.DOUBLE: return input.readDouble();
+            case BOOLEAN:
+                return input.readBoolean();
+            case TagConstants.BYTE:
+                return input.readByte();
+            case TagConstants.SHORT:
+                return input.readShort();
+            case TagConstants.CHAR:
+                return input.readChar();
+            case TagConstants.INT:
+                return input.readInt();
+            case TagConstants.FLOAT:
+                return input.readFloat();
+            case TagConstants.LONG:
+                return input.readLong();
+            case TagConstants.DOUBLE:
+                return input.readDouble();
             case TagConstants.ARRAY:
             case TagConstants.STRING:
-            case TagConstants.OBJECT: return Ids.fromId((int)input.readLong());
-            default: throw EspressoError.shouldNotReachHere();
+            case TagConstants.OBJECT:
+                return context.getIds().fromId((int) input.readLong());
+            default:
+                throw new RuntimeException("Should not reach here!");
         }
     }
 
-    private static void writeValue(byte tag, Object value, PacketStream reply, boolean tagged) {
+    private static void writeValue(byte tag, Object value, PacketStream reply, boolean tagged, JDWPContext context) {
         if (tagged) {
             reply.writeByte(tag);
         }
         switch (tag) {
-            case TagConstants.BOOLEAN:
-                reply.writeBoolean((boolean)value);
+            case BOOLEAN:
+                boolean theValue = (long) value > 0 ? true : false;
+                reply.writeBoolean(theValue);
                 break;
             case TagConstants.BYTE:
                 if (value.getClass() == Long.class) {
@@ -1365,9 +1301,11 @@ class JDWP {
             case TagConstants.OBJECT:
             case TagConstants.STRING:
             case TagConstants.ARRAY:
-                reply.writeLong(Ids.getIdAsLong(value));
+                reply.writeLong(context.getIds().getIdAsLong(value));
                 break;
-            default: throw EspressoError.shouldNotReachHere();
+            default:
+                throw new RuntimeException("Should not reach here!");
         }
     }
 }
+

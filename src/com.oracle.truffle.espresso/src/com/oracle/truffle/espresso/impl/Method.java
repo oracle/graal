@@ -59,6 +59,8 @@ import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.LineNumberTable;
+import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -81,7 +83,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
-public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
+public final class Method extends Member<Signature> implements TruffleObject, ContextAccess, MethodRef {
     public static final Method[] EMPTY_ARRAY = new Method[0];
 
     private static final byte GETTER_LENGTH = 5;
@@ -791,4 +793,43 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
         }
     }
+
+    // region jdwp-specific
+
+    @Override
+    public long getBCIFromLine(int line) {
+        return getLineNumberTable().getBCI(line);
+    }
+
+    @Override
+    public boolean hasLine(int lineNumber) {
+        return getLineNumberTable().getBCI(lineNumber) != -1;
+    }
+
+    @Override
+    public String getNameAsString() {
+        return getName().toString();
+    }
+
+    @Override
+    public String getSignatureAsString() {
+        return getRawSignature().toString();
+    }
+
+    @Override
+    public boolean isMethodNative() {
+        return isNative();
+    }
+
+    @Override
+    public klassRef[] getParameters() {
+        return resolveParameterKlasses();
+    }
+
+    @Override
+    public Object invokeMethod(Object callee, Object[] args) {
+        return invokeWithConversions(callee, args);
+    }
+
+    //endregion jdwp-specific
 }

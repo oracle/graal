@@ -1,17 +1,15 @@
-package com.oracle.truffle.espresso.debugger.jdwp;
+package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
+/**
+ * This class represents the Null klass which is sometimes needed when
+ * communicating with a debugger.
+ */
 public class NullKlass extends Klass {
 
     private static NullKlass theKlass;

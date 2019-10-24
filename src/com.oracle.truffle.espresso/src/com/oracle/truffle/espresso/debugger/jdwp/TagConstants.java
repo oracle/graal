@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-
 public class TagConstants {
 
     public static final byte ARRAY = 91;	        // '[' - an array object (objectID size).
@@ -44,35 +41,15 @@ public class TagConstants {
     public static final byte CLASS_LOADER = 108;	// 'l' - a ClassLoader object (objectID size).
     public static final byte CLASS_OBJECT = 99;     // 'c' - a class object object (objectID size).
 
-    public static JavaKind toJavaKind(byte sigbyte) {
-        switch (sigbyte) {
-            case BOOLEAN: return JavaKind.Boolean;
-            case BYTE: return JavaKind.Byte;
-            case SHORT: return JavaKind.Short;
-            case CHAR: return JavaKind.Char;
-            case INT: return JavaKind.Int;
-            case FLOAT: return JavaKind.Float;
-            case LONG: return JavaKind.Long;
-            case DOUBLE: return JavaKind.Double;
-            case OBJECT: return JavaKind.Object;
-            case STRING:
-            case ARRAY: return null;
-            default: throw EspressoError.shouldNotReachHere();
-        }
+    public static boolean isPrimitive(byte tag) {
+        return
+                tag != OBJECT &&
+                tag != STRING &&
+                tag != ARRAY &&
+                tag != THREAD &&
+                tag != THREAD_GROUP &&
+                tag != CLASS_OBJECT &&
+                tag != CLASS_LOADER;
     }
 
-    public static byte fromJavaKind(JavaKind kind) {
-        switch (kind) {
-            case Boolean: return BOOLEAN;
-            case Byte: return BYTE;
-            case Short: return SHORT;
-            case Char: return CHAR;
-            case Int: return INT;
-            case Float: return FLOAT;
-            case Long: return LONG;
-            case Double: return DOUBLE;
-            case Object: return OBJECT;
-            default: return -1;
-        }
-    }
 }

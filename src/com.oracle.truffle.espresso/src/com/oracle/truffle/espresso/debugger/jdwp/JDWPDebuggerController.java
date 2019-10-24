@@ -37,19 +37,10 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.debugger.BreakpointInfo;
-import com.oracle.truffle.espresso.debugger.SourceLocation;
-import com.oracle.truffle.espresso.debugger.SuspendStrategy;
-import com.oracle.truffle.espresso.debugger.VMEventListener;
-import com.oracle.truffle.espresso.debugger.VMEventListeners;
-import com.oracle.truffle.espresso.debugger.exception.NoSuchSourceLineException;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
+import com.oracle.truffle.espresso.debugger.api.JDWPOptions;
+import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,12 +52,13 @@ public class JDWPDebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
-    private EspressoOptions.JDWPOptions options;
+    private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private final JDWPInstrument instrument;
     private Object suspendLock = new Object();
     private SuspendedInfo suspendedInfo;
     private volatile int commandRequestId = -1;
+    private Ids ids;
 
     // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -75,19 +67,20 @@ public class JDWPDebuggerController {
         this.instrument = instrument;
     }
 
-    public void initialize(EspressoOptions.JDWPOptions options, EspressoContext context) {
+    public void initialize(JDWPOptions options, JDWPContext context) {
         this.options = options;
         instrument.init(context);
+        this.ids = context.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
-        TruffleLanguage.Env languageEnv = instrument.getContext().getEnv();
+        TruffleLanguage.Env languageEnv = context.getEnv();
         Debugger debugger = languageEnv.lookup(languageEnv.getInstruments().get("debugger"), Debugger.class);
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
         debuggerSession.suspendNextExecution();
     }
 
-    public EspressoContext getContext() {
+    public JDWPContext getContext() {
         return instrument.getContext();
     }
 
@@ -168,7 +161,7 @@ public class JDWPDebuggerController {
         }
     }
 
-    private void doResume(StaticObject thread) {
+    private void doResume(Object thread) {
         synchronized (suspendLock) {
             ThreadSuspension.resumeThread(thread);
             suspendLock.notifyAll();
@@ -188,7 +181,7 @@ public class JDWPDebuggerController {
                 return;
             }
 
-            StaticObject currentThread = getContext().getHost2Guest(Thread.currentThread());
+            Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
 
             if (commandRequestId != -1) {
                 if (checkExclusionFilters(event)) {
@@ -200,9 +193,8 @@ public class JDWPDebuggerController {
             //System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
 
             byte strategy = SuspendStrategy.EVENT_THREAD;
-            JDWPCallFrame[] callFrames = createCallFrames(Ids.getIdAsLong(currentThread), event.getStackFrames());
+            JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames());
             suspendedInfo = new SuspendedInfo(event, strategy, callFrames, currentThread);
-
 
             boolean alreadySuspended = false;
             for (Breakpoint bp : event.getBreakpoints()) {
@@ -230,15 +222,13 @@ public class JDWPDebuggerController {
 
                 if (topFrame.getSourceSection() != null) {
                     RootNode root = findCurrentRoot(topFrame);
-                    if (root != null && root instanceof EspressoRootNode) {
-                        EspressoRootNode node = (EspressoRootNode) root;
-                        Method method = node.getMethod();
-                        Klass klass = method.getDeclaringKlass();
-                        if (requestFilter.isKlassExcluded(klass)) {
-                            // should not suspend here then, tell the event to keep going
-                            continueStepping(event);
-                            return true;
-                        }
+
+                    klassRef klass = getContext().getKlassFromRootNode(root);
+
+                    if (klass != null && requestFilter.isKlassExcluded(klass)) {
+                        // should not suspend here then, tell the event to keep going
+                        continueStepping(event);
+                        return true;
                     }
                 }
             }
@@ -273,23 +263,23 @@ public class JDWPDebuggerController {
                 }
 
                 RootNode root = findCurrentRoot(frame);
-                if (root instanceof EspressoRootNode) {
-                    EspressoRootNode node = (EspressoRootNode) root;
-                    Method method = node.getMethod();
-                    Klass klass = method.getDeclaringKlass();
+                klassRef klass = getContext().getKlassFromRootNode(root);
 
-                    long klassId = Ids.getIdAsLong(klass);
-                    long methodId = Ids.getIdAsLong(method);
+                if (klass != null) {
+                    MethodRef method = getContext().getMethodFromRootNode(root);
+
+                    long klassId = ids.getIdAsLong(klass);
+                    long methodId = ids.getIdAsLong(method);
                     byte typeTag = TypeTag.getKind(klass);
                     int line = frame.getSourceSection().getStartLine();
 
-                    long codeIndex = method.getLineNumberTable().getBCI(line);
+                    long codeIndex = method.getBCIFromLine(line); //  method.getLineNumberTable().getBCI(line);
 
                     DebugScope scope = frame.getScope();
 
                     //System.out.println("collected frame info for method: " + klass.getName().toString() + "." + method.getName() + "(" + line + ") : BCI(" + codeIndex + ")") ;
 
-                    StaticObject thisValue = null;
+                    Object thisValue = null;
                     ArrayList<Object> realVariables = new ArrayList<>();
 
                     if (scope != null ) {
@@ -298,7 +288,7 @@ public class JDWPDebuggerController {
                             DebugValue var = variables.next();
                             if ("this".equals(var.getName())) {
                                 // get the real object reference and register it with Id
-                                thisValue = (StaticObject) getRealValue(var);
+                                thisValue = getRealValue(var);
                             } else {
                                 // add to variables list
                                 realVariables.add(getRealValue(var));
@@ -306,6 +296,7 @@ public class JDWPDebuggerController {
                         }
                     }
                     list.addLast(new JDWPCallFrame(threadId, typeTag, klassId, methodId, codeIndex, thisValue, realVariables.toArray(new Object[realVariables.size()])));
+
                 } else {
                     throw new RuntimeException("stack walking not implemented for root node type! " + root);
                 }
@@ -339,7 +330,7 @@ public class JDWPDebuggerController {
             return null;
         }
 
-        private void suspend(byte strategy, JDWPCallFrame currentFrame, StaticObject thread, boolean alreadySuspended) {
+        private void suspend(byte strategy, JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended) {
             switch(strategy) {
                 case SuspendStrategy.NONE:
                     // nothing to suspend

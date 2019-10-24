@@ -23,17 +23,16 @@
 package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class ThreadSuspension {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static StaticObject[] threads = new StaticObject[0];
+    private static Object[] threads = new Object[0];
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static int[] suspensionCount = new int[0];
 
-    public static void suspendThread(StaticObject thread) {
+    public static void suspendThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 // increase the suspension count
@@ -41,7 +40,7 @@ public class ThreadSuspension {
             }
         }
         // not yet registered, so add to array
-        StaticObject[] expanded = new StaticObject[threads.length + 1];
+        Object[] expanded = new Object[threads.length + 1];
         System.arraycopy(threads, 0, expanded, 0, threads.length);
         expanded[threads.length] = thread;
 
@@ -54,7 +53,7 @@ public class ThreadSuspension {
         suspensionCount = temp;
     }
 
-    public static void resumeThread(StaticObject thread) {
+    public static void resumeThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 if (suspensionCount[i] > 0) {
@@ -66,7 +65,7 @@ public class ThreadSuspension {
         }
     }
 
-    public static int isSuspended(StaticObject thread) {
+    public static int isSuspended(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 return suspensionCount[i] > 0 ? 1 : 0;
@@ -75,7 +74,7 @@ public class ThreadSuspension {
         return 0;
     }
 
-    public static int getSuspensionCount(StaticObject thread) {
+    public static int getSuspensionCount(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 return suspensionCount[i];

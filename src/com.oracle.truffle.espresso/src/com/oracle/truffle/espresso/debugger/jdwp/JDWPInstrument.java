@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 
 import java.io.IOException;
 
@@ -34,7 +34,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     public static final String ID = "jdwp";
 
     private JDWPDebuggerController controller;
-    private EspressoContext context;
+    private JDWPContext context;
 
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
@@ -44,7 +44,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void init(EspressoContext context) {
+    public void init(JDWPContext context) {
         this.context = context;
         try {
             if (controller.shouldWaitForAttach()) {
@@ -84,7 +84,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         }
     }
 
-    public EspressoContext getContext() {
+    public JDWPContext getContext() {
         return context;
     }
 

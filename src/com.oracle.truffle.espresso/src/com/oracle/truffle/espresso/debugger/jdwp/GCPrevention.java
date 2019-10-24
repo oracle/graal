@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import java.util.HashSet;
 
 public class GCPrevention {
@@ -32,11 +30,11 @@ public class GCPrevention {
     // GC should be disabled
     private static HashSet<Object> prevent = new HashSet<>();
 
-    public static void disableGC(StaticObject object) {
+    public static void disableGC(Object object) {
         prevent.add(object);
     }
 
-    public static void enableGC(StaticObject object) {
+    public static void enableGC(Object object) {
         prevent.remove(object);
     }
 }

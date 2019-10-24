@@ -20,13 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.debugger.jdwp.JDWPCallFrame;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 public class VMEventListeners {
 
@@ -44,31 +41,31 @@ public class VMEventListeners {
         listeners[0] = listener;
     }
 
-    public void classPrepared(ObjectKlass klass, StaticObject currentThread) {
+    public void classPrepared(klassRef klass, Thread currentThread) {
         if (listeners[0] != null) {
             listeners[0].classPrepared(klass, currentThread);
         }
     }
 
-    public void classUnloaded(ObjectKlass klass) {
+    public void classUnloaded(klassRef klass) {
         if (listeners[0] != null) {
             listeners[0].classUnloaded(klass);
         }
     }
 
-    public void threadStarted(StaticObject thread) {
+    public void threadStarted(Object thread) {
         if (listeners[0] != null) {
             listeners[0].threadStarted(thread);
         }
     }
 
-    public void threadDied(StaticObject thread) {
+    public void threadDied(Object thread) {
         if (listeners[0] != null) {
             listeners[0].threadDied(thread);
         }
     }
 
-    public void breakpointHit(BreakpointInfo info, StaticObject currentThread) {
+    public void breakpointHit(BreakpointInfo info, Object currentThread) {
         if (listeners[0] != null) {
             listeners[0].breakpointHIt(info, currentThread);
         }

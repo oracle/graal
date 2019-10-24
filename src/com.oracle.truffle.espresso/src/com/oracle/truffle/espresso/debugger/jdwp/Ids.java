@@ -22,20 +22,21 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import java.lang.ref.WeakReference;
 
 public class Ids {
 
     private static volatile long uniqueID = 1;
-    private static WeakReference[] objects = new WeakReference[1];
+    private WeakReference[] objects = new WeakReference[1];
 
-    static {
-        // initialize with StaticObject.NULL
-        getIdAsLong(StaticObject.NULL);
+    private final Object nullObject;
+
+    public Ids(Object nullObject) {
+        getIdAsLong(nullObject);
+        this.nullObject = nullObject;
     }
 
-    public static long getIdAsLong(Object object) {
+    public long getIdAsLong(Object object) {
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
@@ -49,26 +50,29 @@ public class Ids {
         return generateUniqueId(object);
     }
 
-    public static Object fromId(int id) {
-        WeakReference ref = objects[id];
+    public Object fromId(int id) {
+        WeakReference<Object> ref = objects[id];
         Object o = ref.get();
         if (o == null) {
-            return StaticObject.NULL;
+            return nullObject;
         } else {
             //System.out.println("getting object: " + o + " from ID: " + id);
             return o;
         }
     }
 
-    private synchronized static long generateUniqueId(Object object) {
+    private synchronized long generateUniqueId(Object object) {
         long id = uniqueID++;
         assert objects.length == id - 1;
 
-        WeakReference[] expandedArray = new WeakReference[objects.length + 1];
+        WeakReference<Object>[] expandedArray = new WeakReference[objects.length + 1];
         System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-        //System.out.println("ID: " + id + " for object: " + object);
+        //System.out.println("ID: " + id + " for object: " + object + " with class " + object.getClass());
+        if (object.getClass() == Thread.class) {
+            Thread.dumpStack();
+        }
         return id;
     }
 }

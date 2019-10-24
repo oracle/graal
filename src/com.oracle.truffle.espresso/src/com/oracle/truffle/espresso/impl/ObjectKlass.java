@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.debugger.VMEventListeners;
+import com.oracle.truffle.espresso.debugger.jdwp.VMEventListeners;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -235,7 +235,7 @@ public final class ObjectKlass extends Klass {
                      */
                     prepare();
                     initState = PREPARED;
-                    VMEventListeners.getDefault().classPrepared(this, getContext().getHost2Guest(Thread.currentThread()));
+                    VMEventListeners.getDefault().classPrepared(this, Thread.currentThread());
 
                     if (getSuperKlass() != null) {
                         getSuperKlass().initialize();

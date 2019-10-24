@@ -20,54 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger;
+package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.debugger.exception.NoSuchSourceLineException;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.debugger.api.JDWPContext;
+import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 public class SourceLocator {
 
-    private final EspressoContext context;
+    private final JDWPContext context;
 
-    SourceLocator(EspressoContext context) {
+    SourceLocator(JDWPContext context) {
         this.context = context;
     }
 
-    public Source lookupSource(Symbol<Type> type, int lineNumber) throws NoSuchSourceLineException {
+    public Source lookupSource(String slashName, int lineNumber) throws NoSuchSourceLineException {
 
         // Check if class is loaded. Don't ever load classes here since
         // this will break original class initialization order.
-        Klass[] klass = context.getRegistries().findLoadedClassAny(type);
+        klassRef[] klass = context.findLoadedClass(slashName);
         if (klass == null) {
             throw new RuntimeException("not implemented yet!");
         }
 
         // the class was already loaded, so look for the source line
-        for (Method method : klass[0].getDeclaredMethods()) {
+        for (MethodRef method : klass[0].getDeclaredMethods()) {
             // check if line number is in method
-            if (checkLine(method, lineNumber)) {
+            if (method.hasLine(lineNumber)) {
                 return method.getSource();
             }
         }
 
         throw new NoSuchSourceLineException();
-    }
-
-    private boolean checkLine(Method method, int lineNumber) {
-        LineNumberTable lineNumberTable = method.getLineNumberTable();
-        if (lineNumberTable != null) {
-            for (LineNumberTable.Entry entry : lineNumberTable.getEntries()) {
-                if (entry.getLineNumber() == lineNumber) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }

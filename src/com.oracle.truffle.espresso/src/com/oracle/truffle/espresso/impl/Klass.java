@@ -45,6 +45,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.jdwp.ClassStatusConstants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -65,7 +67,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class Klass implements ModifiersProvider, ContextAccess {
+public abstract class Klass implements ModifiersProvider, ContextAccess, klassRef {
 
     static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
         @Override
@@ -145,6 +147,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public final boolean isArray() {
         return isArray;
+    }
+
+    public boolean isInterface() {
+        return ModifiersProvider.super.isInterface();
     }
 
     public StaticObject mirror() {
@@ -732,7 +738,46 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return name;
     }
 
+
     public boolean sameRuntimePackage(Klass other) {
         return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
     }
+
+
+    // region jdwp-specific
+
+    public String getNameAsString() {
+        return name.toString();
+    }
+
+    public String getTypeAsString() {
+        return type.toString();
+    }
+
+    @Override
+    public Klass[] getImplementedInterfaces() {
+        return getInterfaces();
+    }
+
+    @Override
+    public int getStatus() {
+        if (this instanceof ObjectKlass) {
+            ObjectKlass objectKlass = (ObjectKlass) this;
+            return ClassStatusConstants.fromEspressoStatus(objectKlass.getState());
+        } else {
+            return ClassStatusConstants.INITIALIZED;
+        }
+    }
+
+    @Override
+    public klassRef getSuperClass() {
+        return getSuperKlass();
+    }
+
+    @Override
+    public byte getTagConstant() {
+        return getJavaKind().toTagConstant();
+    }
+
+    // endregion jdwp-specific
 }

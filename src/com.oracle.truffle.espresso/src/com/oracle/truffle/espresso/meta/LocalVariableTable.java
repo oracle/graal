@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.debugger.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
@@ -34,7 +35,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.13"
  */
-public final class LocalVariableTable extends Attribute {
+public final class LocalVariableTable extends Attribute implements LocalVariableTableRef {
 
     public static final LocalVariableTable EMPTY = new LocalVariableTable(Local.EMPTY_ARRAY);
 

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.debugger.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -31,7 +32,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.12"
  */
-public final class LineNumberTable extends Attribute {
+public final class LineNumberTable extends Attribute implements LineNumberTableRef {
 
     public static final Symbol<Name> NAME = Name.LineNumberTable;
 
@@ -69,7 +70,7 @@ public final class LineNumberTable extends Attribute {
         return -1;
     }
 
-    public static final class Entry {
+    public static final class Entry implements EntryRef {
 
         public static final Entry[] EMPTY_ARRAY = new Entry[0];
 

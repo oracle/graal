@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
+import com.oracle.truffle.espresso.debugger.api.FieldRef;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -40,7 +41,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 /**
  * Represents a resolved Espresso field.
  */
-public final class Field extends Member<Type> {
+public final class Field extends Member<Type> implements FieldRef {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
@@ -211,4 +212,38 @@ public final class Field extends Member<Type> {
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
+
+    // region jdwp-specific
+    @Override
+    public byte getTagConstant() {
+        return getKind().toTagConstant();
+    }
+
+    @Override
+    public String getNameAsString() {
+        return super.getName().toString();
+    }
+
+    @Override
+    public String getTypeAsString() {
+        return super.getDescriptor().toString();
+    }
+
+    @Override
+    public String getGenericSignatureAsString() {
+        Symbol<ModifiedUTF8> genericSignature = getGenericSignature();
+        return genericSignature.toString();
+    }
+
+    @Override
+    public Object getValue(Object self) {
+        return get((StaticObject) self);
+    }
+
+    @Override
+    public void setValue(Object self, Object value) {
+        set((StaticObject) self, value);
+    }
+
+    //endregion jdwp-specific
 }

@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.debugger.BreakpointInfo;
-import com.oracle.truffle.espresso.debugger.SourceLocation;
-
 class DebuggerCommand {
 
     enum Kind {
@@ -38,7 +34,6 @@ class DebuggerCommand {
 
     Kind kind;
     private SourceLocation location;
-    private SourceSection destination;
     private BreakpointInfo info;
 
     DebuggerCommand(Kind kind) {

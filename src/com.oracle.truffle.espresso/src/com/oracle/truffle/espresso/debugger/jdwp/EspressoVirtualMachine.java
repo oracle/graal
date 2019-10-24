@@ -22,13 +22,47 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-public class EspressoVirtualMachine {
-    public static final int sizeofFieldRef = 8;
-    public static final int sizeofMethodRef = 8;
-    public static final int sizeofObjectRef = 8;
-    public static final int sizeofClassRef = 8;
-    public static final int sizeofFrameRef = 8;
+import com.oracle.truffle.espresso.debugger.api.JDWPVirtualMachine;
+
+public class EspressoVirtualMachine implements JDWPVirtualMachine {
+    public static final int SIZE = 8;
+
     public static final String VM_Description = "Espresso 64-Bit VM";
     public static final String vmVersion = System.getProperty("java.version");
     public static final String vmName = "Espresso 64-Bit VM";
+
+    public int getSizeOfFieldRef() {
+        return SIZE;
+    }
+
+    public int getSizeOfMethodRef() {
+        return SIZE;
+    }
+
+    public int getSizeofObjectRefRef() {
+        return SIZE;
+    }
+
+    public int getSizeOfClassRef() {
+        return SIZE;
+    }
+
+    public int getSizeOfFrameRef() {
+        return SIZE;
+    }
+
+    @Override
+    public String getVmDescription() {
+        return VM_Description;
+    }
+
+    @Override
+    public String getVmVersion() {
+        return vmVersion;
+    }
+
+    @Override
+    public String getVmName() {
+        return vmName;
+    }
 }
