@@ -103,6 +103,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.options",
         "org.graalvm.collections",
+        "org.graalvm.home",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",

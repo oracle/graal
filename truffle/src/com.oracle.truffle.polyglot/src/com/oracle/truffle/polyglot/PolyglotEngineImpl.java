@@ -1031,19 +1031,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return engineOptions;
     }
 
-    @Override
-    public String getVersion() {
-        String version = System.getProperty("org.graalvm.version");
-        if (version == null) {
-            version = System.getProperty("graalvm.version");
-        }
-        if (version == null) {
-            return "Development Build";
-        } else {
-            return version;
-        }
-    }
-
     OptionDescriptors getAllOptions() {
         checkState();
         if (allOptions == null) {

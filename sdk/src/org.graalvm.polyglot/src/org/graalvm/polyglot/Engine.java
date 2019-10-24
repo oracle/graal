@@ -70,6 +70,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -183,7 +184,12 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion();
+        String version = HomeFinder.getInstance().getVersion();
+        if (version.equals("snapshot")) {
+            return "Development Build";
+        } else {
+            return version;
+        }
     }
 
     /**
@@ -253,11 +259,13 @@ public final class Engine implements AutoCloseable {
     /**
      * Finds the GraalVM home folder.
      *
+     * This is equivalent to {@link HomeFinder#getHomeFolder()} which should be preferred.
+     *
      * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
      * @since 19.0
      */
     public static Path findHome() {
-        return getImpl().findHome();
+        return HomeFinder.getInstance().getHomeFolder();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -857,11 +865,6 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public void resetPreInitializedEngine() {
-        }
-
-        @Override
-        public Path findHome() {
-            return null;
         }
 
         @Override
