@@ -1260,7 +1260,10 @@ def maven_plugin_test(args):
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
     pom_from_template(proj_dir, svm_version)
     # Build native image with native-image-maven-plugin
-    mx.run_maven(['package'], cwd=proj_dir)
+    env = os.environ.copy()
+    if not svm_java8():
+        env['MAVEN_OPTS'] = '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'
+    mx.run_maven(['package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 
