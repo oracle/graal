@@ -38,7 +38,10 @@ projects/SULONG_TEST.dist/
 cache/**
 projects/com.oracle.truffle.llvm.bench/languagegame/**
 projects/com.oracle.truffle.llvm.test/lifetime/**
+projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/*.interp
 projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/*.tokens
+projects/com.oracle.truffle.llvm.runtime/src/com/oracle/truffle/llvm/runtime/debug/debugexpr/parser/antlr/*.interp
+projects/com.oracle.truffle.llvm.runtime/src/com/oracle/truffle/llvm/runtime/debug/debugexpr/parser/antlr/*.tokens
 
 tests/argon2/phc-winner-argon2/**
 tests/argon2/pthread-stub/*.ll
