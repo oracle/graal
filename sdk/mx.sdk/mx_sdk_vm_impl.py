@@ -410,15 +410,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     'dependency': 'graalvm-jimage',
                     'path': '*',
                 })
-                # Temporary workaround until GR-16855 an SVM module provides the .a files
-                static_libs_path = _src_jdk_dir + (('/' + _src_jdk_base) if _src_jdk_base != '.' else '') + '/lib/*.a'
-                if glob.glob(static_libs_path):
-                    _add(layout, self.jdk_base + '/lib/', {
-                        'source_type': 'file',
-                        'path': static_libs_path,
-                    })
-                elif _get_svm_support().is_supported():
-                    mx.abort("Cannot find static libraries in '{}', required by SubstrateVM on JDK9+.\nAre you building with a recent LabsJDK?".format(dirname(static_libs_path)))
 
             # Add vm.properties
             vm_name = graalvm_vm_name(self, _src_jdk)
