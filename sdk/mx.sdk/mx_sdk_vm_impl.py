@@ -110,6 +110,7 @@ _lib_prefix = mx.add_lib_prefix("")
 
 
 _graalvm_base_name = 'GraalVM'
+_graalvm_maven_attributes = {'groupId': 'org.graalvm'}
 
 
 default_components = []
@@ -211,8 +212,8 @@ def _get_jdk_base(jdk):
         jdk_base = '.'
     return jdk_dir, jdk_base
 
-_src_jdk = mx.get_jdk(tag='default')
-_src_jdk_version = _src_jdk.javaCompliance.value
+_src_jdk = mx_sdk_vm.base_jdk()
+_src_jdk_version = mx_sdk_vm.base_jdk_version()
 
 # Example:
 #   macOS:
@@ -807,7 +808,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                                                     platformDependent=subject_distribution.platformDependent,
                                                     theLicense=theLicense, **kw_args)
         self._layout_initialized = False
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         self.subject_distribution = subject_distribution
 
     def _walk_layout(self):
@@ -1779,13 +1780,14 @@ x-GraalVM-Polyglot-Part: {polyglot}
         dependencies = set()
         # `known_allowed_dependencies` is a workaround for GR-18947
         known_allowed_dependencies = {"llvm-toolchain"}
-        for c in main_component.direct_dependencies():
-            d = get_installable_distribution(c.name, fatalIfMissing=False)
-            if d:
-                if c.installable_id in known_allowed_dependencies:
-                    dependencies.add(c.installable_id)
-                else:
-                    mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
+        for comp in self.components:
+            for c in comp.direct_dependencies():
+                d = get_installable_distribution(c.name, fatalIfMissing=False)
+                if d:
+                    if c.installable_id in known_allowed_dependencies:
+                        dependencies.add(c.installable_id)
+                    else:
+                        mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
         dependencies = sorted(dependencies)
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
@@ -1854,7 +1856,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         components = [component]
         if extra_components:
             components += extra_components
@@ -1930,7 +1932,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         mx.logv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
 
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1976,7 +1978,7 @@ def get_final_graalvm_distribution():
     if _final_graalvm_distribution == 'uninitialized':
         _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name)
         _final_graalvm_distribution.description = "GraalVM distribution"
-        _final_graalvm_distribution.maven = True
+        _final_graalvm_distribution.maven = _graalvm_maven_attributes
     return _final_graalvm_distribution
 
 
@@ -2590,8 +2592,7 @@ def _force_bash_launchers(launcher):
     only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
     if only:
         only = [lib for lib in only.split(',') if not lib.startswith('lib:')]
-        if launcher_name not in only:
-            return True
+        return launcher_name not in only
 
     forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false' if has_vm_suite() else 'true'))
     if isinstance(forced, bool):
@@ -2611,8 +2612,7 @@ def _skip_libraries(library):
     only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
     if only:
         only = [lib[4:] for lib in only.split(',') if lib.startswith('lib:')]
-        if library_name not in only:
-            return True
+        return library_name not in only
 
     skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false' if has_vm_suite() else 'true'))
     if isinstance(skipped, bool):

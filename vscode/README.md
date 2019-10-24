@@ -31,3 +31,6 @@ code --install-extension graalvm-r-0.0.1.vsix
 code --install-extension graalvm-ruby-0.0.1.vsix
 ```
 
+## License
+
+GraalVM VS Code Extensions are licensed under [The Universal Permissive License (UPL), Version 1.0](LICENSE)

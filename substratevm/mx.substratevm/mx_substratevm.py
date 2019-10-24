@@ -870,14 +870,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
         ),
-        mx_sdk_vm.LauncherConfig(
-            destination="bin/<exe:native-image-configure>",
-            jar_distributions=["substratevm:SVM_CONFIGURE"],
-            main_class="com.oracle.svm.configure.ConfigurationTool",
-            build_args=[
-                "-H:-ParseRuntimeOptions",
-            ]
-        )
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
@@ -970,9 +962,10 @@ jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
     'compiler:GRAAL_LIBGRAAL_JNI',
     'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
-jdk8 = mx.get_jdk(mx.JavaCompliance(8), cancel='GRAAL_MANAGEMENT_LIBGRAAL will be not added', purpose="configure jvmcicompiler", tag=mx.DEFAULT_JDK_TAG)
-if jdk8:
+
+if mx_sdk_vm.base_jdk_version() == 8:
     jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='LibGraal',
@@ -1002,6 +995,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='Native Image Configure Tool',
+    short_name='nic',
+    dir_name='svm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['ni'],
+    support_distributions=[],
+    launcher_configs=[
+        mx_sdk_vm.LauncherConfig(
+            destination="bin/<exe:native-image-configure>",
+            jar_distributions=["substratevm:SVM_CONFIGURE"],
+            main_class="com.oracle.svm.configure.ConfigurationTool",
+            build_args=[
+                "-H:-ParseRuntimeOptions",
+            ]
+        )
+    ],
+))
 
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
 def helloworld(args):

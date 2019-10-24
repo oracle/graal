@@ -986,7 +986,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     void initializeHostAccess(HostAccess policy) {
         assert Thread.holdsLock(this);
         assert policy != null;
-        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy);
+        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy, contextClassLoader);
         if (this.hostClassCache != null && this.hostClassCache != cache) {
             throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
                             "The host access configuration must be the same for all contexts of an engine. " +

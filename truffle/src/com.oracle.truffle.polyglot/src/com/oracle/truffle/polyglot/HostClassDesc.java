@@ -58,6 +58,7 @@ import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
@@ -184,10 +185,11 @@ final class HostClassDesc {
             List<Method> bridgeMethods = null;
             if (isPublicType) {
                 for (Method m : type.getMethods()) {
-                    if (Modifier.isStatic(m.getModifiers()) && (m.getDeclaringClass() != startType && Modifier.isInterface(m.getDeclaringClass().getModifiers()))) {
+                    Class<?> declaringClass = m.getDeclaringClass();
+                    if (Modifier.isStatic(m.getModifiers()) && (declaringClass != startType && Modifier.isInterface(declaringClass.getModifiers()))) {
                         // do not inherit static interface methods
                         continue;
-                    } else if (!Modifier.isPublic(m.getDeclaringClass().getModifiers())) {
+                    } else if (!Modifier.isPublic(declaringClass.getModifiers()) || !TruffleJDKServices.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass)) {
                         /*
                          * If a public method is declared in a non-public superclass, there should
                          * be a public bridge method in this class that provides access to it.
@@ -214,7 +216,6 @@ final class HostClassDesc {
                         bridgeMethods.add(m);
                         continue;
                     }
-
                     if (visited.add(methodInfo(m))) {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }

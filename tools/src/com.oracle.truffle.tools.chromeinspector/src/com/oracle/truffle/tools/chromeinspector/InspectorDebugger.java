@@ -94,6 +94,16 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
+    // Generic matcher of completion function
+    // (function(x){var a=[];for(var o=x;o!==null&&typeof o !== 'undefined';o=o.__proto__){
+    // a.push(Object.getOwnPropertyNames(o))
+    // };return a})(obj)
+    private static final Pattern FUNCTION_COMPLETION_PATTERN = Pattern.compile(
+                    "\\(function\\s*\\((?<x>\\w+)\\)\\s*\\{\\s*var\\s+(?<a>\\w+)\\s*=\\s*\\[\\];\\s*" +
+                                    "for\\s*\\(var\\s+(?<o>\\w+)\\s*=\\s*\\k<x>;\\s*\\k<o>\\s*\\!==\\s*null\\s*&&\\s*typeof\\s+\\k<o>\\s*\\!==\\s*.undefined.;\\k<o>\\s*=\\s*\\k<o>\\.__proto__\\)\\s*\\{" +
+                                    "\\s*\\k<a>\\.push\\(Object\\.getOwnPropertyNames\\(\\k<o>\\)\\)" +
+                                    "\\};\\s*return\\s+\\k<a>\\}\\)\\((?<object>.*)\\)$");
+
     private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
     private volatile DebuggerSession debuggerSession;
@@ -626,6 +636,9 @@ public final class InspectorDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
+                    if (runSpecialFunctions(expression, cf, generatePreview, json)) {
+                        return json;
+                    }
                     DebugValue value = getVarValue(expression, cf);
                     if (value == null) {
                         try {
@@ -684,6 +697,28 @@ public final class InspectorDebugger extends DebuggerDomain {
             jsonResult.put("result", err);
         }
         return new Params(jsonResult);
+    }
+
+    private boolean runSpecialFunctions(String expression, CallFrame cf, boolean generatePreview, JSONObject json) {
+        // Test whether code-completion on an object was requested:
+        Matcher completionMatcher = FUNCTION_COMPLETION_PATTERN.matcher(expression);
+        if (completionMatcher.matches()) {
+            String objectOfCompletion = completionMatcher.group("object");
+            DebugValue value = getVarValue(objectOfCompletion, cf);
+            if (value == null) {
+                try {
+                    value = cf.getFrame().eval(objectOfCompletion);
+                } catch (IllegalStateException ex) {
+                    // Not an interactive language
+                }
+            }
+            if (value != null) {
+                JSONObject result = InspectorRuntime.createCodecompletion(value, null, generatePreview, context, false);
+                json.put("result", result);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Get value of variable "name", if any. */

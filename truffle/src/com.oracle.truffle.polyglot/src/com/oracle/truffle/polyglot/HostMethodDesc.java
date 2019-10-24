@@ -312,8 +312,9 @@ abstract class HostMethodDesc {
             protected MethodHandle makeMethodHandle() {
                 CompilerAsserts.neverPartOfCompilation();
                 try {
-                    final MethodHandle methodHandle = MethodHandles.publicLookup().unreflect(reflectionMethod);
-                    return adaptSignature(methodHandle, Modifier.isStatic(reflectionMethod.getModifiers()), reflectionMethod.getParameterCount());
+                    Method m = reflectionMethod;
+                    final MethodHandle methodHandle = MethodHandles.publicLookup().unreflect(m);
+                    return adaptSignature(methodHandle, Modifier.isStatic(m.getModifiers()), m.getParameterCount());
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException(e);
                 }

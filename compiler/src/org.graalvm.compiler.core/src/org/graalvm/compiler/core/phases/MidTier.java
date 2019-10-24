@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.phases;
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
@@ -35,6 +34,7 @@ import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitiga
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
 
+import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
@@ -53,6 +53,7 @@ import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
@@ -74,8 +75,6 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new LoopSafepointEliminationPhase());
 
-        appendPhase(new LoopSafepointInsertionPhase());
-
         appendPhase(new GuardLoweringPhase());
 
         if (MitigateSpeculativeExecutionAttacks.getValue(options) == GuardTargets || MitigateSpeculativeExecutionAttacks.getValue(options) == NonDeoptGuardTargets) {
@@ -86,18 +85,21 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
+        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()));
+
+        appendPhase(new LoopSafepointInsertionPhase());
+
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
 
         appendPhase(new OptimizeDivPhase());
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        LoopPolicies loopPolicies = createLoopPolicies();
-        if (OptLoopTransform.getValue(options)) {
-            if (PartialUnroll.getValue(options)) {
-                appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
-            }
+        if (PartialUnroll.getValue(options)) {
+            LoopPolicies loopPolicies = createLoopPolicies();
+            appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
         }
+
         if (ReassociateInvariants.getValue(options)) {
             appendPhase(new ReassociateInvariantPhase());
         }
@@ -109,5 +111,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         appendPhase(canonicalizer);
 
         appendPhase(new WriteBarrierAdditionPhase());
+    }
+
+    @Override
+    public LoopPolicies createLoopPolicies() {
+        return new DefaultLoopPolicies();
     }
 }
