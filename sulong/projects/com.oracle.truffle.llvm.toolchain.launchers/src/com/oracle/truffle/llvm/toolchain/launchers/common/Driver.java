@@ -120,18 +120,13 @@ public class Driver {
     }
 
     private static String getVersion() {
-        String version = System.getProperty("org.graalvm.version");
-        if (version == null) {
-            version = System.getProperty("graalvm.version");
-        }
-        if (version == null) {
+        String version = HomeFinder.getInstance().getVersion();
+        if (version.equals("snapshot")) {
             return "Development Build";
         } else {
             return version;
         }
     }
-
-    public static final String VERSIION = getVersion();
 
     public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
         runDriverExit(sulongArgs, userArgs, verbose, help, earlyExit);
@@ -219,11 +214,11 @@ public class Driver {
             System.out.println("GraalVM's LLVM IR engine (bin/lli).");
             System.out.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
             System.out.println("Wrapped executable: " + exe);
-            System.out.println("GraalVM version: " + VERSIION);
+            System.out.println("GraalVM version: " + getVersion());
         }
         if (verbose) {
             System.out.println("GraalVM wrapper script for " + getTool());
-            System.out.println("GraalVM version: " + VERSIION);
+            System.out.println("GraalVM version: " + getVersion());
             System.out.println("running: " + String.join(" ", toolArgs));
         }
         if (help) {
