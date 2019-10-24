@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.nodes.util.SignedIntegerHelper;
 import org.graalvm.compiler.nodes.util.UnsignedIntegerHelper;
@@ -306,7 +305,6 @@ public class CountedLoopInfo {
         IntegerStamp endStamp = (IntegerStamp) end.stamp(NodeView.DEFAULT);
         ValueNode strideNode = iv.strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
-        GraphUtil.tryKillUnused(strideNode);
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == Direction.Up) {
             long max = integerHelper.maxValue();
