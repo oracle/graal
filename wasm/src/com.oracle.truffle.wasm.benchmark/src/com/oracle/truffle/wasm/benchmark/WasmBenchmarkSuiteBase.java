@@ -35,7 +35,6 @@ import static com.oracle.truffle.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -66,13 +65,16 @@ public abstract class WasmBenchmarkSuiteBase {
     public abstract static class WasmBenchmarkState {
         private WasmCase benchmarkCase;
 
-        private Value mainFunction;
+        private Value benchmarkSetupOnce;
+        private Value benchmarkRun;
         private Value resetContext;
         private Value customInitializer;
         private WasmInitialization initialization;
-
         private Value result;
-        private ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
+        /**
+         * Benchmarks must not be validated via their standard out, unlike tests.
+         */
+        private ByteArrayOutputStream dummyStdout = new ByteArrayOutputStream();
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
@@ -96,43 +98,46 @@ public abstract class WasmBenchmarkSuiteBase {
             context.eval(source);
 
             Value wasmBindings = context.getBindings("wasm");
-            mainFunction = wasmBindings.getMember("_main");
+            benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
+            benchmarkRun = wasmBindings.getMember("_benchmarkRun");
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
             customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             initialization = benchmarkCase.initialization();
+
+            // Initialization is done only once, and before the module starts.
+            // It is the benchmark's job to ensure that it executes meaningful workloads
+            // that run correctly despite the fact that the VM state changed.
+            // I.e. benchmark workloads must assume that they are run multiple times.
+            if (initialization != null) {
+                customInitializer.execute(initialization);
+            }
+
+            if (benchmarkSetupOnce != null) {
+                benchmarkSetupOnce.execute();
+            }
         }
 
         @Setup(Level.Iteration)
         public void setupIteration() {
             // Reset result.
             result = null;
-
-            // Run initialization, if necessary.
-            if (initialization != null) {
-                customInitializer.execute(initialization);
-            }
         }
 
         @TearDown(Level.Iteration)
         public void teardownIteration() {
             // Validate result.
-            WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, capturedStdout);
+            WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
 
             // Reset context and zero out memory.
             resetContext.execute(true);
-
-            // Reset system output stream.
-            System.setOut(System.out);
         }
 
         @Setup(Level.Invocation)
         public void setupInvocation() {
-            capturedStdout = new ByteArrayOutputStream();
-            System.setOut(new PrintStream(capturedStdout));
         }
 
-        public Value mainFunction() {
-            return mainFunction;
+        public Value benchmarkRun() {
+            return benchmarkRun;
         }
 
         public void setResult(Value result) {

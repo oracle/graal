@@ -48,10 +48,17 @@ import shutil
 
 from collections import defaultdict
 
-_suite = mx.suite('wasm')
+_suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
 wabt_dir = mx.get_env("WABT_DIR", None)
+
+benchmark_methods = [
+    "_benchmarkWarmupCount",
+    "_benchmarkSetupOnce",
+    "_benchmarkRun",
+    "_main",
+]
 
 def mkdir_p(path):
     try:
@@ -144,6 +151,11 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             mx.abort("Set WABT_DIR if you want the binary to include .wat files.")
         mx.log("Building files from the source dir: " + source_dir)
         flags = ["-O3", "-g2"]
+        include_flags = []
+        if hasattr(self.project, "includeset"):
+            include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
+            if self.project.includeset == "bench":
+                flags = flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
@@ -155,7 +167,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             if filename.endswith(".c"):
                 # Step 1a: compile with the JS file.
                 output_js_path = os.path.join(output_dir, subdir, basename + ".js")
-                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path]
+                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path] + include_flags
+                mx.log(build_cmd_line)
                 mx.run(build_cmd_line)
 
                 # Step 1b: extract the relevant information out of the JS file, and record it into an initialization file.
@@ -164,7 +177,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     f.write(init_info)
 
                 # Step 1c: compile to just a .wasm file, to avoid name mangling.
-                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path]
+                build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path] + include_flags
                 mx.run(build_cmd_line)
             elif filename.endswith(".wat"):
                 # Step 1: compile the .wat file to .wasm.

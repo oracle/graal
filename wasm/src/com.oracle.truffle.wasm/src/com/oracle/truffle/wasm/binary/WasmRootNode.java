@@ -94,21 +94,29 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
         body.execute(context, frame);
 
-        long returnValue = pop(frame, 0);
         switch (body.returnTypeId()) {
             case 0x00:
-            case ValueTypes.VOID_TYPE:
+            case ValueTypes.VOID_TYPE: {
                 return WasmVoidResult.getInstance();
-            case ValueTypes.I32_TYPE:
+            }
+            case ValueTypes.I32_TYPE: {
+                long returnValue = pop(frame, 0);
                 assert returnValue >>> 32 == 0;
                 return (int) returnValue;
-            case ValueTypes.I64_TYPE:
+            }
+            case ValueTypes.I64_TYPE: {
+                long returnValue = pop(frame, 0);
                 return returnValue;
-            case ValueTypes.F32_TYPE:
+            }
+            case ValueTypes.F32_TYPE: {
+                long returnValue = pop(frame, 0);
                 assert returnValue >>> 32 == 0;
                 return Float.intBitsToFloat((int) returnValue);
-            case ValueTypes.F64_TYPE:
+            }
+            case ValueTypes.F64_TYPE: {
+                long returnValue = pop(frame, 0);
                 return Double.longBitsToDouble(returnValue);
+            }
             default:
                 assert false;
                 return null;

@@ -44,7 +44,7 @@ public class CBenchmarkSuite extends WasmBenchmarkSuiteBase {
     }
 
     @Benchmark
-    public void fibBenchmark(CBenchmarkState state) {
-        state.setResult(state.mainFunction().execute());
+    public void run(CBenchmarkState state) {
+        state.setResult(state.benchmarkRun().execute());
     }
 }

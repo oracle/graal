@@ -131,6 +131,7 @@ suite = {
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
+      "includeset" : "bench",
       "workingSets" : "Truffle,WebAssembly",
       "testProject" : False,
       "defaultBuild" : False,

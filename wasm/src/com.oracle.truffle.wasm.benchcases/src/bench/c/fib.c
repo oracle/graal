@@ -1,6 +1,14 @@
-#include <stdio.h>
 
-long result = 0;
+#include <stdio.h>
+#include <emscripten.h>
+#include "harness.h"
+
+int benchmarkWarmupCount() {
+  return 25;
+}
+
+void benchmarkSetupOnce() {
+}
 
 int fib(int n) {
   if (n <= 1) {
@@ -10,7 +18,6 @@ int fib(int n) {
   }
 }
 
-int main() {
-  return fib(22);
+int benchmarkRun() {
+  return fib(30);
 }
-
