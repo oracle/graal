@@ -50,7 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.espresso.classfile.Constants;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -74,6 +73,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -496,7 +496,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
         assert EspressoException.isUnwinding(self, getMeta());
-        self.setHiddenField(getMeta().HIDDEN_FRAMES, new StackTrace());
+        // self.setHiddenField(getMeta().HIDDEN_FRAMES, new StackTrace());
+        InterpreterToVM.fillInStackTrace(self, false, getMeta());
         return self;
     }
 
@@ -505,9 +506,9 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unchecked")
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
         Meta meta = getMeta();
-        StackTrace frames = (StackTrace) self.getHiddenField(meta.HIDDEN_FRAMES);
-        if (EspressoException.isUnwinding(self, meta)) {
-            InterpreterToVM.fillInStackTrace(self, false, meta);
+        StackTrace frames = EspressoException.getFrames(self, meta);
+        if (frames == null) {
+            return 0;
         }
         assert !EspressoException.isUnwinding(self, meta);
         return frames.size;
@@ -523,11 +524,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         StaticObject ste = meta.StackTraceElement.allocateInstance();
         StackTrace frames = EspressoException.getFrames(self, meta);
-        if (EspressoException.isUnwinding(self, meta)) {
-            InterpreterToVM.fillInStackTrace(self, false, meta);
-        }
-        assert !EspressoException.isUnwinding(self, meta);
-        if (index >= frames.size) {
+        if (frames == null || index >= frames.size) {
             throw meta.throwEx(IndexOutOfBoundsException.class);
         }
         StackElement stackElement = frames.trace[index];

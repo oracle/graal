@@ -243,6 +243,12 @@ public final class EspressoContext {
         StaticObject outOfMemoryErrorInstance = meta.OutOfMemoryError.allocateInstance();
         meta.StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
         meta.OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+
+        stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        stackOverflowErrorInstance.setField(meta.Throwable_backtrace, stackOverflowErrorInstance);
+        outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        outOfMemoryErrorInstance.setField(meta.Throwable_backtrace, outOfMemoryErrorInstance);
+
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
@@ -407,6 +413,10 @@ public final class EspressoContext {
 
     public void unregisterThread(StaticObject self) {
         threadManager.unregisterThread(self);
+    }
+
+    public StaticObject[] getActiveThreads() {
+        return threadManager.activeThreads();
     }
 
     public void invalidateNoThreadStop(String message) {

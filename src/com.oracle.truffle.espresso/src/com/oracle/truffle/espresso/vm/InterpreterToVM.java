@@ -30,8 +30,11 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -47,8 +50,8 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+
 import sun.misc.Unsafe;
 
 public final class InterpreterToVM implements ContextAccess {
@@ -65,6 +68,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     private static final Unsafe hostUnsafe;
+    private static final FrameSlot BCIslot;
 
     static {
         try {
@@ -72,6 +76,13 @@ public final class InterpreterToVM implements ContextAccess {
             f.setAccessible(true);
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        try {
+            java.lang.reflect.Constructor<FrameSlot> frameSlot = FrameSlot.class.getDeclaredConstructor(FrameDescriptor.class, Object.class, Object.class, FrameSlotKind.class, int.class);
+            frameSlot.setAccessible(true);
+            BCIslot = frameSlot.newInstance(null, null, null, FrameSlotKind.Int, 0);
+        } catch (Throwable e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -430,7 +441,7 @@ public final class InterpreterToVM implements ContextAccess {
     public static StaticObject fillInStackTrace(StaticObject throwable, boolean skipFirst, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
-        VM.StackTrace frames = (VM.StackTrace) throwable.getHiddenField(meta.HIDDEN_FRAMES);
+        VM.StackTrace frames = new VM.StackTrace();
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
             boolean first = skipFirst;
 
@@ -449,7 +460,15 @@ public final class InterpreterToVM implements ContextAccess {
                             Method method = espressoNode.getMethod();
                             if (!c.checkFillIn(method)) {
                                 if (!c.checkThrowableInit(method)) {
-                                    frames.add(new VM.StackElement(method, espressoNode.isBytecodeNode() ? -1 : -2));
+                                    int bci = -2;
+                                    if (espressoNode.isBytecodeNode()) {
+                                        try {
+                                            bci = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(BCIslot);
+                                        } catch (Throwable e) {
+                                            bci = -1;
+                                        }
+                                    }
+                                    frames.add(new VM.StackElement(method, bci));
                                     c.inc();
                                 }
                             }
