@@ -1,6 +1,4 @@
 
-#include <stdio.h>
-#include <emscripten.h>
 #include "harness.h"
 
 int benchmarkWarmupCount() {
