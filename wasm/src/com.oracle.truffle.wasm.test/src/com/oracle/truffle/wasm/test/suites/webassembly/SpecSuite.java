@@ -36,13 +36,13 @@ import java.util.stream.Collectors;
 
 import org.junit.Assert;
 
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
 import com.oracle.truffle.wasm.test.util.sexpr.LiteralType;
 import com.oracle.truffle.wasm.test.util.sexpr.WasmSExprSuite;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprAtomNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprListNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprLiteralNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
+import com.oracle.truffle.wasm.utils.WasmBinaryTools;
 
 public class SpecSuite extends WasmSExprSuite {
 
@@ -86,7 +86,7 @@ public class SpecSuite extends WasmSExprSuite {
         if (moduleFormat == null) {
             // Normal module definition (cannot be malformed).
             System.out.println("Compiling WebAssembly: " + moduleNode.toString());
-            WasmTestToolkit.compileWatString(moduleNode.toString());
+            WasmBinaryTools.compileWat(moduleNode.toString());
         } else {
             // Module in binary or quoted format (may be malformed).
             String moduleContent = readRepeatedStringSequence(moduleNode, moduleName == null ? 2 : 3);
@@ -97,7 +97,7 @@ public class SpecSuite extends WasmSExprSuite {
                 }
                 case "quote": {
                     System.out.println("Compiling WebAssembly string: " + moduleContent);
-                    WasmTestToolkit.compileWatString(moduleContent);
+                    WasmBinaryTools.compileWat(moduleContent);
                     break;
                 }
             }

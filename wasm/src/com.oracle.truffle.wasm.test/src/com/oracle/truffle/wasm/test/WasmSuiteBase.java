@@ -31,30 +31,18 @@ package com.oracle.truffle.wasm.test;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -65,6 +53,7 @@ import org.junit.Assert;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+import com.oracle.truffle.wasm.utils.cases.WasmCase;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
 
@@ -116,7 +105,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Value runInContext(WasmTestCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+    private Value runInContext(WasmCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
         final PrintStream oldOut = System.out;
@@ -166,7 +155,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
                 resetContext.execute(zeroMemory);
 
-                validateResult(testCase.data.resultValidator, result, capturedStdout);
+                validateResult(testCase.data().resultValidator(), result, capturedStdout);
             } catch (PolyglotException e) {
                 // We cannot label the tests with polyglot errors, because they might be return values.
                 throw e;
@@ -206,7 +195,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
     }
 
-    private WasmTestStatus runTestCase(WasmTestCase testCase) {
+    private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
             byte[] binary = testCase.createBinary();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
@@ -244,9 +233,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             context = getAsyncCompiled(contextBuilder);
             runInContext(testCase, context, source, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
-            Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
+            Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
         } catch (PolyglotException e) {
-            validateThrown(testCase.data.expectedErrorMessage, e);
+            validateThrown(testCase.data().expectedErrorMessage(), e);
         }
         return WasmTestStatus.OK;
     }
@@ -275,9 +264,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     @Override
     public void test() throws IOException {
-        Collection<? extends WasmTestCase> allTestCases = collectTestCases();
-        Collection<? extends WasmTestCase> qualifyingTestCases = filterTestCases(allTestCases);
-        Map<WasmTestCase, Throwable> errors = new LinkedHashMap<>();
+        Collection<? extends WasmCase> allTestCases = collectTestCases();
+        Collection<? extends WasmCase> qualifyingTestCases = filterTestCases(allTestCases);
+        Map<WasmCase, Throwable> errors = new LinkedHashMap<>();
         System.out.println();
         System.out.println("--------------------------------------------------------------------------------");
         System.out.print(String.format("Running: %s ", suiteName()));
@@ -290,9 +279,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         int width = retrieveTerminalWidth();
         int position = 0;
-        for (WasmTestCase testCase : qualifyingTestCases) {
+        for (WasmCase testCase : qualifyingTestCases) {
             int extraWidth = 1 + STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH;
-            int requiredWidth = testCase.name.length() + extraWidth;
+            int requiredWidth = testCase.name().length() + extraWidth;
             if (position + requiredWidth >= width) {
                 System.out.println();
                 position = 0;
@@ -304,7 +293,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 // If the test fails normally or succeeds, then we move the cursor to the left,
                 // and erase the test name.
                 System.out.print(" ");
-                System.out.print(testCase.name);
+                System.out.print(testCase.name());
                 for (int i = 1; i < extraWidth; i++) {
                     System.out.print(" ");
                 }
@@ -328,8 +317,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println();
         System.out.println("Finished running: " + suiteName());
         if (!errors.isEmpty()) {
-            for (Map.Entry<WasmTestCase, Throwable> entry : errors.entrySet()) {
-                System.err.println(String.format("Failure in: %s.%s", suiteName(), entry.getKey().name));
+            for (Map.Entry<WasmCase, Throwable> entry : errors.entrySet()) {
+                System.err.println(String.format("Failure in: %s.%s", suiteName(), entry.getKey().name()));
                 System.err.println(entry.getValue().getClass().getSimpleName() + ": " + entry.getValue().getMessage());
                 entry.getValue().printStackTrace();
             }
@@ -362,291 +351,19 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return null;
     }
 
-    protected Collection<? extends WasmTestCase> collectTestCases() throws IOException {
-        return Stream.concat(collectStringTestCases().stream(), collectFileTestCases(testResource()).stream()).collect(Collectors.toList());
+    protected Collection<? extends WasmCase> collectTestCases() throws IOException {
+        return Stream.concat(collectStringTestCases().stream(), WasmCase.collectFileCases("test", testResource()).stream()).collect(Collectors.toList());
     }
 
-    protected Collection<? extends WasmTestCase> collectStringTestCases() {
+    protected Collection<? extends WasmCase> collectStringTestCases() {
         return new ArrayList<>();
     }
 
-    protected Collection<? extends WasmTestCase> filterTestCases(Collection<? extends WasmTestCase> testCases) {
-        return testCases.stream().filter((WasmTestCase x) -> filterTestName().test(x.name)).collect(Collectors.toList());
-    }
-
-    protected String getResourceAsString(String resourceName, boolean fail) throws IOException {
-        byte[] contents = getResourceAsBytes(resourceName, fail);
-        if (contents != null) {
-            return new String(contents);
-        } else {
-            assert !fail;
-            return null;
-        }
-    }
-
-    protected byte[] getResourceAsBytes(String resourceName, boolean fail) throws IOException {
-        InputStream stream = getClass().getResourceAsStream(resourceName);
-        if (stream == null) {
-            if (fail) {
-                Assert.fail(String.format("Could not find resource: %s", resourceName));
-            } else {
-                return null;
-            }
-        }
-        byte[] contents = new byte[stream.available()];
-        new DataInputStream(stream).readFully(contents);
-        return contents;
-    }
-
-    protected Object getResourceAsTest(String baseName, boolean fail) throws IOException {
-        final byte[] bytes = getResourceAsBytes(baseName + ".wasm", false);
-        if (bytes != null) {
-            return bytes;
-        }
-        final String text = getResourceAsString(baseName + ".wat", false);
-        if (text != null) {
-            return text;
-        }
-        if (fail) {
-            Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
-        }
-        return null;
-    }
-
-    protected Collection<WasmTestCase> collectFileTestCases(String testBundle) throws IOException {
-        Collection<WasmTestCase> collectedCases = new ArrayList<>();
-        if (testBundle == null) {
-            return collectedCases;
-        }
-
-        // Open the wasm_test_index file of the test bundle. The wasm_test_index file contains the available tests for that bundle.
-        InputStream index = getClass().getResourceAsStream(String.format("/test/%s/wasm_test_index", testBundle));
-        BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
-
-        // Iterate through the available test of the bundle.
-        while (indexReader.ready()) {
-            String testName = indexReader.readLine().trim();
-
-            if (testName.equals("") || testName.startsWith("#")) {
-                // Skip empty lines or lines starting with a hash (treat as a comment).
-                continue;
-            }
-
-            Object mainContent = getResourceAsTest(String.format("/test/%s/%s", testBundle, testName), true);
-            String resultContent = getResourceAsString(String.format("/test/%s/%s.result", testBundle, testName), true);
-            String initContent = getResourceAsString(String.format("/test/%s/%s.init", testBundle, testName), false);
-            String optsContent = getResourceAsString(String.format("/test/%s/%s.opts", testBundle, testName), false);
-            WasmTestInitialization initializer = testInitialization(initContent);
-            Properties options = testOptions(optsContent);
-
-            String[] resultTypeValue = resultContent.split("\\s+", 2);
-            String resultType = resultTypeValue[0];
-            String resultValue = resultTypeValue[1];
-
-            WasmTestCaseData testData = null;
-            switch (resultType) {
-                case "stdout":
-                    testData = expectedStdout(resultValue);
-                    break;
-                case "int":
-                    testData = expected(Integer.parseInt(resultValue.trim()));
-                    break;
-                case "long":
-                    testData = expected(Long.parseLong(resultValue.trim()));
-                    break;
-                case "float":
-                    testData = expected(Float.parseFloat(resultValue.trim()));
-                    break;
-                case "double":
-                    testData = expected(Double.parseDouble(resultValue.trim()));
-                    break;
-                case "exception":
-                    testData = expectedThrows(resultValue);
-                    break;
-                default:
-                    Assert.fail(String.format("Unknown type in result specification: %s", resultType));
-            }
-            if (mainContent instanceof String) {
-                collectedCases.add(testCase(testName, testData, (String) mainContent, initializer, options));
-            } else if (mainContent instanceof byte[]) {
-                collectedCases.add(testCase(testName, testData, (byte[]) mainContent, initializer, options));
-            } else {
-                Assert.fail("Unknown content type: " + mainContent.getClass());
-            }
-        }
-
-        return collectedCases;
+    protected Collection<? extends WasmCase> filterTestCases(Collection<? extends WasmCase> testCases) {
+        return testCases.stream().filter((WasmCase x) -> filterTestName().test(x.name())).collect(Collectors.toList());
     }
 
     protected String suiteName() {
         return getClass().getSimpleName();
-    }
-
-    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program) {
-        return new WasmStringTestCase(name, data, program, null, new Properties());
-    }
-
-    protected static WasmStringTestCase testCase(String name, WasmTestCaseData data, String program, WasmTestInitialization initializer, Properties options) {
-        return new WasmStringTestCase(name, data, program, initializer, options);
-    }
-
-    protected static WasmBinaryTestCase testCase(String name, WasmTestCaseData data, byte[] binary, WasmTestInitialization initializer, Properties options) {
-        return new WasmBinaryTestCase(name, data, binary, initializer, options);
-    }
-
-    protected static WasmTestCaseData expectedStdout(String expectedOutput) {
-        return new WasmTestCaseData((Value result, String output) -> Assert.assertEquals("Failure: stdout: ", expectedOutput, output));
-    }
-
-    protected static WasmTestCaseData expected(Object expectedValue) {
-        return new WasmTestCaseData((Value result, String output) -> Assert.assertEquals("Failure: result: ", expectedValue, result.as(Object.class)));
-    }
-
-    protected static WasmTestCaseData expectedFloat(float expectedValue, float delta) {
-        return new WasmTestCaseData((Value result, String output) -> Assert.assertEquals("Failure: result: ", expectedValue, result.as(Float.class), delta));
-    }
-
-    protected static WasmTestCaseData expectedDouble(double expectedValue, float delta) {
-        return new WasmTestCaseData((Value result, String output) -> Assert.assertEquals("Failure: result: ", expectedValue, result.as(Double.class), delta));
-    }
-
-    protected static WasmTestCaseData expectedThrows(String expectedErrorMessage) {
-        return new WasmTestCaseData(expectedErrorMessage);
-    }
-
-    protected Properties testOptions(String optsContent) {
-        Properties options = new Properties();
-        if (optsContent == null) {
-            return options;
-        }
-
-        try {
-            options.load(new StringReader(optsContent));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return options;
-    }
-
-    protected WasmTestInitialization testInitialization(String initContent) {
-        if (initContent == null) {
-            return null;
-        }
-
-        final String[] lines = initContent.split("\n");
-        Map<String, Long> globals = new LinkedHashMap<>();
-        Map<String, String> memory = new LinkedHashMap<>();
-        for (String line : lines) {
-            if (line.startsWith("[")) {
-                // Memory store.
-                String[] parts = line.split("=");
-                String address = parts[0].substring(1, parts[0].length() - 1);
-                String value = parts[1];
-                memory.put(address, value);
-            } else {
-                // Global store.
-                String[] parts = line.split("=");
-                String name = parts[0];
-                Long value = Long.parseLong(parts[1]);
-                globals.put(name, value);
-            }
-        }
-        return new WasmTestInitialization(globals, memory);
-    }
-
-    protected static class WasmTestInitialization implements Consumer<WasmContext>, TruffleObject {
-        private final Map<String, Long> globalValues;
-        private final Map<String, String> memoryValues;
-
-        public WasmTestInitialization(Map<String, Long> globalValues, Map<String, String> memoryValues) {
-            this.globalValues = globalValues;
-            this.memoryValues = memoryValues;
-        }
-
-        public void accept(WasmContext context) {
-            try {
-                final WasmModule module = context.modules().get("env");
-                for (Map.Entry<String, Long> entry : globalValues.entrySet()) {
-                    final String name = entry.getKey();
-                    final Long value = entry.getValue();
-                    if (!module.isLinked() || module.global(name).isMutable()) {
-                        module.writeMember(name, value);
-                    }
-                }
-                final WasmMemory memory = (WasmMemory) module.readMember("memory");
-                for (Map.Entry<String, String> entry : memoryValues.entrySet()) {
-                    final String addressGlobal = entry.getKey();
-                    final long address = getValue(addressGlobal);
-                    final String valueGlobal = entry.getValue();
-                    final long value = getValue(valueGlobal);
-                    // The memory array writes are indexed with 64-bit words.
-                    // Therefore, we need to divide the byte-based address index with 8.
-                    memory.writeArrayElement(address / 8, value);
-                }
-            } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private long getValue(String s) {
-            if (Character.isDigit(s.charAt(0))) {
-                return Integer.parseInt(s);
-            } else {
-                return globalValues.get(s);
-            }
-        }
-    }
-
-    protected static abstract class WasmTestCase {
-        private final String name;
-        private final WasmTestCaseData data;
-        private final WasmTestInitialization initialization;
-        private final Properties options;
-
-        WasmTestCase(String name, WasmTestCaseData data, WasmTestInitialization initialization, Properties options) {
-            this.name = name;
-            this.data = data;
-            this.initialization = initialization;
-            this.options = options;
-        }
-
-        public abstract byte[] createBinary() throws IOException, InterruptedException;
-
-        public WasmTestInitialization initialization() {
-            return initialization;
-        }
-
-        public Properties options() {
-            return options;
-        }
-    }
-
-    protected static class WasmStringTestCase extends WasmTestCase {
-        private String program;
-
-        WasmStringTestCase(String name, WasmTestCaseData data, String program, WasmTestInitialization initializer, Properties options) {
-            super(name, data, initializer, options);
-            this.program = program;
-        }
-
-        @Override
-        public byte[] createBinary() throws IOException, InterruptedException {
-            return WasmTestToolkit.compileWatString(program);
-        }
-    }
-
-    protected static class WasmBinaryTestCase extends WasmTestCase {
-        private final byte[] binary;
-
-        public WasmBinaryTestCase(String name, WasmTestCaseData data, byte[] binary, WasmTestInitialization initializer, Properties options) {
-            super(name, data, initializer, options);
-            this.binary = binary;
-        }
-
-        @Override
-        public byte[] createBinary() throws IOException, InterruptedException {
-            return binary;
-        }
     }
 }

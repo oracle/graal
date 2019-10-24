@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
-if [ $(uname) == "Linux" ]; then
-    WAT_TO_WASM=$HOME/.local/bin/wat2wasm
-else
-    WAT_TO_WASM=/usr/local/bin/wat2wasm
+SUITE=$1
+BENCHMARK=$2
+
+if [ $# -lt 2 ]; then
+    echo "usage: benchmark [suite] [benchmark]"
+    exit 1
 fi
 
-mx --dy /compiler benchmark wasm:WASM_BENCHMARKS -- -Dwasmtest.watToWasmExecutable=$WAT_TO_WASM -Dwasmtest.testSourcePath="src/com.oracle.truffle.wasm.test/src/tests" --jvm server --jvm-config graal-core
+mx -v --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- -Dwasmbench.benchmarkName=$BENCHMARK -- $SUITE

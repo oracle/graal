@@ -71,11 +71,26 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "com.oracle.truffle.wasm.utils" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.wasm",
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle,WebAssembly",
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.wasm.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
+        "com.oracle.truffle.wasm.utils",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
@@ -121,11 +136,27 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "com.oracle.truffle.wasm.benchcases.bench" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.wasm.benchmark",
+        "mx:JMH_1_21",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["mx:JMH_1_21"],
+      "workingSets" : "Truffle,WebAssembly",
+      "testProject" : False,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.wasm.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
+        "com.oracle.truffle.wasm.utils",
         "mx:JMH_1_21",
       ],
       "javaCompliance" : "1.8",
@@ -170,6 +201,7 @@ suite = {
     "WASM_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
+        "com.oracle.truffle.wasm.utils",
         "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
@@ -206,19 +238,22 @@ suite = {
         "com.oracle.truffle.wasm.benchmark",
         "mx:JMH_1_21",
       ],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
+        "WASM",
+      ],
     },
 
-    "WASM_BENCHCASES" : {
-      "platformDependent" : True,
+    "WASM_BENCHMARKCASES" : {
       "description" : "Benchmarks compiled from the source code.",
       "dependencies" : [
+        "com.oracle.truffle.wasm.benchmark",
         "com.oracle.truffle.wasm.benchcases",
-      ],
-      "distDependencies" : [
-        "WASM_BENCHMARKS",
+        "com.oracle.truffle.wasm.benchcases.bench",
+        "mx:JMH_1_21",
       ],
       "defaultBuild" : False,
-      "maven" : False,
     },
   }
 }
