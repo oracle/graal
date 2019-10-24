@@ -90,6 +90,7 @@ import com.oracle.svm.util.ModuleSupport;
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
+    private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -1189,7 +1190,11 @@ public class NativeImage {
     }
 
     public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
-        performBuild(new DefaultBuildConfiguration(DEFAULT_GENERATOR_CLASS_NAME, javaHome, workDir, buildArgs), NativeImage::new);
+        String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
+        }
+        performBuild(new DefaultBuildConfiguration(generatorClassName, javaHome, workDir, buildArgs), NativeImage::new);
     }
 
     public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
@@ -1665,7 +1670,7 @@ public class NativeImage {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             }
-            NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + "$JDK9Plus");
+            NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
         }
     }
 }
