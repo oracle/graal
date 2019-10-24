@@ -62,7 +62,7 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 public final class GraalVMLocator extends TruffleLocator
                 implements Callable<ClassLoader> {
 
-    private static final boolean LOCATOR_TRACE = Boolean.valueOf(System.getProperty("truffle.class.path.trace", "false"));
+    private static final boolean LOCATOR_TRACE = Boolean.parseBoolean(System.getProperty("truffle.class.path.trace", "false"));
 
     private static URLClassLoader loader;
 

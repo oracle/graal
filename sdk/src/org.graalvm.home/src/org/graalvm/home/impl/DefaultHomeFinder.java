@@ -489,7 +489,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         } else {
             Boolean res = verbose;
             if (res == null) {
-                res = STATIC_VERBOSE || Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LOCATOR"));
+                res = STATIC_VERBOSE || Boolean.parseBoolean(System.getenv("VERBOSE_GRAALVM_LOCATOR"));
                 verbose = res;
             }
             return res;
