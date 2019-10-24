@@ -1841,6 +1841,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+        name += '_JAVA{}'.format(_src_jdk_version)
         self.maven = _graalvm_maven_attributes
         components = [component]
         if extra_components:
@@ -1872,7 +1873,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         self.main_comp_dir_name = component.dir_name
 
-        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['_java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
