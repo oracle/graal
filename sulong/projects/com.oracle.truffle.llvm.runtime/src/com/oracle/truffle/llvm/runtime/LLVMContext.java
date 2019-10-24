@@ -113,10 +113,11 @@ public final class LLVMContext {
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
-    @CompilationFinal private Object[] mainArguments;
+    private Object[] mainArguments;     // effectively final after initialization
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
-    @CompilationFinal private ConcurrentHashMap<String, Integer> nativeCallStatistics;
+    private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
+                                                                            // after initialization
 
     private static final class Handle {
 
@@ -162,7 +163,7 @@ public final class LLVMContext {
     private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
 
-    @CompilationFinal private LLVMTracerInstrument tracer;
+    private LLVMTracerInstrument tracer;    // effectively final after initialization
 
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 1;
