@@ -93,7 +93,9 @@ public final class WasmInitialization implements Consumer<WasmContext>, TruffleO
                 final long address = getValue(addressGlobal);
                 final String valueGlobal = entry.getValue();
                 final long value = getValue(valueGlobal);
-                memory.writeArrayElement(address, value);
+                // The memory array writes are indexed with 64-bit words.
+                // Therefore, we need to divide the byte-based address index with 8.
+                memory.writeArrayElement(address / 8, value);
             }
         } catch (UnknownIdentifierException | UnsupportedMessageException | InvalidArrayIndexException e) {
             throw new RuntimeException(e);
