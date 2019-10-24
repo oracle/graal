@@ -40,6 +40,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.JDWPOptions;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
 import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.ArrayList;

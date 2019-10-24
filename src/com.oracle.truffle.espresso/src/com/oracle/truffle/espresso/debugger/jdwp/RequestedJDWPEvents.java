@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
+import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
 import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 import java.util.regex.Pattern;

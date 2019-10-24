@@ -20,10 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.debugger.jdwp;
+package com.oracle.truffle.espresso.debugger.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.jdwp.BreakpointInfo;
+import com.oracle.truffle.espresso.debugger.jdwp.JDWPCallFrame;
+import com.oracle.truffle.espresso.debugger.jdwp.VMEventListener;
 
 public class VMEventListeners {
 

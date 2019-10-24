@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.debugger.jdwp.VMEventListeners;
+import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 

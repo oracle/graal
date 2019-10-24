@@ -10,7 +10,6 @@ import com.oracle.truffle.espresso.debugger.api.JDWPVirtualMachine;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
 import com.oracle.truffle.espresso.debugger.api.klassRef;
 import com.oracle.truffle.espresso.debugger.jdwp.ClassObjectId;
-import com.oracle.truffle.espresso.debugger.jdwp.EspressoVirtualMachine;
 import com.oracle.truffle.espresso.debugger.jdwp.Ids;
 import com.oracle.truffle.espresso.debugger.jdwp.TagConstants;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
