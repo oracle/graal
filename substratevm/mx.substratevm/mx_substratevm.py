@@ -1237,7 +1237,7 @@ def maven_plugin_install(args):
         'Use the following plugin snippet to enable native-image building for your maven project:',
         '',
         '<plugin>',
-        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <groupId>org.graalvm.nativeimage</groupId>',
         '    <artifactId>native-image-maven-plugin</artifactId>',
         '    <version>' + svm_version + '</version>',
         '    <executions>',
