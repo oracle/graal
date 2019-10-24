@@ -347,7 +347,8 @@ public class CompileQueue {
             // Checking @MustNotSynchronize annotations does not take long enough to justify a
             // timer.
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
-            beforeCompileAll(debug);
+            afterParse(debug);
+            performAfterParseCanonicalization();
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
@@ -368,13 +369,32 @@ public class CompileQueue {
         }
     }
 
+    private void performAfterParseCanonicalization() throws InterruptedException {
+        PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
+        executor.init();
+        for (HostedMethod method : universe.getMethods()) {
+            if (method.compilationInfo.hasDefaultParseFunction() && method.compilationInfo.getGraph() != null) {
+                HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
+                executor.execute(debug -> {
+                    method.compilationInfo.getGraph().resetDebug(debug);
+                    afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+                    assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+                });
+            }
+        }
+        executor.start();
+        executor.complete();
+        executor.shutdown();
+    }
+
     private boolean suitesNotCreated() {
         return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
     }
 
+    /* This can be moved to the constructor now. */
     private void createSuites() {
-        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
-        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
+        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
@@ -513,7 +533,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected void beforeCompileAll(DebugContext debug) throws InterruptedException {
+    protected void afterParse(DebugContext debug) throws InterruptedException {
     }
 
     private void checkTrivial(HostedMethod method) {
@@ -525,32 +545,15 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
-        executor.init();
-        PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
         for (HostedMethod method : universe.getMethods()) {
             try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
                 if (method.compilationInfo.getGraph() != null) {
-                    HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
-                    if (!universe.isPostParseCanonicalized()) {
-                        executor.execute((DebugContext newDebug) -> {
-                            method.compilationInfo.getGraph().resetDebug(newDebug);
-                            afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-
-                            /* Check that graph is in good shape after parsing. */
-                            assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
-                        });
-                    }
                     checkTrivial(method);
                 }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
         }
-
-        executor.start();
-        executor.complete();
-        executor.shutdown();
-        universe.setPostParseCanonicalized();
 
         int round = 0;
         do {
