@@ -261,8 +261,8 @@ builds += [
   # Linux
   ${vm_java_8} ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
@@ -275,8 +275,8 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
@@ -298,8 +298,8 @@ builds += [
   }
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:00:00"
@@ -316,8 +316,8 @@ builds += [
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=" ${non-product-vm-components}] ${maven_deploy_sdk}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:00:00"

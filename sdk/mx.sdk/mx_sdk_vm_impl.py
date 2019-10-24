@@ -43,7 +43,6 @@ from __future__ import print_function
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-import glob
 import io
 import json
 import os
