@@ -131,6 +131,9 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public Object doInvoke(Object[] args) {
+        if (inInlinedCode()) {
+            return callBoundary(args);
+        }
         /*
          * We have to be very careful that the calling code is uninterruptible, i.e., has no
          * safepoint between the read of the compiled code address and the indirect call to this
@@ -139,7 +142,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
          */
         long start = address;
         // The call below is not a safepoint as it is intrinsified in TruffleGraphBuilderPlugins.
-        if (!inInlinedCode() && start != 0) {
+        if (start != 0) {
             CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             return KnownIntrinsics.convertUnknownValue(target.invoke(this, args), Object.class);
         } else {

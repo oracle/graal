@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class IsInlinedNode extends FloatingNode implements IterableNodeType {
+public class IsInlinedNode extends ValueNode implements IterableNodeType {
     public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
 
     protected IsInlinedNode() {
