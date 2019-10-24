@@ -110,9 +110,10 @@ public interface AgentScriptAPI {
     void on(String event, OnCloseHandler handler);
 
     /** Unregisters a handler.
+     * 
      * @param event the event type to unregister from
-     * @param handler the instances of handler registered by one of the {@code on}
-     *  methods
+     * @param handler the instances of handler registered 
+     *   by one of the {@code on} methods
      */
     void off(String event, OnSourceLoadedHandler handler);
     void off(String event, OnEventHandler handler);
