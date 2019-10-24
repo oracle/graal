@@ -34,13 +34,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 public abstract class NativeMemSetNode extends LLVMMemSetNode {
 
@@ -85,35 +86,73 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         memory.memset(address, length, value);
     }
 
-    @Specialization(limit = "3", guards = {"!isManagedMallocObject(object)", "nativeWrite.isWritable(object.getObject())"})
-    protected void memset(LLVMManagedPointer object, byte value, long length,
+    long getAccessLength(LLVMManagedPointer pointer, long length, NativeTypeLibrary nativeTypes) {
+        Object object = pointer.getObject();
+        Object type = nativeTypes.getNativeType(object);
+        if (type instanceof LLVMInteropType.Array) {
+            long elementSize = ((LLVMInteropType.Array) type).getElementSize();
+            if (length % elementSize == 0) {
+                return elementSize;
+            }
+        }
+
+        /*
+         * Fallback to byte-wise copy if either the type is unknown, not an array, or the length is
+         * not a multiple of the array element size.
+         */
+        return 1;
+    }
+
+    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 1"})
+    protected void memsetManagedI8(LLVMManagedPointer object, byte value, long length,
+                    @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
                     @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         for (int i = 0; i < length; i++) {
             nativeWrite.writeI8(object.getObject(), object.getOffset() + i, value);
         }
     }
 
-    @Specialization(limit = "3", guards = {"!isManagedMallocObject(object)", "!nativeWrite.isWritable(object.getObject())"})
+    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 2"})
+    protected void memsetManagedI16(LLVMManagedPointer object, byte value, long length,
+                    @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
+                    @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        int bValue = value & 0xFF;
+        int sValue = (bValue << 8) | bValue;
+        for (int i = 0; i < length; i += 2) {
+            nativeWrite.writeI16(object.getObject(), object.getOffset() + i, (short) sValue);
+        }
+    }
+
+    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 4"})
+    protected void memsetManagedI32(LLVMManagedPointer object, byte value, long length,
+                    @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
+                    @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        int bValue = value & 0xFF;
+        int sValue = (bValue << 8) | bValue;
+        int iValue = (sValue << 16) | sValue;
+        for (int i = 0; i < length; i += 4) {
+            nativeWrite.writeI32(object.getObject(), object.getOffset() + i, iValue);
+        }
+    }
+
+    @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 8"})
+    protected void memsetManagedI64(LLVMManagedPointer object, byte value, long length,
+                    @SuppressWarnings("unused") @CachedLibrary("object.getObject()") NativeTypeLibrary nativeTypes,
+                    @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        long bValue = value & 0xFFL;
+        long sValue = (bValue << 8) | bValue;
+        long iValue = (sValue << 16) | sValue;
+        long lValue = (iValue << 32) | iValue;
+        for (int i = 0; i < length; i += 8) {
+            nativeWrite.writeI64(object.getObject(), object.getOffset() + i, lValue);
+        }
+    }
+
+    @Specialization(limit = "3", guards = {"!nativeWrite.isWritable(object.getObject())"})
     protected void memset(LLVMManagedPointer object, byte value, long length,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @SuppressWarnings("unused") @CachedLibrary("object.getObject()") LLVMManagedWriteLibrary nativeWrite,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memset(globalAccess.executeWithTarget(object), value, length, memory);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isManagedMallocObject(object)", "value == 0"})
-    protected void memset(LLVMManagedPointer object, byte value, long length) {
-        assert length % ADDRESS_SIZE_IN_BYTES == 0;
-
-        final ManagedMallocObject obj = (ManagedMallocObject) object.getObject();
-        int arrayOffset = (int) (object.getOffset() / ADDRESS_SIZE_IN_BYTES);
-        for (int i = 0; i < length / ADDRESS_SIZE_IN_BYTES; i++) {
-            obj.set(arrayOffset + i, LLVMNativePointer.createNull());
-        }
-    }
-
-    protected boolean isManagedMallocObject(LLVMManagedPointer object) {
-        return object.getObject() instanceof ManagedMallocObject;
     }
 }
