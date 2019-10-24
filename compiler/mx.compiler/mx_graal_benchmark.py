@@ -1613,7 +1613,15 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
+        if mx_compiler.isJDK8:
+            extra = ['-XX:-UseJVMCIClassLoader']
+        else:
+            # This is required to use jdk.internal.module.Modules for doing arbitrary exports
+            extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED']
+        return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist
