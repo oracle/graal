@@ -970,6 +970,13 @@ public final class Context implements AutoCloseable {
          * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
          * set or {@link #allowAllAccess(boolean) all access} needs to be set to <code>true</code>.
          * <p>
+         * To load new classes the context uses the the {@link Thread#getContextClassLoader()
+         * context class loader} that will be captured when the context is {@link #build() built}.
+         * If an explicit {@link #engine(Engine) engine} was specified, then the context class
+         * loader at engine {@link Engine.Builder#build() build-time} will be used instead. When the
+         * Java module system is available (>= JDK 9) then only classes are accessible that are
+         * exported to the unnamed module of the captured class loader.
+         * <p>
          * <h3>Example usage with JavaScript:</h3>
          *
          * <pre>
