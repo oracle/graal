@@ -181,6 +181,7 @@ public final class Meta implements ContextAccess {
         ClassLoader = knownKlass(Type.ClassLoader);
         ClassLoader_findNative = ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
         ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
+        ClassLoader_parent = ClassLoader.lookupDeclaredField(Name.parent, Type.ClassLoader);
 
         // Guest reflection.
         Executable = knownKlass(Type.Executable);
@@ -192,6 +193,7 @@ public final class Meta implements ContextAccess {
         Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
         Constructor_signature = Constructor.lookupDeclaredField(Name.signature, Type.String);
         MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
+        sun_reflect_DelegatingClassLoader = knownKlass(Type.sun_reflect_DelegatingClassLoader);
 
         Method = knownKlass(Type.Method);
         HIDDEN_METHOD_KEY = Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
@@ -393,6 +395,7 @@ public final class Meta implements ContextAccess {
     public final Method String_length;
 
     public final ObjectKlass ClassLoader;
+    public final Field ClassLoader_parent;
     public final Method ClassLoader_findNative;
     public final Method ClassLoader_getSystemClassLoader;
 
@@ -414,6 +417,7 @@ public final class Meta implements ContextAccess {
     public final Field Constructor_signature;
 
     public final ObjectKlass MagicAccessorImpl;
+    public final ObjectKlass sun_reflect_DelegatingClassLoader;
 
     public final ObjectKlass Method;
     public final Field HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;

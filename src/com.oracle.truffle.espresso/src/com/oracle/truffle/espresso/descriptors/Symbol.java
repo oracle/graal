@@ -179,6 +179,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");
         public static final Symbol<Name> forName = StaticSymbols.putName("forName");
         public static final Symbol<Name> run = StaticSymbols.putName("run");
+        public static final Symbol<Name> parent = StaticSymbols.putName("parent");
         public static final Symbol<Name> loadClass = StaticSymbols.putName("loadClass");
         public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
@@ -377,6 +378,9 @@ public final class Symbol<T> extends ByteSequence {
 
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
+        // DelegatingClassLoader is not public.
+        public static final Symbol<Type> sun_reflect_DelegatingClassLoader = StaticSymbols.putType("Lsun/reflect/DelegatingClassLoader;");
+
         // MethodAccessorImpl is not public.
         public static final Symbol<Type> MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
         public static final Symbol<Type> ConstructorAccessorImpl = StaticSymbols.putType("Lsun/reflect/ConstructorAccessorImpl;");
