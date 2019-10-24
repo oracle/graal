@@ -5,6 +5,7 @@ suite = {
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
+    "groupId" : "org.graalvm.nativeimage",
     "developer" : {
         "name" : "SubstrateVM developers",
         "email" : "graal-dev@openjdk.java.net",
