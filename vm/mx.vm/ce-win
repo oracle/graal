@@ -2,4 +2,4 @@ DYNAMIC_IMPORTS=/substratevm,/tools,/graal-js
 DISABLE_INSTALLABLES=js,njs,slg,rgx,nfi,ni
 FORCE_BASH_LAUNCHERS=true
 SKIP_LIBRARIES=true
-EXCLUDE_COMPONENTS=nju,gu
+EXCLUDE_COMPONENTS=nju,nic,gu
