@@ -110,6 +110,7 @@ _lib_prefix = mx.add_lib_prefix("")
 
 
 _graalvm_base_name = 'GraalVM'
+_graalvm_maven_attributes = {'groupId': 'org.graalvm'}
 
 
 default_components = []
@@ -211,8 +212,8 @@ def _get_jdk_base(jdk):
         jdk_base = '.'
     return jdk_dir, jdk_base
 
-_src_jdk = mx.get_jdk(tag='default')
-_src_jdk_version = _src_jdk.javaCompliance.value
+_src_jdk = mx_sdk_vm.base_jdk()
+_src_jdk_version = mx_sdk_vm.base_jdk_version()
 
 # Example:
 #   macOS:
@@ -807,7 +808,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                                                     platformDependent=subject_distribution.platformDependent,
                                                     theLicense=theLicense, **kw_args)
         self._layout_initialized = False
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         self.subject_distribution = subject_distribution
 
     def _walk_layout(self):
@@ -1854,7 +1855,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         components = [component]
         if extra_components:
             components += extra_components
@@ -1930,7 +1931,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         mx.logv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
 
-        self.maven = True
+        self.maven = _graalvm_maven_attributes
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -1976,7 +1977,7 @@ def get_final_graalvm_distribution():
     if _final_graalvm_distribution == 'uninitialized':
         _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name)
         _final_graalvm_distribution.description = "GraalVM distribution"
-        _final_graalvm_distribution.maven = True
+        _final_graalvm_distribution.maven = _graalvm_maven_attributes
     return _final_graalvm_distribution
 
 
