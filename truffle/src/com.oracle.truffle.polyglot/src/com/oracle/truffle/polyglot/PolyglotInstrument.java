@@ -87,6 +87,10 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         return optionValues;
     }
 
+    OptionValuesImpl getOptionValuesIfExists() {
+        return optionValues;
+    }
+
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;

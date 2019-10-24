@@ -1237,6 +1237,7 @@ public class ContextPreInitializationTest {
                     if (msg != null) {
                         write(lookupContextReference(languageClass).get().environment().err(), msg);
                     }
+                    assertEquals(0, lookupContextReference(languageClass).get().disposeContextCount);
                     return result;
                 }
             });
@@ -1258,7 +1259,7 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL)
+    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
         @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
         public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
