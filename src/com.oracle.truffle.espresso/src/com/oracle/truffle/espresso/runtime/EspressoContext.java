@@ -40,7 +40,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
@@ -190,22 +189,16 @@ public final class EspressoContext {
         assert !this.initialized;
         spawnVM();
         this.initialized = true;
-        rqThread.start();
+        hostToGuestReferenceDrainThread.start();
     }
 
-    public Thread rqThread;
+    private Thread hostToGuestReferenceDrainThread;
 
     public Meta getMeta() {
         return meta;
     }
 
-    // TODO(peterssen): Create one queue per ref type (weak/soft/phantom/final/cleaner)
     public final ReferenceQueue<ReferenceWrapper> REFERENCE_QUEUE = new ReferenceQueue<>();
-
-    @TruffleBoundary
-    static void logHostPoll(StaticObject pepe) {
-        System.out.println("    Host poll: " + pepe);
-    }
 
     private void spawnVM() {
 
@@ -222,47 +215,6 @@ public final class EspressoContext {
 
         initializeKnownClass(Type.Object);
 
-        // Initialize ReferenceQueues
-        rqThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.currentThread().isInterrupted()) {
-                    // Reference<StaticObject> r = (Reference<StaticObject> )
-                    // WEAK_REFERENCE_QUEUE.remove();
-                    // meta.Reference_enqueue.invokeDirect(r);
-                    ReferenceWrapper r, prev, head = null;
-                    prev = null; // (EspressoWeakReference) WEAK_REFERENCE_QUEUE.poll();
-                    StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
-
-                    try {
-                        prev = (ReferenceWrapper) REFERENCE_QUEUE.remove();
-                        System.out.println("New RQ wave: " + prev.getGuestReference());
-                        InterpreterToVM.monitorEnter(lock);
-                        setNextAndMaybeClear(prev);
-                        head = prev;
-                        while ((r = (ReferenceWrapper) REFERENCE_QUEUE.poll()) != null) {
-                            logHostPoll(r.getGuestReference());
-                            meta.Reference_discovered.set(prev.getGuestReference(), r.getGuestReference());
-                            setNextAndMaybeClear(r);
-                            prev = r;
-                        }
-
-                        assert head != null;
-                        meta.Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                        StaticObject obj = meta.Reference_pending.getAndSetObject(meta.Reference.getStatics(), head.getGuestReference());
-                        meta.Reference_discovered.set(prev.getGuestReference(), obj);
-
-                        getVM().JVM_MonitorNotify(lock);
-                    } catch (InterruptedException e) {
-                        // ignore
-                        return;
-                    } finally {
-                        InterpreterToVM.monitorExit(lock);
-                    }
-                }
-            }
-        });
-
         for (Symbol<Type> type : Arrays.asList(
                         Type.String,
                         Type.System,
@@ -275,8 +227,48 @@ public final class EspressoContext {
 
         createMainThread();
 
-        // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);
+
+        // Initialize ReferenceQueues
+        this.hostToGuestReferenceDrainThread = getEnv().createThread(new Runnable() {
+            @Override
+            public void run() {
+                final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        ReferenceWrapper head;
+                        do {
+                            head = (ReferenceWrapper) REFERENCE_QUEUE.remove();
+                            assert head != null;
+                        } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
+
+                        synchronized (lock) {
+                            assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
+                            casNextIfNullAndMaybeClear(head);
+
+                            ReferenceWrapper prev = head, ref;
+                            while ((ref = (ReferenceWrapper) REFERENCE_QUEUE.poll()) != null) {
+                                if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
+                                    continue;
+                                }
+                                meta.Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                                casNextIfNullAndMaybeClear(ref);
+                                prev = ref;
+                            }
+
+                            meta.Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                            StaticObject obj = meta.Reference_pending.getAndSetObject(meta.Reference.getStatics(), head.getGuestReference());
+                            meta.Reference_discovered.set(prev.getGuestReference(), obj);
+
+                            getVM().JVM_MonitorNotify(lock);
+                        }
+                    } catch (InterruptedException e) {
+                        // ignore
+                        return;
+                    }
+                }
+            }
+        });
 
         meta.System_initializeSystemClass.invokeDirect(null);
 
@@ -310,22 +302,21 @@ public final class EspressoContext {
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
-    /**
-     * The order in which methods are called and fields are set here is important, it mimics
-     * HotSpot's implementation.
-     */
-    private void setNextAndMaybeClear(ReferenceWrapper wrapper) {
+    private void casNextIfNullAndMaybeClear(ReferenceWrapper wrapper) {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
         if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().Cleaner)) {
             wrapper.clear();
         }
-        meta.Reference_next.set(ref, ref);
+        ref.compareAndSwapField(meta.Reference_next, StaticObject.NULL, ref);
     }
 
+    /**
+     * The order in which methods are called and fields are set here is important, it mimics
+     * HotSpot's implementation.
+     */
     private void createMainThread() {
-
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
                         .invokeDirect(systemThreadGroup);
@@ -376,6 +367,13 @@ public final class EspressoContext {
                     System.err.println("Interrupted while stopping thread in closing context.");
                 }
             }
+        }
+
+        hostToGuestReferenceDrainThread.interrupt();
+        try {
+            hostToGuestReferenceDrainThread.join();
+        } catch (InterruptedException e) {
+            // ignore
         }
         initiatingThread.interrupt();
     }
