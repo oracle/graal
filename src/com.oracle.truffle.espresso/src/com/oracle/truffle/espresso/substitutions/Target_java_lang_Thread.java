@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -32,8 +35,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.InvocationTargetException;
 
 // @formatter:off
 // Checkstyle: stop
@@ -138,6 +139,27 @@ public final class Target_java_lang_Thread {
     @Substitution
     public static @Host(Thread.class) StaticObject currentThread() {
         return EspressoLanguage.getCurrentContext().getCurrentThread();
+    }
+
+    @Substitution
+    public static @Host(Thread[].class) StaticObject getThreads() {
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        return StaticObject.createArray(context.getMeta().Thread.array(), context.getActiveThreads());
+    }
+
+    @Substitution
+    public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads) {
+        if (StaticObject.isNull(threads)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
+        }
+        Meta meta = threads.getKlass().getMeta();
+        if (threads.length() == 0) {
+            throw meta.throwEx(IllegalArgumentException.class);
+        }
+        StaticObject trace = StaticObject.createArray(meta.StackTraceElement.array(), StaticObject.EMPTY_ARRAY);
+        StaticObject[] toWrap = new StaticObject[threads.length()];
+        Arrays.fill(toWrap, trace);
+        return StaticObject.createArray(meta.StackTraceElement.array().array(), toWrap);
     }
 
     @TruffleBoundary

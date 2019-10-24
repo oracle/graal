@@ -23,15 +23,15 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 class EspressoThreadManager implements ContextAccess {
 
@@ -48,7 +48,7 @@ class EspressoThreadManager implements ContextAccess {
 
     public static int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
-    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<StaticObject, Boolean>());
+    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private final Object threadLock = new Object();
 
@@ -85,8 +85,8 @@ class EspressoThreadManager implements ContextAccess {
     @CompilationFinal private long referenceHandlerThreadId = -1;
     @CompilationFinal private StaticObject guestReferenceHandlerThread = null;
 
-    public Iterable<StaticObject> activeThreads() {
-        return activeThreads;
+    public StaticObject[] activeThreads() {
+        return activeThreads.toArray(StaticObject.EMPTY_ARRAY);
     }
 
     public void registerMainThread(Thread thread, StaticObject self) {
