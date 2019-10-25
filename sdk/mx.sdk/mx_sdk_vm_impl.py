@@ -1778,15 +1778,10 @@ x-GraalVM-Polyglot-Part: {polyglot}
                      and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
         )
         dependencies = set()
-        # `known_allowed_dependencies` is a workaround for GR-18947
-        known_allowed_dependencies = {"llvm-toolchain"}
-        for c in main_component.direct_dependencies():
-            d = get_installable_distribution(c.name, fatalIfMissing=False)
-            if d:
-                if c.installable_id in known_allowed_dependencies:
+        for comp in self.components:
+            for c in comp.direct_dependencies():
+                if c.installable and c not in self.components:
                     dependencies.add(c.installable_id)
-                else:
-                    mx.warn("Ignoring dependency to {} in {} installable".format(c.installable_id, main_component.name))
         dependencies = sorted(dependencies)
         if dependencies:
             _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
@@ -1981,23 +1976,6 @@ def get_final_graalvm_distribution():
     return _final_graalvm_distribution
 
 
-def get_installable_distribution(name, fatalIfMissing=True):
-    """
-    :type name: str Component name
-    :rtype: GraalVmInstallableComponent
-    """
-    installables = _get_dists(GraalVmInstallableComponent)
-    if installables:
-        for installable in installables:
-            if installable.main_component.name == name:
-                return installable
-        if fatalIfMissing:
-            raise mx.abort("Cannot find an installable with component name '{}'.\nAvailable installables:\n{}".format(name, '\n'.join((('- ' + s.main_component.name for s in installables)))))
-    elif fatalIfMissing:
-        raise mx.abort('No installables available. Did you forget to dynamically import a component?')
-    return None
-
-
 def get_standalone_distribution(comp_dir_name):
     """
     :type comp_dir_name: str
@@ -2176,7 +2154,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if not _skip_libraries(library_config.destination):
                     needs_stage1 = True
         # The JS components have issues ATM since they share the same directory
-        if not _disable_installable(component) and (component.installable or (isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js')):
+        if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
 
     # Create installables

@@ -1,3 +1,2 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
-DISABLE_INSTALLABLES=js,njs,slg,rgx,nfi
 EXCLUDE_COMPONENTS=nju,nic,ni,nil,llp
