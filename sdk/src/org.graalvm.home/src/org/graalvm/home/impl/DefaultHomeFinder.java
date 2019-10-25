@@ -83,13 +83,14 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
 
     static {
-        String forcedHome = System.getProperty("org.graalvm.launcher.home");
-        String relativeHome = System.getProperty("org.graalvm.launcher.relative.home");
+        final String forcedHome = System.getProperty("org.graalvm.launcher.home");
         if (forcedHome != null && forcedHome.length() > 0) {
             FORCE_GRAAL_HOME = Paths.get(forcedHome);
         } else {
             FORCE_GRAAL_HOME = null;
         }
+
+        final String relativeHome = System.getProperty("org.graalvm.launcher.relative.home");
         if (relativeHome != null && relativeHome.length() > 0) {
             GRAAL_HOME_RELATIVE_PATH = Paths.get(relativeHome);
         } else {
@@ -160,7 +161,7 @@ public final class DefaultHomeFinder extends HomeFinder {
             return FORCE_GRAAL_HOME;
         }
 
-        Path home;
+        final Path home;
         if (ImageInfo.inImageCode()) {
             final String graalvmHomeValue = System.getProperty("org.graalvm.home");
             if (graalvmHomeValue != null) {
