@@ -87,6 +87,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
@@ -957,8 +958,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         private Element top;
 
-        public void push(FrameInstance frame, StaticObject context) {
-            top = new Element(frame, context, top);
+        public void push(FrameInstance frame, StaticObject context, Klass klass) {
+            top = new Element(frame, context, klass, top);
         }
 
         public void pop() {
@@ -975,14 +976,21 @@ public final class VM extends NativeEnv implements ContextAccess {
             return top.context;
         }
 
+        public StaticObject classLoader() {
+            assert top != null;
+            return top.klass.getDefiningClassLoader();
+        }
+
         static private class Element {
             long frameID;
             StaticObject context;
+            Klass klass;
             Element next;
 
-            public Element(FrameInstance frame, StaticObject context, Element next) {
+            public Element(FrameInstance frame, StaticObject context, Klass klass, Element next) {
                 this.frameID = initPrivilegedFrame(frame);
                 this.context = context;
+                this.klass = klass;
                 this.next = next;
             }
 
@@ -1068,7 +1076,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         // Prepare the privileged stack
         PrivilegedStack stack = privilegedStackThreadLocal.get();
-        stack.push(callerFrame, acc);
+        stack.push(callerFrame, acc, caller);
 
         // Execute the action.
         StaticObject result = StaticObject.NULL;
@@ -1473,5 +1481,125 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public static int JVM_ActiveProcessorCount() {
         return Runtime.getRuntime().availableProcessors();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Class.class) StaticObject JVM_CurrentLoadedClass() {
+        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        StaticObject mirrorKlass = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+            public StaticObject visitFrame(FrameInstance frameInstance) {
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    if (isTrustedFrame(frameInstance, stack)) {
+                        return StaticObject.NULL;
+                    }
+                    if (!m.isNative()) {
+                        ObjectKlass klass = m.getDeclaringKlass();
+                        StaticObject loader = klass.getDefiningClassLoader();
+                        if (StaticObject.notNull(loader) && !isTrustedLoader(loader)) {
+                            return klass.mirror();
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+        return mirrorKlass == null ? StaticObject.NULL : mirrorKlass;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Class.class) StaticObject JVM_CurrentClassLoader() {
+        @Host(Class.class)
+        StaticObject loadedClass = JVM_CurrentLoadedClass();
+        return StaticObject.isNull(loadedClass) ? StaticObject.NULL : loadedClass.getMirrorKlass().getDefiningClassLoader();
+    }
+
+    @JniImpl
+    @VmImpl
+    public int JVM_ClassLoaderDepth() {
+        PrivilegedStack stack = privilegedStackThreadLocal.get();
+        Integer res = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Integer>() {
+            int depth = 0;
+
+            public Integer visitFrame(FrameInstance frameInstance) {
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    if (isTrustedFrame(frameInstance, stack)) {
+                        return -1;
+                    }
+                    if (!m.isNative()) {
+                        ObjectKlass klass = m.getDeclaringKlass();
+                        StaticObject loader = klass.getDefiningClassLoader();
+                        if (StaticObject.notNull(loader) && !isTrustedLoader(loader)) {
+                            return depth;
+                        }
+                        depth++;
+                    }
+                }
+                return null;
+            }
+        });
+        return res == null ? -1 : res;
+    }
+
+    @JniImpl
+    @VmImpl
+    public int JVM_ClassDepth(@Host(String.class) StaticObject name) {
+        Symbol<Name> className = getContext().getNames().lookup(Meta.toHostString(name).replace('.', '/'));
+        if (className == null) {
+            return -1;
+        }
+        Integer res = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Integer>() {
+            int depth = 0;
+
+            public Integer visitFrame(FrameInstance frameInstance) {
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    if (className.equals(m.getDeclaringKlass().getName())) {
+                        return depth;
+                    }
+                    depth++;
+                }
+                return null;
+            }
+        });
+        return res == null ? -1 : res;
+    }
+
+    private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
+        if (stack.compare(frameInstance)) {
+            StaticObject loader = stack.classLoader();
+            if (StaticObject.isNull(loader)) {
+                return true;
+            }
+            if (isTrustedLoader(loader)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private StaticObject nonReflectionClassLoader(StaticObject loader) {
+        if (StaticObject.notNull(loader)) {
+            Meta meta = getMeta();
+            if (meta.sun_reflect_DelegatingClassLoader.isAssignableFrom(loader.getKlass())) {
+                return loader.getField(meta.ClassLoader_parent);
+            }
+        }
+        return loader;
+    }
+
+    private boolean isTrustedLoader(StaticObject loader) {
+        StaticObject nonDelLoader = nonReflectionClassLoader(loader);
+        StaticObject systemLoader = (StaticObject) getMeta().ClassLoader_getSystemClassLoader.invokeDirect(null);
+        while (StaticObject.notNull(systemLoader)) {
+            if (systemLoader == nonDelLoader) {
+                return true;
+            }
+            systemLoader = systemLoader.getField(getMeta().ClassLoader_parent);
+        }
+        return false;
     }
 }
