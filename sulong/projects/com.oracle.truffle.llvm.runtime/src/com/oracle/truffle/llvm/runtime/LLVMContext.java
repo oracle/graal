@@ -111,10 +111,11 @@ public final class LLVMContext {
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
-    private final Object[] mainArguments;
+    private Object[] mainArguments;     // effectively final after initialization
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
-    private final ConcurrentHashMap<String, Integer> nativeCallStatistics;
+    private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
+                                                                            // after initialization
 
     private static final class Handle {
 
@@ -135,7 +136,7 @@ public final class LLVMContext {
 
     private final LLVMSourceContext sourceContext;
 
-    private final Env env;
+    @CompilationFinal private Env env;
     private final LLVMScope globalScope;
     private final DynamicLinkChain dynamicLinkChain;
     private final List<RootCallTarget> destructorFunctions;
@@ -155,11 +156,12 @@ public final class LLVMContext {
 
     private boolean initialized;
     private boolean cleanupNecessary;
+    private boolean initializeContextCalled;
     private DataLayout libsulongDatalayout;
     private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
 
-    private final LLVMTracerInstrument tracer;
+    private LLVMTracerInstrument tracer;    // effectively final after initialization
 
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 1;
@@ -205,23 +207,27 @@ public final class LLVMContext {
         this.globalScope = new LLVMScope();
         this.dynamicLinkChain = new DynamicLinkChain();
 
-        Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
-        this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
+        this.mainArguments = getMainArguments(env);
         this.environment = System.getenv();
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
-        final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
-        if (!"".equalsIgnoreCase(traceOption)) {
-            if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
-            }
-            tracer = new LLVMTracerInstrument();
-            tracer.initialize(env, traceOption);
-        } else {
-            tracer = null;
-        }
         pThreadContext = new LLVMPThreadContext(this);
+    }
+
+    boolean patchContext(Env newEnv) {
+        if (this.initializeContextCalled) {
+            return false;
+        }
+        this.env = newEnv;
+        this.nativeCallStatistics = SulongEngineOption.isTrue(newEnv.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.mainArguments = getMainArguments(newEnv);
+        return true;
+    }
+
+    private static Object[] getMainArguments(Env environment) {
+        Object mainArgs = environment.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
+        return mainArgs == null ? environment.getApplicationArguments() : (Object[]) mainArgs;
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {
@@ -259,7 +265,18 @@ public final class LLVMContext {
     }
 
     void initialize() {
+        this.initializeContextCalled = true;
         assert this.threadingStack == null;
+        final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
+        if (!"".equalsIgnoreCase(traceOption)) {
+            if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+                throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
+            }
+            tracer = new LLVMTracerInstrument();
+            tracer.initialize(env, traceOption);
+        } else {
+            tracer = null;
+        }
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : language.getLanguageContextExtension()) {
             ext.initialize();
