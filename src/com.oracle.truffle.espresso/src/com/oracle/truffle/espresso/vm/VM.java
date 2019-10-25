@@ -128,9 +128,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private final TruffleObject initializeMokapotContext;
     private final TruffleObject disposeMokapotContext;
+
+    private final TruffleObject initializeManagementContext;
+    private final TruffleObject disposeManagementContext;
+
     private final TruffleObject getJavaVM;
 
     private final JniEnv jniEnv;
+
+    private long managementPtr;
 
     public JNIHandles getHandles() {
         return jniEnv.getHandles();
@@ -172,6 +178,13 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "disposeMokapotContext",
+                            "(env, sint64): void");
+
+            initializeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                            "initializeManagementContext", "(env, (string): pointer): sint64");
+
+            disposeManagementContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                            "disposeManagementContext",
                             "(env, sint64): void");
 
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
@@ -1591,6 +1604,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return Runtime.getRuntime().availableProcessors();
     }
 
+
     @JniImpl
     @VmImpl
     public @Host(Class.class) StaticObject JVM_CurrentLoadedClass() {
@@ -1676,8 +1690,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return res == null ? -1 : res;
     }
 
-    // Checkstyle: resume method name check
-
     private boolean isTrustedFrame(FrameInstance frameInstance, PrivilegedStack stack) {
         if (stack.compare(frameInstance)) {
             StaticObject loader = stack.classLoader();
@@ -1712,4 +1724,457 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         return false;
     }
+
+    // region Management
+
+    // Checkstyle: stop
+    // jmmLongAttribute;
+    public static final int JMM_CLASS_LOADED_COUNT = 1; /* Total number of loaded classes */
+    public static final int JMM_CLASS_UNLOADED_COUNT = 2; /* Total number of unloaded classes */
+    public static final int JMM_THREAD_TOTAL_COUNT = 3; /*
+                                                         * Total number of threads that have been
+                                                         * started
+                                                         */
+    public static final int JMM_THREAD_LIVE_COUNT = 4; /* Current number of live threads */
+    public static final int JMM_THREAD_PEAK_COUNT = 5; /* Peak number of live threads */
+    public static final int JMM_THREAD_DAEMON_COUNT = 6; /* Current number of daemon threads */
+    public static final int JMM_JVM_INIT_DONE_TIME_MS = 7; /*
+                                                            * Time when the JVM finished
+                                                            * initialization
+                                                            */
+    public static final int JMM_COMPILE_TOTAL_TIME_MS = 8; /*
+                                                            * Total accumulated time spent in
+                                                            * compilation
+                                                            */
+    public static final int JMM_GC_TIME_MS = 9; /* Total accumulated time spent in collection */
+    public static final int JMM_GC_COUNT = 10; /* Total number of collections */
+    public static final int JMM_JVM_UPTIME_MS = 11; /* The JVM uptime in milliseconds */
+    public static final int JMM_INTERNAL_ATTRIBUTE_INDEX = 100;
+    public static final int JMM_CLASS_LOADED_BYTES = 101; /*
+                                                           * Number of bytes loaded instance classes
+                                                           */
+    public static final int JMM_CLASS_UNLOADED_BYTES = 102; /*
+                                                             * Number of bytes unloaded instance
+                                                             * classes
+                                                             */
+    public static final int JMM_TOTAL_CLASSLOAD_TIME_MS = 103; /*
+                                                                * Accumulated VM class loader time
+                                                                * (TraceClassLoadingTime)
+                                                                */
+    public static final int JMM_VM_GLOBAL_COUNT = 104; /* Number of VM internal flags */
+    public static final int JMM_SAFEPOINT_COUNT = 105; /* Total number of safepoints */
+    public static final int JMM_TOTAL_SAFEPOINTSYNC_TIME_MS = 106; /*
+                                                                    * Accumulated time spent getting
+                                                                    * to safepoints
+                                                                    */
+    public static final int JMM_TOTAL_STOPPED_TIME_MS = 107; /*
+                                                              * Accumulated time spent at safepoints
+                                                              */
+    public static final int JMM_TOTAL_APP_TIME_MS = 108; /*
+                                                          * Accumulated time spent in Java
+                                                          * application
+                                                          */
+    public static final int JMM_VM_THREAD_COUNT = 109; /* Current number of VM internal threads */
+    public static final int JMM_CLASS_INIT_TOTAL_COUNT = 110; /*
+                                                               * Number of classes for which
+                                                               * initializers were run
+                                                               */
+    public static final int JMM_CLASS_INIT_TOTAL_TIME_MS = 111; /*
+                                                                 * Accumulated time spent in class
+                                                                 * initializers
+                                                                 */
+    public static final int JMM_METHOD_DATA_SIZE_BYTES = 112; /* Size of method data in memory */
+    public static final int JMM_CLASS_VERIFY_TOTAL_TIME_MS = 113; /*
+                                                                   * Accumulated time spent in class
+                                                                   * verifier
+                                                                   */
+    public static final int JMM_SHARED_CLASS_LOADED_COUNT = 114; /*
+                                                                  * Number of shared classes loaded
+                                                                  */
+    public static final int JMM_SHARED_CLASS_UNLOADED_COUNT = 115; /*
+                                                                    * Number of shared classes
+                                                                    * unloaded
+                                                                    */
+    public static final int JMM_SHARED_CLASS_LOADED_BYTES = 116; /*
+                                                                  * Number of bytes loaded shared
+                                                                  * classes
+                                                                  */
+    public static final int JMM_SHARED_CLASS_UNLOADED_BYTES = 117; /*
+                                                                    * Number of bytes unloaded
+                                                                    * shared classes
+                                                                    */
+    public static final int JMM_OS_ATTRIBUTE_INDEX = 200;
+    public static final int JMM_OS_PROCESS_ID = 201; /* Process id of the JVM */
+    public static final int JMM_OS_MEM_TOTAL_PHYSICAL_BYTES = 202; /* Physical memory size */
+    public static final int JMM_GC_EXT_ATTRIBUTE_INFO_SIZE = 401; /*
+                                                                   * the size of the GC specific
+                                                                   * attributes for a given GC
+                                                                   * memory manager
+                                                                   */
+
+    // jmmBoolAttribute;
+    public static final int JMM_VERBOSE_GC = 21;
+    public static final int JMM_VERBOSE_CLASS = 22;
+    public static final int JMM_THREAD_CONTENTION_MONITORING = 23;
+    public static final int JMM_THREAD_CPU_TIME = 24;
+    public static final int JMM_THREAD_ALLOCATED_MEMORY = 25;
+
+    // Checkstyle: resume
+
+    @JniImpl
+    @VmImpl
+    public synchronized long JVM_GetManagement(int version) {
+        if (managementPtr == 0) {
+            try {
+                managementPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeManagementContext, lookupVmImplCallback);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+            assert this.managementPtr != 0;
+        }
+        return managementPtr;
+    }
+
+    final static int JMM_VERSION = 0x20010203;
+
+    @JniImpl
+    @VmImpl
+    public int GetVersion() {
+        return JMM_VERSION;
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetOptionalSupport(long /* jmmOptionalSupport **/ supportPtr) {
+        if (supportPtr != 0L) {
+            ByteBuffer supportBuf = directByteBuffer(supportPtr, 8);
+            supportBuf.putInt(0); // nothing optional is supported
+            return 0;
+        }
+        return -1;
+    }
+
+    /*
+     * This is used by JDK 6 and earlier. For JDK 7 and after, use GetInputArgumentArray.
+     */
+    @JniImpl
+    @VmImpl
+    public Object GetInputArguments() {
+        throw EspressoError.unimplemented("GetInputArguments");
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray) {
+
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(String[].class) StaticObject GetInputArgumentArray() {
+        return getMeta().String.allocateArray(0);
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetMemoryPools(Object mgr) {
+        Klass memoryPoolMXBean = getMeta().loadKlass(Type.MemoryPoolMXBean, StaticObject.NULL);
+        return memoryPoolMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int value) {
+                // (String name, boolean isHeap, long uThreshold, long gcThreshold)
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryPool.invokeDirect(null,
+                                /* String name */ getMeta().toGuestString("foo"),
+                                /* boolean isHeap */ true,
+                                /* long uThreshold */ -1L,
+                                /* long gcThreshold */ 0L);
+            }
+        });
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetMemoryManagers(@Host(Object.class) StaticObject pool) {
+        Klass memoryManagerMXBean = getMeta().loadKlass(Type.MemoryManagerMXBean, StaticObject.NULL);
+        return memoryManagerMXBean.allocateArray(1, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int value) {
+                // (String name, String type)
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryManager.invokeDirect(null,
+                                /* String name */ getMeta().toGuestString("foo"),
+                                /* String type */ StaticObject.NULL);
+            }
+        });
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+        if (StaticObject.isNull(pool)) {
+            return StaticObject.NULL;
+        }
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetPeakMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+        if (StaticObject.isNull(pool)) {
+            return StaticObject.NULL;
+        }
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public void GetThreadAllocatedMemory(@Host(long[].class) StaticObject ids, @Host(long[].class) StaticObject sizeArray) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetMemoryUsage(boolean heap) {
+        Method init = getMeta().MemoryUsage.lookupDeclaredMethod(Symbol.Name.INIT, getSignatures().makeRaw(Type._void, Type._long, Type._long, Type._long, Type._long));
+        StaticObject instance = getMeta().MemoryUsage.allocateInstance();
+        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
+        return instance;
+    }
+
+    @JniImpl
+    @VmImpl
+    public long GetLongAttribute(@Host(Object.class) StaticObject obj, /* jmmLongAttribute */ int att) {
+        switch (att) {
+            case JMM_JVM_INIT_DONE_TIME_MS:
+                return getContext().initVMDoneMs;
+            case JMM_CLASS_LOADED_COUNT:
+                return getRegistries().getLoadedClassesCount();
+            case JMM_CLASS_UNLOADED_COUNT:
+                return 0L;
+            case JMM_JVM_UPTIME_MS:
+                return System.currentTimeMillis() - getContext().initVMDoneMs;
+            case JMM_OS_PROCESS_ID:
+                String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+                String[] parts = processName.split("@");
+                return Long.parseLong(parts[0]);
+        }
+        throw EspressoError.unimplemented("GetLongAttribute " + att);
+    }
+
+    private boolean JMM_VERBOSE_GC_state = false;
+    private boolean JMM_VERBOSE_CLASS_state = false;
+    private boolean JMM_THREAD_CONTENTION_MONITORING_state = false;
+    private boolean JMM_THREAD_CPU_TIME_state = false;
+    private boolean JMM_THREAD_ALLOCATED_MEMORY_state = false;
+
+    @JniImpl
+    @VmImpl
+    public boolean GetBoolAttribute(/* jmmBoolAttribute */ int att) {
+        switch (att) {
+            case JMM_VERBOSE_GC:
+                return JMM_VERBOSE_GC_state;
+            case JMM_VERBOSE_CLASS:
+                return JMM_VERBOSE_CLASS_state;
+            case JMM_THREAD_CONTENTION_MONITORING:
+                return JMM_THREAD_CONTENTION_MONITORING_state;
+            case JMM_THREAD_CPU_TIME:
+                return JMM_THREAD_CPU_TIME_state;
+            case JMM_THREAD_ALLOCATED_MEMORY:
+                return JMM_THREAD_ALLOCATED_MEMORY_state;
+        }
+        throw EspressoError.unimplemented("GetBoolAttribute " + att);
+    }
+
+    @JniImpl
+    @VmImpl
+    public boolean SetBoolAttribute(/* jmmBoolAttribute */ int att, boolean flag) {
+        switch (att) {
+            case JMM_VERBOSE_GC:
+                return JMM_VERBOSE_GC_state = flag;
+            case JMM_VERBOSE_CLASS:
+                return JMM_VERBOSE_CLASS_state = flag;
+            case JMM_THREAD_CONTENTION_MONITORING:
+                return JMM_THREAD_CONTENTION_MONITORING_state = flag;
+            case JMM_THREAD_CPU_TIME:
+                return JMM_THREAD_CPU_TIME_state = flag;
+            case JMM_THREAD_ALLOCATED_MEMORY:
+                return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
+        }
+        throw EspressoError.unimplemented("SetBoolAttribute " + att);
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetLongAttributes(@Host(Object.class) StaticObject obj, /* jmmLongAttribute* */ long attsPtr, int count, /* long* */ long resultPtr) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject FindCircularBlockedThreads() {
+        throw EspressoError.unimplemented();
+    }
+
+    // Not used in JDK 6 or JDK 7
+    @JniImpl
+    @VmImpl
+    public long GetThreadCpuTime(long thread_id) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetVMGlobalNames() {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ long globalsPtr, int count) {
+        if (globalsPtr == 0L) {
+            throw getMeta().throwEx(NullPointerException.class);
+        }
+        if (StaticObject.notNull(names)) {
+            if (!names.getKlass().equals(getMeta().String.array())) {
+                throw getMeta().throwExWithMessage(IllegalArgumentException.class, "Array element type is not String class");
+            }
+
+            StaticObject[] entries = names.unwrap();
+            for (StaticObject entry : entries) {
+                if (StaticObject.isNull(entry)) {
+                    throw getMeta().throwEx(NullPointerException.class);
+                }
+                System.err.println("GetVMGlobals: " + Meta.toHostString(entry));
+            }
+        }
+        return 0;
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetInternalThreadTimes(@Host(Object[].class) StaticObject names, @Host(long[].class) StaticObject times) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public boolean ResetStatistic( /* jvalue */ long obj, /* jmmStatisticType */ long type) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void SetPoolSensor(@Host(Object.class) StaticObject pool, /* jmmThresholdType */ long type, @Host(Object.class) StaticObject sensor) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public long SetPoolThreshold(@Host(Object.class) StaticObject pool, /* jmmThresholdType */ long type, long threshold) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object.class) StaticObject GetPoolCollectionUsage(@Host(Object.class) StaticObject pool) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public int GetGCExtAttributeInfo(@Host(Object.class) StaticObject mgr, /*
+                                                                            * jmmExtAttributeInfo *
+                                                                            */ long ext_infoPtr, int count) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void GetLastGCStat(@Host(Object.class) StaticObject mgr, /* jmmGCStat * */ long gc_statPtr) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public long GetThreadCpuTimeWithKind(long thread_id, boolean user_sys_cpu_time) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void GetThreadCpuTimesWithKind(@Host(long[].class) StaticObject ids, @Host(long[].class) StaticObject timeArray, boolean user_sys_cpu_time) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public int DumpHeap0(@Host(String.class) StaticObject outputfile, boolean live) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject FindDeadlocks(boolean object_monitors_only) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void SetVMGlobal(@Host(String.class) StaticObject flag_name, /* jvalue */ long new_value) {
+        throw EspressoError.unimplemented();
+    }
+
+    // void* reserved6;
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void SetGCNotificationEnabled(@Host(Object.class) StaticObject mgr, boolean enabled) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Object[].class) StaticObject GetDiagnosticCommands() {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void GetDiagnosticCommandInfo(@Host(Object[].class) StaticObject cmds, /* dcmdInfo * */ long infoArrayPtr) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void GetDiagnosticCommandArgumentsInfo(@Host(String.class) StaticObject commandName, long /* dcmdArgInfo* */ infoArrayPtr) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(String.class) StaticObject ExecuteDiagnosticCommand(@Host(String.class) StaticObject command) {
+        throw EspressoError.unimplemented();
+    }
+
+    @JniImpl
+    @VmImpl
+    public void SetDiagnosticFrameworkNotificationEnabled(boolean enabled) {
+        throw EspressoError.unimplemented();
+    }
+
+    // endregion Management
+
+    // Checkstyle: resume method name check
 }
