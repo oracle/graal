@@ -114,15 +114,8 @@ public final class RuntimeCodeInfoAccess {
         continueVisiting = continueVisiting &&
                         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
         if (impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE) {
-            if (!SubstrateOptions.RWXCodeCache.getValue()) {
-                // unprotect here, as the GC might need to modify Java values embedded in the code
-                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
-            }
             continueVisiting = continueVisiting && CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(),
                             impl.getObjectsReferenceMapEncoding(), impl.getObjectsReferenceMapIndex(), visitor);
-            if (!SubstrateOptions.RWXCodeCache.getValue()) {
-                CommittedMemoryProvider.get().protect(impl.getCodeStart(), impl.getCodeSize(), EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
-            }
         }
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
@@ -181,6 +174,10 @@ public final class RuntimeCodeInfoAccess {
 
     public static void makeCodeMemoryReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
         CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
+    }
+
+    public static void makeCodeMemoryNX(CodePointer start, UnsignedWord size) {
+        CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)

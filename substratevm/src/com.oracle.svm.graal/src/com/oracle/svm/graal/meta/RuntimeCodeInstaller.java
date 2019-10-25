@@ -71,6 +71,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -136,6 +137,10 @@ public class RuntimeCodeInstaller {
             int constantsSize = compilation.getDataSection().getSectionSize();
             codeSize = compilation.getTargetCodeSize();
             int tmpConstantsOffset = NumUtil.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
+            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                // round up for readonly code cache, s.t. the data section can remain writeable
+                tmpConstantsOffset = (int) NumUtil.roundUp(tmpConstantsOffset, CommittedMemoryProvider.get().getGranularity().rawValue());
+            }
             int tmpMemorySize = tmpConstantsOffset + constantsSize;
 
             // Allocate executable memory. It contains the compiled code and the constants
@@ -178,6 +183,10 @@ public class RuntimeCodeInstaller {
                 // Add space for the target addresses
                 // (which are referenced from the jump instructions)
                 tmpConstantsOffset = NumUtil.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
+                if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                    // round up for readonly code cache, s.t. the data section can remain writeable
+                    tmpConstantsOffset = (int) NumUtil.roundUp(tmpConstantsOffset, CommittedMemoryProvider.get().getGranularity().rawValue());
+                }
                 if (tmpConstantsOffset > compiledBytes.length) {
                     compiledBytes = Arrays.copyOf(compiledBytes, tmpConstantsOffset);
                 }
@@ -186,6 +195,11 @@ public class RuntimeCodeInstaller {
                 code = allocateCodeMemory(tmpMemorySize);
             }
             constantsOffset = tmpConstantsOffset;
+
+            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                // make the data section NX
+                makeDataSectionNX(code.add(constantsOffset), constantsSize);
+            }
 
             codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(DebugContext.forCurrentThread(), method, compilation, code);
         }
@@ -254,6 +268,11 @@ public class RuntimeCodeInstaller {
             code.writeByte(index, compiledBytes[index]);
         }
 
+        // remove write access from code
+        if (!SubstrateOptions.RWXCodeCache.getValue()) {
+            makeCodeMemoryReadOnly(code, codeSize);
+        }
+
         /* Write primitive constants to the buffer, record object constants with offsets */
         ByteBuffer constantsBuffer = CTypeConversion.asByteBuffer(code.add(constantsOffset), compilation.getDataSection().getSectionSize());
         compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
@@ -269,10 +288,6 @@ public class RuntimeCodeInstaller {
         encoder.add(objectConstants.referenceMap);
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
-
-        if (!SubstrateOptions.RWXCodeCache.getValue()) {
-            protectCodeMemory(code, codeSize);
-        }
 
         createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;
@@ -418,8 +433,12 @@ public class RuntimeCodeInstaller {
         return (Pointer) result;
     }
 
-    protected void protectCodeMemory(Pointer start, long size) {
+    protected void makeCodeMemoryReadOnly(Pointer start, long size) {
         RuntimeCodeInfoAccess.makeCodeMemoryReadOnly((CodePointer) start, WordFactory.unsigned(size));
+    }
+
+    protected void makeDataSectionNX(Pointer start, long size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryNX((CodePointer) start, WordFactory.unsigned(size));
     }
 
     protected void releaseCodeMemory(Pointer start, long size) {
