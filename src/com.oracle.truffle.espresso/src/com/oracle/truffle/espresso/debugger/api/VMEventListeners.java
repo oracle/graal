@@ -43,7 +43,7 @@ public class VMEventListeners {
         listeners[0] = listener;
     }
 
-    public void classPrepared(klassRef klass, Thread currentThread) {
+    public void classPrepared(klassRef klass, Object currentThread) {
         if (listeners[0] != null) {
             listeners[0].classPrepared(klass, currentThread);
         }

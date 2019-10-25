@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 import com.oracle.truffle.espresso.debugger.api.klassRef;
 
 public interface VMEventListener {
-    void classPrepared(klassRef klass, Thread currentThread);
+    void classPrepared(klassRef klass, Object currentThread);
     void classUnloaded(klassRef klass);
     void threadStarted(Object thread);
     void threadDied(Object thread);

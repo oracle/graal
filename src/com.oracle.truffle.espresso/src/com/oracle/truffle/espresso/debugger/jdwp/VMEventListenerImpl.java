@@ -69,10 +69,7 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void classPrepared(klassRef klass, Thread currentThread) {
-        // we will get the host thread, so convert to guest thread
-        Object guestThread = context.getHost2GuestThread(currentThread);
-
+    public void classPrepared(klassRef klass, Object guestThread) {
         // prepare the event and ship
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
@@ -163,7 +160,7 @@ public class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        //System.out.println("Thread: " + thread + " started with ID: " + Ids.getIdAsLong(thread) + " based on request: " + threadStartedRequestId) ;
+        //System.out.println("Thread: " + thread + " started based on request: " + threadStartedRequestId) ;
         connection.queuePacket(stream);
     }
 

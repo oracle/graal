@@ -80,6 +80,7 @@ public final class EspressoContext {
     private final EspressoThreadManager threadManager;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
+    private boolean mainThreadCreated;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -272,7 +273,6 @@ public final class EspressoContext {
      * HotSpot's implementation.
      */
     private void createMainThread() {
-
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
                 .invokeDirect(systemThreadGroup);
@@ -299,6 +299,7 @@ public final class EspressoContext {
         mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         VMEventListeners.getDefault().threadStarted(mainThread);
+        mainThreadCreated = true;
     }
 
     public void interruptActiveThreads() {
@@ -463,6 +464,10 @@ public final class EspressoContext {
 
     public final EspressoOptions.VerifyMode Verify;
     public final JDWPOptions JDWPOptions;
+
+    public boolean isMainThreadCreated() {
+        return mainThreadCreated;
+    }
 
     // endregion Options
 }
