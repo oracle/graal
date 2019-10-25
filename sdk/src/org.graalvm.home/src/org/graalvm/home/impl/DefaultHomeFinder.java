@@ -349,9 +349,6 @@ public final class DefaultHomeFinder extends HomeFinder {
         final Path executable = getCurrentExecutablePath();
         if (executable != null) {
             Path result = getGraalVmHomeFromRelativeLauncherPath(executable);
-            if (result == null) {
-                result = getGraalVmHomeFallBack(executable);
-            }
             if (result != null) {
                 if (isVerbose()) {
                     System.err.println("GraalVM home found by executable as: " + result);
@@ -385,47 +382,6 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         return null;
-    }
-
-    /**
-     * Fallback for the GraalVM home using location of execuable jdk/jre layout.
-     *
-     * @param executable the path to launcher
-     * @return the path to GraalVM home or null
-     */
-    private static Path getGraalVmHomeFallBack(Path executable) {
-        Path bin = executable.getParent();
-        if (bin == null || !"bin".equals(getFileName(bin))) {
-            return null;
-        }
-        Path jreOrJdk = bin.getParent();
-        Path home;
-        if (jreOrJdk != null && "jre".equals(getFileName(jreOrJdk))) {
-            home = jreOrJdk.getParent();
-        } else if (jreOrJdk != null) {
-            if (isJdkHome(jreOrJdk)) {
-                home = jreOrJdk;
-            } else {
-                // maybe we are in the language home?
-                Path languages = jreOrJdk.getParent();
-                if (languages != null && "languages".equals(getFileName(languages))) {
-                    Path jre = languages.getParent();
-                    if (jre != null && "jre".equals(getFileName(jre))) {
-                        home = jre.getParent();
-                    } else {
-                        home = null;
-                    }
-                } else {
-                    home = null;
-                }
-            }
-        } else {
-            home = null;
-        }
-        if (home != null && !isJreHome(home)) {
-            return null;
-        }
-        return home;
     }
 
     /**
