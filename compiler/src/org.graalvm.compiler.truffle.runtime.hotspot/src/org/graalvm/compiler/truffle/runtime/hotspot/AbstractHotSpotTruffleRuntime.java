@@ -257,10 +257,18 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     /**
-     * Prevents C1 or C2 from inlining a call to a method annotated by {@link TruffleCallBoundary}
-     * so that we never miss the chance to switch from the Truffle interpreter to compiled code.
+     * Prevents C1 or C2 from inlining a call to and compiling a method annotated by
+     * {@link TruffleCallBoundary} (i.e., {@link OptimizedCallTarget#callBoundary(Object[])}) so
+     * that we never miss the chance to jump from the Truffle interpreter to compiled code.
      *
-     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods()
+     * This is quite slow as it forces every call to
+     * {@link OptimizedCallTarget#callBoundary(Object[])} to run in the HotSpot interpreter, so
+     * later on we manually compile {@code callBoundary()} with Graal. This then lets a
+     * C1/C2-compiled caller jump to Graal-compiled {@code callBoundary()}, instead of having to go
+     * back to the HotSpot interpreter for every execution of {@code callBoundary()}.
+     *
+     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods() which compiles callBoundary()
+     *      with Graal
      */
     public static void setDontInlineCallBoundaryMethod() {
         MetaAccessProvider metaAccess = getMetaAccess();
