@@ -54,10 +54,6 @@ import org.graalvm.options.OptionValues;
  */
 public class BackgroundCompileQueue {
 
-    public static final int PRIORITY_INITIALIZATION = 0;
-    public static final int PRIORITY_FIRST_TIER = 1;
-    public static final int PRIORITY_LAST_TIER = 2;
-
     private final AtomicLong idCounter;
     private volatile ExecutorService compilationExecutorService;
     private boolean shutdown = false;
