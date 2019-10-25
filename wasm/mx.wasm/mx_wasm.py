@@ -168,7 +168,6 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 # Step 1a: compile with the JS file.
                 output_js_path = os.path.join(output_dir, subdir, basename + ".js")
                 build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path] + include_flags
-                mx.log(build_cmd_line)
                 mx.run(build_cmd_line)
 
                 # Step 1b: extract the relevant information out of the JS file, and record it into an initialization file.
