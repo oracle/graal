@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodesNode;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodTypeConstant extends PoolConstant {
@@ -67,7 +67,7 @@ public interface MethodTypeConstant extends PoolConstant {
         public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
             Symbol<Signature> sig = getSignature(pool);
             Meta meta = accessingKlass.getContext().getMeta();
-            return new Resolved(BytecodesNode.signatureToMethodType(meta.getSignatures().parsed(sig), accessingKlass, meta));
+            return new Resolved(BytecodeNode.signatureToMethodType(meta.getSignatures().parsed(sig), accessingKlass, meta));
         }
 
         @Override

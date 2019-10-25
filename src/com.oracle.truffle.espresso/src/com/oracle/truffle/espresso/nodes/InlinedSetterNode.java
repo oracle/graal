@@ -66,7 +66,7 @@ public class InlinedSetterNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        BytecodesNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodesNode();
         setFieldNode.setField(frame, root, top);
         return -slotCount + stackEffect;
     }

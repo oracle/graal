@@ -73,7 +73,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.BytecodesNode;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
@@ -406,7 +406,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                             throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodesNode(this, frameDescriptor));
+                        EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
                 }

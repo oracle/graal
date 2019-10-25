@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.nodes.BytecodesNode.resolveMethodCount;
+import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveMethodCount;
 
 import java.util.Objects;
 

@@ -306,7 +306,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodesNode extends EspressoMethodNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoMethodNode implements CustomNodeCount {
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -337,7 +337,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
     @Child private volatile InstrumentationSupport instrumentation;
 
     @TruffleBoundary
-    public BytecodesNode(Method method, FrameDescriptor frameDescriptor) {
+    public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
@@ -347,7 +347,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         this.SOEinfo = method.getSOEHandlerInfo();
     }
 
-    public BytecodesNode(BytecodesNode copy) {
+    public BytecodeNode(BytecodeNode copy) {
         this(copy.getMethod(), copy.getRootNode().getFrameDescriptor());
         System.err.println("Copying node for " + getMethod());
     }
@@ -1237,7 +1237,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
     }
 
     @TruffleBoundary
-    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodesNode thisNode) {
+    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodeNode thisNode) {
         Method m = thisNode.getMethod();
         System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
         if (e.getCause() != null) {
@@ -1247,14 +1247,14 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
     }
 
     @TruffleBoundary
-    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodesNode thisNode) {
+    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodeNode thisNode) {
         Method m = thisNode.getMethod();
         System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
         e.printStackTrace();
     }
 
     @TruffleBoundary
-    static private void reportCatch(EspressoException e, int curBCI, BytecodesNode thisNode) {
+    static private void reportCatch(EspressoException e, int curBCI, BytecodeNode thisNode) {
         if (thisNode.getMethod().getName().toString().contains("refill") ||
                         thisNode.getMethod().getName().toString().contains("loadClass") ||
                         thisNode.getMethod().getName().toString().contains("findClass")) {

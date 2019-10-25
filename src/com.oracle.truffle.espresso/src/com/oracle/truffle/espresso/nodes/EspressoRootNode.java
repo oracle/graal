@@ -73,7 +73,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public final boolean isBytecodeNode() {
-        return getMethodNode() instanceof BytecodesNode;
+        return getMethodNode() instanceof BytecodeNode;
     }
 
     private final EspressoMethodNode getMethodNode() {

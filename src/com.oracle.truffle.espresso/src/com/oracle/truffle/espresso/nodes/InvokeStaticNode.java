@@ -47,7 +47,7 @@ public final class InvokeStaticNode extends QuickNode {
             // Obtaining call target initializes the declaring klass
             directCallNode = DirectCallNode.create(method.getCallTarget());
         }
-        BytecodesNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodesNode();
         Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getParsedSignature());
 
         Object result = directCallNode.call(args);

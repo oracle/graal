@@ -64,16 +64,16 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
         return tag == StandardTags.StatementTag.class;
     }
 
-    public BytecodesNode getBytecodesNode() {
+    public BytecodeNode getBytecodesNode() {
         // parent is normally the BytecodesNode.InstrumentationSupport
         // parents parent is normally the BytecodesNode
         Node parent = getParent();
 
-        while (parent instanceof WrapperNode || parent instanceof BytecodesNode.InstrumentationSupport) {
+        while (parent instanceof WrapperNode || parent instanceof BytecodeNode.InstrumentationSupport) {
             parent = parent.getParent();
         }
         assert !(parent instanceof WrapperNode);
-        return (BytecodesNode) parent;
+        return (BytecodeNode) parent;
     }
 
     public int getBci() {

@@ -39,7 +39,7 @@ public class LeafAssumptionGetterNode extends InlinedGetterNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        BytecodesNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodesNode();
         if (inlinedMethod.leafAssumption()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()

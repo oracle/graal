@@ -26,7 +26,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.Local;
-import com.oracle.truffle.espresso.nodes.BytecodesNode;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
 import com.oracle.truffle.espresso.nodes.QuickNode;
 import org.graalvm.options.OptionDescriptors;
@@ -152,11 +152,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             currentBci = statementNode.getBci();
             method = statementNode.getBytecodesNode().getMethod();
             scopeNode = statementNode.getBytecodesNode();
-        } else if (node instanceof BytecodesNode) {
-            BytecodesNode bytecodesNode = (BytecodesNode) node;
+        } else if (node instanceof BytecodeNode) {
+            BytecodeNode bytecodeNode = (BytecodeNode) node;
             currentBci = 0; // start of the method
-            method = bytecodesNode.getMethod();
-            scopeNode = bytecodesNode;
+            method = bytecodeNode.getMethod();
+            scopeNode = bytecodeNode;
             } else {
             return super.findLocalScopes(context, node, frame);
         }
@@ -175,7 +175,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         Node currentNode = input;
         boolean known = false;
         while (currentNode != null && !known) {
-            if (currentNode instanceof QuickNode || currentNode instanceof BytecodesNode || currentNode instanceof EspressoStatementNode) {
+            if (currentNode instanceof QuickNode || currentNode instanceof BytecodeNode || currentNode instanceof EspressoStatementNode) {
                 known = true;
             } else {
                 currentNode = currentNode.getParent();

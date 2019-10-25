@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 
@@ -40,7 +39,7 @@ public final class InvokeSpecialNode extends QuickNode {
 
     @Override
     public int execute(final VirtualFrame frame) {
-        BytecodesNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?
         Object receiver = nullCheck(root.peekReceiver(frame, top, method));
         Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getParsedSignature());

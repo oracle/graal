@@ -88,7 +88,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodesNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
         StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
         nullCheck(receiver);
