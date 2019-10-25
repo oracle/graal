@@ -487,7 +487,7 @@ public class HotSpotGraphBuilderPlugins {
         }
         return false;
     }
-    
+
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
