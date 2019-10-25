@@ -75,7 +75,7 @@ sulong-ruby-downstream-test: {
         ruby: "==2.1.0"
     }
     run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
+        [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git", --downstream-branch, release/graal-vm/19.2,
          --mx-command, "--dynamicimports /sulong ruby_testdownstream_sulong"]
     ]
     timelimit: "45:00"
@@ -88,7 +88,7 @@ sulong-python-downstream-test: {
         llvm: ">=4.0"
     }
     run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
+        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git", --downstream-branch, release/graal-vm/19.2,
          --mx-command, "--dynamicimports /sulong gate -B=--force-deprecation-as-warning --tags build,python-cpyext"]
     ]
 }
