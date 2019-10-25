@@ -164,6 +164,10 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         protected double doDouble(long from) {
+            return doI64(from);
+        }
+
+        public static double doI64(long from) {
             double val = from & Long.MAX_VALUE;
             if (from < 0) {
                 val += LEADING_BIT;
