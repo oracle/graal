@@ -765,7 +765,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (callTarget != null) {
                     try {
                         if (!task.isCancelled()) {
-                            doCompile(targetRef.get(), task);
+                            doCompile(callTarget, task);
                         }
                     } finally {
                         callTarget.resetCompilationTask();
