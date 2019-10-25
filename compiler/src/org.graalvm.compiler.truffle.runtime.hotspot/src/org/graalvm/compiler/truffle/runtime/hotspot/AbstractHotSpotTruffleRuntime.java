@@ -182,27 +182,28 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * be installed in that case and we use the HotSpot interpreter indefinitely.
      */
     private void ensureInitialized(OptimizedCallTarget firstCallTarget) {
-        if (truffleCompiler == null) {
-            CancellableCompileTask localTask = initializationTask;
-            if (localTask == null) {
-                synchronized (this) {
-                    localTask = initializationTask;
-                    if (localTask == null) {
-                        initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
-                            @Override
-                            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
-                                synchronized (AbstractHotSpotTruffleRuntime.this) {
-                                    initializeTruffleCompiler();
-                                    assert initializationTask != null;
-                                    initializationTask = null;
-                                }
+        if (truffleCompiler != null) {
+            return;
+        }
+        CancellableCompileTask localTask = initializationTask;
+        if (localTask == null) {
+            synchronized (this) {
+                localTask = initializationTask;
+                if (localTask == null) {
+                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
+                        @Override
+                        protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                            synchronized (AbstractHotSpotTruffleRuntime.this) {
+                                initializeTruffleCompiler();
+                                assert initializationTask != null;
+                                initializationTask = null;
                             }
-                        });
-                    }
+                        }
+                    });
                 }
             }
-            firstCallTarget.maybeWaitForTask(localTask);
         }
+        firstCallTarget.maybeWaitForTask(localTask);
     }
 
     protected boolean reportedTruffleCompilerInitializationFailure;
