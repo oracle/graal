@@ -191,8 +191,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                         initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                             @Override
                             protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
-                                initializeTruffleCompiler();
                                 synchronized (AbstractHotSpotTruffleRuntime.this) {
+                                    initializeTruffleCompiler();
                                     assert initializationTask != null;
                                     initializationTask = null;
                                 }
@@ -207,18 +207,16 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     protected boolean reportedTruffleCompilerInitializationFailure;
 
-    private void initializeTruffleCompiler() {
-        synchronized (this) {
-            // might occur for multiple compiler threads at the same time.
-            if (truffleCompiler == null) {
-                try {
-                    truffleCompiler = newTruffleCompiler();
-                } catch (Throwable e) {
-                    if (!reportedTruffleCompilerInitializationFailure) {
-                        // This should never happen so report it (once)
-                        reportedTruffleCompilerInitializationFailure = true;
-                        log(printStackTraceToString(e));
-                    }
+    private synchronized void initializeTruffleCompiler() {
+        // might occur for multiple compiler threads at the same time.
+        if (truffleCompiler == null) {
+            try {
+                truffleCompiler = newTruffleCompiler();
+            } catch (Throwable e) {
+                if (!reportedTruffleCompilerInitializationFailure) {
+                    // This should never happen so report it (once)
+                    reportedTruffleCompilerInitializationFailure = true;
+                    log(printStackTraceToString(e));
                 }
             }
         }
