@@ -180,7 +180,7 @@ public class BackgroundCompileQueue {
                 RequestImpl<?> thatReq = (RequestImpl<?>) that;
                 int diff = priority.value - thatReq.priority.value;
                 if (diff == 0) {
-                    diff = (int) (this.id - thatReq.id);
+                    diff = Long.compare(this.id, thatReq.id);
                 }
                 return diff;
             } else {
@@ -199,7 +199,7 @@ public class BackgroundCompileQueue {
 
         @Override
         public String toString() {
-            return "Request(id:" + id + ", priority:" + priority + " + lo: " + task + ")";
+            return "Request(id:" + id + ", priority:" + priority + " + target: " + targetRef.get() + ")";
         }
     }
 
