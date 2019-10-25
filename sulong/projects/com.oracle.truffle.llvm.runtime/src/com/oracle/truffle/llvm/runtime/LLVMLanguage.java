@@ -96,6 +96,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
+        verifyContextExtensionsInitialized();
         return contextExtensions;
     }
 
@@ -109,12 +110,20 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
+        verifyContextExtensionsInitialized();
         for (ContextExtension ce : contextExtensions) {
             if (ce.extensionClass() == type) {
                 return type.cast(ce);
             }
         }
         return null;
+    }
+
+    private void verifyContextExtensionsInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (contextExtensions == null) {
+            throw new IllegalStateException("LLVMContext is not yet initialized");
+        }
     }
 
     /**
@@ -167,7 +176,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
         env.registerService(toolchain);
-        this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome(), toolchain);
         return context;
@@ -175,6 +183,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void initializeContext(LLVMContext context) {
+        this.contextExtensions = activeConfiguration.createContextExtensions(context.getEnv());
         context.initialize();
     }
 
