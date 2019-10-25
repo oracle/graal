@@ -86,7 +86,7 @@ fastr_darwin: ${fastr} {
   environment:  {
     # TODO: check these env vars
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
-    F77: "/usr/local/bin/gfortran-4.9"
+    FC: "/usr/local/bin/gfortran-4.9"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
   }
