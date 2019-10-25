@@ -751,9 +751,9 @@ public abstract class TruffleLanguage<C> {
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} and
      * {@link #initializeContext(java.lang.Object)} methods are called. In the image execution time,
      * the {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
-     * called on all pre-initialized languages as a consequence of
-     * {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation. The contexts are
-     * patched in a topological order starting from dependent languages. If the
+     * called on all languages whose contexts were created during the pre-initialization a
+     * consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation.
+     * The contexts are patched in a topological order starting from dependent languages. If the
      * {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
      * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
      * new context is created.
