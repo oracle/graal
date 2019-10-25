@@ -43,7 +43,6 @@ from __future__ import print_function
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-import glob
 import io
 import json
 import os
@@ -410,15 +409,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     'dependency': 'graalvm-jimage',
                     'path': '*',
                 })
-                # Temporary workaround until GR-16855 an SVM module provides the .a files
-                static_libs_path = _src_jdk_dir + (('/' + _src_jdk_base) if _src_jdk_base != '.' else '') + '/lib/*.a'
-                if glob.glob(static_libs_path):
-                    _add(layout, self.jdk_base + '/lib/', {
-                        'source_type': 'file',
-                        'path': static_libs_path,
-                    })
-                elif _get_svm_support().is_supported():
-                    mx.abort("Cannot find static libraries in '{}', required by SubstrateVM on JDK9+.\nAre you building with a recent LabsJDK?".format(dirname(static_libs_path)))
 
             # Add vm.properties
             vm_name = graalvm_vm_name(self, _src_jdk)
@@ -1850,6 +1840,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+        name += '_JAVA{}'.format(_src_jdk_version)
         self.maven = _graalvm_maven_attributes
         components = [component]
         if extra_components:
@@ -1881,7 +1872,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         self.main_comp_dir_name = component.dir_name
 
-        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['_java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
