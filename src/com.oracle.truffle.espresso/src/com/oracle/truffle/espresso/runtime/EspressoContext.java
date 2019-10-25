@@ -297,6 +297,8 @@ public final class EspressoContext {
                         /* group */ mainThreadGroup,
                         /* name */ meta.toGuestString("main"));
         mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+
+        VMEventListeners.getDefault().threadStarted(mainThread);
     }
 
     public void interruptActiveThreads() {
@@ -418,14 +420,16 @@ public final class EspressoContext {
         return threadManager.getGuestThreadFromHost(Thread.currentThread());
     }
 
+    public Iterable<StaticObject> getActiveThreads() {
+        return threadManager.activeThreads();
+    }
+
     public void registerThread(Thread host, StaticObject self) {
         threadManager.registerThread(host, self);
-        VMEventListeners.getDefault().threadStarted(self);
     }
 
     public void unregisterThread(StaticObject self) {
         threadManager.unregisterThread(self);
-        VMEventListeners.getDefault().threadDied(self);
     }
 
     public void invalidateNoThreadStop(String message) {

@@ -19,6 +19,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -74,17 +76,24 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object getHost2GuestThread(Thread hostThread) {
-        return context.getHost2Guest(hostThread);
+        return context.getGuestThreadFromHost(hostThread);
     }
 
     @Override
     public Object[] getAllGuestThreads() {
-        return context.getAllGuestThreads();
+        Iterable<StaticObject> activeThreads = context.getActiveThreads();
+        ArrayList<Object> threads = new ArrayList<>();
+
+        Iterator<StaticObject> it = activeThreads.iterator();
+        while (it.hasNext()) {
+            threads.add(it.next());
+        }
+        return threads.toArray(new Object[threads.size()]);
     }
 
     @Override
     public Object toGuestString(String string) {
-        return context.getMeta().toGuestString(string, context.getMeta());
+        return context.getMeta().toGuestString(string);
     }
 
     @Override

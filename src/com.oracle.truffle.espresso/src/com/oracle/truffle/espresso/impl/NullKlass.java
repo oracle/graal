@@ -116,7 +116,12 @@ public class NullKlass extends Klass {
     }
 
     @Override
-    protected int getFlags() {
+    public int getModifiers() {
+        return 0;
+    }
+
+    @Override
+    public int getClassModifiers() {
         return 0;
     }
 }
