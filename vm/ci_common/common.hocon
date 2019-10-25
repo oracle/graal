@@ -43,37 +43,19 @@ common_vm_windows: ${common_vm} ${windows} {
 
 # SULONG
 sulong_linux: {
-  packages: {
-    llvm: "==6.0.1"
-    ruby: "==2.6.3" # for mdl
-  }
-  downloads: {
-    LIBGMP: {name: libgmp, version: 6.1.0, platformspecific: true}
-  }
-  environment: {
-    "CPPFLAGS": "-I$LIBGMP/include"
-    "LD_LIBRARY_PATH": "$LIBGMP/lib:$LD_LIBRARY_PATH"
-  }
 }
 
 sulong_darwin: {
-  packages: {
-    llvm: "==4.0.1"
-  }
 }
 
 # TRUFFLERUBY
 truffleruby_linux: {
   packages: {
-    llvm: "==6.0.1"
     ruby: "==2.6.3"
   }
 }
 
 truffleruby_darwin: {
-  packages: {
-    llvm: "==4.0.1"
-  }
 }
 
 # FASTR
