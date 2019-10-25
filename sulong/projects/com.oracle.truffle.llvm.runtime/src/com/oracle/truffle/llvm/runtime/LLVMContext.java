@@ -109,8 +109,6 @@ public final class LLVMContext {
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
     private final Object globalsStoreLock = new Object();
 
-    private final String languageHome;
-
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private final Object[] mainArguments;
@@ -181,7 +179,7 @@ public final class LLVMContext {
         }
     }
 
-    LLVMContext(LLVMLanguage language, Env env, String languageHome, Toolchain toolchain) {
+    LLVMContext(LLVMLanguage language, Env env, Toolchain toolchain) {
         this.language = language;
         this.libsulongDatalayout = null;
         this.datalayoutInitialised = false;
@@ -210,7 +208,6 @@ public final class LLVMContext {
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
         this.environment = System.getenv();
-        this.languageHome = languageHome;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
@@ -267,6 +264,7 @@ public final class LLVMContext {
         for (ContextExtension ext : language.getLanguageContextExtension()) {
             ext.initialize();
         }
+        String languageHome = language.getLLVMLanguageHome();
         if (languageHome != null) {
             PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
             internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
