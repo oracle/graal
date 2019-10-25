@@ -1,5 +1,4 @@
 ; ModuleID = 'uitofp_double_mod.bc'
-source_filename = "ld-temp.o"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
@@ -26,7 +25,7 @@ define internal void @testI8Scalar(i8 zeroext) #0 {
 declare void @llvm.dbg.value(metadata, metadata, metadata) #1
 
 ; Function Attrs: nounwind
-declare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #2
+declare i32 @printf(i8* nocapture readonly, ...) #2
 
 ; Function Attrs: nounwind uwtable
 define internal void @testI16Scalar(i16 zeroext) #0 {
@@ -101,7 +100,7 @@ define internal void @testI64Vector(i64) #0 {
 }
 
 ; Function Attrs: nounwind uwtable
-define dso_local i32 @main() #0 {
+define i32 @main() #0 {
   %1 = tail call i32 @puts(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @str, i64 0, i64 0))
   tail call void @testI8Scalar(i8 zeroext 0)
   tail call void @testI8Scalar(i8 zeroext 1)
@@ -138,4 +137,4 @@ define dso_local i32 @main() #0 {
 }
 
 ; Function Attrs: nounwind
-declare i32 @puts(i8* nocapture readonly) local_unnamed_addr #3
+declare i32 @puts(i8* nocapture readonly) #3
