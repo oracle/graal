@@ -326,6 +326,7 @@ public final class DefaultHomeFinder extends HomeFinder {
         if (executableOrObjFile == null) {
             executableOrObjFile = getCurrentObjectFilePath();
         }
+
         if (executableOrObjFile != null) {
             Path launcherDir = executableOrObjFile.getParent();
 
@@ -344,7 +345,8 @@ public final class DefaultHomeFinder extends HomeFinder {
 
     private Path getGraalVmHomeNative() {
         assert ImageInfo.inImageCode();
-        Path executable = getCurrentExecutablePath();
+
+        final Path executable = getCurrentExecutablePath();
         if (executable != null) {
             Path result = getGraalVmHomeFromRelativeLauncherPath(executable);
             if (result == null) {
@@ -357,7 +359,8 @@ public final class DefaultHomeFinder extends HomeFinder {
                 return result;
             }
         }
-        Path objectFile = getCurrentObjectFilePath();
+
+        final Path objectFile = getCurrentObjectFilePath();
         if (objectFile != null) {
             Path result = getGraalVmHomeFromRelativeLauncherPath(objectFile);
             if (result == null) {
@@ -370,6 +373,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                 return result;
             }
         }
+
         return null;
     }
 
@@ -485,7 +489,8 @@ public final class DefaultHomeFinder extends HomeFinder {
     }
 
     private static Path getCurrentExecutablePath() {
-        return Paths.get(ProcessProperties.getExecutableName());
+        final String path = ProcessProperties.getExecutableName();
+        return path == null ? null : Paths.get(path);
     }
 
     private static String getFileName(Path path) {
