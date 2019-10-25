@@ -26,6 +26,9 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.klassRef;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Matcher;
@@ -75,36 +78,44 @@ public class VMEventListenerImpl implements VMEventListener {
 
         // check if event should be reported based on the current patterns
         String dotName = klass.getNameAsString().replace('/', '.');
-        boolean send = false;
-        Iterator<ClassPrepareRequest> it = classPrepareRequests.values().iterator();
-        ClassPrepareRequest request = null;
+        ClassPrepareRequest[] allClassPrepareRequests = getAllClassPrepareRequests();
+        ArrayList<ClassPrepareRequest> toSend = new ArrayList<>();
 
-        while (!send && it.hasNext()) {
-            ClassPrepareRequest next = it.next();
-            Matcher matcher = next.getPattern().matcher(dotName);
-            send = matcher.matches();
-            request = next;
+        for (ClassPrepareRequest cpr : allClassPrepareRequests) {
+            Matcher matcher = cpr.getPattern().matcher(dotName);
+
+            if (matcher.matches()) {
+                toSend.add(cpr);
+            }
         }
-
-        if (send) {
+        if (!toSend.isEmpty()) {
             stream.writeByte(SuspendStrategy.NONE);
-            stream.writeInt(1); // # events in reply
-            stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
-            stream.writeInt(request.getRequestId());
+            stream.writeInt(toSend.size());
 
-            stream.writeLong(ids.getIdAsLong(guestThread));
-            stream.writeByte(TypeTag.CLASS);
-            stream.writeLong(ids.getIdAsLong(klass));
-            stream.writeString(klass.getTypeAsString());
-            stream.writeInt(klass.getStatus()); // class status
+            for (ClassPrepareRequest cpr : toSend) {
+                stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
+                stream.writeInt(cpr.getRequestId());
+
+                stream.writeLong(ids.getIdAsLong(guestThread));
+                stream.writeByte(TypeTag.CLASS);
+                stream.writeLong(ids.getIdAsLong(klass));
+                stream.writeString(klass.getTypeAsString());
+                stream.writeInt(klass.getStatus()); // class status
+                classPrepareRequests.remove(cpr.getRequestId());
+            }
             connection.queuePacket(stream);
             // give the debugger a little time to send breakpoint requests
             try {
-                Thread.sleep(30);
+                Thread.sleep(50);
             } catch (Exception e) {
                 // ignore
             }
         }
+    }
+
+    private ClassPrepareRequest[] getAllClassPrepareRequests() {
+        Collection<ClassPrepareRequest> values = classPrepareRequests.values();
+        return new ArrayList<>(values).toArray(new ClassPrepareRequest[values.size()]);
     }
 
     @Override
