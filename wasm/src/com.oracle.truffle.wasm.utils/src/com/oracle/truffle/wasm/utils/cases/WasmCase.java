@@ -99,11 +99,11 @@ public abstract class WasmCase {
     }
 
     public static WasmCaseData expectedFloat(float expectedValue, float delta) {
-        return new WasmCaseData((Value result, String output) -> Assert.assertEquals("Failure: result:", expectedValue, result.as(Float.class)));
+        return new WasmCaseData((Value result, String output) -> Assert.assertFloatEquals("Failure: result:", expectedValue, result.as(Float.class), delta));
     }
 
-    public static WasmCaseData expectedDouble(double expectedValue, float delta) {
-        return new WasmCaseData((Value result, String output) -> Assert.assertEquals("Failure: result:", expectedValue, result.as(Double.class)));
+    public static WasmCaseData expectedDouble(double expectedValue, double delta) {
+        return new WasmCaseData((Value result, String output) -> Assert.assertDoubleEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
     }
 
     public static WasmCaseData expectedThrows(String expectedErrorMessage) {

@@ -44,16 +44,20 @@ public class Assert {
 
     public static void assertEquals(String message, Object expected, Object actual) {
         if (!actual.equals(expected)) {
-            fail(format("%s assertion failed %s != %s", message, expected, actual));
+            fail(format("%s %s != %s", message, expected, actual));
         }
     }
 
-    public static void assertEquals(String message, Float expected, Float actual) {
-        assertTrue(message, Float.compare(actual, expected) == 0);
+    public static void assertFloatEquals(String message, Float expected, Float actual, Float epsilon) {
+        if (Math.abs(actual - expected) > epsilon) {
+            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
+        }
     }
 
-    public static void assertEquals(String message, Double expected, Double actual) {
-        assertTrue(message, Double.compare(actual, expected) == 0);
+    public static void assertDoubleEquals(String message, Double expected, Double actual, Double epsilon) {
+        if (Math.abs(actual - expected) > epsilon) {
+            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
+        }
     }
 
     public static void fail(String message) {
