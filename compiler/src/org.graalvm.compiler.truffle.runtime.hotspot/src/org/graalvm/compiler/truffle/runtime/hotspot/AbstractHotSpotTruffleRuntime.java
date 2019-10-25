@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -37,16 +38,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
+import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -134,6 +138,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     private List<ResolvedJavaMethod> truffleCallBoundaryMethods;
+    private volatile CancellableCompileTask initializationTask;
 
     @Override
     public synchronized Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
@@ -167,6 +172,39 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return (HotSpotTruffleCompiler) truffleCompiler;
     }
 
+    /*
+     * We need to trigger initialization of the Truffle compiler when the first call target is
+     * created. Truffle call boundary methods are installed when the truffle compiler is
+     * initialized, as it requires the compiler to do so. Until then the call boundary methods are
+     * interpreted with the HotSpot interpreter. This is very slow and we want to avoid doing this
+     * as soon as possible. It can also be a real issue when compilation is turned off completely
+     * and no call targets would ever be compiled. Without ensureInitialized the stubs would never
+     * be installed in that case and we use the HotSpot interpreter indefinitely.
+     */
+    private void ensureInitialized(OptimizedCallTarget firstCallTarget) {
+        if (truffleCompiler == null) {
+            CancellableCompileTask localTask = initializationTask;
+            if (localTask == null) {
+                synchronized (this) {
+                    localTask = initializationTask;
+                    if (localTask == null) {
+                        initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
+                            @Override
+                            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                                initializeTruffleCompiler();
+                                synchronized (AbstractHotSpotTruffleRuntime.this) {
+                                    assert initializationTask != null;
+                                    initializationTask = null;
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            firstCallTarget.maybeWaitForTask(localTask);
+        }
+    }
+
     protected boolean reportedTruffleCompilerInitializationFailure;
 
     private void initializeTruffleCompiler() {
@@ -187,8 +225,10 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
-        return new HotSpotOptimizedCallTarget(source, rootNode);
+    public final OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+        OptimizedCallTarget target = new HotSpotOptimizedCallTarget(source, rootNode);
+        ensureInitialized(target);
+        return target;
     }
 
     @Override

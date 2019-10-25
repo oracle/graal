@@ -440,14 +440,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
-                boolean allowBackgroundCompilation = !getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal) &&
-                                !getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown);
-                boolean mayBeAsynchronous = allowBackgroundCompilation && getOptionValue(PolyglotCompilerOptions.BackgroundCompilation);
-                runtime().finishCompilation(this, task, mayBeAsynchronous);
-                return !mayBeAsynchronous;
+                return maybeWaitForTask(task);
             }
         }
         return false;
+    }
+
+    public final boolean maybeWaitForTask(CancellableCompileTask task) {
+        boolean allowBackgroundCompilation = !getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal) &&
+                        !getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown);
+        boolean mayBeAsynchronous = allowBackgroundCompilation && getOptionValue(PolyglotCompilerOptions.BackgroundCompilation);
+        runtime().finishCompilation(this, task, mayBeAsynchronous);
+        return !mayBeAsynchronous;
     }
 
     private boolean needsCompile(boolean isLastTierCompilation) {
