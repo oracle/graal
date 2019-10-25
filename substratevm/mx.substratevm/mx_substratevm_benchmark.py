@@ -415,8 +415,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
 
         agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
         pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
+        benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
-        return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
+        return agent_args + pgo_args + [benchmark_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
 
     def create_classpath(self, benchArg):
         harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
@@ -574,10 +575,11 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite): 
             bench_arg = benchmarks[0]
         agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
         pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
+        benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
         vm_args = self.vmArgs(bmSuiteArgs) + (_DACAPO_EXTRA_VM_ARGS[bench_arg] if bench_arg in _DACAPO_EXTRA_VM_ARGS else [])
-        return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
+        return agent_args + pgo_args + [benchmark_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
 
     def create_classpath(self, benchmark):
         dacapo_nested_resources = []
