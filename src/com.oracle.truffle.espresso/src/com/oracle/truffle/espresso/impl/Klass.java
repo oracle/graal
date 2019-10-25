@@ -701,19 +701,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, klassRe
         }, id);
     }
 
-    @Override
-    public int getModifiers() {
-        // ACC_SUPER is kept for backward compatibility, should be ignored.
-        int result = getFlags();
-        if ((result & ACC_INNER_CLASS) != 0) {
-            result &= RECOGNIZED_INNER_CLASS_MODIFIERS;
-        } else {
-            result &= Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-        }
-        return result & ~ACC_SUPER;
-    }
+    /**
+     * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
+     */
+    public abstract int getModifiers();
 
-    protected abstract int getFlags();
+    /**
+     * Returns the modifiers for the guest Class, it takes into account inner classes which are
+     * public at the JVM level, but protected/private at the Java level.
+     */
+    public abstract int getClassModifiers();
 
     public final StaticObject allocateInstance() {
         return InterpreterToVM.newObject(this);
@@ -780,4 +777,5 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, klassRe
     }
 
     // endregion jdwp-specific
+
 }

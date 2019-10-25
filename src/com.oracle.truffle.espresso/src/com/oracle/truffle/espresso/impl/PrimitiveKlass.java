@@ -164,7 +164,12 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    protected final int getFlags() {
+    public final int getModifiers() {
         return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
+    }
+
+    @Override
+    public int getClassModifiers() {
+        return getModifiers();
     }
 }

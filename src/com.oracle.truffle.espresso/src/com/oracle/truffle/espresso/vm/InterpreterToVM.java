@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import sun.misc.Unsafe;
 
 public final class InterpreterToVM implements ContextAccess {
@@ -201,15 +202,19 @@ public final class InterpreterToVM implements ContextAccess {
 
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
-    public static void monitorEnter(@Host(Object.class) Object obj) {
-        assert obj instanceof StaticObject;
-        hostUnsafe.monitorEnter(obj);
+    public static void monitorEnter(@Host(Object.class) StaticObject obj) {
+        if (!hostUnsafe.tryMonitorEnter(obj)) {
+            Meta meta = obj.getKlass().getMeta();
+            StaticObject thread = meta.getContext().getCurrentThread();
+            Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
+            hostUnsafe.monitorEnter(obj);
+            Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
+        }
     }
 
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
-    public static void monitorExit(@Host(Object.class) Object obj) {
-        assert obj instanceof StaticObject;
+    public static void monitorExit(@Host(Object.class) StaticObject obj) {
         if (!Thread.holdsLock(obj)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.

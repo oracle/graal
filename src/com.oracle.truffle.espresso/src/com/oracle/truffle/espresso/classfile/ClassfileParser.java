@@ -49,7 +49,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-import static com.oracle.truffle.espresso.classfile.Constants.RECOGNIZED_INNER_CLASS_MODIFIERS;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
@@ -71,8 +70,6 @@ import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.meta.Local;
-import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
@@ -642,6 +639,7 @@ public final class ClassfileParser {
         if (maxBootstrapMethodAttrIndex >= 0 && bootstrapMethods == null) {
             throw classFormatError("BootstrapMethods attribute is missing");
         }
+
         return classAttributes;
     }
 
@@ -664,29 +662,6 @@ public final class ClassfileParser {
             entries[i] = new LineNumberTable.Entry(bci, lineNumber);
         }
         return new LineNumberTable(name, entries);
-    }
-
-    private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
-        assert Name.LocalVariableTable.equals(name);
-        int entryCount = stream.readU2();
-        if (entryCount == 0) {
-            return LocalVariableTable.EMPTY;
-        }
-        Local[] locals = new Local[entryCount];
-
-        for (int i = 0; i < entryCount; i++) {
-            int bci = stream.readU2();
-            int length = stream.readU2();
-            int nameIndex = stream.readU2();
-            int descIndex = stream.readU2();
-            int slot = stream.readU2();
-
-            Utf8Constant poolName = pool.utf8At(nameIndex);
-            Utf8Constant typeName = pool.utf8At(descIndex);
-
-            locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
-        }
-        return new LocalVariableTable(locals);
     }
 
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {
@@ -788,7 +763,6 @@ public final class ClassfileParser {
                 }
                 classFlags |= ACC_INNER_CLASS;
                 classOuterClassType = context.getTypes().fromName(pool.classAt(outerClassIndex).getName(pool));
-                classFlags |= (innerClassInfo.innerClassAccessFlags & RECOGNIZED_INNER_CLASS_MODIFIERS);
             }
             for (int j = 0; j < i; ++j) {
                 final InnerClassesAttribute.Entry otherInnerClassInfo = innerClassInfos[j];
@@ -807,6 +781,12 @@ public final class ClassfileParser {
         int outerClassIndex = stream.readU2();
         int innerNameIndex = stream.readU2();
         int innerClassAccessFlags = stream.readU2();
+
+        if ((innerClassAccessFlags & ACC_INTERFACE) != 0 && majorVersion < JAVA_6_VERSION) {
+            // Set abstract bit for old class files for backward compatibility
+            innerClassAccessFlags |= ACC_ABSTRACT;
+        }
+
         if (innerClassIndex != 0) {
             pool.classAt(innerClassIndex).validate(pool);
         }
@@ -932,8 +912,6 @@ public final class ClassfileParser {
 
             if (attributeName.equals(Name.LineNumberTable)) {
                 codeAttributes[i] = parseLineNumberTable(attributeName);
-            } else if (attributeName.equals(Name.LocalVariableTable)) {
-                codeAttributes[i] = parseLocalVariableAttribute(attributeName);
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
                     throw classFormatError("Duplicate StackMapTable attribute");

@@ -30,11 +30,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.debugger.api.JDWPOptions;
 import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
@@ -43,6 +42,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleFile;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -75,9 +77,7 @@ public final class EspressoContext {
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
-
-    private final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
-    private final Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
+    private final EspressoThreadManager threadManager;
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
 
@@ -102,6 +102,12 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException outOfMemory;
     @CompilationFinal private ArrayList<Method> frames;
 
+    // Set on calling guest Therad.stop0(), or when closing context.
+    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
+    private boolean isClosing = false;
+
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
@@ -109,6 +115,7 @@ public final class EspressoContext {
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+        this.threadManager = new EspressoThreadManager(this);
 
         this.InlineFieldAccessors = env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
@@ -268,49 +275,48 @@ public final class EspressoContext {
 
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
-                        .invokeDirect(systemThreadGroup);
-
+                .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.Thread.allocateInstance();
-        StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
-        meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
-        meta.Thread_group.set(mainThread, threadGroup);
-        meta.Thread_name.set(mainThread, meta.toGuestString("mainThread"));
-        meta.Thread_priority.set(mainThread, 5);
-        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
-        putHost2Guest(Thread.currentThread(), mainThread);
-        meta.Thread_priority.set(mainThread, Thread.NORM_PRIORITY);
-
         // Allow guest Thread.currentThread() to work.
-        mainThread.setHiddenField(this.meta.HIDDEN_HOST_THREAD, Thread.currentThread());
-        host2guest.put(Thread.currentThread(), mainThread);
-        activeThreads.add(Thread.currentThread());
-
+        mainThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
+        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+        mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
+        threadManager.registerMainThread(Thread.currentThread(), mainThread);
+
+        // Guest Thread.currentThread() must work as this point.
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThreadGroup,
-                                        /* parent */ systemThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
+                .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                .invokeDirect(mainThreadGroup,
+                        /* parent */ systemThreadGroup,
+                        /* name */ meta.toGuestString("main"));
 
         meta.Thread // public Thread(ThreadGroup group, String name)
-                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
-                        .invokeDirect(mainThread,
-                                        /* group */ mainThreadGroup,
-                                        /* name */ meta.toGuestString("main"));
-
-        meta.Thread_threadStatus.set(mainThread, /* JVMTI_THREAD_STATE_ALIVE */ 0x01 + /* JVMTI_THREAD_STATE_RUNNABLE */ 0x04);
+                .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                .invokeDirect(mainThread,
+                        /* group */ mainThreadGroup,
+                        /* name */ meta.toGuestString("main"));
+        mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
     }
 
     public void interruptActiveThreads() {
+        isClosing = true;
+        invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
-        for (Thread t : activeThreads) {
+        for (StaticObject guest : threadManager.activeThreads()) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
             if (t != initiatingThread) {
                 try {
                     if (t.isDaemon()) {
-                        t.interrupt();
-                        t.join();
+                        Target_java_lang_Thread.killThread(guest);
+                        Target_java_lang_Thread.interrupt0(guest);
+                        t.join(10);
+                        if (t.isAlive()) {
+                            Target_java_lang_Thread.setThreadStop(guest, Target_java_lang_Thread.KillStatus.DISSIDENT);
+                            t.join();
+                        }
                     } else {
+                        Target_java_lang_Thread.interrupt0(guest);
                         t.join();
                     }
                 } catch (InterruptedException e) {
@@ -402,38 +408,57 @@ public final class EspressoContext {
     public EspressoException getOutOfMemory() {
         return outOfMemory;
     }
+    // Thread management
 
-    public void putHost2Guest(Thread hostThread, StaticObject guest) {
-        host2guest.put(hostThread, guest);
-        VMEventListeners.getDefault().threadStarted(guest);
+    public StaticObject getGuestThreadFromHost(Thread host) {
+        return threadManager.getGuestThreadFromHost(host);
     }
 
-    public StaticObject getHost2Guest(Thread hostThread) {
-        return host2guest.get(hostThread);
+    public StaticObject getCurrentThread() {
+        return threadManager.getGuestThreadFromHost(Thread.currentThread());
     }
 
-    public void registerThread(Thread thread) {
-        activeThreads.add(thread);
-
+    public void registerThread(Thread host, StaticObject self) {
+        threadManager.registerThread(host, self);
+        VMEventListeners.getDefault().threadStarted(self);
     }
 
-    public void unregisterThread(Thread thread) {
-        activeThreads.remove(thread);
-        StaticObject staticObject = host2guest.get(thread);
-        if (staticObject != null) {
-            VMEventListeners.getDefault().threadDied(staticObject);
-        }
+    public void unregisterThread(StaticObject self) {
+        threadManager.unregisterThread(self);
+        VMEventListeners.getDefault().threadDied(self);
     }
 
-    public StaticObject[] getAllGuestThreads() {
-        return host2guest.values().toArray(new StaticObject[0]);
+    public void invalidateNoThreadStop(String message) {
+        noThreadDeprecationCalled.invalidate();
+        noThreadStop.invalidate(message);
+    }
+
+    public boolean shouldCheckStop() {
+        return !noThreadStop.isValid();
+    }
+
+    public void invalidateNoSuspend(String message) {
+        noThreadDeprecationCalled.invalidate();
+        noSuspend.invalidate(message);
+    }
+
+    public boolean shouldCheckDeprecationStatus() {
+        return !noThreadDeprecationCalled.isValid();
+    }
+
+    public boolean shouldCheckSuspend() {
+        return !noSuspend.isValid();
+    }
+
+    public boolean isClosing() {
+        return isClosing;
     }
 
     // region Options
-
     public final boolean InlineFieldAccessors;
+
     public final EspressoOptions.VerifyMode Verify;
-    public final com.oracle.truffle.espresso.debugger.api.JDWPOptions JDWPOptions;
+    public final JDWPOptions JDWPOptions;
 
     // endregion Options
 }

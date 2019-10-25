@@ -173,6 +173,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> name = StaticSymbols.putName("name");
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
         public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
+        public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
         public static final Symbol<Name> constantPoolOop = StaticSymbols.putName("constantPoolOop");
         public static final Symbol<Name> main = StaticSymbols.putName("main");
         public static final Symbol<Name> checkAndLoadMain = StaticSymbols.putName("checkAndLoadMain");
@@ -275,6 +276,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_SIGNERS = StaticSymbols.putName("0HIDDEN_SIGNERS");
         public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
+        public static final Symbol<Name> HIDDEN_DEATH = StaticSymbols.putName("0HIDDEN_DEATH");
+        public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
         public static final Symbol<Name> HIDDEN_PROTECTION_DOMAIN = StaticSymbols.putName("0HIDDEN_PROTECTION_DOMAIN");
     }
 
@@ -418,6 +421,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
+
+        // Special threads
+        public static final Symbol<Type> FinalizerThread = StaticSymbols.putType("Ljava/lang/ref/Finalizer$FinalizerThread;");
+        public static final Symbol<Type> ReferenceHandler = StaticSymbols.putType("Ljava/lang/ref/Reference$ReferenceHandler;");
     }
 
     public static final class Signature extends Descriptor {

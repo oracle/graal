@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
@@ -47,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.classfile.Constants;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -102,6 +106,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -359,10 +365,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(@Host(Object.class) StaticObject self, long timeout) {
+        StaticObject currentThread = getMeta().getContext().getCurrentThread();
         try {
+            Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
             self.wait(timeout);
-        } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
+        } catch (InterruptedException e) {
+            Target_java_lang_Thread.setInterrupt(currentThread, false);
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } catch (IllegalMonitorStateException | IllegalArgumentException e) {
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } finally {
+            Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
         }
     }
 
@@ -995,7 +1008,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             /**
              * Injects the frame ID in the frame. Spawns a new frame slot in the frame descriptor of
              * the corresponding RootNode if needed.
-             * 
+             *
              * @param frame the current privileged frame.
              * @return the frame ID of the frame.
              */
@@ -1124,7 +1137,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     @SuppressWarnings("unused")
     public @Host(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@Host(Class.class) StaticObject cls) {
-        return getContext().getHost2Guest(Thread.currentThread()).getField(getMeta().Thread_inheritedAccessControlContext);
+        return getContext().getCurrentThread().getField(getMeta().Thread_inheritedAccessControlContext);
     }
 
     @VmImpl
@@ -1158,7 +1171,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public static int JVM_GetClassAccessFlags(@Host(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
-        return klass.getModifiers();
+        if (klass.isPrimitive()) {
+            final int primitiveFlags = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
+            assert klass.getModifiers() == primitiveFlags;
+            return klass.getModifiers();
+        }
+        return klass.getModifiers() & Constants.JVM_ACC_WRITTEN_FLAGS;
+    }
+
+    @VmImpl
+    @JniImpl
+    public static int JVM_GetClassModifiers(@Host(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass();
+        if (klass.isPrimitive()) {
+            final int primitiveModifiers = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
+            assert klass.getClassModifiers() == primitiveModifiers;
+            return klass.getClassModifiers();
+        }
+        return klass.getClassModifiers();
     }
 
     @VmImpl
