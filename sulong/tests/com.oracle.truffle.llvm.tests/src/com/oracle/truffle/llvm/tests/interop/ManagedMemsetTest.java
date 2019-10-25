@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.tests.interop.values.LongArrayObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,76 +46,58 @@ import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
-public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
+public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
 
     @Parameters(name = "{1}->{0}")
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
         for (int i = 0; i < TestType.values().length; i++) {
-            for (int j = 0; j < TestType.values().length; j++) {
-                tests.add(new Object[]{TestType.values()[i], TestType.values()[j]});
-            }
+            tests.add(new Object[]{TestType.values()[i], (byte) 0});
+            tests.add(new Object[]{TestType.values()[i], (byte) 1});
+            tests.add(new Object[]{TestType.values()[i], (byte) -1});
+            tests.add(new Object[]{TestType.values()[i], (byte) 17});
         }
         return tests;
     }
 
     @Parameter(0) public TestType dstTestType;
-    @Parameter(1) public TestType srcTestType;
+    @Parameter(1) public byte value;
 
-    public static class DoMemmoveNode extends SulongTestNode {
+    public static class DoMemsetNode extends SulongTestNode {
 
-        public DoMemmoveNode() {
-            super(testLibrary, "do_memmove");
+        public DoMemsetNode() {
+            super(testLibrary, "do_memset");
         }
     }
 
     @Test
-    public void memmove(@Inject(DoMemmoveNode.class) CallTarget doMemmove) {
-        Object srcType = types[srcTestType.ordinal()];
+    public void memmove(@Inject(DoMemsetNode.class) CallTarget doMemmove) {
         Object dstType = types[dstTestType.ordinal()];
 
         final int arrayLength = 8;
-        int size = arrayLength * srcTestType.elementSize;
-
-        Object srcArray;
-        Object srcObject;
-        if (srcTestType.isFloating) {
-            // float or double
-            double[] src = new double[arrayLength];
-            for (int i = 0; i < arrayLength; i++) {
-                src[i] = i;
-            }
-            srcArray = src;
-            srcObject = new DoubleArrayObject(src, srcType);
-        } else {
-            // integer
-            long[] src = new long[arrayLength];
-            for (int i = 0; i < arrayLength; i++) {
-                src[i] = i;
-            }
-            srcArray = src;
-            srcObject = new LongArrayObject(src, srcType);
-        }
-
-        byte[] srcBytes = serialize(srcTestType, srcArray);
+        int size = arrayLength * dstTestType.elementSize;
 
         Object dstArray;
         Object dstObject;
         if (dstTestType.isFloating) {
             // float or double
-            double[] dst = new double[size / dstTestType.elementSize];
+            double[] dst = new double[arrayLength];
             dstArray = dst;
             dstObject = new DoubleArrayObject(dst, dstType);
         } else {
             // integer
-            long[] dst = new long[size / dstTestType.elementSize];
+            long[] dst = new long[arrayLength];
             dstArray = dst;
             dstObject = new LongArrayObject(dst, dstType);
         }
 
-        doMemmove.call(dstObject, srcObject, size);
+        doMemmove.call(dstObject, value, size);
 
         byte[] dstBytes = serialize(dstTestType, dstArray);
-        Assert.assertArrayEquals(srcBytes, dstBytes);
+
+        byte[] expected = new byte[size];
+        Arrays.fill(expected, value);
+
+        Assert.assertArrayEquals(expected, dstBytes);
     }
 }
