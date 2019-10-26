@@ -183,6 +183,7 @@ public final class Engine implements AutoCloseable {
      *
      * @since 19.0
      */
+    @SuppressWarnings("static-method")
     public String getVersion() {
         String version = HomeFinder.getInstance().getVersion();
         if (version.equals("snapshot")) {
