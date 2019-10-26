@@ -101,7 +101,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.options",
         "org.graalvm.collections",
         "org.graalvm.home",
       ],
@@ -147,7 +146,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.polyglot",
-        "org.graalvm.nativeimage",
         "JLINE",
       ],
       "javaCompliance" : "8+",
