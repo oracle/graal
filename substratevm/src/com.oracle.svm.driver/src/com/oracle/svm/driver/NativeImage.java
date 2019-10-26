@@ -217,7 +217,11 @@ public class NativeImage {
          * @return the name of the image generator main class.
          */
         default String getGeneratorMainClass() {
-            return DEFAULT_GENERATOR_CLASS_NAME;
+            String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
+            if (useJavaModules()) {
+                generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
+            }
+            return generatorClassName;
         }
 
         /**
@@ -396,15 +400,13 @@ public class NativeImage {
         private final Path workDir;
         private final Path rootDir;
         private final List<String> args;
-        private final String generatorClassName;
 
-        DefaultBuildConfiguration(String generatorClassName, List<String> args) {
-            this(generatorClassName, null, null, args);
+        DefaultBuildConfiguration(List<String> args) {
+            this(null, null, args);
         }
 
         @SuppressWarnings("deprecation")
-        DefaultBuildConfiguration(String generatorClassName, Path rootDir, Path workDir, List<String> args) {
-            this.generatorClassName = generatorClassName;
+        DefaultBuildConfiguration(Path rootDir, Path workDir, List<String> args) {
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
@@ -431,11 +433,6 @@ public class NativeImage {
                     this.rootDir = Paths.get(rootDirString);
                 }
             }
-        }
-
-        @Override
-        public String getGeneratorMainClass() {
-            return generatorClassName;
         }
 
         @Override
@@ -1178,12 +1175,8 @@ public class NativeImage {
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
 
-    private static void main(String[] args, String generatorClassName) {
-        performBuild(new DefaultBuildConfiguration(generatorClassName, Arrays.asList(args)), defaultNativeImageProvider);
-    }
-
     public static void main(String[] args) {
-        main(args, DEFAULT_GENERATOR_CLASS_NAME);
+        performBuild(new DefaultBuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
     }
 
     public static void build(BuildConfiguration config) {
@@ -1191,11 +1184,7 @@ public class NativeImage {
     }
 
     public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
-        String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
-        }
-        performBuild(new DefaultBuildConfiguration(generatorClassName, javaHome, workDir, buildArgs), NativeImage::new);
+        performBuild(new DefaultBuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
     }
 
     public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
@@ -1671,7 +1660,7 @@ public class NativeImage {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             }
-            NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
+            NativeImage.main(args);
         }
     }
 }

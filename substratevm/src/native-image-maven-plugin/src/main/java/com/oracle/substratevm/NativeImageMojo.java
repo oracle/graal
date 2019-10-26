@@ -61,6 +61,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.driver.NativeImage;
+import com.oracle.svm.util.ModuleSupport;
 
 @Mojo(name = "native-image", defaultPhase = LifecyclePhase.PACKAGE)
 public class NativeImageMojo extends AbstractMojo {
@@ -230,6 +231,7 @@ public class NativeImageMojo extends AbstractMojo {
             }
 
             try {
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
                 MojoBuildConfiguration config = new MojoBuildConfiguration();
                 getLog().info("WorkingDirectory: " + config.getWorkingDirectory());
                 getLog().info("ImageClasspath: " + classpathStr);
@@ -249,6 +251,8 @@ public class NativeImageMojo extends AbstractMojo {
                 NativeImage.build(config);
             } catch (NativeImage.NativeImageError e) {
                 throw new MojoExecutionException("Error creating native image:", e);
+            } catch (IllegalAccessError e) {
+                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'");
             }
         }
     }
