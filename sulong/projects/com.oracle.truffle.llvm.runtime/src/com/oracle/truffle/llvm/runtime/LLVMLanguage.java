@@ -177,7 +177,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
         env.registerService(toolchain);
 
-        LLVMContext context = new LLVMContext(this, env, getLanguageHome(), toolchain);
+        LLVMContext context = new LLVMContext(this, env, toolchain);
         return context;
     }
 
