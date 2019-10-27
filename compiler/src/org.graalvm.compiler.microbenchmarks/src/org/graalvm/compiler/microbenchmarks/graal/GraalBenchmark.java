@@ -46,6 +46,7 @@ public class GraalBenchmark {
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
     }
+
     public static class Defaults {
         public static final int MEASUREMENT_ITERATIONS = 5;
         public static final int WARMUP_ITERATIONS = 5;
