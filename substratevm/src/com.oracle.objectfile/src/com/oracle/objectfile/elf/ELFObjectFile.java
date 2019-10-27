@@ -89,11 +89,13 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     public ELFObjectFile() {
-        this(ELFMachine.getSystemNativeValue());
+        this(System.getProperty("svm.targetArch") == null ?
+               ELFMachine.getSystemNativeValue(): ELFMachine.from(System.getProperty("svm.targetArch")));
     }
 
     public ELFObjectFile(boolean runtimeDebugInfoGeneration) {
-        this(ELFMachine.getSystemNativeValue(), runtimeDebugInfoGeneration);
+        this(System.getProperty("svm.targetArch") == null ?
+                ELFMachine.getSystemNativeValue(): ELFMachine.from(System.getProperty("svm.targetArch")), runtimeDebugInfoGeneration);
     }
 
     @Override
