@@ -564,7 +564,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void nativeLink(DebugContext debug, String outputPath, List<String> inputPaths) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("ld");
+            cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
             cmd.add("-r");
             cmd.add("-o");
             cmd.add(outputPath);
