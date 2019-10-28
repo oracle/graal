@@ -71,6 +71,7 @@ class Debug {
     }
 
     static void trackObject(DynamicObject obj) {
+        assert ObjectStorageOptions.Profile;
         ShapeProfiler.getInstance().track(obj);
     }
 
