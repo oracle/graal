@@ -35,8 +35,7 @@ images or shared objects.
 ## Get Support
 
 * Open a [GitHub issue](https://github.com/oracle/graal/issues) for bug reports, questions, or requests for enhancements.
-* Report a security vulnerability to [secalert_us@oracle.com](mailto:secalert_us@oracle.com). For additional information see [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
-
+* Report a security vulnerability according to the [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
 
 ## Related Repositories
 
