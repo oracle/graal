@@ -77,7 +77,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        vtmp1 = useAVX512(tool.target()) ? tool.newVariable(LIRKind.value(AMD64Kind.V512_BYTE)) : tool.newVariable(LIRKind.value(AMD64Kind.V128_BYTE));
+        vtmp1 = useAVX512ForStringInflateCompress(tool.target()) ? tool.newVariable(LIRKind.value(AMD64Kind.V512_BYTE)) : tool.newVariable(LIRKind.value(AMD64Kind.V128_BYTE));
         rtmp2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
     }
 
@@ -93,7 +93,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         byteArrayInflate(masm, src, dst, len, tmp1, tmp2);
     }
 
-    public static boolean useAVX512(TargetDescription target) {
+    public static boolean useAVX512ForStringInflateCompress(TargetDescription target) {
         EnumSet<CPUFeature> features = ((AMD64) target.arch).getFeatures();
         return features.contains(AMD64.CPUFeature.AVX512BW) &&
                         features.contains(AMD64.CPUFeature.AVX512VL) &&
@@ -121,7 +121,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         assert dst.number != len.number && dst.number != tmp.number;
         assert len.number != tmp.number;
 
-        if (useAVX512(masm.target)) {
+        if (useAVX512ForStringInflateCompress(masm.target)) {
             // If the length of the string is less than 16, we chose not to use the
             // AVX512 instructions.
             masm.testl(len, -16);
