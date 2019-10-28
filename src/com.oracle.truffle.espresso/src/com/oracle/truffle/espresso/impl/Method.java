@@ -705,6 +705,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return declaringKlass.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
     }
 
+    public boolean hasSourceFileAttribute() {
+        return declaringKlass.getAttribute(Name.SourceFile) != null;
+    }
+
     public final String report(int curBCI) {
         return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(" + getSourceFile() + ":" + BCItoLineNumber(curBCI) + ")";
     }

@@ -39,7 +39,6 @@ class JDWP {
 
     public static Object suspendStartupLock = new Object();
 
-    public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
     static class VirtualMachine {
@@ -55,7 +54,7 @@ class JDWP {
                 reply.writeInt(6);
                 reply.writeString(vm.getVmVersion());
                 reply.writeString(vm.getVmName());
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -76,7 +75,7 @@ class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(klass));
                     reply.writeInt(klass.getStatus());
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -90,7 +89,7 @@ class JDWP {
                 for (Object t : allThreads) {
                     reply.writeLong(context.getIds().getIdAsLong(t));
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -104,7 +103,7 @@ class JDWP {
                 reply.writeInt(vm.getSizeofObjectRefRef());
                 reply.writeInt(vm.getSizeOfClassRef());
                 reply.writeInt(vm.getSizeOfFrameRef());
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -114,7 +113,7 @@ class JDWP {
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
                 controller.resume();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -129,7 +128,7 @@ class JDWP {
                 Object string = context.toGuestString(utf);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeLong(context.getIds().getIdAsLong(string));
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -145,7 +144,7 @@ class JDWP {
                 reply.writeBoolean(false); // canGetOwnedMonitorInfo
                 reply.writeBoolean(false); // canGetCurrentContendedMonitor
                 reply.writeBoolean(false); // canGetMonitorInfo
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -170,8 +169,8 @@ class JDWP {
                 reply.writeBoolean(true); // canUseInstanceFilters
                 reply.writeBoolean(false); // canGetSourceDebugExtension
                 reply.writeBoolean(true); // canRequestVMDeathEvent
-                reply.writeBoolean(true); // canSetDefaultStratum
-                reply.writeBoolean(true); // canGetInstanceInfo
+                reply.writeBoolean(false); // canSetDefaultStratum
+                reply.writeBoolean(false); // canGetInstanceInfo
                 reply.writeBoolean(false); // canRequestMonitorEvents
                 reply.writeBoolean(false); // canGetMonitorFrameInfo
                 reply.writeBoolean(false); // canUseSourceNameFilters
@@ -188,7 +187,25 @@ class JDWP {
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
+            }
+        }
+
+        static class SET_DEFAULT_STRATUM {
+            public static final int ID = 19;
+
+            static JDWPResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(JDWPErrorCodes.NOT_IMPLEMENTED);
+                return new JDWPResult(reply);
+            }
+        }
+
+        static class INSTANCE_COUNTS {
+            public static final int ID = 21;
+
+            static JDWPResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(JDWPErrorCodes.NOT_IMPLEMENTED);
+                return new JDWPResult(reply);
             }
         }
     }
@@ -201,13 +218,17 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
-                long refTypeId = input.readLong();
-                KlassRef klass = (KlassRef) context.getIds().fromId((int) refTypeId);
-
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
                 Object loader = klass.getDefiningClassLoader();
                 reply.writeLong(context.getIds().getIdAsLong(loader));
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -218,15 +239,22 @@ class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                /* long refTypeId = */
-                input.readLong();
+                long refTypeId = input.readLong();
+
+                if (verifyRefType(refTypeId, reply, context) == null) {
+                    return new JDWPResult(reply);
+                }
 
                 int fields = input.readInt();
                 reply.writeInt(fields);
 
                 for (int i = 0; i < fields; i++) {
                     long fieldId = input.readLong();
-                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    FieldRef field = verifyFieldRef(fieldId, reply, context);
+
+                    if (field == null) {
+                        return new JDWPResult(reply);
+                    }
 
                     byte tag = field.getTagConstant();
 
@@ -237,7 +265,7 @@ class JDWP {
                     }
                     writeValue(tag, value, reply, true, context);
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -246,21 +274,29 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
                 long refTypeId = input.readLong();
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                KlassRef klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
 
-                String sourceFile = "Generated";
+                String sourceFile = null;
                 MethodRef[] methods = klass.getDeclaredMethods();
                 for (MethodRef method : methods) {
-                    if (method.getSourceFile() != null && !"Generated".equals(method.getSourceFile())) {
-                        sourceFile = method.getSourceFile();
-                        break;
+                    // we need only look at one method to find
+                    // the source file of the declaring class
+                    if (!method.hasSourceFileAttribute()) {
+                        reply.errorCode(JDWPErrorCodes.ABSENT_INFORMATION);
+                        return new JDWPResult(reply);
                     }
+                    sourceFile = method.getSourceFile();
+                    break;
                 }
                 reply.writeString(sourceFile);
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -272,14 +308,19 @@ class JDWP {
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                KlassRef klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
                 KlassRef[] interfaces = klass.getImplementedInterfaces();
 
                 reply.writeInt(interfaces.length);
                 for (KlassRef itf : interfaces) {
                     reply.writeLong(context.getIds().getIdAsLong(itf));
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -294,13 +335,17 @@ class JDWP {
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                KlassRef klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
 
                 // wrap this in ClassIdObject
                 ClassObjectId id = new ClassObjectId(klass);
                 classObjectIds.add(id);
                 reply.writeLong(context.getIds().getIdAsLong(id));
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -312,11 +357,15 @@ class JDWP {
                 long refTypeId = input.readLong();
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                KlassRef klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
 
                 reply.writeString(klass.getTypeAsString());
                 reply.writeString(""); // TODO(Gregersen) - generic signature
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -325,11 +374,22 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
-                long refTypeId = input.readLong();
-                KlassRef klassRef = (KlassRef) context.getIds().fromId((int) refTypeId);
-
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                FieldRef[] declaredFields = klassRef.getDeclaredFields();
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                // check if class has been prepared
+                if (klass.getStatus() < ClassStatusConstants.PREPARED) {
+                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
+                    return new JDWPResult(reply);
+                }
+
+                FieldRef[] declaredFields = klass.getDeclaredFields();
                 int numDeclaredFields = declaredFields.length;
                 reply.writeInt(numDeclaredFields);
                 for (FieldRef field : declaredFields) {
@@ -339,7 +399,7 @@ class JDWP {
                     reply.writeString(field.getGenericSignatureAsString());
                     reply.writeInt(field.getModifiers());
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -348,11 +408,22 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
-                long refTypeId = input.readLong();
-                KlassRef klassRef = (KlassRef) context.getIds().fromId((int) refTypeId);
-
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                MethodRef[] declaredMethods = klassRef.getDeclaredMethods();
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                // check if class has been prepared
+                if (klass.getStatus() < ClassStatusConstants.PREPARED) {
+                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
+                    return new JDWPResult(reply);
+                }
+
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -362,7 +433,7 @@ class JDWP {
                     reply.writeString(""); // TODO(Gregersen) - get the generic signature
                     reply.writeInt(method.getModifiers());
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -401,7 +472,12 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long classId = input.readLong();
-                KlassRef klassRef = (KlassRef) context.getIds().fromId((int) classId);
+                KlassRef klassRef = verifyRefType(classId, reply, context);
+
+                if (klassRef == null) {
+                    return new JDWPResult(reply);
+                }
+
                 boolean isJavaLangObject = JAVA_LANG_OBJECT.equals(klassRef.getTypeAsString());
 
                 if (isJavaLangObject) {
@@ -410,7 +486,7 @@ class JDWP {
                     KlassRef superKlass = klassRef.getSuperClass();
                     reply.writeLong(context.getIds().getIdAsLong(superKlass));
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -423,21 +499,37 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long classId = input.readLong();
-                KlassRef klassRef = (KlassRef) context.getIds().fromId((int) classId);
+                KlassRef klass = verifyRefType(classId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                // check if class has been prepared
+                if (klass.getStatus() < ClassStatusConstants.PREPARED) {
+                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
+                    return new JDWPResult(reply);
+                }
+
                 int values = input.readInt();
 
                 for (int i = 0; i < values; i++) {
                     long fieldId = input.readLong();
-                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    FieldRef field = verifyFieldRef(fieldId, reply, context);
+
+                    if (field == null) {
+                        return new JDWPResult(reply);
+                    }
+
                     byte tag = field.getTagConstant();
 
                     if (tag == TagConstants.OBJECT) {
                         tag = context.getSpecificObjectTag(field.getTypeAsString());
                     }
                     Object value = readValue(tag, input, context);
-                    context.setStaticFieldValue(field, klassRef, value);
+                    context.setStaticFieldValue(field, klass, value);
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
     }
@@ -465,8 +557,17 @@ class JDWP {
                 long refTypeId = input.readLong();
                 long methodId = input.readLong();
 
-                KlassRef klassRef = (KlassRef) context.getIds().fromId((int) refTypeId);
-                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                MethodRef method = verifyMethodRef(methodId, reply, context);
+
+                if (method == null) {
+                    return new JDWPResult(reply);
+                }
                 //System.out.println("asked for lines for: " + refType.getName().toString() + "." + method.getName());
 
                 LineNumberTableRef table = method.getLineNumberTable();
@@ -498,7 +599,7 @@ class JDWP {
                         reply.writeInt(line.lineNumber);
                     }
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -513,16 +614,23 @@ class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                input.readLong(); // ref type
+                KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
+                if (klassRef == null) {
+                    return new JDWPResult(reply);
+                }
+
                 long methodId = input.readLong();
-                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                MethodRef method = verifyMethodRef(methodId, reply, context);
+                if (method == null) {
+                    return new JDWPResult(reply);
+                }
 
                 byte[] code = method.getCode();
 
                 reply.writeInt(code.length);
                 reply.writeByteArray(code);
 
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -531,10 +639,19 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
-                long refTypeId = input.readLong();
-                long methodId = input.readLong();
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
+                if (klassRef == null) {
+                    return new JDWPResult(reply);
+                }
+
+                long methodId = input.readLong();
+                MethodRef method = verifyMethodRef(methodId, reply, context);
+                if (method == null) {
+                    return new JDWPResult(reply);
+                }
+
                 KlassRef[] params = method.getParameters();
                 int argCnt = 0; // the number of words in the frame used by the arguments
                 for (KlassRef klass : params) {
@@ -549,7 +666,6 @@ class JDWP {
                 }
                 LocalRef[] locals = method.getLocalVariableTable().getLocals();
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(argCnt);
                 reply.writeInt(locals.length);
                 for (LocalRef local : locals) {
@@ -560,7 +676,7 @@ class JDWP {
                     reply.writeInt(local.getEndBCI() - local.getStartBCI());
                     reply.writeInt(local.getSlot());
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
     }
@@ -577,13 +693,19 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 // can be either a ClassObjectId or a StaticObject
                 KlassRef klassRef = context.getRefType(object);
 
                 reply.writeByte(TypeTag.getKind(klassRef));
                 reply.writeLong(context.getIds().getIdAsLong(klassRef));
 
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -592,16 +714,27 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
                 long objectId = input.readLong();
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 int numFields = input.readInt();
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(numFields);
 
                 for (int i = 0; i < numFields; i++) {
                     long fieldId = input.readLong();
-                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    FieldRef field = verifyFieldRef(fieldId, reply, context);
+
+                    if (field == null) {
+                        return new JDWPResult(reply);
+                    }
 
                     Object value = field.getValue(object);
                     byte tag = field.getTagConstant();
@@ -611,7 +744,7 @@ class JDWP {
                     }
                     writeValue(tag, value, reply, true, context);
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -624,11 +757,22 @@ class JDWP {
 
                 long objectId = input.readLong();
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 int numFields = input.readInt();
 
                 for (int i = 0; i < numFields; i++) {
                     long fieldId = input.readLong();
-                    FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                    FieldRef field = verifyFieldRef(fieldId, reply, context);
+
+                    if (field == null) {
+                        return new JDWPResult(reply);
+                    }
+
                     byte tag = field.getTagConstant();
                     if (tag == TagConstants.OBJECT) {
                         tag = context.getSpecificObjectTag(field.getTypeAsString());
@@ -636,7 +780,7 @@ class JDWP {
                     Object value = readValue(tag, input, context);
                     field.setValue(object, value);
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -644,10 +788,17 @@ class JDWP {
             public static final int ID = 6;
 
             static JDWPResult createReply(Packet packet, JDWPContext context) {
+
                 PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
                 long objectId = input.readLong();
                 long threadId = input.readLong();
-                long classId = input.readLong();
+
+                if (verifyRefType(input.readLong(), reply, context) == null) {
+                    return new JDWPResult(reply);
+                }
+
                 long methodId = input.readLong();
                 int arguments = input.readInt();
 
@@ -660,10 +811,19 @@ class JDWP {
                 int options = input.readInt(); // TODO(Gregersen) - handle invocation options
 
                 Object callee = context.getIds().fromId((int) objectId);
-                MethodRef method = (MethodRef) context.getIds().fromId((int) methodId);
+                MethodRef method = verifyMethodRef(methodId, reply, context);
+
+                if (method == null) {
+                    return new JDWPResult(reply);
+                }
+
                 Object thread = context.getIds().fromId((int) threadId);
 
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                //TODO(Gregersen) - also verify if thread is still active and not suspended
+                if (thread == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_THREAD);
+                }
+
                 try {
                     Object value = method.invokeMethod(callee, args);
                     if (value != null) {
@@ -680,7 +840,7 @@ class JDWP {
                     reply.writeByte(TagConstants.OBJECT);
                     reply.writeLong(context.getIds().getIdAsLong(t));
                 }
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -692,8 +852,14 @@ class JDWP {
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 GCPrevention.disableGC(object);
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -705,8 +871,14 @@ class JDWP {
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 GCPrevention.enableGC(object);
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
 
@@ -718,8 +890,14 @@ class JDWP {
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = context.getIds().fromId((int) objectId);
+
+                if (object == context.getNullObject()) {
+                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                    return new JDWPResult(reply);
+                }
+
                 reply.writeBoolean(object == context.getNullObject());
-                return new JDWPResult(reply, null);
+                return new JDWPResult(reply);
             }
         }
     }
@@ -1309,6 +1487,43 @@ class JDWP {
             default:
                 throw new RuntimeException("Should not reach here!");
         }
+    }
+
+    private static KlassRef verifyRefType(long refTypeId, PacketStream reply, JDWPContext context) {
+        KlassRef klass;
+        try {
+            klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+        } catch (ClassCastException ex) {
+            reply.errorCode(JDWPErrorCodes.INVALID_CLASS);
+            return null;
+        }
+        if (klass == context.getNullKlass()) {
+            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+            return null;
+        }
+        return klass;
+    }
+
+    private static FieldRef verifyFieldRef(long fieldId, PacketStream reply, JDWPContext context) {
+        FieldRef field;
+        try {
+            field = (FieldRef) context.getIds().fromId((int) fieldId);
+        } catch (ClassCastException ex) {
+            reply.errorCode(JDWPErrorCodes.INVALID_FIELDID);
+            return null;
+        }
+        return field;
+    }
+
+    private static MethodRef verifyMethodRef(long methodId, PacketStream reply, JDWPContext context) {
+        MethodRef method;
+        try {
+            method = (MethodRef) context.getIds().fromId((int) methodId);
+        } catch (ClassCastException ex) {
+            reply.errorCode(JDWPErrorCodes.INVALID_METHODID);
+            return null;
+        }
+        return method;
     }
 }
 

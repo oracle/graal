@@ -41,26 +41,38 @@ public class VMEventListeners {
     }
 
     public void classPrepared(KlassRef klass, Object currentThread) {
-        listener.classPrepared(klass, currentThread);
+        if (listener != null) {
+            listener.classPrepared(klass, currentThread);
+        }
     }
 
     public void classUnloaded(KlassRef klass) {
-        listener.classUnloaded(klass);
+        if (listener != null) {
+            listener.classUnloaded(klass);
+        }
     }
 
     public void threadStarted(Object thread) {
-        listener.threadStarted(thread);
+        if (listener != null) {
+            listener.threadStarted(thread);
+        }
     }
 
     public void threadDied(Object thread) {
-        listener.threadDied(thread);
+        if (listener != null) {
+            listener.threadDied(thread);
+        }
     }
 
     public void breakpointHit(BreakpointInfo info, Object currentThread) {
-        listener.breakpointHIt(info, currentThread);
+        if (listener != null) {
+            listener.breakpointHIt(info, currentThread);
+        }
     }
 
     public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
-        listener.stepCompleted(commandRequestId, currentFrame);
+        if (listener != null) {
+            listener.stepCompleted(commandRequestId, currentFrame);
+        }
     }
 }

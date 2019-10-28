@@ -212,6 +212,12 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.VirtualMachine.CAPABILITIES_NEW.ID:
                                 result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
                                 break;
+                            case JDWP.VirtualMachine.SET_DEFAULT_STRATUM.ID:
+                                result = JDWP.VirtualMachine.SET_DEFAULT_STRATUM.createReply(packet);
+                                break;
+                            case JDWP.VirtualMachine.INSTANCE_COUNTS.ID:
+                                result = JDWP.VirtualMachine.INSTANCE_COUNTS.createReply(packet);
+                                break;
                             default:
                                 break;
                         }

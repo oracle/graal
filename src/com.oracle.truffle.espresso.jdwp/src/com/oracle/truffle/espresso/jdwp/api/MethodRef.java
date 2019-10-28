@@ -31,4 +31,6 @@ public interface MethodRef {
     LineNumberTableRef getLineNumberTable();
 
     Object invokeMethod(Object callee, Object[] args);
+
+    boolean hasSourceFileAttribute();
 }
