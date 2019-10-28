@@ -268,11 +268,6 @@ public class RuntimeCodeInstaller {
             code.writeByte(index, compiledBytes[index]);
         }
 
-        // remove write access from code
-        if (!SubstrateOptions.RWXCodeCache.getValue()) {
-            makeCodeMemoryReadOnly(code, codeSize);
-        }
-
         /* Write primitive constants to the buffer, record object constants with offsets */
         ByteBuffer constantsBuffer = CTypeConversion.asByteBuffer(code.add(constantsOffset), compilation.getDataSection().getSectionSize());
         compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
@@ -288,6 +283,11 @@ public class RuntimeCodeInstaller {
         encoder.add(objectConstants.referenceMap);
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
+
+        // remove write access from code
+        if (!SubstrateOptions.RWXCodeCache.getValue()) {
+            makeCodeMemoryReadOnly(code, codeSize);
+        }
 
         createCodeChunkInfos(codeInfo, adjuster);
         compilation = null;

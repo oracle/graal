@@ -237,5 +237,4 @@ public final class RuntimeCodeInfoAccess {
         assert CodeInfoAccess.isValid(info);
         return (CodeInfoImpl) info;
     }
-
 }
