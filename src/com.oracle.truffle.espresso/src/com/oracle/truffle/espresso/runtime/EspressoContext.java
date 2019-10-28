@@ -58,7 +58,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.ReferenceWrapper;
+import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -198,7 +198,7 @@ public final class EspressoContext {
         return meta;
     }
 
-    public final ReferenceQueue<ReferenceWrapper> REFERENCE_QUEUE = new ReferenceQueue<>();
+    public final ReferenceQueue<StaticObject> REFERENCE_QUEUE = new ReferenceQueue<>();
 
     private void spawnVM() {
 
@@ -236,9 +236,9 @@ public final class EspressoContext {
                 final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
-                        ReferenceWrapper head;
+                        EspressoReference head;
                         do {
-                            head = (ReferenceWrapper) REFERENCE_QUEUE.remove();
+                            head = (EspressoReference) REFERENCE_QUEUE.remove();
                             assert head != null;
                         } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
 
@@ -246,8 +246,8 @@ public final class EspressoContext {
                             assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
 
-                            ReferenceWrapper prev = head, ref;
-                            while ((ref = (ReferenceWrapper) REFERENCE_QUEUE.poll()) != null) {
+                            EspressoReference prev = head, ref;
+                            while ((ref = (EspressoReference) REFERENCE_QUEUE.poll()) != null) {
                                 if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
                                     continue;
                                 }
@@ -302,7 +302,7 @@ public final class EspressoContext {
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
-    private void casNextIfNullAndMaybeClear(ReferenceWrapper wrapper) {
+    private void casNextIfNullAndMaybeClear(EspressoReference wrapper) {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp

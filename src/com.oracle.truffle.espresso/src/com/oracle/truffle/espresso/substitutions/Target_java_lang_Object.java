@@ -41,7 +41,6 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    @TruffleBoundary
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@Host(Object.class) StaticObject self) {

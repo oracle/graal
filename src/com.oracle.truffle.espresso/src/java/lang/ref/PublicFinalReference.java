@@ -22,7 +22,31 @@
  */
 package java.lang.ref;
 
-public class PublicFinalReference<T> extends FinalReference<T> {
+import com.oracle.truffle.espresso.substitutions.EspressoReference;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
+
+/**
+ * Open {@link FinalReference}; implementation detail for a meta-circular implementation of
+ * {@link Object#finalize() finalization}. If the host supports FinalReference(s), so does the
+ * guest.
+ *
+ * <p>
+ * This class is just a placeholder, not usable as-is. A modified version without the throwing
+ * static initializer is injected via {@link sun.misc.Unsafe#defineClass}.
+ *
+ * @see Target_java_lang_ref_Reference
+ * @see EspressoReference
+ */
+public abstract class PublicFinalReference<T> extends FinalReference<T> {
+
+    // BEGIN CUT
+    static {
+        if (true /* ignore warning */) {
+            throw new AssertionError("Forbidden class");
+        }
+    }
+    // END CUT
+
     public PublicFinalReference(T referent, ReferenceQueue<? super T> queue) {
         super(referent, queue);
     }
