@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.EspressoOptions.VerifyMode;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
@@ -769,10 +770,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public final boolean hasFinalizer() {
-        // TODO(peterssen): Use class flags.
-        Method finalize = lookupMethod(Name.finalize, Signature._void);
-        assert finalize != null;
-        return !finalize.getDeclaringKlass().isJavaLangObject();
+        return (getModifiers() & ACC_FINALIZER) != 0;
     }
 
     // Verification data
