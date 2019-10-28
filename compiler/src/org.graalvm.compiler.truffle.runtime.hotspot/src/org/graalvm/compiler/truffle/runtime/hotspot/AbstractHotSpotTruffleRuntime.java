@@ -189,13 +189,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
         CancellableCompileTask localTask = initializationTask;
         if (localTask == null) {
-            synchronized (this) {
+            final Object lock = this;
+            synchronized (lock) {
                 localTask = initializationTask;
-                if (localTask == null) {
+                if (localTask == null && truffleCompiler == null) {
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
-                            synchronized (AbstractHotSpotTruffleRuntime.this) {
+                            synchronized (lock) {
                                 initializeTruffleCompiler();
                                 assert initializationTask != null;
                                 initializationTask = null;
@@ -205,7 +206,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 }
             }
         }
-        firstCallTarget.maybeWaitForTask(localTask);
+        if (localTask != null) {
+            firstCallTarget.maybeWaitForTask(localTask);
+        } else {
+            assert truffleCompiler != null;
+        }
     }
 
     protected boolean reportedTruffleCompilerInitializationFailure;
