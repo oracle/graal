@@ -86,7 +86,7 @@ public class LazyClassLoadingTest {
     }
 
     @Test
-    public void testSLTck() throws IOException, InterruptedException {
+    public void testClassLoading() throws IOException, InterruptedException {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
@@ -193,6 +193,10 @@ public class LazyClassLoadingTest {
             try {
                 loadedGraalClasses.add(Class.forName(name));
             } catch (ClassNotFoundException e) {
+                if (e.getMessage().contains("$$Lambda$")) {
+                    // lambdas may not be found.
+                    continue;
+                }
                 Assert.fail("loaded class " + name + " not found");
             }
         }
