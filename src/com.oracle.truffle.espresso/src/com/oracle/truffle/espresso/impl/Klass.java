@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
-import static com.oracle.truffle.espresso.classfile.Constants.RECOGNIZED_INNER_CLASS_MODIFIERS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
@@ -44,8 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 import com.oracle.truffle.espresso.debugger.jdwp.ClassStatusConstants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -67,7 +63,7 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
-public abstract class Klass implements ModifiersProvider, ContextAccess, klassRef {
+public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef {
 
     static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
         @Override
@@ -103,6 +99,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, klassRe
     private final boolean isArray;
 
     @CompilationFinal private int hierarchyDepth = -1;
+
+    protected Object prepareThread;
 
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
@@ -757,6 +755,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, klassRe
     }
 
     @Override
+    public Object getPrepareThread() {
+        if (prepareThread == null) {
+            prepareThread = getContext().getMainThread();
+        }
+        return prepareThread;
+    }
+
+    @Override
     public int getStatus() {
         if (this instanceof ObjectKlass) {
             ObjectKlass objectKlass = (ObjectKlass) this;
@@ -767,7 +773,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, klassRe
     }
 
     @Override
-    public klassRef getSuperClass() {
+    public KlassRef getSuperClass() {
         return getSuperKlass();
     }
 

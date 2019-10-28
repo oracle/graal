@@ -165,6 +165,10 @@ class EspressoThreadManager implements ContextAccess {
         return (StaticObject) threads[index];
     }
 
+    public StaticObject getMainThread() {
+        return guestMainThread;
+    }
+
     private void pushThread(int id, StaticObject self) {
         synchronized (threadLock) {
             Object[] threads = guestThreads;

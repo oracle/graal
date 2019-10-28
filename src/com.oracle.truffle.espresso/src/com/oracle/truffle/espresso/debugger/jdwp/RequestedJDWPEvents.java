@@ -25,8 +25,9 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
 import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
+import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
 public class RequestedJDWPEvents {
@@ -66,8 +67,9 @@ public class RequestedJDWPEvents {
         this.ids = context.getIds();
     }
 
-    public PacketStream registerEvent(Packet packet, JDWPCommands callback) {
+    public JDWPResult registerEvent(Packet packet, JDWPCommands callback) {
         PacketStream reply = null;
+        Callable future = null;
         PacketStream input = new PacketStream(packet);
 
         byte eventKind = input.readByte();
@@ -77,7 +79,7 @@ public class RequestedJDWPEvents {
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modCount = input.readByte();
-            handleModCount(filter, input, modCount, suspendPolicy, callback);
+            future = handleModCount(filter, input, modCount, suspendPolicy, callback);
         }
 
         switch (eventKind) {
@@ -106,7 +108,7 @@ public class RequestedJDWPEvents {
 
         // register the request filter for this event
         EventFilters.getDefault().addFilter(filter);
-        return reply;
+        return new JDWPResult(reply, future);
     }
 
     private PacketStream toReply(Packet packet) {
@@ -116,7 +118,7 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
-    private void handleModCount(RequestFilter filter, PacketStream stream, byte modCount, byte suspendPolicy, JDWPCommands callback) {
+    private Callable handleModCount(RequestFilter filter, PacketStream stream, byte modCount, byte suspendPolicy, JDWPCommands callback) {
         switch (modCount) {
             case 1:
                 int count = stream.readInt();
@@ -130,12 +132,12 @@ public class RequestedJDWPEvents {
                 break;
             case 4:
                 long refTypeId = stream.readLong();
-                filter.addRefTypeLimit((klassRef) ids.fromId((int) refTypeId));
+                filter.addRefTypeLimit((KlassRef) ids.fromId((int) refTypeId));
                 break;
             case 5: // class prepare positive pattern
                 String classPattern = stream.readString();
-                eventListener.addClassPrepareRequest(new ClassPrepareRequest(Pattern.compile(classPattern), filter.getRequestId()));
-                break;
+                ClassPrepareRequest classPrepareRequest = new ClassPrepareRequest(Pattern.compile(classPattern), filter.getRequestId());
+                return eventListener.addClassPrepareRequest(classPrepareRequest);
             case 6:
                 String classExcludePattern = stream.readString();
                 filter.addExcludePattern(classExcludePattern);
@@ -147,7 +149,7 @@ public class RequestedJDWPEvents {
                 long bci = stream.readLong();
                 BreakpointInfo info = new BreakpointInfo(filter.getRequestId(), typeTag, classId, methodId, bci);
 
-                klassRef klass = (klassRef) ids.fromId((int) classId);
+                KlassRef klass = (KlassRef) ids.fromId((int) classId);
                 String slashName = klass.getTypeAsString();
                 MethodRef method = (MethodRef) ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
@@ -187,9 +189,10 @@ public class RequestedJDWPEvents {
             default:
                 break;
         }
+        return null;
     }
 
-    public PacketStream clearRequest(Packet packet, DebuggerConnection debuggerConnection) {
+    public JDWPResult clearRequest(Packet packet, DebuggerConnection debuggerConnection) {
         PacketStream reply = new PacketStream().id(packet.id).replyPacket();
         PacketStream input = new PacketStream(packet);
 
@@ -235,6 +238,6 @@ public class RequestedJDWPEvents {
             reply.errorCode(102); // TODO(Gregersen) - add INVALID_EVENT_TYPE constant
         }
 
-        return reply;
+        return new JDWPResult(reply, null);
     }
 }

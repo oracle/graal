@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
 public class TypeTag {
 
@@ -30,7 +30,7 @@ public class TypeTag {
     public static final byte INTERFACE = 2;
     public static final byte ARRAY = 3;
 
-    public static byte getKind(klassRef klassRef) {
+    public static byte getKind(KlassRef klassRef) {
         if (klassRef.isArray()) {
             return ARRAY;
         } else if (klassRef.isInterface()) {

@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.JDWPOptions;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
 import com.oracle.truffle.espresso.debugger.api.VMEventListeners;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -224,7 +224,7 @@ public class JDWPDebuggerController {
                 if (topFrame.getSourceSection() != null) {
                     RootNode root = findCurrentRoot(topFrame);
 
-                    klassRef klass = getContext().getKlassFromRootNode(root);
+                    KlassRef klass = getContext().getKlassFromRootNode(root);
 
                     if (klass != null && requestFilter.isKlassExcluded(klass)) {
                         // should not suspend here then, tell the event to keep going
@@ -264,7 +264,7 @@ public class JDWPDebuggerController {
                 }
 
                 RootNode root = findCurrentRoot(frame);
-                klassRef klass = getContext().getKlassFromRootNode(root);
+                KlassRef klass = getContext().getKlassFromRootNode(root);
 
                 if (klass != null) {
                     MethodRef method = getContext().getMethodFromRootNode(root);

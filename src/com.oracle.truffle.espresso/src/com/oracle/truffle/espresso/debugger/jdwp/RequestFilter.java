@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
 import java.util.regex.Pattern;
 
@@ -31,7 +31,7 @@ public class RequestFilter {
     private final int requestId;
     private final byte eventKind;
     private Pattern[] classExcludePatterns;
-    private klassRef[] klassRefPatterns;
+    private KlassRef[] klassRefPatterns;
     private int nextIndex;
     private boolean stepping;
     private int eventLimit = Integer.MAX_VALUE;
@@ -40,7 +40,7 @@ public class RequestFilter {
         this.requestId = requestId;
         this.eventKind = eventKind;
         this.classExcludePatterns = new Pattern[modifiers];
-        this.klassRefPatterns = new klassRef[modifiers];
+        this.klassRefPatterns = new KlassRef[modifiers];
     }
 
     public int getRequestId() {
@@ -64,16 +64,16 @@ public class RequestFilter {
         return stepping;
     }
 
-    public void addRefTypeLimit(klassRef klassRef) {
+    public void addRefTypeLimit(KlassRef klassRef) {
         klassRefPatterns[nextIndex] = klassRef;
         nextIndex++;
     }
 
-    public klassRef[] getKlassRefPatterns() {
+    public KlassRef[] getKlassRefPatterns() {
         return klassRefPatterns;
     }
 
-    public boolean isKlassExcluded(klassRef klass) {
+    public boolean isKlassExcluded(KlassRef klass) {
         for (Pattern pattern : classExcludePatterns) {
             if (pattern != null) {
                 if (pattern.matcher(klass.getNameAsString()).matches()) {

@@ -22,17 +22,17 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
 public class ClassObjectId {
 
-    private final klassRef klassRef;
+    private final KlassRef klassRef;
 
-    public ClassObjectId(klassRef klass) {
+    public ClassObjectId(KlassRef klass) {
         this.klassRef = klass;
     }
 
-    public klassRef getKlassRef() {
+    public KlassRef getKlassRef() {
         return klassRef;
     }
 }

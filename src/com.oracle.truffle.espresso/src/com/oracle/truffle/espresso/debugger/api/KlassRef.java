@@ -1,6 +1,6 @@
 package com.oracle.truffle.espresso.debugger.api;
 
-public interface klassRef {
+public interface KlassRef {
 
     boolean isArray();
 
@@ -16,13 +16,15 @@ public interface klassRef {
 
     FieldRef[] getDeclaredFields();
 
-    klassRef[] getImplementedInterfaces();
+    KlassRef[] getImplementedInterfaces();
 
     int getStatus();
 
-    klassRef getSuperClass();
+    KlassRef getSuperClass();
 
     byte getTagConstant();
 
     boolean isPrimitive();
+
+    Object getPrepareThread();
 }

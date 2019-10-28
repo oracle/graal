@@ -62,7 +62,7 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -854,7 +854,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @Override
-    public klassRef[] getParameters() {
+    public KlassRef[] getParameters() {
         return resolveParameterKlasses();
     }
 

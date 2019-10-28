@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
 public class SourceLocator {
 
@@ -39,7 +39,7 @@ public class SourceLocator {
 
         // Check if class is loaded. Don't ever load classes here since
         // this will break original class initialization order.
-        klassRef[] klass = context.findLoadedClass(slashName);
+        KlassRef[] klass = context.findLoadedClass(slashName);
         if (klass == null) {
             throw new RuntimeException("not implemented yet!");
         }

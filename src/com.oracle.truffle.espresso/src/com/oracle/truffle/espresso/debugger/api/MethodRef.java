@@ -24,7 +24,7 @@ public interface MethodRef {
 
     byte[] getCode();
 
-    klassRef[] getParameters();
+    KlassRef[] getParameters();
 
     LocalVariableTableRef getLocalVariableTable();
 

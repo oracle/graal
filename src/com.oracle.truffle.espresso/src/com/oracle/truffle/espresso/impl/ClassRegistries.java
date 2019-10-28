@@ -99,6 +99,15 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
+    public Klass[] getAllLoadedClasses() {
+        ArrayList<Klass> list = new ArrayList<>();
+        for (ClassRegistry registry : registries.values()) {
+            list.addAll(registry.classes.values());
+        }
+        return list.toArray(new Klass[list.size()]);
+    }
+
+    @TruffleBoundary
     public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
         return loadKlass(type, StaticObject.NULL);
     }

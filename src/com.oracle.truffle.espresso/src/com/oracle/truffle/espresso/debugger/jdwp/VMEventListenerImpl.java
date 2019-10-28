@@ -24,13 +24,12 @@ package com.oracle.truffle.espresso.debugger.jdwp;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.debugger.api.JDWPContext;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 
 public class VMEventListenerImpl implements VMEventListener {
@@ -50,8 +49,44 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void addClassPrepareRequest(ClassPrepareRequest request) {
+    public Callable addClassPrepareRequest(ClassPrepareRequest request) {
         classPrepareRequests.put(request.getRequestId(), request);
+        // check if the class has been already prepared and send the event
+
+        // optimize for fully qualified class name pattern
+        String pattern = request.getPattern().pattern();
+        KlassRef[] klasses = context.findLoadedClass(pattern.replace('.', '/'));
+        if (klasses.length > 0) {
+            for (KlassRef klass : klasses) {
+                // great, we can simply send a class prepare event for the class
+                return new Callable() {
+                    @Override
+                    public Object call() throws Exception {
+                        classPrepared(klass, klass.getPrepareThread());
+                        return null;
+                    }
+                };
+            }
+        } else {
+            KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
+            for (KlassRef klass : allLoadedClasses) {
+                for (ClassPrepareRequest cpr : getAllClassPrepareRequests()) {
+                    String dotName = klass.getNameAsString().replace('/', '.');
+                    Matcher matcher = cpr.getPattern().matcher(dotName);
+
+                    if (matcher.matches()) {
+                        return new Callable() {
+                            @Override
+                            public Object call() throws Exception {
+                                classPrepared(klass, context.getHost2GuestThread(Thread.currentThread()));
+                                return null;
+                            }
+                        };
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -72,7 +107,7 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void classPrepared(klassRef klass, Object guestThread) {
+    public void classPrepared(KlassRef klass, Object guestThread) {
         // prepare the event and ship
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
@@ -88,19 +123,23 @@ public class VMEventListenerImpl implements VMEventListener {
                 toSend.add(cpr);
             }
         }
+
         if (!toSend.isEmpty()) {
+            // TODO(Gregersen) - we should suspend the event thread to be correct
             stream.writeByte(SuspendStrategy.NONE);
             stream.writeInt(toSend.size());
 
             for (ClassPrepareRequest cpr : toSend) {
                 stream.writeByte(RequestedJDWPEvents.CLASS_PREPARE);
                 stream.writeInt(cpr.getRequestId());
-
                 stream.writeLong(ids.getIdAsLong(guestThread));
                 stream.writeByte(TypeTag.CLASS);
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
-                stream.writeInt(klass.getStatus()); // class status
+                // only send PREPARED status for class prepare events.
+                // TODO(Gregersen) - when sending when class is initialized already
+                // TODO(Gregersen) using ClassStatusConstants.INITIALIZED the debugger doesn't submit a breakpoint!
+                stream.writeInt(ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
             connection.queuePacket(stream);
@@ -159,7 +198,7 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void classUnloaded(klassRef klass) {
+    public void classUnloaded(KlassRef klass) {
         // TODO(Gregersen) - not implemented yet
     }
 

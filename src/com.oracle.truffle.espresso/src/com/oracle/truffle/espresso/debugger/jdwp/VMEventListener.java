@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.espresso.debugger.jdwp;
 
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
+
+import java.util.concurrent.Callable;
 
 public interface VMEventListener {
-    void classPrepared(klassRef klass, Object currentThread);
-    void classUnloaded(klassRef klass);
+    void classPrepared(KlassRef klass, Object currentThread);
+    void classUnloaded(KlassRef klass);
     void threadStarted(Object thread);
     void threadDied(Object thread);
     void breakpointHIt(BreakpointInfo info, Object currentThread);
@@ -35,7 +37,7 @@ public interface VMEventListener {
     void addThreadStartedRequestId(int id);
     void addThreadDiedRequestId(int id);
 
-    void addClassPrepareRequest(ClassPrepareRequest request);
+    Callable addClassPrepareRequest(ClassPrepareRequest request);
     void removeClassPrepareRequest(int requestId);
 
     void addBreakpointRequest(int requestId, BreakpointInfo info);

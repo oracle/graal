@@ -469,5 +469,9 @@ public final class EspressoContext {
         return mainThreadCreated;
     }
 
+    public Object getMainThread() {
+        return threadManager.getMainThread();
+    }
+
     // endregion Options
 }

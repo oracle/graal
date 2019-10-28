@@ -10,13 +10,15 @@ public interface JDWPContext {
 
     Object getHost2GuestThread(Thread hostThread);
 
-    klassRef getNullKlass();
+    KlassRef getNullKlass();
 
-    klassRef[] findLoadedClass(String slashName);
+    KlassRef[] findLoadedClass(String slashName);
+
+    KlassRef[] getAllLoadedClasses();
 
     JDWPVirtualMachine getVirtualMachine();
 
-    klassRef getKlassFromRootNode(RootNode root);
+    KlassRef getKlassFromRootNode(RootNode root);
 
     MethodRef getMethodFromRootNode(RootNode root);
 
@@ -26,7 +28,7 @@ public interface JDWPContext {
 
     Object toGuestString(String string);
 
-    klassRef getRefType(Object object);
+    KlassRef getRefType(Object object);
 
     byte getSpecificObjectTag(Object object);
 
@@ -48,11 +50,11 @@ public interface JDWPContext {
 
     <T> T getUnboxedArray(Object array);
 
-    klassRef[] getInitiatedClasses(Object classLoader);
+    KlassRef[] getInitiatedClasses(Object classLoader);
 
     Object getStaticFieldValue(FieldRef field);
 
-    void setStaticFieldValue(FieldRef field, klassRef klassRef, Object value);
+    void setStaticFieldValue(FieldRef field, KlassRef klassRef, Object value);
 
     Object getArrayValue(Object array, int i);
 

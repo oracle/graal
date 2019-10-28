@@ -8,7 +8,7 @@ import com.oracle.truffle.espresso.debugger.api.JDWPContext;
 import com.oracle.truffle.espresso.debugger.api.JDWPSetup;
 import com.oracle.truffle.espresso.debugger.api.JDWPVirtualMachine;
 import com.oracle.truffle.espresso.debugger.api.MethodRef;
-import com.oracle.truffle.espresso.debugger.api.klassRef;
+import com.oracle.truffle.espresso.debugger.api.KlassRef;
 import com.oracle.truffle.espresso.debugger.jdwp.ClassObjectId;
 import com.oracle.truffle.espresso.debugger.jdwp.Ids;
 import com.oracle.truffle.espresso.debugger.jdwp.TagConstants;
@@ -49,7 +49,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public klassRef getNullKlass() {
+    public KlassRef getNullKlass() {
         return NullKlass.getKlass(context);
     }
 
@@ -59,13 +59,18 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public klassRef[] findLoadedClass(String slashName) {
+    public KlassRef[] findLoadedClass(String slashName) {
         Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(slashName);
         return context.getRegistries().findLoadedClassAny(type);
     }
 
     @Override
-    public klassRef[] getInitiatedClasses(Object classLoader) {
+    public KlassRef[] getAllLoadedClasses() {
+        return context.getRegistries().getAllLoadedClasses();
+    }
+
+    @Override
+    public KlassRef[] getInitiatedClasses(Object classLoader) {
         return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader);
     }
 
@@ -111,7 +116,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public klassRef getKlassFromRootNode(RootNode root) {
+    public KlassRef getKlassFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
             return ((EspressoRootNode) root).getMethod().getDeclaringKlass();
         }
@@ -127,7 +132,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public klassRef getRefType(Object object) {
+    public KlassRef getRefType(Object object) {
         if (object instanceof StaticObject) {
             if (StaticObject.NULL == object) {
                 // null object
@@ -232,7 +237,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public void setStaticFieldValue(FieldRef field, klassRef klassRef, Object value) {
+    public void setStaticFieldValue(FieldRef field, KlassRef klassRef, Object value) {
         field.setValue(((ObjectKlass) klassRef).tryInitializeAndGetStatics(), value);
     }
 

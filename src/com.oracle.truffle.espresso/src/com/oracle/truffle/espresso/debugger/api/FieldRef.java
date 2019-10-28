@@ -12,7 +12,7 @@ public interface FieldRef {
 
     int getModifiers();
 
-    klassRef getDeclaringKlass();
+    KlassRef getDeclaringKlass();
 
     Object getValue(Object self);
 

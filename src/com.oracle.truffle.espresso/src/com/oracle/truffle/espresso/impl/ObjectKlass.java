@@ -268,6 +268,7 @@ public final class ObjectKlass extends Klass {
                     prepare();
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
+                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
                         VMEventListeners.getDefault().classPrepared(this, getContext().getCurrentThread());
                     }
                     if (getSuperKlass() != null) {
