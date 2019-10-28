@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 
@@ -100,4 +101,8 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Object object);
+
+    /** Returns true if the object at the given address is located in the image heap. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInImageHeap(Pointer objectPtr);
 }

@@ -96,10 +96,17 @@ public final class NonmovableArrays {
         return (T) array;
     }
 
+    @Uninterruptible(reason = "Cast to object might not be valid.")
+    private static boolean isInImageHeap(NonmovableArray<?> array) {
+        Object obj = KnownIntrinsics.convertUnknownValue(((Word) array).toObject(), Object.class);
+        return obj != null && Heap.getHeap().isInImageHeap(obj);
+    }
+
     /** Begins tracking an array, e.g. when it is handed over from a different isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void trackUnmanagedArray(@SuppressWarnings("unused") NonmovableArray<?> array) {
-        assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
+        assert !Heap.getHeap().isInImageHeap((Pointer) array) : "must not track image heap objects";
+        assert array.isNull() || runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -238,6 +245,7 @@ public final class NonmovableArrays {
     /** Untracks an array created at runtime, e.g. before it is handed over to another isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void untrackUnmanagedArray(NonmovableArray<?> array) {
+        assert !Heap.getHeap().isInImageHeap((Pointer) array) : "must not track image heap objects";
         assert array.isNull() || runtimeArraysInExistence.getAndDecrement() > 0;
     }
 
