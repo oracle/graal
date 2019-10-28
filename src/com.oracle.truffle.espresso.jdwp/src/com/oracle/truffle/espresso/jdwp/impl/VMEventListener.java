@@ -20,49 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+import java.util.concurrent.Callable;
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
+public interface VMEventListener {
+    void classPrepared(KlassRef klass, Object currentThread);
+    void classUnloaded(KlassRef klass);
+    void threadStarted(Object thread);
+    void threadDied(Object thread);
+    void breakpointHIt(BreakpointInfo info, Object currentThread);
 
-    public int getSizeOfFieldRef() {
-        return SIZE;
-    }
+    void addClassUnloadRequestId(int id);
+    void addThreadStartedRequestId(int id);
+    void addThreadDiedRequestId(int id);
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
-    }
+    Callable addClassPrepareRequest(ClassPrepareRequest request);
+    void removeClassPrepareRequest(int requestId);
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
-    }
+    void addBreakpointRequest(int requestId, BreakpointInfo info);
+    void removeBreakpointRequest(int requestId);
 
-    public int getSizeOfClassRef() {
-        return SIZE;
-    }
 
-    public int getSizeOfFrameRef() {
-        return SIZE;
-    }
-
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
-    }
-
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
-    }
+    void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
 }

@@ -20,49 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+class DebuggerCommand {
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
-
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
-
-    public int getSizeOfFieldRef() {
-        return SIZE;
+    enum Kind {
+        STEP_INTO,
+        STEP_OVER,
+        STEP_OUT,
+        SUBMIT_BREAKPOINT,
+        RESUME
     }
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
+    Kind kind;
+    private SourceLocation location;
+    private BreakpointInfo info;
+
+    DebuggerCommand(Kind kind) {
+        this.kind = kind;
     }
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
+    void setSourceLocation(SourceLocation location) {
+        this.location = location;
     }
 
-    public int getSizeOfClassRef() {
-        return SIZE;
+    public SourceLocation getSourceLocation() {
+        return location;
     }
 
-    public int getSizeOfFrameRef() {
-        return SIZE;
+    public void setBreakpointInfo(BreakpointInfo info) {
+        this.info = info;
     }
 
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
-    }
-
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
+    public BreakpointInfo getInfo() {
+        return info;
     }
 }

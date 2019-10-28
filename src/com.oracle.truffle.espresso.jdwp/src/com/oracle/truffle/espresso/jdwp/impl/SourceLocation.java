@@ -20,49 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+public class SourceLocation {
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
+    private final int lineNumber;
+    private final JDWPContext context;
+    private final String slashName;
 
-    public int getSizeOfFieldRef() {
-        return SIZE;
+    public SourceLocation(String slashName, int lineNumber, JDWPContext context) {
+        this.lineNumber = lineNumber;
+        this.context = context;
+        this.slashName = slashName;
     }
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
+    public int getLineNumber() {
+        return lineNumber;
     }
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfClassRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfFrameRef() {
-        return SIZE;
+    public Source getSource() throws NoSuchSourceLineException {
+        return new SourceLocator(context).lookupSource(slashName, lineNumber);
     }
 
     @Override
-    public String getVmDescription() {
-        return VM_Description;
-    }
-
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
+    public String toString() {
+        return "Location: " + slashName + ":" + lineNumber;
     }
 }

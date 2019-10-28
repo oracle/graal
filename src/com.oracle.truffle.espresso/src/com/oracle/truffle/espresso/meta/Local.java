@@ -25,10 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.Utf8Constant;
-import com.oracle.truffle.espresso.debugger.api.LocalRef;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.jdwp.api.LocalRef;
 
 /**
  * Describes the type and bytecode index range in which a local variable is live.

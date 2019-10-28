@@ -20,49 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+import java.util.regex.Pattern;
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+public class ClassPrepareRequest {
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
+    private final Pattern pattern;
+    private final int requestId;
 
-    public int getSizeOfFieldRef() {
-        return SIZE;
+    ClassPrepareRequest(Pattern pattern, int requestId) {
+        this.pattern = pattern;
+        this.requestId = requestId;
     }
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
+    public Pattern getPattern() {
+        return pattern;
     }
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfClassRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfFrameRef() {
-        return SIZE;
-    }
-
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
-    }
-
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
+    public int getRequestId() {
+        return requestId;
     }
 }

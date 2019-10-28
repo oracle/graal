@@ -20,49 +20,53 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+public class JDWPCallFrame {
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+    private final byte typeTag;
+    private final long classId;
+    private final long methodId;
+    private final long codeIndex;
+    private final long threadId;
+    private final Object thisValue;
+    private final Object[] variables;
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
-
-    public int getSizeOfFieldRef() {
-        return SIZE;
+    JDWPCallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Object thisValue, Object[] variables) {
+        this.threadId = threadId;
+        this.typeTag = typeTag;
+        this.classId = classId;
+        this.methodId = methodId;
+        this.codeIndex = codeIndex;
+        this.thisValue = thisValue;
+        this.variables = variables;
     }
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
+    public byte getTypeTag() {
+        return typeTag;
     }
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
+    public long getClassId() {
+        return classId;
     }
 
-    public int getSizeOfClassRef() {
-        return SIZE;
+    public long getMethodId() {
+        return methodId;
     }
 
-    public int getSizeOfFrameRef() {
-        return SIZE;
+    public long getCodeIndex() {
+        return codeIndex;
     }
 
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
+    public long getThreadId() {
+        return threadId;
     }
 
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
+    public Object getThisValue() {
+        return thisValue;
     }
 
-    @Override
-    public String getVmName() {
-        return vmName;
+    public Object[] getVariables() {
+        return variables;
     }
 }

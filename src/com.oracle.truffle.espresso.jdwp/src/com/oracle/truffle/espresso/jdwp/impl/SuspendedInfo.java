@@ -20,49 +20,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
+import com.oracle.truffle.api.debug.SuspendedEvent;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+public class SuspendedInfo {
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+    private SuspendedEvent event;
+    private int suspendStrategy;
+    private JDWPCallFrame[] stackFrames;
+    private Object thread;
+    private DebuggerCommand.Kind stepKind;
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
-
-    public int getSizeOfFieldRef() {
-        return SIZE;
+    SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, Object thread) {
+        this.event = event;
+        this.suspendStrategy = strategy;
+        this.stackFrames = stackFrames;
+        this.thread = thread;
     }
 
-    public int getSizeOfMethodRef() {
-        return SIZE;
+    public SuspendedEvent getEvent() {
+        return event;
     }
 
-    public int getSizeofObjectRefRef() {
-        return SIZE;
+    public int getSuspendStrategy() {
+        return suspendStrategy;
     }
 
-    public int getSizeOfClassRef() {
-        return SIZE;
+    public JDWPCallFrame[] getStackFrames() {
+        return stackFrames;
     }
 
-    public int getSizeOfFrameRef() {
-        return SIZE;
+    public Object getThread() {
+        return thread;
     }
 
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
+    public void recordStep(DebuggerCommand.Kind kind) {
+        stepKind = kind;
     }
 
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
+    public DebuggerCommand.Kind getStepKind() {
+        return stepKind;
     }
 }

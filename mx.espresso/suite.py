@@ -72,6 +72,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "com.oracle.truffle.espresso.jdwp"
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
@@ -96,6 +97,18 @@ suite = {
             ],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso.launcher",
+        },
+
+        "com.oracle.truffle.espresso.jdwp": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_NFI",
+            ],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.jdwp",
         },
 
         "com.oracle.truffle.espresso.playground": {

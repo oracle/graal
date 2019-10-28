@@ -20,49 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+public class TypeTag {
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
+    public static final byte CLASS = 1;
+    public static final byte INTERFACE = 2;
+    public static final byte ARRAY = 3;
 
-    public int getSizeOfFieldRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfMethodRef() {
-        return SIZE;
-    }
-
-    public int getSizeofObjectRefRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfClassRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfFrameRef() {
-        return SIZE;
-    }
-
-    @Override
-    public String getVmDescription() {
-        return VM_Description;
-    }
-
-    @Override
-    public String getVmVersion() {
-        return vmVersion;
-    }
-
-    @Override
-    public String getVmName() {
-        return vmName;
+    public static byte getKind(KlassRef klassRef) {
+        if (klassRef.isArray()) {
+            return ARRAY;
+        } else if (klassRef.isInterface()) {
+            return INTERFACE;
+        } else {
+            return CLASS;
+        }
     }
 }
