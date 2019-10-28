@@ -563,6 +563,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
+                _provided_executable = mx_subst.results_substitutions.substitute(_provided_executable)
                 if _component.short_name == 'vvm':
                     _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
