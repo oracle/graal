@@ -215,6 +215,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
     }
 
+    /*
+     * Used reflectively in CompilerInitializationTest.
+     */
+    public final void resetCompiler() {
+        truffleCompiler = null;
+        truffleCompilerInitialized = false;
+    }
+
     private synchronized void initializeTruffleCompiler() {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
