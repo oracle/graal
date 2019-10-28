@@ -156,7 +156,7 @@ public class BackgroundCompileQueue {
 
     }
 
-    private static final class RequestImpl<V> implements Callable<V>, Comparable<Callable<?>> {
+    private static final class RequestImpl<V> implements Callable<V>, Comparable<RequestImpl<?>> {
 
         private final long id;
         private final Priority priority;
@@ -175,17 +175,12 @@ public class BackgroundCompileQueue {
         }
 
         @Override
-        public int compareTo(Callable<?> that) {
-            if (that instanceof RequestImpl) {
-                RequestImpl<?> thatReq = (RequestImpl<?>) that;
-                int diff = priority.value - thatReq.priority.value;
-                if (diff == 0) {
-                    diff = Long.compare(this.id, thatReq.id);
-                }
-                return diff;
-            } else {
-                return 0;
+        public int compareTo(RequestImpl<?> that) {
+            int diff = priority.value - that.priority.value;
+            if (diff == 0) {
+                diff = Long.compare(this.id, that.id);
             }
+            return diff;
         }
 
         @SuppressWarnings("try")
@@ -203,7 +198,7 @@ public class BackgroundCompileQueue {
         }
     }
 
-    private static class RequestFutureTask<V> extends FutureTask<V> implements Comparable<Callable<?>> {
+    private static class RequestFutureTask<V> extends FutureTask<V> implements Comparable<RequestFutureTask<?>> {
         private final RequestImpl<V> request;
 
         RequestFutureTask(RequestImpl<V> callable) {
@@ -212,8 +207,8 @@ public class BackgroundCompileQueue {
         }
 
         @Override
-        public int compareTo(Callable<?> that) {
-            return this.request.compareTo(((RequestFutureTask<?>) that).request);
+        public int compareTo(RequestFutureTask<?> that) {
+            return this.request.compareTo(that.request);
         }
 
         @Override
