@@ -302,7 +302,7 @@ builds += [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
-    timelimit: "2:00:00"
+    timelimit: "3:30:00"
     name: deploy-vm-installable-java8-darwin-amd64
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
@@ -320,7 +320,7 @@ builds += [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
-    timelimit: "2:00:00"
+    timelimit: "3:30:00"
     name: deploy-vm-installable-java11-darwin-amd64
   }
   # Windows
@@ -376,7 +376,7 @@ builds += [
       ${mx_vm_common} ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
-    timelimit: "2:30:00"
+    timelimit: "3:30:00"
     name: deploy-vm-no-fastr-java8-darwin-amd64
   }
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
@@ -386,7 +386,7 @@ builds += [
       ${mx_vm_common} ${maven_deploy_sdk}
       ${notify-nexus-deploy}
     ]
-    timelimit: "2:30:00"
+    timelimit: "3:30:00"
     name: deploy-vm-no-fastr-java11-darwin-amd64
   }
 ]
