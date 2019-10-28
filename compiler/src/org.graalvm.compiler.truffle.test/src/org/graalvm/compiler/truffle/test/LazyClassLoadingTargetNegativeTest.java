@@ -40,7 +40,7 @@ public class LazyClassLoadingTargetNegativeTest {
 
     @Test
     public void testInit() {
-        Context c = Context.newBuilder().option("engine.BackgroundCompilation", "false").build();
+        Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build();
         Truffle.getRuntime();
         c.close();
     }

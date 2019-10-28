@@ -38,7 +38,7 @@ public class LazyClassLoadingTargetPositiveTest {
 
     @Test
     public void testInit() {
-        Context c = Context.newBuilder().option("engine.BackgroundCompilation", "false").build();
+        Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build();
         c.initialize("sl"); // creates builtin call targets and triggers initialization
         c.close();
     }
