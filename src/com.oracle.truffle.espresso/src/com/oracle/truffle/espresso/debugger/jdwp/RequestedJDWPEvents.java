@@ -56,12 +56,10 @@ public class RequestedJDWPEvents {
     public static final byte VM_DEATH = 99;
     public static final byte VM_DISCONNECTED = 100;
 
-    private final SocketConnection connection;
     private final VMEventListener eventListener;
     private final Ids ids;
 
     RequestedJDWPEvents(SocketConnection connection, JDWPContext context) {
-        this.connection = connection;
         eventListener = new VMEventListenerImpl(connection, context);
         VMEventListeners.getDefault().registerListener(eventListener);
         this.ids = context.getIds();
