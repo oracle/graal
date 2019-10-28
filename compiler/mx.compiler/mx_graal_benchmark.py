@@ -604,7 +604,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        return [key for key, value in self.daCapoIterations().items() if value != -1]
+        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
+        if mx_compiler.jdk.javaCompliance >= '9' and "batik" in bench_list:
+            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
+            bench_list.remove("batik")
+        return bench_list
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -1130,12 +1134,14 @@ mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 _SpecJbb_specific_vmArgs = [
     "-XX:+UseNUMA",
     "-XX:+AlwaysPreTouch",
-    "-XX:+UseTransparentHugePages",
     "-XX:+UseLargePagesInMetaspace",
     "-XX:-UseAdaptiveSizePolicy",
     "-XX:-UseAdaptiveNUMAChunkSizing",
     "-XX:+PrintGCDetails"
 ]
+
+if mx.is_linux():
+    _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
 
 
 class HeapSettingsMixin(object):
@@ -1609,7 +1615,16 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
+        if mx_compiler.isJDK8:
+            extra = ['-XX:-UseJVMCIClassLoader']
+        else:
+            # This is required to use jdk.internal.module.Modules for doing arbitrary exports
+            extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+        return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist

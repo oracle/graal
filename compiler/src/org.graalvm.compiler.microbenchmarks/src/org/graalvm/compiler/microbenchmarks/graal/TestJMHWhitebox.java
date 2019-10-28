@@ -36,7 +36,7 @@ import org.openjdk.jmh.annotations.Warmup;
 /**
  * This dummy class is used to verify that the JMH microbenchmarking environment is set up properly.
  */
-public class TestJMHWhitebox {
+public class TestJMHWhitebox extends GraalBenchmark {
 
     @Benchmark
     public void testJMH(@SuppressWarnings("unused") GraalState s) {

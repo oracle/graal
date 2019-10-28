@@ -30,7 +30,7 @@ import java.lang.invoke.MethodType;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.test.ExportingClassLoader;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;

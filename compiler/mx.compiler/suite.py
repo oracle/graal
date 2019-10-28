@@ -1643,7 +1643,7 @@ suite = {
       "workingSets" : "Graal,Test",
     },
 
-    "org.graalvm.compiler.test.jdk11" : {
+    "org.graalvm.compiler.api.test.jdk11" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -1656,7 +1656,7 @@ suite = {
       },
       "checkPackagePrefix" : "false",
       "javaCompliance" : "11+",
-      "overlayTarget" : "org.graalvm.compiler.test",
+      "overlayTarget" : "org.graalvm.compiler.api.test",
       "multiReleaseJarVersion" : "11",
       "checkstyle" : "org.graalvm.compiler.graph",
       "workingSets" : "Graal,Test",
