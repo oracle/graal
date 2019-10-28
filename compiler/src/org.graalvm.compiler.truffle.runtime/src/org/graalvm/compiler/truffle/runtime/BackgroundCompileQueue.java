@@ -199,7 +199,7 @@ public class BackgroundCompileQueue {
 
         @Override
         public String toString() {
-            return "Request(id:" + id + ", priority:" + priority + " + target: " + targetRef.get() + ")";
+            return "Request(id:" + id + ", priority:" + priority + " target: " + targetRef.get() + ")";
         }
     }
 
