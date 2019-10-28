@@ -181,7 +181,7 @@ public class DebuggerConnection implements JDWPCommands {
 
             if (packet.flags == Packet.Reply) {
                 // result packet from debugger
-                System.out.println("Reply packet from debugger");
+                System.err.println("Reply packet from debugger");
             } else {
                 // process a command packet from debugger
                 //System.out.println("received command(" + packet.cmdSet + "." + packet.cmd + ")");
@@ -420,7 +420,7 @@ public class DebuggerConnection implements JDWPCommands {
                 //System.out.println("replying to command(" + packet.cmdSet + "." + packet.cmd + ")");
                 connection.queuePacket(result.getReply());
             } else {
-                System.out.println("no result for command(" + packet.cmdSet + "." + packet.cmd + ")");
+                System.err.println("no result for command(" + packet.cmdSet + "." + packet.cmd + ")");
             }
 
             if (result.getFuture() != null) {
