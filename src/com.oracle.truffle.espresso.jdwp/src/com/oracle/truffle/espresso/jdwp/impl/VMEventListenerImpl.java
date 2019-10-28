@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 

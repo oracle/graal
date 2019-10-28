@@ -2,7 +2,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
@@ -10,7 +9,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.impl.ClassObjectId;
-import com.oracle.truffle.espresso.jdwp.impl.Ids;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.impl.TagConstants;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.NullKlass;
@@ -30,7 +29,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private final JDWPVirtualMachine vm;
     private final Ids ids;
 
-    public JDWPContextImpl(EspressoContext context, TruffleLanguage.Env env, EspressoLanguage espressoLanguage) {
+    public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.vm = new EspressoVirtualMachine();
         this.ids = new Ids(StaticObject.NULL);

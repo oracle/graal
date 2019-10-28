@@ -22,10 +22,11 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
@@ -59,8 +60,8 @@ public class RequestedJDWPEvents {
     private final VMEventListener eventListener;
     private final Ids ids;
 
-    RequestedJDWPEvents(SocketConnection connection, JDWPContext context) {
-        eventListener = new VMEventListenerImpl(connection, context);
+    RequestedJDWPEvents(JDWPContext context, SocketConnection connection) {
+        this.eventListener = new VMEventListenerImpl(connection, context);
         VMEventListeners.getDefault().registerListener(eventListener);
         this.ids = context.getIds();
     }

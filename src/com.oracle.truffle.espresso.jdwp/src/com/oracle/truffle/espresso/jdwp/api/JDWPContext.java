@@ -2,7 +2,6 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.jdwp.impl.Ids;
 
 public interface JDWPContext {
 
@@ -21,8 +20,6 @@ public interface JDWPContext {
     KlassRef getKlassFromRootNode(RootNode root);
 
     MethodRef getMethodFromRootNode(RootNode root);
-
-    Ids getIds();
 
     Object[] getAllGuestThreads();
 
@@ -59,4 +56,6 @@ public interface JDWPContext {
     Object getArrayValue(Object array, int i);
 
     void setArrayValue(Object array, int i, Object value);
+
+    Ids getIds();
 }

@@ -43,6 +43,5 @@ public interface VMEventListener {
     void addBreakpointRequest(int requestId, BreakpointInfo info);
     void removeBreakpointRequest(int requestId);
 
-
     void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
 }

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.VMEventListener;

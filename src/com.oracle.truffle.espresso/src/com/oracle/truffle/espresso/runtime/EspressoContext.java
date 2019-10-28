@@ -190,7 +190,7 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        new JDWPContextImpl(this, getEnv(), getLanguage()).jdwpInit();
+        new JDWPContextImpl(this).jdwpInit();
         spawnVM();
         this.initialized = true;
         VMInitializedListeners.getDefault().fire();
