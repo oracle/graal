@@ -32,50 +32,37 @@ public class VMEventListeners {
     private static final VMEventListeners DEFAULT = new VMEventListeners();
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private final VMEventListener[] listeners = new VMEventListener[1];
+    private VMEventListener listener;
 
     public static VMEventListeners getDefault() {
         return DEFAULT;
     }
 
     public void registerListener(VMEventListener listener) {
-        assert listeners[0] == null;
-        listeners[0] = listener;
+        this.listener = listener;
     }
 
     public void classPrepared(KlassRef klass, Object currentThread) {
-        if (listeners[0] != null) {
-            listeners[0].classPrepared(klass, currentThread);
-        }
+        listener.classPrepared(klass, currentThread);
     }
 
     public void classUnloaded(KlassRef klass) {
-        if (listeners[0] != null) {
-            listeners[0].classUnloaded(klass);
-        }
+        listener.classUnloaded(klass);
     }
 
     public void threadStarted(Object thread) {
-        if (listeners[0] != null) {
-            listeners[0].threadStarted(thread);
-        }
+        listener.threadStarted(thread);
     }
 
     public void threadDied(Object thread) {
-        if (listeners[0] != null) {
-            listeners[0].threadDied(thread);
-        }
+        listener.threadDied(thread);
     }
 
     public void breakpointHit(BreakpointInfo info, Object currentThread) {
-        if (listeners[0] != null) {
-            listeners[0].breakpointHIt(info, currentThread);
-        }
+        listener.breakpointHIt(info, currentThread);
     }
 
     public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
-        if (listeners[0] != null) {
-            listeners[0].stepCompleted(commandRequestId, currentFrame);
-        }
+        listener.stepCompleted(commandRequestId, currentFrame);
     }
 }
