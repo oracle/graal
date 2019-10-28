@@ -65,7 +65,6 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -83,7 +82,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
-    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new WeakHashMap<>();
+    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
     private final String className;
     private final Set<String> mimeTypes;
