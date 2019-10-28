@@ -34,7 +34,7 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp.useAVX512;
+import static org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp.useAVX512ForStringInflateCompress;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -83,7 +83,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        LIRKind vkind = useAVX512(tool.target()) ? LIRKind.value(AMD64Kind.V512_BYTE) : LIRKind.value(AMD64Kind.V128_BYTE);
+        LIRKind vkind = useAVX512ForStringInflateCompress(tool.target()) ? LIRKind.value(AMD64Kind.V512_BYTE) : LIRKind.value(AMD64Kind.V128_BYTE);
 
         vtmp1 = tool.newVariable(vkind);
         vtmp2 = tool.newVariable(vkind);
@@ -140,7 +140,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
 
         masm.push(len);      // Save length for return.
 
-        if (useAVX512(masm.target)) {
+        if (useAVX512ForStringInflateCompress(masm.target)) {
             Label labelRestoreK1ReturnZero = new Label();
             Label labelAvxPostAlignment = new Label();
 
