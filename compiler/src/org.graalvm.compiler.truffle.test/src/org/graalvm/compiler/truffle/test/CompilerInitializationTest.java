@@ -42,6 +42,17 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class CompilerInitializationTest {
 
+    @Before
+    public void resetCompiler() {
+        Assume.assumeFalse("This test does not apply to SVM runtime where the compiler is initialized eagerly.", TruffleOptions.AOT);
+        try {
+            Field f = compilerField();
+            f.set(Truffle.getRuntime(), null);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @Test
     public void testDefault() throws Exception {
         assertTruffleCompilerInitialized(false);
@@ -81,17 +92,6 @@ public class CompilerInitializationTest {
             assertNotNull(compilerField().get(Truffle.getRuntime()));
         } else {
             assertNull(compilerField().get(Truffle.getRuntime()));
-        }
-    }
-
-    @Before
-    public void resetCompiler() {
-        Assume.assumeFalse("This test does not apply to SVM runtime where the compiler is initialized eagerly.", TruffleOptions.AOT);
-        try {
-            Field f = compilerField();
-            f.set(Truffle.getRuntime(), null);
-        } catch (Exception e) {
-            throw new AssertionError(e);
         }
     }
 
