@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -120,11 +121,11 @@ public class Driver {
     }
 
     private static String getVersion() {
-        String version = HomeFinder.getInstance().getVersion();
-        if (version.equals("snapshot")) {
+        Version version = Version.getCurrent();
+        if (version.isSnapshot()) {
             return "Development Build";
         } else {
-            return version;
+            return version.toString();
         }
     }
 
