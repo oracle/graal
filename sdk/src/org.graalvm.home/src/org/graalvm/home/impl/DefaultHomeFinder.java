@@ -336,8 +336,6 @@ public final class DefaultHomeFinder extends HomeFinder {
     }
 
     private Path getGraalVmHomeNative() {
-        assert ImageInfo.inImageCode();
-
         final Path executable = getCurrentExecutablePath();
         if (executable != null) {
             Path result = getGraalVmHomeFromRelativeLauncherPath(executable);
