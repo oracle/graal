@@ -1261,8 +1261,11 @@ def maven_plugin_test(args):
     pom_from_template(proj_dir, svm_version)
     # Build native image with native-image-maven-plugin
     env = os.environ.copy()
+    maven_opts = env['MAVEN_OPTS'].split()
+    maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
     if not svm_java8():
-        env['MAVEN_OPTS'] = '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'
+        maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
+    env['MAVEN_OPTS'] = ' '.join(maven_opts)
     mx.run_maven(['package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
