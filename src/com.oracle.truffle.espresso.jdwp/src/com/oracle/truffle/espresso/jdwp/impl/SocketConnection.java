@@ -25,12 +25,14 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class SocketConnection implements Runnable {
     private Socket socket;
+    private ServerSocket serverSocket;
     private boolean closed = false;
     private OutputStream socketOutput;
     private InputStream socketInput;
@@ -40,8 +42,9 @@ public class SocketConnection implements Runnable {
 
     private BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
 
-    SocketConnection(Socket socket) throws IOException {
+    SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
         this.socket = socket;
+        this.serverSocket = serverSocket;
         socket.setTcpNoDelay(true);
         socketInput = socket.getInputStream();
         socketOutput = socket.getOutputStream();
@@ -52,6 +55,7 @@ public class SocketConnection implements Runnable {
             if (closed) {
                 return;
             }
+            serverSocket.close();
             socketOutput.close();
             socketInput.close();
             socket.close();
@@ -77,6 +81,10 @@ public class SocketConnection implements Runnable {
             } catch (IOException ex) {
                 // TODO(Gregersen) - we should add a retry mechanism or verification of communication
                 throw new RuntimeException("Failed sending packet to debugger instance", ex);
+            } catch (ConnectionClosedException e) {
+                if (!Thread.currentThread().isInterrupted()) {
+                    throw new RuntimeException("connection closed for an unknown reason", e.getCause());
+                }
             }
         }
     }
@@ -85,10 +93,9 @@ public class SocketConnection implements Runnable {
         queue.add(stream);
     }
 
-    public byte[] readPacket() throws IOException {
+    public byte[] readPacket() throws IOException, ConnectionClosedException {
         if (!isOpen()) {
-            // TODO(Gregersen) - change exception type
-            throw new RuntimeException("connection is closed");
+            throw new ConnectionClosedException();
         }
         synchronized (receiveLock) {
             int b1,b2,b3,b4;
@@ -101,8 +108,7 @@ public class SocketConnection implements Runnable {
                 b4 = socketInput.read();
             } catch (IOException ioe) {
                 if (!isOpen()) {
-                    // TODO(Gregersen) - change exception type
-                    throw new RuntimeException("connection is closed");
+                    throw new ConnectionClosedException();
                 } else {
                     throw ioe;
                 }
@@ -138,8 +144,7 @@ public class SocketConnection implements Runnable {
                     count = socketInput.read(b, off, len);
                 } catch (IOException ioe) {
                     if (!isOpen()) {
-                        // TODO(Gregersen) - change exception type
-                        throw new RuntimeException("connection is closed");
+                        throw new ConnectionClosedException();
                     } else {
                         throw ioe;
                     }
@@ -155,10 +160,9 @@ public class SocketConnection implements Runnable {
         }
     }
 
-    public void writePacket(byte b[]) throws IOException {
+    public void writePacket(byte b[]) throws IOException, ConnectionClosedException {
         if (!isOpen()) {
-            // TODO(Gregersen) - change exception type
-            throw new RuntimeException("connection is closed");
+            throw new ConnectionClosedException();
         }
 
         /*
@@ -192,8 +196,7 @@ public class SocketConnection implements Runnable {
                 socketOutput.write(b, 0, len);
             } catch (IOException ioe) {
                 if (!isOpen()) {
-                    // TODO(Gregersen) - change exception type
-                    throw new RuntimeException("connection is closed");
+                    throw new ConnectionClosedException();
                 } else {
                     throw ioe;
                 }

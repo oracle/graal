@@ -83,4 +83,10 @@ public class ThreadSuspension {
         // this should never be reached
         return 0;
     }
+
+    public static void resumeAll() {
+        for (int i = 0; i < suspensionCount.length; i++) {
+            suspensionCount[i] = 0;
+        }
+    }
 }

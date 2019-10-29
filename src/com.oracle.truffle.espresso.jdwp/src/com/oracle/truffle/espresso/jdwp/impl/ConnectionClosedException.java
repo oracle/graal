@@ -20,23 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-public interface JDWPVirtualMachine {
-
-    int getSizeOfFieldRef();
-
-    int getSizeOfMethodRef();
-
-    int getSizeofObjectRefRef();
-
-    int getSizeOfClassRef();
-
-    int getSizeOfFrameRef();
-
-    String getVmDescription();
-
-    String getVmVersion();
-
-    String getVmName();
+public class ConnectionClosedException extends Exception {
 }

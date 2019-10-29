@@ -25,8 +25,12 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 
 @TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = JDWPDebuggerController.class)
 public class JDWPInstrument extends TruffleInstrument implements Runnable {
@@ -34,13 +38,66 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     public static final String ID = "jdwp";
 
     private JDWPDebuggerController controller;
+    TruffleInstrument.Env env;
     private JDWPContext context;
+    private DebuggerConnection connection;
+    private Collection<Thread> activeThreads = new ArrayList<>();
 
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
-        assert this.controller == null;
-        this.controller = new JDWPController(this);
+        assert controller == null;
+        this.env = env;
+        controller = new JDWPController(this);
         env.registerService(controller);
+    }
+
+    public void reset() {
+        // stop all running jdwp threads in an orderly fashion
+        for (Thread activeThread : activeThreads) {
+            activeThread.interrupt();
+        }
+        // wait for threads to fully stop
+        boolean stillRunning = true;
+        while (stillRunning) {
+            stillRunning = false;
+            for (Thread activeThread : activeThreads) {
+                if (activeThread.isAlive()) {
+                    stillRunning = true;
+                }
+            }
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        }
+
+        // close the connection to the debugger
+        connection.close();
+
+        // re-enable GC for all objects
+        GCPrevention.clearAll();
+
+        // end the current debugger session to avoid hitting any further breakpoints
+        // when resuming all threads
+        controller.endSession();
+
+        // clear all suspension counts on threads
+        // and resume all
+        ThreadSuspension.resumeAll();
+        controller.resume();
+
+        // replace the controller instance
+        JDWPOptions options = controller.getOptions();
+        controller = new JDWPController(this);
+        controller.initialize(options, context, true);
+
+        // prepare to accept a new debugger connection
+        try {
+            doConnect();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to prepare for a new JDWP connection", e);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -69,10 +126,11 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         }
     }
 
-    private void doConnect() throws IOException {
-        SocketConnection socketConnection = JDWPHandshakeController.createSocketConnection(controller.getListeningPort());
+    void doConnect() throws IOException {
+        SocketConnection socketConnection = JDWPHandshakeController.createSocketConnection(controller.getListeningPort(), activeThreads);
         // connection established with handshake. Prepare to process commands from debugger
-        new DebuggerConnection(socketConnection, controller).doProcessCommands(controller.shouldWaitForAttach());
+        connection = new DebuggerConnection(socketConnection, controller);
+        connection.doProcessCommands(controller.shouldWaitForAttach(), activeThreads);
     }
 
     @Override
@@ -94,5 +152,4 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
             super(instrument);
         }
     }
-
 }

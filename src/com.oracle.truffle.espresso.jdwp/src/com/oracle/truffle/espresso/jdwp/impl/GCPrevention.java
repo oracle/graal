@@ -37,4 +37,8 @@ public class GCPrevention {
     public static void enableGC(Object object) {
         prevent.remove(object);
     }
+
+    public static void clearAll() {
+        prevent.clear();
+    }
 }

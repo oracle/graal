@@ -23,9 +23,11 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.Collection;
 
 public class JDWPHandshakeController {
 
@@ -34,19 +36,22 @@ public class JDWPHandshakeController {
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
-    public static SocketConnection createSocketConnection(int port) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(port);
+    public static SocketConnection createSocketConnection(int port, Collection<Thread> activeThreads) throws IOException {
+        ServerSocket serverSocket = new ServerSocket();
         serverSocket.setSoTimeout(0); // no timeout
+        serverSocket.setReuseAddress(true);
+        serverSocket.bind(new InetSocketAddress(port));
         // block until a debugger has accepted the socket
         Socket connectionSocket = serverSocket.accept();
-        connectionSocket.setKeepAlive(true);
+
         if (!handshake(connectionSocket)) {
             throw new IOException("Unable to handshake with debubgger");
         }
-        SocketConnection connection = new SocketConnection(connectionSocket);
+        SocketConnection connection = new SocketConnection(connectionSocket, serverSocket);
         Thread JDWPSender = new Thread(connection, "jdwp-transmitter");
         JDWPSender.setDaemon(true);
         JDWPSender.start();
+        activeThreads.add(JDWPSender);
         return connection;
     }
 

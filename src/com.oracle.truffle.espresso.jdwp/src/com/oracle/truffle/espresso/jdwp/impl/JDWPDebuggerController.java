@@ -69,9 +69,11 @@ public class JDWPDebuggerController {
         this.instrument = instrument;
     }
 
-    public void initialize(JDWPOptions options, JDWPContext context) {
+    public void initialize(JDWPOptions options, JDWPContext context, boolean reconnect) {
         this.options = options;
-        instrument.init(context);
+        if (!reconnect) {
+            instrument.init(context);
+        }
         this.ids = context.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
@@ -168,6 +170,23 @@ public class JDWPDebuggerController {
             ThreadSuspension.resumeThread(thread);
             suspendLock.notifyAll();
         }
+    }
+
+    public void disposeDebugger() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                instrument.reset();
+            }
+        }).start();
+    }
+
+    public void endSession() {
+        debuggerSession.close();
+    }
+
+    public JDWPOptions getOptions() {
+        return options;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {

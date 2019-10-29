@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -35,6 +36,8 @@ public class DebuggerConnection implements JDWPCommands {
     private final JDWPContext context;
     private final SocketConnection connection;
     private final BlockingQueue<DebuggerCommand> queue = new ArrayBlockingQueue<>(512);
+    private Thread commandProcessor;
+    private Thread jdwpTransport;
 
     public DebuggerConnection(SocketConnection connection, JDWPDebuggerController controller) {
         this.connection = connection;
@@ -42,16 +45,26 @@ public class DebuggerConnection implements JDWPCommands {
         this.context = controller.getContext();
     }
 
-    public void doProcessCommands(boolean suspend) {
+    public void doProcessCommands(boolean suspend, Collection<Thread> activeThreads) {
         // fire up two threads, one for the low-level connection to receive packets
         // and one for processing the debugger commands from a queue
-        Thread commandProcessor = new Thread(new CommandProcessorThread(), "jdwp-command-processor");
+        commandProcessor = new Thread(new CommandProcessorThread(), "jdwp-command-processor");
         commandProcessor.setDaemon(true);
         commandProcessor.start();
+        activeThreads.add(commandProcessor);
 
-        Thread jdwpTransport = new Thread(new JDWPTransportThread(suspend), "jdwp-transport");
+        jdwpTransport = new Thread(new JDWPTransportThread(suspend), "jdwp-transport");
         jdwpTransport.setDaemon(true);
         jdwpTransport.start();
+        activeThreads.add(jdwpTransport);
+    }
+
+    public void close() {
+        try {
+            connection.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Closing socket connection failed", e);
+        }
     }
 
     @Override
@@ -172,6 +185,8 @@ public class DebuggerConnection implements JDWPCommands {
                     // blocking call
                 } catch (IOException e) {
                     e.printStackTrace();
+                } catch (ConnectionClosedException e) {
+                    // we closed the session, so let the thread run dry
                 }
             }
         }
@@ -180,8 +195,8 @@ public class DebuggerConnection implements JDWPCommands {
             JDWPResult result = null;
 
             if (packet.flags == Packet.Reply) {
-                // result packet from debugger
-                System.err.println("Reply packet from debugger");
+                // result packet from debugger!
+                System.err.println("Should not get any reply packet from debugger");
             } else {
                 // process a command packet from debugger
                 //System.out.println("received command(" + packet.cmdSet + "." + packet.cmd + ")");
@@ -196,6 +211,9 @@ public class DebuggerConnection implements JDWPCommands {
                                 break;
                             case JDWP.VirtualMachine.ALL_THREADS.ID:
                                 result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context);
+                                break;
+                            case JDWP.VirtualMachine.DISPOSE.ID:
+                                result = JDWP.VirtualMachine.DISPOSE.createReply(packet, controller);
                                 break;
                             case JDWP.VirtualMachine.IDSIZES.ID:
                                 result = JDWP.VirtualMachine.IDSIZES.createReply(packet, context.getVirtualMachine());
@@ -422,14 +440,14 @@ public class DebuggerConnection implements JDWPCommands {
                         break;
                 }
             }
-            if (result.getReply() != null) {
+            if (result != null && result.getReply() != null) {
                 //System.out.println("replying to command(" + packet.cmdSet + "." + packet.cmd + ")");
                 connection.queuePacket(result.getReply());
             } else {
                 System.err.println("no result for command(" + packet.cmdSet + "." + packet.cmd + ")");
             }
 
-            if (result.getFuture() != null) {
+            if (result != null && result.getFuture() != null) {
                 try {
                     result.getFuture().call();
                 } catch (Exception e) {

@@ -80,8 +80,11 @@ public class Packet {
      * @return a packet created from the input byte array
      * @throws IOException
      */
-    public static Packet fromByteArray(byte b[]) throws IOException {
+    public static Packet fromByteArray(byte b[]) throws IOException, ConnectionClosedException {
         if (b.length < 11) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new ConnectionClosedException();
+            }
             throw new IOException("packet is insufficient size");
         }
 
@@ -91,6 +94,9 @@ public class Packet {
         int b3 = b[3] & 0xff;
         int len = ((b0 << 24) | (b1 << 16) | (b2 << 8) | (b3 << 0));
         if (len != b.length) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new ConnectionClosedException();
+            }
             throw new IOException("length size mis-match");
         }
 
