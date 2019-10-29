@@ -78,7 +78,7 @@ public final class OptimizedCompilationProfile {
     @CompilationFinal private OptimizedAssumption profiledArgumentTypesAssumption;
     @CompilationFinal private Class<?> profiledReturnType;
     @CompilationFinal private OptimizedAssumption profiledReturnTypeAssumption;
-    @CompilationFinal private Class<?> exceptionType;
+    @CompilationFinal private Class<? extends Throwable> exceptionType;
 
     private volatile boolean compilationFailed;
     @CompilationFinal private boolean callProfiled;
@@ -230,24 +230,25 @@ public final class OptimizedCompilationProfile {
     }
 
     @SuppressWarnings("unchecked")
-    <E extends Throwable> E profileExceptionType(E ex) {
-        Class<?> cachedClass = exceptionType;
-        // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
-        // This usually happens only if the call target was compiled using compile without ever
-        // calling it.
-        if (cachedClass != Object.class) {
-            if (cachedClass != null && cachedClass == ex.getClass()) {
-                return (E) cachedClass.cast(ex);
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (cachedClass == null) {
-                exceptionType = ex.getClass();
+    <T extends Throwable> T profileExceptionType(T value) {
+        Class<? extends Throwable> clazz = exceptionType;
+        if (clazz != Throwable.class) {
+            if (clazz != null && value.getClass() == clazz) {
+                if (CompilerDirectives.inInterpreter()) {
+                    return value;
+                } else {
+                    return (T) CompilerDirectives.castExact(value, clazz);
+                }
             } else {
-                // object class is not reachable for exceptions
-                exceptionType = Object.class;
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (clazz == null) {
+                    exceptionType = value.getClass();
+                } else {
+                    exceptionType = Throwable.class;
+                }
             }
         }
-        return ex;
+        return value;
     }
 
     Object[] injectArgumentProfile(Object[] originalArguments) {
