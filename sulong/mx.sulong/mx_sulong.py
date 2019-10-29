@@ -1021,6 +1021,9 @@ def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
+def llirtestgen(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
+
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
