@@ -32,7 +32,6 @@ import org.graalvm.options.OptionValues;
  */
 public class RuntimeOptionsCache {
 
-    private final boolean legacySplitting;
     private final boolean splitting;
     private final boolean splittingAllowForcedSplits;
     private final boolean splittingDumpDecisions;
@@ -47,7 +46,6 @@ public class RuntimeOptionsCache {
         // Splitting
         splitting = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Splitting) &&
                         PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
-        legacySplitting = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.LegacySplitting);
         splittingAllowForcedSplits = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingAllowForcedSplits);
         splittingDumpDecisions = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingDumpDecisions);
         splittingMaxCalleeSize = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingMaxCalleeSize);
@@ -62,9 +60,6 @@ public class RuntimeOptionsCache {
         return splittingDumpDecisions;
     }
 
-    boolean isLegacySplitting() {
-        return legacySplitting;
-    }
 
     boolean isSplittingAllowForcedSplits() {
         return splittingAllowForcedSplits;

@@ -192,9 +192,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> SplittingMaxPropagationDepth = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth.getDefaultValue());
 
-    @Option(help = "Use legacy splitting heuristic. This option will be removed.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> LegacySplitting = new OptionKey<>(false);
-
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceSplittingSummary = new OptionKey<>(false);
 
@@ -278,7 +275,6 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(SplittingGrowthLimit, SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
         POLYGLOT_TO_TRUFFLE.put(SplittingMaxNumberOfSplitNodes, SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
         POLYGLOT_TO_TRUFFLE.put(SplittingMaxPropagationDepth, SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
-        POLYGLOT_TO_TRUFFLE.put(LegacySplitting, SharedTruffleRuntimeOptions.TruffleLegacySplitting);
         POLYGLOT_TO_TRUFFLE.put(TraceSplittingSummary, SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
         POLYGLOT_TO_TRUFFLE.put(SplittingTraceEvents, SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         POLYGLOT_TO_TRUFFLE.put(SplittingDumpDecisions, SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);

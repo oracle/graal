@@ -170,14 +170,10 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
-                if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
-                    currentTarget.removeKnownCallSite(this);
-                }
+                currentTarget.removeKnownCallSite(this);
                 splitTarget.incrementKnownCallSites();
             }
-            if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
-                splitTarget.addKnownCallNode(this);
-            }
+            splitTarget.addKnownCallNode(this);
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted

@@ -142,7 +142,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.engineData = GraalTVMCI.getEngineData(rootNode);
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
         this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
-        this.knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
+        this.knownCallNodes = new ArrayList<>(1);
         tvmci.setCallTarget(rootNode, this);
     }
 
@@ -850,7 +850,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        assert !engineData.options.isLegacySplitting();
         List<Node> toDump = null;
         if (engineData.options.isSplittingDumpDecisions()) {
             toDump = new ArrayList<>();

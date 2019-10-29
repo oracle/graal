@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getOptions;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,17 +35,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class TruffleSplittingStrategy {
 
     private static final Set<OptimizedCallTarget> waste = Collections.synchronizedSet(new HashSet<>());
-    private static final int LEGACY_RECURSIVE_SPLIT_DEPTH = 2;
     private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
     static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
@@ -56,15 +50,6 @@ final class TruffleSplittingStrategy {
             if (currentTarget.getCompilationProfile().getCallCount() == 0) {
                 engineData.reporter.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
             }
-        }
-        if (engineData.options.isLegacySplitting()) {
-            if (call.getCallCount() == 2) {
-                if (legacyShouldSplit(call, engineData)) {
-                    engineData.splitCount += currentTarget.getUninitializedNodeCount();
-                    doSplit(engineData, call);
-                }
-            }
-            return;
         }
         if (shouldSplit(engineData.options, call)) {
             engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
@@ -108,8 +93,8 @@ final class TruffleSplittingStrategy {
     static void forceSplitting(OptimizedDirectCallNode call) {
         final EngineData engineData = getEngineData(call);
         final RuntimeOptionsCache options = engineData.options;
-        if (options.isLegacySplitting() || options.isSplittingAllowForcedSplits()) {
-            if (!canSplit(options, call) || isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
+        if (options.isSplittingAllowForcedSplits()) {
+            if (!canSplit(options, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
@@ -131,49 +116,6 @@ final class TruffleSplittingStrategy {
             return false;
         }
         return true;
-    }
-
-    private static boolean legacyShouldSplit(OptimizedDirectCallNode call, EngineData engineData) {
-        // In general, splitting in multi-tier compilations could be useful,
-        // but enabling splitting as-is currently overflows the compiler with too many requests.
-        if (SharedTruffleRuntimeOptions.TruffleMultiTier.getValue(getOptions())) {
-            return false;
-        }
-
-        if (engineData.splitCount + call.getCurrentCallTarget().getUninitializedNodeCount() > engineData.splitLimit) {
-            return false;
-        }
-        if (!canSplit(engineData.options, call)) {
-            return false;
-        }
-
-        OptimizedCallTarget callTarget = call.getCallTarget();
-        int nodeCount = callTarget.getUninitializedNodeCount();
-        if (nodeCount > engineData.options.getSplittingMaxCalleeSize()) {
-            return false;
-        }
-
-        RootNode rootNode = call.getRootNode();
-        if (rootNode == null) {
-            return false;
-        }
-        // disable recursive splitting for now
-        OptimizedCallTarget root = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (root == callTarget || (root != null && root.getSourceCallTarget() == callTarget)) {
-            // recursive call found
-            return false;
-        }
-
-        // Disable splitting if it will cause a deep split-only recursion
-        if (isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
-            return false;
-        }
-
-        // max one child call and callCount > 2 and kind of small number of nodes
-        if (isMaxSingleCall(call)) {
-            return true;
-        }
-        return countPolymorphic(call) >= 1;
     }
 
     private static boolean isRecursiveSplit(OptimizedDirectCallNode call, int allowedDepth) {
@@ -210,26 +152,6 @@ final class TruffleSplittingStrategy {
             callSourceTarget = callRootTarget.getSourceCallTarget();
         }
         return false;
-    }
-
-    private static boolean isMaxSingleCall(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
-            @Override
-            public boolean isCounted(Node node) {
-                return node instanceof DirectCallNode;
-            }
-        }) <= 1;
-    }
-
-    private static int countPolymorphic(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
-            @Override
-            public boolean isCounted(Node node) {
-                NodeCost cost = node.getCost();
-                boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
-                return polymorphic;
-            }
-        });
     }
 
     static void newTargetCreated(RootCallTarget target) {
@@ -269,9 +191,6 @@ final class TruffleSplittingStrategy {
 
     static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
         final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
-        if (callTarget.engineData.options.isLegacySplitting()) {
-            return;
-        }
         callTarget.addKnownCallNode(directCallNode);
     }
 
