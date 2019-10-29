@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -33,8 +35,6 @@ import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.ValueProfile;
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -46,8 +46,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
     private int callCount;
     private boolean inliningForced;
-    @CompilationFinal private ValueProfile exceptionProfile;
-
+    @CompilationFinal private Class<? extends Throwable> exceptionProfile;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
     public OptimizedDirectCallNode(OptimizedCallTarget target) {
@@ -64,14 +63,32 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         try {
             return target.callDirect(this, arguments);
         } catch (Throwable t) {
-            if (exceptionProfile == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                exceptionProfile = ValueProfile.createClassProfile();
-            }
-            Throwable profiledT = exceptionProfile.profile(t);
+            Throwable profiledT = profileExceptionType(t);
             OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Throwable> T profileExceptionType(T value) {
+        Class<? extends Throwable> clazz = exceptionProfile;
+        if (clazz != Throwable.class) {
+            if (clazz != null && value.getClass() == clazz) {
+                if (CompilerDirectives.inInterpreter()) {
+                    return value;
+                } else {
+                    return (T) CompilerDirectives.castExact(value, clazz);
+                }
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (clazz == null) {
+                    exceptionProfile = value.getClass();
+                } else {
+                    exceptionProfile = Throwable.class;
+                }
+            }
+        }
+        return value;
     }
 
     @Override
