@@ -287,18 +287,50 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Object.class) StaticObject JVM_Clone(@Host(Object.class) StaticObject self) {
+    public static @Host(Object.class) StaticObject JVM_Clone(@Host(Object.class) StaticObject self) {
+        assert StaticObject.notNull(self);
         if (self.isArray()) {
-            // For arrays.
+            // Arrays are always cloneable.
             return self.copy();
         }
-        Meta meta = getMeta();
+
+        Meta meta = self.getKlass().getMeta();
         if (!meta.Cloneable.isAssignableFrom(self.getKlass())) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
-        // Normal object just copy the fields.
-        return self.copy();
+        if (InterpreterToVM.instanceOf(self, meta.Reference)) {
+            // HotSpot 8202260: The semantics of cloning a Reference object is not clearly defined.
+            // In addition, it is questionable whether it should be supported due to its tight
+            // interaction with garbage collector.
+            //
+            // The reachability state of a Reference object may change during GC reference
+            // processing. The referent may have been cleared when it reaches its reachability
+            // state. On the other hand, it may be enqueued or pending for enqueuing. Cloning a
+            // Reference object with a referent that is unreachable but not yet cleared might mean
+            // to resurrect the referent. A cloned enqueued Reference object will never be enqueued.
+            //
+            // A Reference object cannot be meaningfully cloned.
+
+            // Non-strong references are not cloneable.
+            if (InterpreterToVM.instanceOf(self, meta.WeakReference) //
+                            || InterpreterToVM.instanceOf(self, meta.SoftReference) //
+                            || InterpreterToVM.instanceOf(self, meta.FinalReference) //
+                            || InterpreterToVM.instanceOf(self, meta.PhantomReference)) {
+
+                throw meta.throwExWithMessage(java.lang.CloneNotSupportedException.class, self.getKlass().getName().toString());
+            }
+        }
+
+        final StaticObject clone = self.copy();
+
+        // If the original object is finalizable, so is the copy.
+        assert self.getKlass() instanceof ObjectKlass;
+        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
+            meta.Finalizer_register.invokeDirect(null, clone);
+        }
+
+        return clone;
     }
 
     public Callback vmMethodWrapper(VMSubstitutor m) {
