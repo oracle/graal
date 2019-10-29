@@ -57,11 +57,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
     @Override
     public Object call(Object... arguments) {
+        OptimizedCallTarget target = getCurrentCallTarget();
         if (CompilerDirectives.inInterpreter()) {
-            onInterpreterCall();
+            onInterpreterCall(target);
         }
         try {
-            return getCurrentCallTarget().callDirect(this, arguments);
+            return target.callDirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -125,12 +126,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         return splitCallTarget;
     }
 
-    private void onInterpreterCall() {
+    private void onInterpreterCall(OptimizedCallTarget target) {
         int calls = ++callCount;
         if (calls == 1) {
-            getCurrentCallTarget().incrementKnownCallSites();
+            target.incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this);
+        TruffleSplittingStrategy.beforeCall(this, target);
     }
 
     /** Used by the splitting strategy to install new targets. */

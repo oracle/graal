@@ -50,17 +50,17 @@ final class TruffleSplittingStrategy {
     private static final int LEGACY_RECURSIVE_SPLIT_DEPTH = 2;
     private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
-    static void beforeCall(OptimizedDirectCallNode call) {
-        final EngineData engineData = call.getCurrentCallTarget().engineData;
+    static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
+        final EngineData engineData = currentTarget.engineData;
         if (engineData.options.isTraceSplittingSummary()) {
-            if (call.getCurrentCallTarget().getCompilationProfile().getCallCount() == 0) {
-                engineData.reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+            if (currentTarget.getCompilationProfile().getCallCount() == 0) {
+                engineData.reporter.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
             }
         }
         if (engineData.options.isLegacySplitting()) {
             if (call.getCallCount() == 2) {
                 if (legacyShouldSplit(call, engineData)) {
-                    engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+                    engineData.splitCount += currentTarget.getUninitializedNodeCount();
                     doSplit(engineData, call);
                 }
             }
