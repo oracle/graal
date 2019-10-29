@@ -1886,7 +1886,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         self.main_comp_dir_name = component.dir_name
 
-        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['_java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
