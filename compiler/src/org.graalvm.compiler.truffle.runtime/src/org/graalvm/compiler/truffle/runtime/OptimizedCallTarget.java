@@ -309,31 +309,39 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
-        if (CompilerDirectives.inInterpreter()) {
-            // We are called and we are still in Truffle interpreter mode.
-            if (isValid()) {
-                // Native entry stubs were deoptimized => reinstall.
-                runtime().bypassedInstalledCode();
-            }
-            if (getCompilationProfile().interpreterCall(this)) {
-                // synchronous compile -> call again to take us to the compiled code
-                return doInvoke(args);
-            }
-        } else {
-            // We come here from compiled code
+        /*
+         * Note this method compiles without any inlining or other optimizations. It is therefore
+         * important that this method stays small. It is compiled as a special stub that calls into
+         * the optimized code or if the call target is not yet optimized calls into callRoot
+         * directly. In order to avoid deoptimizations in this method it has optimizations disabled.
+         * Any additional code here will likely have significant impact on the intepreter call
+         * performance.
+         */
+        if (interpreterCall()) {
+            return doInvoke(args);
         }
         return callRoot(args);
     }
 
+    private boolean interpreterCall() {
+        if (isValid()) {
+            // Native entry stubs were deoptimized => reinstall.
+            runtime().bypassedInstalledCode();
+        }
+        return getCompilationProfile().interpreterCall(this);
+    }
+
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
-        OptimizedCompilationProfile profile = this.compilationProfile;
-        if (GraalCompilerDirectives.inFirstTier() && profile != null) {
-            profile.firstTierCall(this);
-        }
+        OptimizedCompilationProfile profile = compilationProfile;
         Object[] args = originalArguments;
-        if (CompilerDirectives.inCompiledCode() && profile != null) {
-            args = profile.injectArgumentProfile(originalArguments);
+        if (profile != null) {
+            if (GraalCompilerDirectives.inFirstTier()) {
+                profile.firstTierCall(this);
+            }
+            if (CompilerDirectives.inCompiledCode()) {
+                args = profile.injectArgumentProfile(originalArguments);
+            }
         }
         Object result = callProxy(createFrame(getRootNode().getFrameDescriptor(), args));
         if (profile != null) {
@@ -613,9 +621,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public String getName() {
+        CompilerAsserts.neverPartOfCompilation();
         String result = nameCache;
         if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             result = rootNode.toString();
             nameCache = result;
         }

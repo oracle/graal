@@ -43,6 +43,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -50,7 +51,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -132,27 +132,27 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return lazy;
     }
 
-    private List<ResolvedJavaMethod> truffleCallBoundaryMethods;
+    private final List<ResolvedJavaMethod> truffleCallBoundaryMethods;
     private volatile CancellableCompileTask initializationTask;
     private volatile boolean truffleCompilerInitialized;
 
     public AbstractHotSpotTruffleRuntime() {
         super(Arrays.asList(HotSpotOptimizedCallTarget.class));
-        setDontInlineCallBoundaryMethod();
+
+        List<ResolvedJavaMethod> boundaryMethods = new ArrayList<>();
+        MetaAccessProvider metaAccess = getMetaAccess();
+        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                boundaryMethods.add(method);
+            }
+        }
+        this.truffleCallBoundaryMethods = boundaryMethods;
+        setDontInlineCallBoundaryMethod(boundaryMethods);
     }
 
     @Override
-    public synchronized Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
-        if (truffleCallBoundaryMethods == null) {
-            truffleCallBoundaryMethods = new ArrayList<>();
-            MetaAccessProvider metaAccess = getMetaAccess();
-            ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
-            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-                if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                    truffleCallBoundaryMethods.add(method);
-                }
-            }
-        }
+    public final Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
         return truffleCallBoundaryMethods;
     }
 
@@ -177,12 +177,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * We need to trigger initialization of the Truffle compiler when the first call target is
      * created. Truffle call boundary methods are installed when the truffle compiler is
      * initialized, as it requires the compiler to do so. Until then the call boundary methods are
-     * interpreted with the HotSpot interpreter (see {@link #setDontInlineCallBoundaryMethod()}).
-     * This is very slow and we want to avoid doing this as soon as possible. It can also be a real
-     * issue when compilation is turned off completely and no call targets would ever be compiled.
-     * Without ensureInitialized the stubs (see
-     * {@link HotSpotTruffleCompiler#installTruffleCallBoundaryMethods}) would never be installed in
-     * that case and we would use the HotSpot interpreter indefinitely.
+     * interpreted with the HotSpot interpreter (see
+     * {@link #setDontInlineCallBoundaryMethod(List)}). This is very slow and we want to avoid doing
+     * this as soon as possible. It can also be a real issue when compilation is turned off
+     * completely and no call targets would ever be compiled. Without ensureInitialized the stubs
+     * (see {@link HotSpotTruffleCompiler#installTruffleCallBoundaryMethods}) would never be
+     * installed in that case and we would use the HotSpot interpreter indefinitely.
      */
     private void ensureInitialized(OptimizedCallTarget firstCallTarget) {
         if (truffleCompilerInitialized) {
@@ -284,13 +284,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods() which compiles callBoundary()
      *      with Graal
      */
-    public static void setDontInlineCallBoundaryMethod() {
-        MetaAccessProvider metaAccess = getMetaAccess();
-        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                setNotInlinableOrCompilable(method);
-            }
+    public static void setDontInlineCallBoundaryMethod(List<ResolvedJavaMethod> callBoundaryMethods) {
+        for (ResolvedJavaMethod method : callBoundaryMethods) {
+            setNotInlinableOrCompilable(method);
         }
     }
 
@@ -379,6 +375,10 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @SuppressWarnings("try")
     @Override
     public void bypassedInstalledCode() {
+        if (!truffleCompilerInitialized) {
+            // do not wait for initialization
+            return;
+        }
         getTruffleCompiler().installTruffleCallBoundaryMethods();
     }
 
