@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot;
+package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
 
-public interface HotSpotTruffleCompiler extends TruffleCompiler {
+import com.oracle.truffle.api.Truffle;
 
-    /**
-     * Compiles and installs special code for
-     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}. See also
-     * AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod() for disabling compilation and
-     * inlining for truffle call boundary methods.
-     */
-    void installTruffleCallBoundaryMethods();
+/**
+ * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
+ * Graal should not be initialized unless there is an actual call targets created.
+ */
+/*
+ * This test is used indirectly by org.graalvm.compiler.truffle.test.LazyInitializationTest.
+ */
+public class LazyClassLoadingTargetNegativeTest {
 
-    int pendingTransferToInterpreterOffset();
+    @Test
+    public void testInit() {
+        Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build();
+        Truffle.getRuntime();
+        c.close();
+    }
+
 }

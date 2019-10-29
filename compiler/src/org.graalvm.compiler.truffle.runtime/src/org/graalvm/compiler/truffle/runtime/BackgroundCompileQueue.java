@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -52,144 +53,60 @@ import org.graalvm.options.OptionValues;
  * Note that all the compilation requests are second tier when the multi-tier option is turned off.
  */
 public class BackgroundCompileQueue {
+
     private final AtomicLong idCounter;
     private volatile ExecutorService compilationExecutorService;
     private boolean shutdown = false;
-
-    public class Request implements Runnable, Comparable<Request> {
-        private final long id;
-        private final GraalTruffleRuntime runtime;
-        private final OptionValues optionOverrides;
-        private final WeakReference<OptimizedCallTarget> weakCallTarget;
-        private final TruffleCompilationTask task;
-        private final boolean isFirstTier;
-
-        public Request(GraalTruffleRuntime runtime, OptionValues optionOverrides, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
-            this.id = idCounter.getAndIncrement();
-            this.runtime = runtime;
-            this.optionOverrides = optionOverrides;
-            this.weakCallTarget = new WeakReference<>(callTarget);
-            this.task = task;
-            this.isFirstTier = !task.isLastTier();
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public void run() {
-            OptimizedCallTarget callTarget = weakCallTarget.get();
-            if (callTarget != null) {
-                try (TruffleRuntimeOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides) : null) {
-                    if (!task.isCancelled()) {
-                        runtime.doCompile(callTarget, task);
-                    }
-                } finally {
-                    callTarget.resetCompilationTask();
-                }
-            }
-        }
-
-        @Override
-        public int compareTo(Request that) {
-            if (this.isFirstTier != that.isFirstTier) {
-                return this.isFirstTier ? -1 : 1;
-            }
-            return (int) (this.id - that.id);
-        }
-
-        @Override
-        public String toString() {
-            return "Request(lo: " + isFirstTier + ", id: " + id + ", " + weakCallTarget + ")";
-        }
-    }
-
-    public class RequestFutureTask<V> extends FutureTask<V> implements Comparable<Runnable> {
-        private final Request request;
-
-        public RequestFutureTask(Runnable runnable, V result) {
-            super(runnable, result);
-            this.request = (Request) runnable;
-        }
-
-        @Override
-        public int compareTo(Runnable that) {
-            if (that instanceof RequestFutureTask) {
-                return this.request.compareTo(((RequestFutureTask<?>) that).request);
-            } else {
-                return this.request.compareTo((Request) that);
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "Future(" + request + ")";
-        }
-    }
 
     public BackgroundCompileQueue() {
         this.idCounter = new AtomicLong();
     }
 
-    private synchronized ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
+    private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
         if (compilationExecutorService != null) {
             return compilationExecutorService;
         }
-
-        if (shutdown) {
-            throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
-        }
-
-        // NOTE: the value from the first Engine compiling wins for now
-        int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
-        if (threads == 0) {
-            // No manual selection made, check how many processors are available.
-            int availableProcessors = Runtime.getRuntime().availableProcessors();
-            if (availableProcessors >= 4) {
-                threads = 2;
+        synchronized (this) {
+            if (compilationExecutorService != null) {
+                return compilationExecutorService;
             }
-        }
-        threads = Math.max(1, threads);
-
-        TruffleCompilerThreadFactory factory = new TruffleCompilerThreadFactory("TruffleCompilerThread");
-
-        return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
-                        new PriorityBlockingQueue<>(), factory) {
-            @Override
-            protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
-                return new RequestFutureTask<>(runnable, value);
+            if (shutdown) {
+                throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
             }
-        };
-    }
 
-    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
-        private final String namePrefix;
+            // NOTE: the value from the first Engine compiling wins for now
+            int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
+            if (threads == 0) {
+                // No manual selection made, check how many processors are available.
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+                if (availableProcessors >= 4) {
+                    threads = 2;
+                }
+            }
+            threads = Math.max(1, threads);
 
-        TruffleCompilerThreadFactory(final String namePrefix) {
-            this.namePrefix = namePrefix;
-        }
+            TruffleCompilerThreadFactory factory = new TruffleCompilerThreadFactory("TruffleCompilerThread");
 
-        @Override
-        public Thread newThread(Runnable r) {
-            final Thread t = new Thread(r) {
+            return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
+                            new PriorityBlockingQueue<>(), factory) {
                 @Override
-                public void run() {
-                    setContextClassLoader(getClass().getClassLoader());
-                    super.run();
+                protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+                    return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
-            t.setName(namePrefix + "-" + t.getId());
-            t.setPriority(Thread.MAX_PRIORITY);
-            t.setDaemon(true);
-            return t;
         }
     }
 
-    public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation)
-                    throws RejectedExecutionException {
+    public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
         final OptionValues optionOverrides = TruffleRuntimeOptions.getCurrentOptionOverrides();
-        CancellableCompileTask cancellable = new CancellableCompileTask(lastTierCompilation);
-        Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);
-        cancellable.setFuture(getExecutorService(optimizedCallTarget).submit(request));
+        CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
+        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, optionOverrides, target, cancellable, request);
+        cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
+    }
+
+    private long nextId() {
+        return idCounter.getAndIncrement();
     }
 
     public int getQueueSize() {
@@ -218,4 +135,109 @@ public class BackgroundCompileQueue {
             throw new RuntimeException("Could not terminate compiler threads. Check if there are runaway compilations that don't handle Thread#interrupt.", e);
         }
     }
+
+    public enum Priority {
+
+        INITIALIZATION(0),
+        FIRST_TIER(1),
+        LAST_TIER(2);
+
+        private final int value;
+
+        Priority(int value) {
+            this.value = value;
+        }
+
+    }
+
+    public abstract static class Request {
+
+        protected abstract void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef);
+
+    }
+
+    private static final class RequestImpl<V> implements Callable<V>, Comparable<RequestImpl<?>> {
+
+        private final long id;
+        private final Priority priority;
+        private final OptionValues optionOverrides;
+        private final TruffleCompilationTask task;
+        private final WeakReference<OptimizedCallTarget> targetRef;
+        private final Request request;
+
+        RequestImpl(long id, Priority priority, OptionValues optionOverrides, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+            this.id = id;
+            this.priority = priority;
+            this.optionOverrides = optionOverrides;
+            this.targetRef = new WeakReference<>(callTarget);
+            this.task = task;
+            this.request = request;
+        }
+
+        @Override
+        public int compareTo(RequestImpl<?> that) {
+            int diff = priority.value - that.priority.value;
+            if (diff == 0) {
+                diff = Long.compare(this.id, that.id);
+            }
+            return diff;
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public V call() {
+            try (TruffleRuntimeOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides) : null) {
+                request.execute(task, targetRef);
+            }
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return "Request(id:" + id + ", priority:" + priority + " target: " + targetRef.get() + ")";
+        }
+    }
+
+    private static class RequestFutureTask<V> extends FutureTask<V> implements Comparable<RequestFutureTask<?>> {
+        private final RequestImpl<V> request;
+
+        RequestFutureTask(RequestImpl<V> callable) {
+            super(callable);
+            this.request = callable;
+        }
+
+        @Override
+        public int compareTo(RequestFutureTask<?> that) {
+            return this.request.compareTo(that.request);
+        }
+
+        @Override
+        public String toString() {
+            return "Future(" + request + ")";
+        }
+    }
+
+    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
+        private final String namePrefix;
+
+        TruffleCompilerThreadFactory(final String namePrefix) {
+            this.namePrefix = namePrefix;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            final Thread t = new Thread(r) {
+                @Override
+                public void run() {
+                    setContextClassLoader(getClass().getClassLoader());
+                    super.run();
+                }
+            };
+            t.setName(namePrefix + "-" + t.getId());
+            t.setPriority(Thread.MAX_PRIORITY);
+            t.setDaemon(true);
+            return t;
+        }
+    }
+
 }
