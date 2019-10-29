@@ -98,4 +98,4 @@ for %%a in (%*) do (
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" %jvm_args% -cp "%realcp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" %jvm_args% <extra_jvm_args> -cp "%realcp%" <main_class> %launcher_args%
