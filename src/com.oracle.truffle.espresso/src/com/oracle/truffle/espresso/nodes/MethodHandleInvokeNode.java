@@ -56,7 +56,7 @@ public class MethodHandleInvokeNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int invoke(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         Object[] args = new Object[argCount];
         if (hasReceiver) {

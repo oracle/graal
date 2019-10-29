@@ -291,7 +291,6 @@ import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -332,6 +331,11 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] stackSlots;
 
+    @CompilationFinal //
+    private final FrameSlot monitorSlot;
+
+    @CompilationFinal private final FrameSlot BCIslot;
+
     @CompilationFinal(dimensions = 1) //
     private final int[] SOEinfo;
 
@@ -350,9 +354,20 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-        this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
+        BCIslot = slots[0];
+        int startLocal = 1;
+        int lastLocal = startLocal + method.getMaxLocals();
+        int lastStack = startLocal + method.getMaxLocals() + method.getMaxStackSize();
+        assert (lastLocal - startLocal) == method.getMaxLocals();
+        assert (lastStack - lastLocal) == method.getMaxStackSize();
+        this.locals = Arrays.copyOfRange(slots, 1, lastLocal);
+        this.stackSlots = Arrays.copyOfRange(slots, lastLocal, lastStack);
+        if (method.usesMonitors() > 0) {
+            monitorSlot = slots[lastStack];
+        } else {
+            monitorSlot = null;
+        }
 
-        this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize() + method.usesMonitors());
         this.SOEinfo = getMethod().getSOEHandlerInfo();
     }
 
@@ -414,9 +429,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             // Checkstyle: resume
             n += expectedkind.getSlotCount();
         }
-        if (getMethod().usesMonitors() > 0) {
-            frame.setObject(stackSlots[monitorSlot()], new MonitorStack());
+        frame.setInt(BCIslot, 0);
+        if (monitorSlot != null) {
+            frame.setObject(monitorSlot, new MonitorStack());
         }
+    }
+
+    private void setBCI(VirtualFrame frame, int bci) {
+        frame.setInt(BCIslot, bci);
     }
 
     int peekInt(VirtualFrame frame, int slot) {
@@ -1199,7 +1219,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         case INVOKEVIRTUAL: // fall through
                         case INVOKESPECIAL: // fall through
                         case INVOKESTATIC: // fall through
-                        case INVOKEINTERFACE:
+                        case INVOKEINTERFACE: 
+                            setBCI(frame, curBCI);
                             top += quickenInvoke(frame, top, curBCI, curOpcode);
                             break;
 
@@ -1244,13 +1265,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             CompilerAsserts.neverPartOfCompilation();
                             throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                        case INVOKEDYNAMIC:
-                            top += quickenInvokeDynamic(frame, top, curBCI, curOpcode);
-                            break;
+                        case INVOKEDYNAMIC: 
+                            setBCI(frame, curBCI);
+                            top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
 
-                        case QUICK:
-                            top += nodes[bs.readCPI(curBCI)].execute(frame);
-                            break;
+                        case QUICK: 
+                            setBCI(frame, curBCI);
+                            top += nodes[bs.readCPI(curBCI)].invoke(frame); break;
 
                         default:
                             CompilerAsserts.neverPartOfCompilation();
@@ -1273,15 +1294,11 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         // Free the current stack
                         putObject(frame, i, null);
                     }
-                    EspressoException outOfMemory = getContext().getOutOfMemory();
-                    outOfMemory.resetFrames(getMeta());
-                    throw outOfMemory;
+                    throw getContext().getOutOfMemory();
                 } catch (StackOverflowError e) {
                     // Free some memory
                     CompilerDirectives.transferToInterpreter();
-                    EspressoException stackOverflow = getContext().getStackOverflow();
-                    stackOverflow.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
-                    throw stackOverflow;
+                    throw getContext().getStackOverflow();
                 } catch (ThreadDeath e) {
                     throw getMeta().throwEx(e.getClass());
                 } catch (RuntimeException e) {
@@ -1310,28 +1327,12 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         for (int i = 0; i < SOEinfo.length; i += 3) {
                             if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
                                 top = 0;
-                                try {
-                                    // isUnwinding()
-                                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
-                                        // addStackFrame()
-                                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
-                                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
-                                    }
-                                } catch (StackOverflowError soe) {
-                                    // resetFrames()
-                                    e.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
-                                }
                                 putObject(frame, 0, e.getException());
                                 top++;
                                 curBCI = SOEinfo[i + 2];
                                 continue loop;
                             }
                         }
-                    }
-                    // isUnwinding()
-                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
-                        // addStackFrame()
-                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
                     }
                     throw e;
                 }
@@ -1356,10 +1357,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
                 if (handler != null) {
                     top = 0;
-                    if (e.isUnwinding(getMeta())) {
-                        e.addStackFrame(getMethod(), curBCI, getMeta());
-                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
-                    }
                     putObject(frame, 0, e.getException());
                     top++;
                     int targetBCI = handler.getHandlerBCI();
@@ -1373,9 +1370,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     }
                     continue loop; // skip bs.next()
                 } else {
-                    if (e.isUnwinding(getMeta())) {
-                        e.addStackFrame(getMethod(), curBCI, getMeta());
-                    }
                     throw e;
                 }
             } catch (VirtualMachineError e) {
@@ -1415,7 +1409,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     throw new EspressoException(exceptionToHandle);
                 }
             } catch (EspressoExitException e) {
-                if (getMethod().usesMonitors() > 0) {
+                if (monitorSlot != null) {
                     getMonitorStack(frame).abort();
                 }
                 throw e;
@@ -1446,12 +1440,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         getMonitorStack(frame).enter(monitor);
     }
 
-    private int monitorSlot() {
-        return getMethod().getMaxStackSize();
-    }
-
     private MonitorStack getMonitorStack(VirtualFrame frame) {
-        Object frameResult = FrameUtil.getObjectSafe(frame, stackSlots[monitorSlot()]);
+        Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
     }
@@ -1846,7 +1836,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opCode) {
@@ -1862,7 +1852,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top, curBCI));
             }
         }
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     @SuppressWarnings("unused")
@@ -1887,7 +1877,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             }
         }
         // Perform the call outside of the lock.
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     /**
@@ -1905,7 +1895,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             nodes[cpi] = nodes[cpi].replace(invoke);
         }
         // Perform the call outside of the lock.
-        return invoke.execute(frame);
+        return invoke.invoke(frame);
     }
 
     private QuickNode dispatchQuickened(int top, int curBCI, int opCode, Method _resolutionSeed, boolean allowFieldAccessInlining) {
@@ -2024,7 +2014,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
         if (quick != null) {
             // Do invocation outside of the lock.
-            return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
+            return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
         }
 
         assert pool != null && inDy != null;
@@ -2091,7 +2081,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top, curBCI));
             }
         }
-        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
+        return quick.invoke(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {

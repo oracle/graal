@@ -40,7 +40,7 @@ public final class InvokeStaticNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int invoke(final VirtualFrame frame) {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

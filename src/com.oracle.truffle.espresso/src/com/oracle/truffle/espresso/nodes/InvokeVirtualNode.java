@@ -83,7 +83,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public final int invoke(final VirtualFrame frame) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.

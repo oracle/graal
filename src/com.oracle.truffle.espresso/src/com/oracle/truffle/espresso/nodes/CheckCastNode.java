@@ -63,7 +63,7 @@ public abstract class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public final int execute(final VirtualFrame frame) {
+    public final int invoke(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {

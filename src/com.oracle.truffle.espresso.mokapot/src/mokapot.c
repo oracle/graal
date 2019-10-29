@@ -399,13 +399,13 @@ jobjectArray JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threa
 }
 
 jclass JVM_CurrentLoadedClass(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_CurrentLoadedClass);
-  return NULL;
+  IMPLEMENTED(JVM_CurrentLoadedClass);
+  return (*getEnv())->JVM_CurrentLoadedClass(env);
 }
 
 jobject JVM_CurrentClassLoader(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_CurrentClassLoader);
-  return NULL;
+  IMPLEMENTED(JVM_CurrentClassLoader);
+  return (*getEnv())->JVM_CurrentClassLoader(env);
 }
 
 jobjectArray JVM_GetClassContext(JNIEnv *env) {
@@ -414,13 +414,13 @@ jobjectArray JVM_GetClassContext(JNIEnv *env) {
 }
 
 jint JVM_ClassDepth(JNIEnv *env, jstring name) {
-  UNIMPLEMENTED(JVM_ClassDepth);
-  return 0;
+  IMPLEMENTED(JVM_ClassDepth);
+  return (*getEnv())->JVM_ClassDepth(env, name);
 }
 
 jint JVM_ClassLoaderDepth(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_ClassLoaderDepth);
-  return 0;
+  IMPLEMENTED(JVM_ClassLoaderDepth);
+  return (*getEnv())->JVM_ClassLoaderDepth(env);
 }
 
 jstring JVM_GetSystemPackage(JNIEnv *env, jstring name) {

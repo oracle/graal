@@ -38,7 +38,7 @@ public final class InvokeSpecialNode extends QuickNode {
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int invoke(final VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?
         Object receiver = nullCheck(root.peekReceiver(frame, top, method));

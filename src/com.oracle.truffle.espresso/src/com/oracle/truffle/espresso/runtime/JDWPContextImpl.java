@@ -110,14 +110,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object[] getAllGuestThreads() {
-        Iterable<StaticObject> activeThreads = context.getActiveThreads();
-        ArrayList<Object> threads = new ArrayList<>();
-
-        Iterator<StaticObject> it = activeThreads.iterator();
-        while (it.hasNext()) {
-            threads.add(it.next());
-        }
-        return threads.toArray(new Object[threads.size()]);
+        return context.getActiveThreads();
     }
 
     @Override

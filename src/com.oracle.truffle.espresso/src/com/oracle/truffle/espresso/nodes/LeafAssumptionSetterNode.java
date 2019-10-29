@@ -37,7 +37,7 @@ public class LeafAssumptionSetterNode extends InlinedSetterNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int invoke(VirtualFrame frame) {
         BytecodeNode root = getBytecodesNode();
         if (inlinedMethod.leafAssumption()) {
             setFieldNode.setField(frame, root, top);

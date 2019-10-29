@@ -263,6 +263,12 @@ public final class EspressoContext {
         StaticObject outOfMemoryErrorInstance = meta.OutOfMemoryError.allocateInstance();
         meta.StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
         meta.OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+
+        stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        stackOverflowErrorInstance.setField(meta.Throwable_backtrace, stackOverflowErrorInstance);
+        outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+        outOfMemoryErrorInstance.setField(meta.Throwable_backtrace, outOfMemoryErrorInstance);
+
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
@@ -422,7 +428,7 @@ public final class EspressoContext {
         return threadManager.getGuestThreadFromHost(Thread.currentThread());
     }
 
-    public Iterable<StaticObject> getActiveThreads() {
+    public StaticObject[] getActiveThreads() {
         return threadManager.activeThreads();
     }
 
@@ -475,11 +481,10 @@ public final class EspressoContext {
     }
 
     public boolean isValidThread(Object thread) {
-        Iterator<StaticObject> it = threadManager.activeThreads().iterator();
+        StaticObject[] activeThreads = threadManager.activeThreads();
 
-        while (it.hasNext()) {
-            StaticObject staticObject = it.next();
-            if (staticObject == thread) {
+        for (StaticObject activeThread : activeThreads) {
+            if (activeThread == thread) {
                 return true;
             }
         }

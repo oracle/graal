@@ -43,7 +43,7 @@ public abstract class QuickNode extends Node {
         this.callerBCI = callerBCI;
     }
 
-    public abstract int execute(VirtualFrame frame);
+    public abstract int invoke(VirtualFrame frame);
 
     // TODO(peterssen): Make this a node?
     protected static final StaticObject nullCheck(StaticObject value) {
