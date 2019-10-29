@@ -26,7 +26,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -37,7 +36,7 @@ import sun.misc.Unsafe;
 @EspressoSubstitutions
 public class Target_java_lang_ref_Reference {
 
-    private final static Class<?> PUBLIC_FINAL_REFERENCE;
+    final static Class<?> PUBLIC_FINAL_REFERENCE;
 
     /**
      * Compiled {@link java.lang.ref.PublicFinalReference} without the poisoned static initializer.
@@ -79,7 +78,7 @@ public class Target_java_lang_ref_Reference {
                     @Host(Object.class) StaticObject referent, @Host(ReferenceQueue.class) StaticObject queue) {
         Meta meta = self.getKlass().getMeta();
         // Guest referent field is ignored for weak/soft/final/phantom references.
-        EspressoReference ref = null;
+        EspressoReference<StaticObject> ref = null;
         if (InterpreterToVM.instanceOf(self, meta.WeakReference)) {
             ref = new EspressoWeakReference(self, referent, meta.getContext().REFERENCE_QUEUE);
         } else if (InterpreterToVM.instanceOf(self, meta.SoftReference)) {
@@ -105,6 +104,7 @@ public class Target_java_lang_ref_Reference {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static @Host(Object.class) StaticObject get(@Host(java.lang.ref.Reference.class) StaticObject self) {
         Meta meta = self.getKlass().getMeta();
@@ -125,6 +125,7 @@ public class Target_java_lang_ref_Reference {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static void clear(@Host(java.lang.ref.Reference.class) StaticObject self) {
         Meta meta = self.getKlass().getMeta();

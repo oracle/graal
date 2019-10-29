@@ -231,6 +231,7 @@ public final class EspressoContext {
 
         // Initialize ReferenceQueues
         this.hostToGuestReferenceDrainThread = getEnv().createThread(new Runnable() {
+            @SuppressWarnings("rawtypes")
             @Override
             public void run() {
                 final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
@@ -302,7 +303,7 @@ public final class EspressoContext {
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
-    private void casNextIfNullAndMaybeClear(EspressoReference wrapper) {
+    private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
