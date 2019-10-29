@@ -58,4 +58,16 @@ public interface JDWPContext {
     void setArrayValue(Object array, int i, Object value);
 
     Ids getIds();
+
+    boolean isString(Object string);
+
+    boolean isValidThread(Object thread);
+
+    boolean isValidThreadGroup(Object threadGroup);
+
+    boolean isArray(Object array);
+
+    boolean verifyArrayLength(Object array, int length);
+
+    boolean isValidClassLoader(Object classLoader);
 }

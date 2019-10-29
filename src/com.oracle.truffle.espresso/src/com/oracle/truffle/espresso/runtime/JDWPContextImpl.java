@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
@@ -48,6 +49,21 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public boolean isString(Object string) {
+        return context.getMeta().isString(string);
+    }
+
+    @Override
+    public boolean isValidThread(Object thread) {
+        return context.isValidThread(thread);
+    }
+
+    @Override
+    public boolean isValidThreadGroup(Object threadGroup) {
+        return context.isValidThreadGroup(threadGroup);
+    }
+
+    @Override
     public KlassRef getNullKlass() {
         return NullKlass.getKlass(context);
     }
@@ -71,6 +87,15 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public KlassRef[] getInitiatedClasses(Object classLoader) {
         return context.getRegistries().getLoadedClassesByLoader((StaticObject) classLoader);
+    }
+
+    @Override
+    public boolean isValidClassLoader(Object classLoader) {
+        if (classLoader instanceof StaticObject) {
+            StaticObject loader = (StaticObject) classLoader;
+            return context.getRegistries().isClassLoader(loader);
+        }
+        return false;
     }
 
     @Override
@@ -200,6 +225,21 @@ public final class JDWPContextImpl implements JDWPContext {
     public <T> T getUnboxedArray(Object array) {
         StaticObject staticObject = (StaticObject) array;
         return staticObject.unwrap();
+    }
+
+    @Override
+    public boolean isArray(Object array) {
+        if (array instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) array;
+            return staticObject.isArray();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean verifyArrayLength(Object array, int length) {
+        StaticObject staticObject = (StaticObject) array;
+        return staticObject.length() < length;
     }
 
     @Override

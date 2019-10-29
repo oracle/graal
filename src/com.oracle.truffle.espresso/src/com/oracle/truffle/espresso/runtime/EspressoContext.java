@@ -30,6 +30,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -471,6 +472,23 @@ public final class EspressoContext {
 
     public Object getMainThread() {
         return threadManager.getMainThread();
+    }
+
+    public boolean isValidThread(Object thread) {
+        Iterator<StaticObject> it = threadManager.activeThreads().iterator();
+
+        while (it.hasNext()) {
+            StaticObject staticObject = it.next();
+            if (staticObject == thread) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isValidThreadGroup(Object threadGroup) {
+        // TODO(Gregersen) - validate if this is a valid threadgroup
+        return true;
     }
 
     // endregion Options

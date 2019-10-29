@@ -176,4 +176,8 @@ public final class ClassRegistries {
             constraints.recordConstraint(type, klass, loader);
         }
     }
+
+    public boolean isClassLoader(StaticObject object) {
+        return classLoaders.contains(object);
+    }
 }
