@@ -99,16 +99,6 @@ final class Target_sun_nio_ch_Net {
     }
 }
 
-@SuppressWarnings({"unused"})
-@TargetClass(className = "sun.nio.ch.DatagramDispatcher")
-final class Target_sun_nio_ch_DatagramDispatcher {
-
-    @Substitute
-    static int write0(FileDescriptor fd, long address, int len) {
-        throw VMError.unsupportedFeature("Unimplemented: sun.nio.ch.DatagramChannelImpl.receive0(FileDescriptor, long, int)");
-    }
-}
-
 /** Dummy class to have a class with the file's name. */
 public final class SunNioSubstitutions {
 }

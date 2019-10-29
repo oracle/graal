@@ -34,7 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Test of basic datagram channel send/receive functionality.
+ * Test of basic datagram channel functionality.
  */
 public class DatagramChannelTest {
 
@@ -45,7 +45,7 @@ public class DatagramChannelTest {
     }
 
     @Test
-    public void testBasicFunctions() throws IOException {
+    public void testSendAndReceive() throws IOException {
         for (StandardProtocolFamily family : supportedProtocolValues()) {
             try (DatagramChannel a = DatagramChannel.open(family)) {
                 try (DatagramChannel b = DatagramChannel.open(family)) {
@@ -73,7 +73,6 @@ public class DatagramChannelTest {
 
                     // here's where it gets tricky: UDP is unreliable, so we need to avoid false
                     // negatives...
-
                     InetSocketAddress src;
                     int retry = 0;
                     do {
@@ -94,6 +93,69 @@ public class DatagramChannelTest {
 
                     Assert.assertTrue(senderAddress.getAddress().isAnyLocalAddress());
                     Assert.assertEquals(senderAddress.getPort(), src.getPort());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testConnectReadWriteAndDisconnect() throws IOException {
+        for (StandardProtocolFamily family : supportedProtocolValues()) {
+            try (DatagramChannel a = DatagramChannel.open(family)) {
+                try (DatagramChannel b = DatagramChannel.open(family)) {
+
+                    a.bind(new InetSocketAddress(0));
+                    b.bind(new InetSocketAddress(0));
+
+                    final InetSocketAddress bindAddress = (InetSocketAddress) a.getLocalAddress();
+                    final InetSocketAddress senderAddress = (InetSocketAddress) b.getLocalAddress();
+
+                    // verify we can connect
+                    a.connect(senderAddress);
+                    b.connect(bindAddress);
+
+                    Assert.assertTrue(a.isConnected());
+                    Assert.assertTrue(b.isConnected());
+
+                    a.configureBlocking(false);
+                    b.configureBlocking(false);
+
+                    // a datagram to write
+                    ByteBuffer payload = ByteBuffer.allocateDirect(100);
+                    ByteBuffer comparison = ByteBuffer.allocateDirect(100);
+                    for (int i = 99; i >= 0; i--) {
+                        payload.put((byte) i);
+                    }
+                    payload.flip(); // ready to write
+
+                    // verify no data waiting on either socket
+                    Assert.assertEquals("Read " + comparison.position() + " unexpected bytes", 0, a.read(comparison));
+                    Assert.assertEquals("Read " + comparison.position() + " unexpected bytes", 0, b.read(comparison));
+
+                    int read;
+                    int retry = 0;
+                    do {
+                        // write it from b to a
+                        Assert.assertEquals(100, b.write(payload));
+                        // expect to receive it, soon-ish
+                        int innerRetry = 0;
+                        do {
+                            read = a.read(comparison);
+                        } while (read == 0 && ++innerRetry < 16);
+                        payload.rewind();
+                    } while (read == 0 && ++retry < 16);
+
+                    Assert.assertEquals(100, read);
+
+                    comparison.flip();
+                    Assert.assertEquals(payload, comparison);
+
+                    // verify we can disconnect
+                    a.disconnect();
+                    b.disconnect();
+
+                    Assert.assertFalse(a.isConnected());
+                    Assert.assertFalse(b.isConnected());
                 }
             }
         }
