@@ -109,7 +109,7 @@ _lib_prefix = mx.add_lib_prefix("")
 
 
 _graalvm_base_name = 'GraalVM'
-_graalvm_maven_attributes = {'groupId': 'org.graalvm'}
+_graalvm_maven_attributes = {'groupId': 'org.graalvm', 'tag': 'graalvm'}
 
 
 default_components = []
