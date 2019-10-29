@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 
+import java.nio.file.Path;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -60,7 +61,7 @@ class SubstrateLIRBackendFeature implements Feature, GraalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform) {
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
             }
         });
