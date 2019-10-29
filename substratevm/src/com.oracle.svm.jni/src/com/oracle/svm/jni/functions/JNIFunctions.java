@@ -59,7 +59,10 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.log.Log;
@@ -84,7 +87,6 @@ import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerRetu
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullWord;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnZero;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
-import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -947,13 +949,17 @@ final class JNIFunctions {
 
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue {
             static void enter(JNIJavaVM vm) {
-                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true) != CEntryPointErrors.NO_ERROR) {
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
+                }
             }
         }
 
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue {
             static void enter(JNIJavaVM vm) {
-                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false);
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false) != CEntryPointErrors.NO_ERROR) {
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
+                }
             }
         }
 
@@ -1074,13 +1080,25 @@ final class JNIFunctions {
         }
     }
 
+    static final CGlobalData<CCharPointer> UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE = CGlobalDataFactory.createCString(
+                    "An unimplemented JNI function was called in a way or at a time when no error reporting could be performed.");
+
+    static class JNIEnvUnimplementedPrologue {
+        static void enter(JNIEnvironment env) {
+            int error = CEntryPointActions.enter((IsolateThread) env);
+            if (error != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(error, UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE.get());
+            }
+        }
+    }
+
     static class UnimplementedWithJNIEnvArgument {
         /**
          * Stub for unimplemented JNI functionality with a JNIEnv argument.
          */
         @CEntryPoint
-        @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-        static void unimplemented(JNIEnvironment env) {
+        @CEntryPointOptions(prologue = JNIEnvUnimplementedPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+        static int unimplemented(JNIEnvironment env) {
             /*
              * We do not catch and preserve this exception like we normally would with JNI because
              * it is unlikely that native code checks for a pending exception after each JNI
@@ -1088,7 +1106,16 @@ final class JNIFunctions {
              * encounter the pending exception in an unrelated context, making this unnecessarily
              * difficult to debug.
              */
-            VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
+            throw VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
+        }
+    }
+
+    static class JNIJavaVMUnimplementedPrologue {
+        static void enter(JNIJavaVM vm) {
+            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+            if (error != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(error, UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE.get());
+            }
         }
     }
 
@@ -1097,9 +1124,9 @@ final class JNIFunctions {
          * Stub for unimplemented JNI functionality with a JavaVM argument.
          */
         @CEntryPoint
-        @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-        static void unimplemented(JNIJavaVM vm) {
-            VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
+        @CEntryPointOptions(prologue = JNIJavaVMUnimplementedPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+        static int unimplemented(JNIJavaVM vm) {
+            throw VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
         }
     }
 }

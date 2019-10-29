@@ -249,7 +249,7 @@ final class Target_java_lang_Thread {
          */
         threadStatus = ThreadStatus.RUNNABLE;
         wasStartedByCurrentIsolate = true;
-        JavaThreads.singleton().doStartThread(JavaThreads.fromTarget(this), chosenStackSize);
+        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), chosenStackSize);
     }
 
     @Substitute
