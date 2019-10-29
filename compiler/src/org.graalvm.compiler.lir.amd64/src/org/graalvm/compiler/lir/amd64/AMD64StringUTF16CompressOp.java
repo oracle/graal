@@ -36,6 +36,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp.useAVX512ForStringInflateCompress;
 
+import jdk.vm.ci.code.CodeUtil;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -55,6 +56,8 @@ import jdk.vm.ci.meta.Value;
 public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64StringUTF16CompressOp> TYPE = LIRInstructionClass.create(AMD64StringUTF16CompressOp.class);
 
+    private final int useAVX3Threshold;
+
     @Def({REG}) private Value rres;
     @Use({REG}) private Value rsrc;
     @Use({REG}) private Value rdst;
@@ -70,8 +73,11 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
     @Temp({REG}) private Value vtmp4;
     @Temp({REG}) private Value rtmp5;
 
-    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, Value res, Value src, Value dst, Value len) {
+    public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
         super(TYPE);
+
+        assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
+        this.useAVX3Threshold = useAVX3Threshold;
 
         assert asRegister(src).equals(rsi);
         assert asRegister(dst).equals(rdi);
@@ -124,7 +130,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
      * @param tmp (gpr) temporary gpr register
      * @param res (rax) the result code (length on success, zero otherwise)
      */
-    private static void charArrayCompress(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register tmp1,
+    private void charArrayCompress(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register tmp1,
                     Register tmp2, Register tmp3, Register tmp4, Register tmp, Register res) {
         assert tmp1.getRegisterCategory().equals(AMD64.XMM);
         assert tmp2.getRegisterCategory().equals(AMD64.XMM);
@@ -140,7 +146,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64LIRInstruction {
 
         masm.push(len);      // Save length for return.
 
-        if (useAVX512ForStringInflateCompress(masm.target)) {
+        if (useAVX3Threshold == 0 && useAVX512ForStringInflateCompress(masm.target)) {
             Label labelRestoreK1ReturnZero = new Label();
             Label labelAvxPostAlignment = new Label();
 
