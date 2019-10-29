@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -126,8 +127,8 @@ public class LLVMFeature implements Feature, GraalFeature {
 
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform);
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform, tempDir);
             }
         });
 
