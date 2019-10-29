@@ -24,6 +24,19 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Mode;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Splitting;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.getValue;
+
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.options.OptionValues;
 
 /**
@@ -44,22 +57,21 @@ public class RuntimeOptionsCache {
 
     public RuntimeOptionsCache(OptionValues options) {
         // Splitting
-        splitting = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Splitting) &&
-                        PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
-        splittingAllowForcedSplits = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingAllowForcedSplits);
-        splittingDumpDecisions = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingDumpDecisions);
-        splittingMaxCalleeSize = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingMaxCalleeSize);
-        splittingMaxPropagationDepth = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingMaxPropagationDepth);
-        splittingTraceEvents = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingTraceEvents);
-        traceSplittingSummary = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.TraceSplittingSummary);
-        splittingGrowthLimit = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingGrowthLimit);
-        splittingMaxNumberOfSplitNodes = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes);
+        splitting = getValue(options, Splitting) &&
+                        getValue(options, Mode) != EngineModeEnum.LATENCY;
+        splittingAllowForcedSplits = getValue(options, SplittingAllowForcedSplits);
+        splittingDumpDecisions = getValue(options, SplittingDumpDecisions);
+        splittingMaxCalleeSize = getValue(options, SplittingMaxCalleeSize);
+        splittingMaxPropagationDepth = getValue(options, SplittingMaxPropagationDepth);
+        splittingTraceEvents = getValue(options, SplittingTraceEvents);
+        traceSplittingSummary = getValue(options, TraceSplittingSummary);
+        splittingGrowthLimit = getValue(options, SplittingGrowthLimit);
+        splittingMaxNumberOfSplitNodes = getValue(options, SplittingMaxNumberOfSplitNodes);
     }
 
     boolean isSplittingDumpDecisions() {
         return splittingDumpDecisions;
     }
-
 
     boolean isSplittingAllowForcedSplits() {
         return splittingAllowForcedSplits;
