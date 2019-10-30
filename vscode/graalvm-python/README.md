@@ -1,6 +1,7 @@
 # GraalVM Python Support for VS Code
 
 A VS Code extension providing the basic support for editing and debugging Python programs running on [GraalVM Python](http://www.graalvm.org/docs/reference-manual/languages/python).
+The extension is Technology Preview.
 
 ## Features
 
@@ -25,4 +26,8 @@ For Python sources opened in editor, all the `Polyglot.eval(...)` calls are dete
 
 This extension depends on the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - Python language support.
-* [GraalVM](https://marketplace.visualstudio.com/items?itemName=OracleLabs.graalvm) - Basic support for GraalVM.
+* [GraalVM](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) - Basic support for GraalVM.
+
+## Privacy Policy
+
+Please read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
