@@ -189,11 +189,6 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
-        final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
-        callTarget.addKnownCallNode(directCallNode);
-    }
-
     static class SplitStatisticsReporter extends Thread {
         final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
         final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();

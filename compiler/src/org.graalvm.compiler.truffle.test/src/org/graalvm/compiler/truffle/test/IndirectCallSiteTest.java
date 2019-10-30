@@ -132,7 +132,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
         DirectlyCallsTargetWithArguments(OptimizedCallTarget target, Object[] arguments) {
             super();
-            this.directCallNode = new OptimizedDirectCallNode(target);
+            this.directCallNode = (OptimizedDirectCallNode) GraalTruffleRuntime.getRuntime().createDirectCallNode(target);
             this.arguments = arguments;
         }
 

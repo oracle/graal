@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -129,8 +128,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
-    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
+    private static final WeakReference<OptimizedDirectCallNode> UNINITIALIZED = new WeakReference<>(null);
+    private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED;
     private boolean needsSplit;
+
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -142,7 +143,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.engineData = GraalTVMCI.getEngineData(rootNode);
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
         this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
-        this.knownCallNodes = new ArrayList<>(1);
         tvmci.setCallTarget(rootNode, this);
     }
 
@@ -605,16 +605,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return callSitesKnown;
     }
 
-    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    final synchronized void incrementKnownCallSites() {
-        callSitesKnown++;
-    }
-
-    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    final synchronized void decrementKnownCallSites() {
-        callSitesKnown--;
-    }
-
     public final OptimizedCallTarget getSourceCallTarget() {
         return sourceCallTarget;
     }
@@ -827,22 +817,57 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
-        // Keeping all the known call sites can be too much to handle in some cases
-        // so we are limiting to a 100 call sites for now
-        if (knownCallNodes.size() < 100) {
-            knownCallNodes.add(new WeakReference<>(directCallNode));
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
+    synchronized void addDirectCallNode(OptimizedDirectCallNode directCallNode) {
+        Objects.requireNonNull(directCallNode);
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            // we only remember at most one call site
+            if (nodeRef == UNINITIALIZED) {
+                singleCallNode = new WeakReference<>(directCallNode);
+            } else if (nodeRef.get() == directCallNode) {
+                // nothing to do same call site
+                return;
+            } else {
+                singleCallNode = null;
+            }
         }
+        callSitesKnown++;
     }
 
-    // Also removes references to reclaimed objects
-    synchronized void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
-        knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
-            @Override
-            public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
-                return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
+    synchronized void removeDirectCallNode(OptimizedDirectCallNode directCallNode) {
+        Objects.requireNonNull(directCallNode);
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            // we only remember at most one call site
+            if (nodeRef == UNINITIALIZED) {
+                // nothing to do
+                return;
+            } else if (nodeRef.get() == directCallNode) {
+                // reset if its the only call site
+                singleCallNode = UNINITIALIZED;
+            } else {
+                singleCallNode = null;
             }
-        });
+        }
+        callSitesKnown--;
+    }
+
+    public boolean isSingleCaller() {
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            return nodeRef.get() != null;
+        }
+        return false;
+    }
+
+    public OptimizedDirectCallNode getSingleCallNode() {
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            return nodeRef.get();
+        }
+        return null;
     }
 
     boolean isNeedsSplit() {
@@ -860,29 +885,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
-        final int numberOfKnownCallNodes;
-        final OptimizedDirectCallNode onlyCaller;
-        synchronized (this) {
-            numberOfKnownCallNodes = knownCallNodes.size();
-            onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
-        }
-        if (depth > engineData.options.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
-            logEarlyReturn(depth, numberOfKnownCallNodes);
+        final OptimizedDirectCallNode onlyCaller = getSingleCallNode();
+        if (depth > engineData.options.getSplittingMaxPropagationDepth() || needsSplit || callSitesKnown == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
+            logEarlyReturn(depth, callSitesKnown);
             return needsSplit;
         }
-        if (numberOfKnownCallNodes == 1) {
-            if (onlyCaller != null) {
-                final RootNode callerRootNode = onlyCaller.getRootNode();
-                if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
-                    final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (engineData.options.isSplittingDumpDecisions()) {
-                        pullOutParentChain(onlyCaller, toDump);
-                    }
-                    logPolymorphicEvent(depth, "One caller! Analysing parent.");
-                    if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
-                        logPolymorphicEvent(depth, "Set needs split to true via parent");
-                        needsSplit = true;
-                    }
+        if (onlyCaller != null) {
+            final RootNode callerRootNode = onlyCaller.getRootNode();
+            if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
+                final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+                if (engineData.options.isSplittingDumpDecisions()) {
+                    pullOutParentChain(onlyCaller, toDump);
+                }
+                logPolymorphicEvent(depth, "One caller! Analysing parent.");
+                if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                    logPolymorphicEvent(depth, "Set needs split to true via parent");
+                    needsSplit = true;
                 }
             }
         } else {
@@ -890,6 +908,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             needsSplit = true;
             maybeDump(toDump);
         }
+
         logPolymorphicEvent(depth, "Return:", needsSplit);
         return needsSplit;
     }
@@ -915,12 +934,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private void maybeDump(List<Node> toDump) {
         if (engineData.options.isSplittingDumpDecisions()) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
-            synchronized (this) {
-                for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
-                    if (nodeRef.get() != null) {
-                        callers.add(nodeRef.get());
-                    }
-                }
+            OptimizedDirectCallNode callNode = getSingleCallNode();
+            if (callNode != null) {
+                callers.add(callNode);
             }
             PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, callers);
         }

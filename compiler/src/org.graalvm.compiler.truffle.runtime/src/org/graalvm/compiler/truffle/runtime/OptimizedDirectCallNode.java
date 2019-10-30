@@ -49,7 +49,10 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
     @CompilationFinal private Class<? extends Throwable> exceptionProfile;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
-    public OptimizedDirectCallNode(OptimizedCallTarget target) {
+    /*
+     * Should be instantiated with the runtime.
+     */
+    OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
     }
@@ -144,10 +147,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
     }
 
     private void onInterpreterCall(OptimizedCallTarget target) {
-        int calls = ++callCount;
-        if (calls == 1) {
-            target.incrementKnownCallSites();
-        }
+        callCount++;
         TruffleSplittingStrategy.beforeCall(this, target);
     }
 
@@ -168,12 +168,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
             splitTarget.setCallSiteForSplit(this);
 
-            if (callCount >= 1) {
-                currentTarget.decrementKnownCallSites();
-                currentTarget.removeKnownCallSite(this);
-                splitTarget.incrementKnownCallSites();
-            }
-            splitTarget.addKnownCallNode(this);
+            currentTarget.removeDirectCallNode(this);
+            splitTarget.addDirectCallNode(this);
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted

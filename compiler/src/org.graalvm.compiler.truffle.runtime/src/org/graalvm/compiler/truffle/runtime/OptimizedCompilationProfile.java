@@ -83,7 +83,7 @@ public final class OptimizedCompilationProfile {
     private volatile boolean compilationFailed;
     @CompilationFinal private boolean callProfiled;
 
-    public OptimizedCompilationProfile(OptionValues options) {
+    OptimizedCompilationProfile(OptionValues options) {
         this.options = options;
         boolean compileImmediately = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompileImmediately);
         int callThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MinInvokeThreshold);

@@ -35,7 +35,7 @@ public final class OptimizedLoopNode extends LoopNode {
 
     @Child private RepeatingNode repeatingNode;
 
-    public OptimizedLoopNode(RepeatingNode repeatingNode) {
+    OptimizedLoopNode(RepeatingNode repeatingNode) {
         this.repeatingNode = repeatingNode;
     }
 
