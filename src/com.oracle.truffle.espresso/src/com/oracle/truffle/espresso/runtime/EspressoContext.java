@@ -237,6 +237,9 @@ public final class EspressoContext {
                 final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
+                        // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+                        // HotSpot's "new behavior": Walk down the list, self-looping the next field
+                        // so that the References are not considered active.
                         EspressoReference head;
                         do {
                             head = (EspressoReference) REFERENCE_QUEUE.remove();
