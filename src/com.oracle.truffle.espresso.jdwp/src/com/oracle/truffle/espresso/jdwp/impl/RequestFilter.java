@@ -35,6 +35,7 @@ public class RequestFilter {
     private int nextIndex;
     private boolean stepping;
     private int eventLimit = Integer.MAX_VALUE;
+    private Object thread;
 
     public RequestFilter(int requestId, byte eventKind, int modifiers) {
         this.requestId = requestId;
@@ -86,5 +87,13 @@ public class RequestFilter {
 
     public void addEventLimit(int count) {
         this.eventLimit = count;
+    }
+
+    public void addThread(Object thread) {
+        this.thread = thread;
+    }
+
+    public Object getThread() {
+        return thread;
     }
 }

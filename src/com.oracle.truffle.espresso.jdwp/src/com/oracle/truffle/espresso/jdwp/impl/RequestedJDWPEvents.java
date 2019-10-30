@@ -117,36 +117,38 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
-    private Callable handleModCount(RequestFilter filter, PacketStream stream, byte modCount, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
+    private Callable handleModCount(RequestFilter filter, PacketStream input, byte modCount, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
         switch (modCount) {
             case 1:
-                int count = stream.readInt();
+                int count = input.readInt();
                 filter.addEventLimit(count);
                 break;
             case 2:
-                System.out.println("unhandled modcount 2");
+                System.err.println("unhandled modKind 2");
                 break;
             case 3:
-                System.out.println("unhandled modcount 3");
+                long threadId = input.readLong();
+                Object thread = context.getIds().fromId((int) threadId);
+                filter.addThread(thread);
                 break;
             case 4:
-                long refTypeId = stream.readLong();
+                long refTypeId = input.readLong();
                 filter.addRefTypeLimit((KlassRef) ids.fromId((int) refTypeId));
                 break;
             case 5: // class prepare positive pattern
-                String classPattern = stream.readString();
+                String classPattern = input.readString();
                 ClassPrepareRequest classPrepareRequest = new ClassPrepareRequest(Pattern.compile(classPattern), filter.getRequestId());
                 return eventListener.addClassPrepareRequest(classPrepareRequest);
             case 6:
-                String classExcludePattern = stream.readString();
+                String classExcludePattern = input.readString();
                 filter.addExcludePattern(classExcludePattern);
                 break;
             case 7: // location-specific
-                byte typeTag = stream.readByte();
-                long classId = stream.readLong();
-                long methodId = stream.readLong();
-                long bci = stream.readLong();
-                BreakpointInfo info = new BreakpointInfo(filter.getRequestId(), typeTag, classId, methodId, bci);
+                byte typeTag = input.readByte();
+                long classId = input.readLong();
+                long methodId = input.readLong();
+                long bci = input.readLong();
+                BreakpointInfo info = new BreakpointInfo(filter, typeTag, classId, methodId, bci);
 
                 KlassRef klass = (KlassRef) ids.fromId((int) classId);
                 String slashName = klass.getTypeAsString();
@@ -156,19 +158,19 @@ public class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 break;
             case 8:
-                System.out.println("unhandled modcount 8");
+                System.err.println("unhandled modKind 8");
                 break;
             case 9:
-                System.out.println("unhandled modcount 9");
+                System.err.println("unhandled modKind 9");
                 break;
             case 10:
                 filter.setStepping(true);
-                long threadId = stream.readLong();
-                Object thread = context.getIds().fromId((int) threadId);
+                threadId = input.readLong();
+                thread = context.getIds().fromId((int) threadId);
 
-                int size = stream.readInt();
+                /*int size =*/ input.readInt();
 
-                int depth = stream.readInt();
+                int depth = input.readInt();
                 switch (depth) {
                     case SteppingConstants.INTO:
                         callback.stepInto(thread, filter.getRequestId());
@@ -182,10 +184,10 @@ public class RequestedJDWPEvents {
                 }
                 break;
             case 11:
-                System.out.println("unhandled modcount 11");
+                System.err.println("unhandled modKind 11");
                 break;
             case 12:
-                System.out.println("unhandled modcount 12");
+                System.err.println("unhandled modKind 12");
                 break;
             default:
                 break;

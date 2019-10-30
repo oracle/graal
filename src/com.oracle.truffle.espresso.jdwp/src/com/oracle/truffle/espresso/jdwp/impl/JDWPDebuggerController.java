@@ -204,8 +204,8 @@ public class JDWPDebuggerController {
     }
 
     public boolean suspend(Object thread) {
-        // TODO(Gregersen) - call method directly when it becomes available
         try {
+            // TODO(Gregersen) - call method directly when it becomes available
             suspendMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
 
             // wait up to below timeout for the thread to become suspended before
@@ -277,23 +277,32 @@ public class JDWPDebuggerController {
 
             //System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
 
+            boolean hit = false;
+            for (Breakpoint bp : event.getBreakpoints()) {
+                //System.out.println("BP at suspension point: " + bp.getLocationDescription());
+
+                BreakpointInfo info = breakpointInfos.get(bp);
+
+                // check if breakpoint request limited to a specific thread
+                Object thread = info.getThread();
+                if (thread == null || thread == currentThread) {
+                    if (!hit) {
+                        // First hit, so we can increase the thread suspension.
+                        // Register the thread as suspended before sending the breakpoint hit event.
+                        // The debugger will verify thread status as part of registering if a breakpoint is hit
+                        ThreadSuspension.suspendThread(currentThread);
+                        VMEventListeners.getDefault().breakpointHit(info, currentThread);
+                    }
+                    hit = true;
+                }
+            }
+
             JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames());
             SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
             suspendedInfos.put(currentThread, suspendedInfo);
 
-            boolean alreadySuspended = false;
-            for (Breakpoint bp : event.getBreakpoints()) {
-                //System.out.println("BP at suspension point: " + bp.getLocationDescription());
-                // register the thread as suspended before sending the breakpoint hit event.
-                // The debugger will verify thread status as part of registering if a breakpoint is hit
-                if (!alreadySuspended) {
-                    alreadySuspended = true;
-                    ThreadSuspension.suspendThread(currentThread);
-                }
-                VMEventListeners.getDefault().breakpointHit(breakpointInfos.get(bp), currentThread);
-            }
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(callFrames[0], currentThread, alreadySuspended);
+            suspend(callFrames[0], currentThread, hit);
         }
 
         private boolean checkExclusionFilters(SuspendedEvent event, Object thread) {
