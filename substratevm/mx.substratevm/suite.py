@@ -994,8 +994,21 @@ suite = {
             "native" : True,
             "platformDependent" : True,
             "description" : "Native Image support distribution for the GraalVM",
-            "layout" : {
-                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+            "os_arch" : {
+                "windows": {
+                    "<others>" : {
+                        "layout" : {
+                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "layout" : {
+                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+                        },
+                    },
+                },
             },
         },
 
