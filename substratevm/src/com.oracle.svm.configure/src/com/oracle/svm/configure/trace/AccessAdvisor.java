@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.trace;
 
 import java.util.Arrays;
+
 import org.graalvm.compiler.phases.common.LazyValue;
 
 public class AccessAdvisor {
@@ -105,6 +106,19 @@ public class AccessAdvisor {
         // Ignore libjvmcicompiler internal JNI calls
         // 1. Lookup of jdk.vm.ci.services.Services
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(name.get())) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> callerClass) {
+        if (!ignoreInternalAccesses) {
+            return false;
+        }
+        if (shouldIgnore(callerClass)) {
+            return true;
+        }
+        if (launchPhase > 0) { // command-line argument arrays
             return true;
         }
         return false;

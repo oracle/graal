@@ -185,4 +185,15 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         }
         return reflectTypeAccessChecker.isFieldAccessible(env, clazz, () -> name, fieldId, declaring);
     }
+
+    public boolean verifyNewObjectArray(JNIEnvironment env, JNIObjectHandle arrayClass, JNIObjectHandle callerClass) {
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        if (accessAdvisor.shouldIgnoreJniNewObjectArray(new LazyValue<>(() -> getClassNameOrNull(env, arrayClass)))) {
+            return true;
+        }
+        return typeAccessChecker.getType(arrayClass) != null;
+    }
+
 }

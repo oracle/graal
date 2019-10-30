@@ -27,11 +27,12 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.phases.common.LazyValue;
+
 import com.oracle.svm.configure.config.ConfigurationMemberKind;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.TypeConfiguration;
 
-import org.graalvm.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
@@ -129,6 +130,14 @@ class JniProcessor extends AbstractProcessor {
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
                 config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
+                break;
+            }
+            case "NewObjectArray": {
+                expectSize(args, 0);
+                if (!advisor.shouldIgnoreJniNewObjectArray(callerClassLazyValue)) {
+                    String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, false);
+                    config.getOrCreateType(arrayQualifiedJavaName);
+                }
                 break;
             }
         }
