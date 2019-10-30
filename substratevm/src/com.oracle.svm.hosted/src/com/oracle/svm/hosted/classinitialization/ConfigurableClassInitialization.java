@@ -340,7 +340,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private static String getTraceString(StackTraceElement[] trace) {
         StringBuilder b = new StringBuilder();
 
-        for (int i = START_OF_THE_TRACE; i < trace.length; i++) {
+        for (int i = 0; i < trace.length; i++) {
             StackTraceElement stackTraceElement = trace[i];
             b.append("\tat ").append(stackTraceElement.toString()).append("\n");
         }
