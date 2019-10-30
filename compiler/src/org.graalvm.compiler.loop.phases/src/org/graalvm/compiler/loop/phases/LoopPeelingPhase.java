@@ -25,9 +25,7 @@
 package org.graalvm.compiler.loop.phases;
 
 import org.graalvm.compiler.debug.CounterKey;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.LoopsData;
@@ -37,8 +35,6 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public static final CounterKey PEELED = DebugContext.counter("Peeled");
-
-    public static final TimerKey TimerHeuristic = DebugContext.timer("Peeling_Heuristic");
 
     public LoopPeelingPhase(LoopPolicies policies) {
         super(policies);
@@ -53,11 +49,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
                     if (loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0) {
-                        boolean shouldPeel = false;
-                        try (DebugCloseable dc = TimerHeuristic.start(graph.getDebug())) {
-                            shouldPeel = LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context);
-                        }
-                        if (shouldPeel) {
+                        if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context)) {
                             debug.log("Peeling %s", loop);
                             PEELED.increment(debug);
                             LoopTransformations.peel(loop);
@@ -74,6 +66,6 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     @Override
     public float codeSizeIncrease() {
-        return 5.0f;
+        return 10.0f;
     }
 }
