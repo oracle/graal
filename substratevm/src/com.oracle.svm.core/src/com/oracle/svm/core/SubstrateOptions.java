@@ -209,7 +209,8 @@ public class SubstrateOptions {
 
     @APIOption(name = "rwx-code-cache")//
     @Option(help = "Allocate code cache with RWX access permissions")//
-    public static final HostedOptionKey<Boolean> RWXCodeCache = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RWXCodeCache = new HostedOptionKey<>(!System.getProperty("os.arch").contentEquals("amd64") ||
+                    (System.getProperty(Platform.PLATFORM_PROPERTY_NAME) != null && System.getProperty(Platform.PLATFORM_PROPERTY_NAME).contentEquals("com.oracle.mle.vos.platform.VosAmd64Platform")));
 
     /*
      * Object and array allocation options.
