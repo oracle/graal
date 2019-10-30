@@ -157,7 +157,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             currentBci = 0; // start of the method
             method = bytecodeNode.getMethod();
             scopeNode = bytecodeNode;
-            } else {
+        } else {
             return super.findLocalScopes(context, node, frame);
         }
         Klass klass = method.getDeclaringKlass();
