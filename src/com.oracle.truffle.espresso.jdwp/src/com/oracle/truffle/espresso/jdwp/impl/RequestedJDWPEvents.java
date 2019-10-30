@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 
+import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
@@ -68,7 +69,7 @@ public class RequestedJDWPEvents {
 
     public JDWPResult registerEvent(Packet packet, JDWPCommands callback, JDWPContext context) {
         PacketStream reply = null;
-        Callable future = null;
+        ArrayList<Callable> futures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
 
         byte eventKind = input.readByte();
@@ -77,8 +78,11 @@ public class RequestedJDWPEvents {
 
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
-            byte modCount = input.readByte();
-            future = handleModCount(filter, input, modCount, suspendPolicy, callback, context);
+            byte modKind = input.readByte();
+            Callable future = handleModKind(filter, input, modKind, suspendPolicy, callback, context);
+            if (future != null) {
+                futures.add(future);
+            }
         }
 
         switch (eventKind) {
@@ -107,7 +111,7 @@ public class RequestedJDWPEvents {
 
         // register the request filter for this event
         EventFilters.getDefault().addFilter(filter);
-        return new JDWPResult(reply, future);
+        return new JDWPResult(reply, futures);
     }
 
     private PacketStream toReply(Packet packet) {
@@ -117,8 +121,8 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
-    private Callable handleModCount(RequestFilter filter, PacketStream input, byte modCount, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
-        switch (modCount) {
+    private Callable handleModKind(RequestFilter filter, PacketStream input, byte modKind, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
+        switch (modKind) {
             case 1:
                 int count = input.readInt();
                 filter.addEventLimit(count);
@@ -126,7 +130,7 @@ public class RequestedJDWPEvents {
             case 2:
                 System.err.println("unhandled modKind 2");
                 break;
-            case 3:
+            case 3: // limit to specific thread
                 long threadId = input.readLong();
                 Object thread = context.getIds().fromId((int) threadId);
                 filter.addThread(thread);
@@ -137,7 +141,7 @@ public class RequestedJDWPEvents {
                 break;
             case 5: // class prepare positive pattern
                 String classPattern = input.readString();
-                ClassPrepareRequest classPrepareRequest = new ClassPrepareRequest(Pattern.compile(classPattern), filter.getRequestId());
+                ClassPrepareRequest classPrepareRequest = new ClassPrepareRequest(Pattern.compile(classPattern), filter);
                 return eventListener.addClassPrepareRequest(classPrepareRequest);
             case 6:
                 String classExcludePattern = input.readString();

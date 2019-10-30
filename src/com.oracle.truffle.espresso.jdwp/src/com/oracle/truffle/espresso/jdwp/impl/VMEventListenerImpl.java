@@ -60,13 +60,7 @@ public class VMEventListenerImpl implements VMEventListener {
         if (klasses.length > 0) {
             for (KlassRef klass : klasses) {
                 // great, we can simply send a class prepare event for the class
-                return new Callable() {
-                    @Override
-                    public Object call() throws Exception {
-                        classPrepared(klass, klass.getPrepareThread());
-                        return null;
-                    }
-                };
+                return getPreparedCallable(request, klass);
             }
         } else {
             KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
@@ -76,18 +70,25 @@ public class VMEventListenerImpl implements VMEventListener {
                     Matcher matcher = cpr.getPattern().matcher(dotName);
 
                     if (matcher.matches()) {
-                        return new Callable() {
-                            @Override
-                            public Object call() throws Exception {
-                                classPrepared(klass, context.getHost2GuestThread(Thread.currentThread()));
-                                return null;
-                            }
-                        };
+                        return getPreparedCallable(request, klass);
                     }
                 }
             }
         }
         return null;
+    }
+
+    private Callable getPreparedCallable(ClassPrepareRequest request, KlassRef klass) {
+        return new Callable() {
+            @Override
+            public Object call() throws Exception {
+                Object thread = klass.getPrepareThread();
+                if (request.getThread() == null || request.getThread() == thread) {
+                    classPrepared(klass, thread);
+                }
+                return null;
+            }
+        };
     }
 
     @Override

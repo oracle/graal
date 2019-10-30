@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -170,7 +171,7 @@ public class JDWPDebuggerController {
         }
     }
 
-    public void resume(Object thread, boolean sessionClosed) {
+    public void resume(Object thread) {
         ThreadSuspension.resumeThread(thread);
         int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
 
@@ -178,18 +179,7 @@ public class JDWPDebuggerController {
             // only resume when suspension count reaches 0
             Object lock = getSuspendLock(thread);
             synchronized (lock) {
-                try {
-                    if (!sessionClosed) {
-                        // TODO(Gregersen) - call method directly when it becomes available
-                        resumeMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
-                    }
-                    // clear the suspension info for this thread
-                    suspendedInfos.put(thread, null);
-
-                    lock.notifyAll();
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to resume thread: " + thread, e);
-                }
+                lock.notifyAll();
             }
         }
     }
@@ -199,7 +189,17 @@ public class JDWPDebuggerController {
         ThreadSuspension.resumeAll();
 
         for (Object thread : getContext().getAllGuestThreads()) {
-            resume(thread, sessionClosed);
+            resume(thread);
+            if (!sessionClosed) {
+                // TODO(Gregersen) - call method directly when it becomes available
+                try {
+                    resumeMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
+                    // also clear the suspension info for this thread
+                    suspendedInfos.put(thread, null);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to resume thread: " + thread, e);
+                }
+            }
         }
     }
 
@@ -268,6 +268,8 @@ public class JDWPDebuggerController {
 
             Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
 
+            //System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
+
             if (commandRequestIds.get(currentThread) != null) {
                 if (checkExclusionFilters(event, currentThread)) {
                     //System.out.println("not suspending here: " + event.getSourceSection());
@@ -275,7 +277,9 @@ public class JDWPDebuggerController {
                 }
             }
 
-            //System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
+            JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames());
+            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
+            suspendedInfos.put(currentThread, suspendedInfo);
 
             boolean hit = false;
             for (Breakpoint bp : event.getBreakpoints()) {
@@ -287,19 +291,15 @@ public class JDWPDebuggerController {
                 Object thread = info.getThread();
                 if (thread == null || thread == currentThread) {
                     if (!hit) {
+                        hit = true;
                         // First hit, so we can increase the thread suspension.
                         // Register the thread as suspended before sending the breakpoint hit event.
                         // The debugger will verify thread status as part of registering if a breakpoint is hit
                         ThreadSuspension.suspendThread(currentThread);
                         VMEventListeners.getDefault().breakpointHit(info, currentThread);
                     }
-                    hit = true;
                 }
             }
-
-            JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames());
-            SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
-            suspendedInfos.put(currentThread, suspendedInfo);
 
             // now, suspend the current thread until resumed by e.g. a debugger command
             suspend(callFrames[0], currentThread, hit);

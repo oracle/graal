@@ -27,11 +27,11 @@ import java.util.regex.Pattern;
 public class ClassPrepareRequest {
 
     private final Pattern pattern;
-    private final int requestId;
+    private final RequestFilter filter;
 
-    ClassPrepareRequest(Pattern pattern, int requestId) {
+    ClassPrepareRequest(Pattern pattern, RequestFilter filter) {
         this.pattern = pattern;
-        this.requestId = requestId;
+        this.filter = filter;
     }
 
     public Pattern getPattern() {
@@ -39,6 +39,10 @@ public class ClassPrepareRequest {
     }
 
     public int getRequestId() {
-        return requestId;
+        return filter.getRequestId();
+    }
+
+    public Object getThread() {
+        return filter.getThread();
     }
 }
