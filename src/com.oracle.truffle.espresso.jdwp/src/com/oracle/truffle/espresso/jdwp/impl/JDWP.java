@@ -124,12 +124,22 @@ class JDWP {
             }
         }
 
+        static class SUSPEND {
+            public static final int ID = 8;
+
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                controller.suspendAll();
+                return new JDWPResult(reply);
+            }
+        }
+
         static class RESUME {
             public static final int ID = 9;
 
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
-                controller.resumeAll();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                controller.resumeAll(false);
                 return new JDWPResult(reply);
             }
         }
@@ -1006,7 +1016,7 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                controller.resume(thread);
+                controller.resume(thread, false);
                 return new JDWPResult(reply);
             }
         }
@@ -1052,7 +1062,7 @@ class JDWP {
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
                 //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread) + " with status: " + threadStatus);
-                reply.writeInt(ThreadSuspension.isSuspended(thread));
+                reply.writeInt(ThreadSuspension.getSuspensionCount(thread) > 0 ? 1 : 0);
                 return new JDWPResult(reply, null);
             }
 

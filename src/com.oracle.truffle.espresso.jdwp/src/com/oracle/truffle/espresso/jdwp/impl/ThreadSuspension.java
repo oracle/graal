@@ -37,6 +37,7 @@ public class ThreadSuspension {
             if (thread == threads[i]) {
                 // increase the suspension count
                 suspensionCount[i]++;
+                return;
             }
         }
         // not yet registered, so add to array
@@ -58,20 +59,10 @@ public class ThreadSuspension {
             if (thread == threads[i]) {
                 if (suspensionCount[i] > 0) {
                     suspensionCount[i]--;
-                    // only decrease the suspension count once!
-                    break;
+                    return;
                 }
             }
         }
-    }
-
-    public static int isSuspended(Object thread) {
-        for (int i = 0; i < threads.length; i++) {
-            if (thread == threads[i]) {
-                return suspensionCount[i] > 0 ? 1 : 0;
-            }
-        }
-        return 0;
     }
 
     public static int getSuspensionCount(Object thread) {

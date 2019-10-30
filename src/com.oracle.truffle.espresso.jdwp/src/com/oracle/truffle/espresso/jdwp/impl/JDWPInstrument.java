@@ -83,7 +83,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         controller.endSession();
 
         // resume all threads
-        controller.resumeAll();
+        controller.resumeAll(true);
 
         // replace the controller instance
         JDWPOptions options = controller.getOptions();

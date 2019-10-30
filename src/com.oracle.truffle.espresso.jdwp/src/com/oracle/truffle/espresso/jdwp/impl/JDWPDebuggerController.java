@@ -63,6 +63,7 @@ public class JDWPDebuggerController {
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
     private Ids ids;
     private Method suspendMethod;
+    private Method resumeMethod;
 
     // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -88,6 +89,9 @@ public class JDWPDebuggerController {
         try {
             suspendMethod = DebuggerSession.class.getDeclaredMethod("suspend", Thread.class);
             suspendMethod.setAccessible(true);
+
+            resumeMethod = DebuggerSession.class.getDeclaredMethod("resume", Thread.class);
+            resumeMethod.setAccessible(true);
         } catch (NoSuchMethodException e) {
             throw new RuntimeException("Unable to obtain thread suspend method", e);
         }
@@ -166,7 +170,7 @@ public class JDWPDebuggerController {
         }
     }
 
-    public void resume(Object thread) {
+    public void resume(Object thread, boolean sessionClosed) {
         ThreadSuspension.resumeThread(thread);
         int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
 
@@ -174,17 +178,28 @@ public class JDWPDebuggerController {
             // only resume when suspension count reaches 0
             Object lock = getSuspendLock(thread);
             synchronized (lock) {
-                lock.notifyAll();
+                try {
+                    if (!sessionClosed) {
+                        // TODO(Gregersen) - call method directly when it becomes available
+                        resumeMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
+                    }
+                    // clear the suspension info for this thread
+                    suspendedInfos.put(thread, null);
+
+                    lock.notifyAll();
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to resume thread: " + thread, e);
+                }
             }
         }
     }
 
-    public void resumeAll() {
+    public void resumeAll(boolean sessionClosed) {
         // first clear the suspension counts on all threads
         ThreadSuspension.resumeAll();
 
         for (Object thread : getContext().getAllGuestThreads()) {
-            resume(thread);
+            resume(thread, sessionClosed);
         }
     }
 
@@ -195,7 +210,7 @@ public class JDWPDebuggerController {
 
             // wait up to below timeout for the thread to become suspended before
             // returning, thus sending a reply packet
-            long timeout = System.currentTimeMillis() + 1000;
+            long timeout = System.currentTimeMillis() + 5000;
             while (suspendedInfos.get(thread) == null && System.currentTimeMillis() < timeout) {
                 Thread.sleep(10);
             }
@@ -203,6 +218,12 @@ public class JDWPDebuggerController {
         } catch (Exception e) {
             System.err.println("not able to suspend thread: " + thread);
             return false;
+        }
+    }
+
+    public void suspendAll() {
+        for (Object thread : getContext().getAllGuestThreads()) {
+            suspend(thread);
         }
     }
 
