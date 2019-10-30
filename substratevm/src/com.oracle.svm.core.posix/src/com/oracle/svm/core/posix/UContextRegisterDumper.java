@@ -26,7 +26,12 @@ package com.oracle.svm.core.posix;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import org.graalvm.word.PointerBase;
 
 public interface UContextRegisterDumper {
     void dumpRegisters(Log log, ucontext_t uContext);
+
+    PointerBase getHeapBase(ucontext_t uContext);
+
+    PointerBase getThreadPointer(ucontext_t uContext);
 }

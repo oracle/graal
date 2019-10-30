@@ -247,7 +247,8 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
