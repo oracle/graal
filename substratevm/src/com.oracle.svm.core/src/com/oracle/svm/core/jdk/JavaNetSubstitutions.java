@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -39,13 +38,10 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -107,29 +103,6 @@ class JavaNetFeature implements Feature {
                 }
             }
         }
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("jdk.internal.net.http.websocket.OpeningHandshake"),
-                            "Ensure jdk.internal.net.http.websocket.OpeningHandshake.random SecureRandom init at image-runtime");
-        }
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                Method initFilters = access.findClassByName("jdk.internal.net.http.HttpClientImpl").getDeclaredMethod("initFilters");
-                access.registerReachabilityHandler(JavaNetFeature::registerInitFiltersAccess, initFilters);
-            } catch (NoSuchMethodException e) {
-                VMError.shouldNotReachHere(e);
-            }
-        }
-    }
-
-    private static void registerInitFiltersAccess(DuringAnalysisAccess a) {
-        RuntimeReflection.registerForReflectiveInstantiation(a.findClassByName("jdk.internal.net.http.AuthenticationFilter"));
-        RuntimeReflection.registerForReflectiveInstantiation(a.findClassByName("jdk.internal.net.http.RedirectFilter"));
-        RuntimeReflection.registerForReflectiveInstantiation(a.findClassByName("jdk.internal.net.http.CookieFilter"));
     }
 
     private static void printWarning(String warningMessage) {
