@@ -1131,8 +1131,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
 
         private void exit(StaticObject monitor, BytecodeNode node) {
-            Object topMonitor = monitors[top - 1];
-            if (monitor == topMonitor) {
+            if (top > 0 && monitor == monitors[top - 1]) {
                 // Balanced locking: simply pop.
                 monitors[--top] = null;
             } else {
