@@ -553,6 +553,8 @@ public abstract class Accessor {
 
         public abstract void onNodeInserted(RootNode rootNode, Node tree);
 
+        public abstract boolean hasContextBindings(Object engine);
+
         public abstract void notifyContextCreated(Object engine, TruffleContext context);
 
         public abstract void notifyContextClosed(Object engine, TruffleContext context);
