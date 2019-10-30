@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.deopt;
+package com.oracle.svm.core.graal.snippets;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -36,6 +36,9 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -101,6 +104,9 @@ public class DeoptTester {
         try {
 
             if (Heap.getHeap().isAllocationDisallowed()) {
+                return;
+            }
+            if (!CEntryPointSnippets.isIsolateInitialized()) {
                 return;
             }
             if (ThreadingSupportImpl.isRecurringCallbackPaused()) {
