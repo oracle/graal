@@ -486,6 +486,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         return JniEnv.JNI_OK;
     }
 
+    // endregion JNI Invocation Interface
+
     public static class StackElement {
         private final Method m;
         private final int bci;
@@ -525,12 +527,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
-    // endregion JNI Invocation Interface
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        assert EspressoException.isUnwinding(self, getMeta());
-        // self.setHiddenField(getMeta().HIDDEN_FRAMES, new StackTrace());
         InterpreterToVM.fillInStackTrace(self, false, getMeta());
         return self;
     }
@@ -544,7 +543,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (frames == null) {
             return 0;
         }
-        assert !EspressoException.isUnwinding(self, meta);
         return frames.size;
     }
 

@@ -47,6 +47,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
@@ -403,8 +405,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         if (codeAttribute == null) {
                             throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
-                        FrameDescriptor frameDescriptor = initFrameDescriptor(1 /* BCI slot */ + getMaxLocals() + getMaxStackSize() + usesMonitors());
-                        EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                        FrameSlot monitorSlot = null;
+                        if (usesMonitors()) {
+                            monitorSlot = frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object);
+                        }
+                        // BCI slot is always the latest.
+                        FrameSlot bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+                        EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor, monitorSlot, bciSlot));
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
                 }
@@ -414,10 +422,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return callTarget;
     }
 
-    public byte usesMonitors() {
+    private boolean usesMonitors() {
         if (codeAttribute != null) {
             if (usesMonitors != -1) {
-                return usesMonitors;
+                return usesMonitors != 0;
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             BytecodeStream bs = new BytecodeStream(codeAttribute.getCode());
@@ -425,21 +433,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             while (bci < bs.endBCI()) {
                 int opcode = bs.currentBC(bci);
                 if (opcode == MONITORENTER || opcode == MONITOREXIT) {
-                    usesMonitors = 1;
-                    return usesMonitors;
+                    return (usesMonitors = 1) != 0;
                 }
                 bci = bs.nextBCI(bci);
             }
-            usesMonitors = 0;
-            return usesMonitors;
+            return (usesMonitors = 0) != 0;
         }
-        return 0;
+        return false;
     }
 
     public static FrameDescriptor initFrameDescriptor(int slotCount) {
         FrameDescriptor descriptor = new FrameDescriptor();
         for (int i = 0; i < slotCount; ++i) {
-            descriptor.addFrameSlot(i);
+            descriptor.addFrameSlot(i, FrameSlotKind.Long);
         }
         return descriptor;
     }

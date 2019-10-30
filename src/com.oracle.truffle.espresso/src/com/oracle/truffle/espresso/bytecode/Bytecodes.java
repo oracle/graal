@@ -593,7 +593,7 @@ public final class Bytecodes {
         // Quickening patches the BCI, replacing it by a QUICK(nodeIndex) bytecode and spawning a child node.
         // Unlike standard bytecodes, stack effects are determined completely by the node, even if the semantics
         // of patched bytecode is partially or completely known.
-        def(QUICK               , "quick"           , "bjj"  ,  0, QUICKENED);
+        def(QUICK               , "quick"           , "bjj"  ,  0, TRAP | QUICKENED);
     }
     // @formatter:on
     // Checkstyle: resume
