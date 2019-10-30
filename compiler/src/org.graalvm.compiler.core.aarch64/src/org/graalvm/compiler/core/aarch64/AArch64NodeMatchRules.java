@@ -35,6 +35,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
 import org.graalvm.compiler.core.match.MatchRule;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -302,6 +304,16 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         if (y.isJavaConstant() && (0 == y.asJavaConstant().asLong()) && lessNode.condition().equals(CanonicalCondition.LT)) {
             return emitBitTestAndBranch(root.falseSuccessor(), root.trueSuccessor(), x,
                             1.0 - root.getTrueSuccessorProbability(), xKind.getBitCount() - 1);
+        }
+        return null;
+    }
+
+    @MatchRule("(FloatConvert=a (Sqrt (FloatConvert=b c)))")
+    public ComplexMatchResult floatSqrt(FloatConvertNode a, FloatConvertNode b, ValueNode c) {
+        if (c.getStackKind().isNumericFloat() && a.getStackKind().isNumericFloat()) {
+            if (a.getFloatConvert() == FloatConvert.D2F && b.getFloatConvert() == FloatConvert.F2D) {
+                return builder -> getArithmeticLIRGenerator().emitMathSqrt(operand(c));
+            }
         }
         return null;
     }
