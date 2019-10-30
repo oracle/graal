@@ -66,7 +66,7 @@ public class RequestedJDWPEvents {
         this.ids = context.getIds();
     }
 
-    public JDWPResult registerEvent(Packet packet, JDWPCommands callback) {
+    public JDWPResult registerEvent(Packet packet, JDWPCommands callback, JDWPContext context) {
         PacketStream reply = null;
         Callable future = null;
         PacketStream input = new PacketStream(packet);
@@ -78,7 +78,7 @@ public class RequestedJDWPEvents {
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modCount = input.readByte();
-            future = handleModCount(filter, input, modCount, suspendPolicy, callback);
+            future = handleModCount(filter, input, modCount, suspendPolicy, callback, context);
         }
 
         switch (eventKind) {
@@ -117,7 +117,7 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
-    private Callable handleModCount(RequestFilter filter, PacketStream stream, byte modCount, byte suspendPolicy, JDWPCommands callback) {
+    private Callable handleModCount(RequestFilter filter, PacketStream stream, byte modCount, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
         switch (modCount) {
             case 1:
                 int count = stream.readInt();
@@ -164,18 +164,20 @@ public class RequestedJDWPEvents {
             case 10:
                 filter.setStepping(true);
                 long threadId = stream.readLong();
+                Object thread = context.getIds().fromId((int) threadId);
+
                 int size = stream.readInt();
 
                 int depth = stream.readInt();
                 switch (depth) {
                     case SteppingConstants.INTO:
-                        callback.stepInto(filter.getRequestId());
+                        callback.stepInto(thread, filter.getRequestId());
                         break;
                     case SteppingConstants.OVER:
-                        callback.stepOver(filter.getRequestId());
+                        callback.stepOver(thread, filter.getRequestId());
                         break;
                     case SteppingConstants.OUT:
-                        callback.stepOut(filter.getRequestId());
+                        callback.stepOut(thread, filter.getRequestId());
                         break;
                 }
                 break;

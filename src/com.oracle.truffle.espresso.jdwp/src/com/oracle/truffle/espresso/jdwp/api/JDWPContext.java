@@ -31,6 +31,8 @@ public interface JDWPContext {
 
     Object getHost2GuestThread(Thread hostThread);
 
+    Thread getGuest2HostThread(Object thread);
+
     KlassRef getNullKlass();
 
     KlassRef[] findLoadedClass(String slashName);

@@ -26,24 +26,18 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 public class SuspendedInfo {
 
     private SuspendedEvent event;
-    private int suspendStrategy;
     private JDWPCallFrame[] stackFrames;
     private Object thread;
     private DebuggerCommand.Kind stepKind;
 
-    SuspendedInfo(SuspendedEvent event, int strategy, JDWPCallFrame[] stackFrames, Object thread) {
+    SuspendedInfo(SuspendedEvent event, JDWPCallFrame[] stackFrames, Object thread) {
         this.event = event;
-        this.suspendStrategy = strategy;
         this.stackFrames = stackFrames;
         this.thread = thread;
     }
 
     public SuspendedEvent getEvent() {
         return event;
-    }
-
-    public int getSuspendStrategy() {
-        return suspendStrategy;
     }
 
     public JDWPCallFrame[] getStackFrames() {

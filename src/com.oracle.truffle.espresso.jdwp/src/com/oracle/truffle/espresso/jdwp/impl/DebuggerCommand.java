@@ -28,16 +28,17 @@ class DebuggerCommand {
         STEP_INTO,
         STEP_OVER,
         STEP_OUT,
-        SUBMIT_BREAKPOINT,
-        RESUME
+        SUBMIT_BREAKPOINT
     }
 
-    Kind kind;
+    final Kind kind;
     private SourceLocation location;
     private BreakpointInfo info;
+    private final Object thread;
 
-    DebuggerCommand(Kind kind) {
+    DebuggerCommand(Kind kind, Object thread) {
         this.kind = kind;
+        this.thread = thread;
     }
 
     void setSourceLocation(SourceLocation location) {
@@ -46,6 +47,10 @@ class DebuggerCommand {
 
     public SourceLocation getSourceLocation() {
         return location;
+    }
+
+    public Object getThread() {
+        return thread;
     }
 
     public void setBreakpointInfo(BreakpointInfo info) {

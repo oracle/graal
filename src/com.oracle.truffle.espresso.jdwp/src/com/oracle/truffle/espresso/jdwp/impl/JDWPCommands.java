@@ -23,9 +23,9 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 public interface JDWPCommands {
-    void stepOver(int requestId);
-    void stepInto(int requestId);
-    void stepOut(int requestId);
+    void stepOver(Object thread, int requestId);
+    void stepInto(Object thread, int requestId);
+    void stepOut(Object thread, int requestId);
 
     void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
 }

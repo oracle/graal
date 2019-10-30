@@ -82,10 +82,8 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         // when resuming all threads
         controller.endSession();
 
-        // clear all suspension counts on threads
-        // and resume all
-        ThreadSuspension.resumeAll();
-        controller.resume();
+        // resume all threads
+        controller.resumeAll();
 
         // replace the controller instance
         JDWPOptions options = controller.getOptions();

@@ -94,7 +94,7 @@ public class SocketConnection implements Runnable {
     }
 
     public byte[] readPacket() throws IOException, ConnectionClosedException {
-        if (!isOpen()) {
+        if (!isOpen() || Thread.currentThread().isInterrupted()) {
             throw new ConnectionClosedException();
         }
         synchronized (receiveLock) {
@@ -107,7 +107,7 @@ public class SocketConnection implements Runnable {
                 b3 = socketInput.read();
                 b4 = socketInput.read();
             } catch (IOException ioe) {
-                if (!isOpen()) {
+                if (!isOpen() || Thread.currentThread().isInterrupted()) {
                     throw new ConnectionClosedException();
                 } else {
                     throw ioe;
@@ -143,7 +143,7 @@ public class SocketConnection implements Runnable {
                 try {
                     count = socketInput.read(b, off, len);
                 } catch (IOException ioe) {
-                    if (!isOpen()) {
+                    if (!isOpen() || Thread.currentThread().isInterrupted()) {
                         throw new ConnectionClosedException();
                     } else {
                         throw ioe;
@@ -161,7 +161,7 @@ public class SocketConnection implements Runnable {
     }
 
     public void writePacket(byte b[]) throws IOException, ConnectionClosedException {
-        if (!isOpen()) {
+        if (!isOpen() || Thread.currentThread().isInterrupted()) {
             throw new ConnectionClosedException();
         }
 
@@ -195,7 +195,7 @@ public class SocketConnection implements Runnable {
                  */
                 socketOutput.write(b, 0, len);
             } catch (IOException ioe) {
-                if (!isOpen()) {
+                if (!isOpen() || Thread.currentThread().isInterrupted()) {
                     throw new ConnectionClosedException();
                 } else {
                     throw ioe;
