@@ -169,7 +169,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
 
             masm.bind(labelCopyTail);
             // All done if the tail count is zero.
-            masm.testl(tmp2, -1);
+            masm.testl(tmp2, tmp2);
             masm.jcc(AMD64Assembler.ConditionFlag.Zero, labelDone);
 
             // Compute (1 << N) - 1 = ~(~0 << N), where N is the remaining number
@@ -186,7 +186,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
             masm.bind(labelAVX3Threshold);
         }
 
-        if (masm.supports(AMD64.CPUFeature.SSE4_1)) {
+        if (masm.supports(AMD64.CPUFeature.SSE4_2)) {
             Label labelCopy16Loop = new Label();
             Label labelCopy8Loop = new Label();
             Label labelCopyBytes = new Label();
