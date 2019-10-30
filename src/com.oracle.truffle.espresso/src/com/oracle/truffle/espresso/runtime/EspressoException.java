@@ -98,7 +98,8 @@ public final class EspressoException extends RuntimeException implements Truffle
         return Meta.toHostString((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
     }
 
-    public StaticObject getException() {
+    @Override
+    public StaticObject getExceptionObject() {
         return exception;
     }
 
@@ -108,60 +109,20 @@ public final class EspressoException extends RuntimeException implements Truffle
     }
 
     @Override
-    public Object getExceptionObject() {
-        return null;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return false;
-    }
-
-    @Override
-    public boolean isIncompleteSource() {
-        return false;
-    }
-
-    @Override
-    public boolean isInternalError() {
-        return false;
-    }
-
-    @Override
-    public boolean isCancelled() {
-        return false;
-    }
-
-    @Override
-    public boolean isExit() {
-        return false;
-    }
-
-    @Override
-    public int getExitStatus() {
-        return 0;
-    }
-
-    @Override
-    public int getStackTraceElementLimit() {
-        return -1;
-    }
-
-    @Override
     public SourceSection getSourceLocation() {
         return null;
     }
 
     @Override
     public String toString() {
-        return "EspressoException<" + getException() + ": " + getMessage() + ">";
+        return "EspressoException<" + getExceptionObject() + ": " + getMessage() + ">";
     }
 
     // Debug methods
 
     @SuppressWarnings("unused")
     private boolean match(String exceptionClass, String message) {
-        if (getException().getKlass().getType().toString().contains(exceptionClass)) {
+        if (getExceptionObject().getKlass().getType().toString().contains(exceptionClass)) {
             if (message == null) {
                 return true;
             }

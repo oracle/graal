@@ -50,6 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -287,18 +288,50 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Object.class) StaticObject JVM_Clone(@Host(Object.class) StaticObject self) {
+    public static @Host(Object.class) StaticObject JVM_Clone(@Host(Object.class) StaticObject self) {
+        assert StaticObject.notNull(self);
         if (self.isArray()) {
-            // For arrays.
+            // Arrays are always cloneable.
             return self.copy();
         }
-        Meta meta = getMeta();
+
+        Meta meta = self.getKlass().getMeta();
         if (!meta.Cloneable.isAssignableFrom(self.getKlass())) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
-        // Normal object just copy the fields.
-        return self.copy();
+        if (InterpreterToVM.instanceOf(self, meta.Reference)) {
+            // HotSpot 8202260: The semantics of cloning a Reference object is not clearly defined.
+            // In addition, it is questionable whether it should be supported due to its tight
+            // interaction with garbage collector.
+            //
+            // The reachability state of a Reference object may change during GC reference
+            // processing. The referent may have been cleared when it reaches its reachability
+            // state. On the other hand, it may be enqueued or pending for enqueuing. Cloning a
+            // Reference object with a referent that is unreachable but not yet cleared might mean
+            // to resurrect the referent. A cloned enqueued Reference object will never be enqueued.
+            //
+            // A Reference object cannot be meaningfully cloned.
+
+            // Non-strong references are not cloneable.
+            if (InterpreterToVM.instanceOf(self, meta.WeakReference) //
+                            || InterpreterToVM.instanceOf(self, meta.SoftReference) //
+                            || InterpreterToVM.instanceOf(self, meta.FinalReference) //
+                            || InterpreterToVM.instanceOf(self, meta.PhantomReference)) {
+
+                throw meta.throwExWithMessage(java.lang.CloneNotSupportedException.class, self.getKlass().getName().toString());
+            }
+        }
+
+        final StaticObject clone = self.copy();
+
+        // If the original object is finalizable, so is the copy.
+        assert self.getKlass() instanceof ObjectKlass;
+        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
+            Target_java_lang_Object.registerFinalizer(clone);
+        }
+
+        return clone;
     }
 
     public Callback vmMethodWrapper(VMSubstitutor m) {
@@ -317,7 +350,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     return m.invoke(VM.this, args);
                 } catch (EspressoException e) {
                     if (isJni) {
-                        jniEnv.getThreadLocalPendingException().set(e.getException());
+                        jniEnv.getThreadLocalPendingException().set(e.getExceptionObject());
                         return defaultValue(m.returnType());
                     }
                     throw EspressoError.shouldNotReachHere(e);
@@ -1083,10 +1116,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             result = (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
-            if (getMeta().Exception.isAssignableFrom(e.getException().getKlass()) &&
-                            !getMeta().RuntimeException.isAssignableFrom(e.getException().getKlass())) {
+            if (getMeta().Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
+                            !getMeta().RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 StaticObject wrapper = getMeta().PrivilegedActionException.allocateInstance();
-                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
+                getMeta().PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
                 throw new EspressoException(wrapper);
             }
             throw e;

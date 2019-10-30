@@ -53,7 +53,7 @@ public class MainLauncherRootNode extends RootNode {
             // getCallTarget initializes for us.
             return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
         } catch (EspressoException e) {
-            StaticObject guestException = e.getException();
+            StaticObject guestException = e.getExceptionObject();
             guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
             return StaticObject.NULL;
         } finally {

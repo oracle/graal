@@ -270,10 +270,10 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             klass = loadKlass(type);
         } catch (EspressoException e) {
-            if (meta.ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
+            if (meta.ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initEx(meta.NoClassDefFoundError);
-                meta.Throwable_cause.set(ncdfe, e.getException());
+                meta.Throwable_cause.set(ncdfe, e.getExceptionObject());
                 throw new EspressoException(ncdfe);
             }
             throw e;

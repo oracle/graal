@@ -23,8 +23,11 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
@@ -39,9 +42,24 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@Host(Object.class) StaticObject self) {
-        /* nop */
+        assert self.getKlass() instanceof ObjectKlass;
+        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
+            registerFinalizer(self);
+        }
+    }
+
+    @TruffleBoundary
+    public static void registerFinalizer(@Host(Object.class) StaticObject self) {
+        self.getKlass().getMeta().Finalizer_register.invokeDirect(null, self);
+    }
+
+    // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking
+    // cloned objects. Remove once GR-19247 is resolved.
+    @Substitution(hasReceiver = true)
+    @Throws(CloneNotSupportedException.class)
+    public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self) {
+        return VM.JVM_Clone(self);
     }
 }

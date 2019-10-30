@@ -317,6 +317,28 @@ public final class Meta implements ContextAccess {
         MethodHandleNatives_linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
         MethodHandleNatives_findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
 
+        Finalizer = knownKlass(Type.java_lang_ref_Finalizer);
+        Finalizer_register = Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
+
+        // References
+        Reference = knownKlass(java.lang.ref.Reference.class);
+        Reference_referent = Reference.lookupDeclaredField(Name.referent, Type.Object);
+
+        Reference_discovered = Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
+        Reference_pending = Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
+        Reference_next = Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
+        Reference_queue = Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
+        Reference_lock = Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference_Lock);
+        ReferenceQueue = knownKlass(java.lang.ref.ReferenceQueue.class);
+        ReferenceQueue_NULL = ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
+
+        WeakReference = knownKlass(java.lang.ref.WeakReference.class);
+        SoftReference = knownKlass(java.lang.ref.SoftReference.class);
+        PhantomReference = knownKlass(java.lang.ref.PhantomReference.class);
+        FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
+        Cleaner = knownKlass(sun.misc.Cleaner.class);
+        HIDDEN_HOST_REFERENCE = Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
+
         AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
         AssertionStatusDirectives_classes = AssertionStatusDirectives.lookupField(Name.classes, Type.String_array);
         AssertionStatusDirectives_classEnabled = AssertionStatusDirectives.lookupField(Name.classEnabled, Type._boolean_array);
@@ -575,6 +597,28 @@ public final class Meta implements ContextAccess {
     public final Method MethodHandleNatives_linkMethodHandleConstant;
     public final Method MethodHandleNatives_findMethodHandleType;
     public final Method MethodHandleNatives_linkCallSite;
+
+    // References
+
+    public final ObjectKlass Finalizer;
+    public final Method Finalizer_register;
+    public final ObjectKlass Reference;
+    public final Field Reference_referent;
+    public final Field Reference_discovered;
+    public final Field Reference_pending;
+    public final Field Reference_next;
+    public final Field Reference_queue;
+    public final Field Reference_lock;
+    public final ObjectKlass WeakReference;
+    public final ObjectKlass SoftReference;
+    public final ObjectKlass PhantomReference;
+    public final ObjectKlass FinalReference;
+    public final ObjectKlass Cleaner;
+
+    public final Field HIDDEN_HOST_REFERENCE;
+
+    public final ObjectKlass ReferenceQueue;
+    public final Field ReferenceQueue_NULL;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;

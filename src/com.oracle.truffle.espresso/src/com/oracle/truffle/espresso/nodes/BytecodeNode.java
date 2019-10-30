@@ -918,7 +918,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case INVOKEVIRTUAL: // fall through
                         case INVOKESPECIAL: // fall through
                         case INVOKESTATIC: // fall through
-                        case INVOKEINTERFACE: 
+                        case INVOKEINTERFACE:
                             setBCI(frame, curBCI);
                             top += quickenInvoke(frame, top, curBCI, curOpcode); break;
 
@@ -948,11 +948,11 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                             CompilerAsserts.neverPartOfCompilation();
                             throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                        case INVOKEDYNAMIC: 
+                        case INVOKEDYNAMIC:
                             setBCI(frame, curBCI);
                             top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
 
-                        case QUICK: 
+                        case QUICK:
                             setBCI(frame, curBCI);
                             top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
 
@@ -1009,7 +1009,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         for (int i = 0; i < SOEinfo.length; i += 3) {
                             if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
                                 top = 0;
-                                putObject(frame, 0, e.getException());
+                                putObject(frame, 0, e.getExceptionObject());
                                 top++;
                                 curBCI = SOEinfo[i + 2];
                                 continue loop;
@@ -1028,7 +1028,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                             // instanceof
                             catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                         }
-                        if (catchType == null || InterpreterToVM.instanceOf(e.getException(), catchType)) {
+                        if (catchType == null || InterpreterToVM.instanceOf(e.getExceptionObject(), catchType)) {
                             // the first found exception handler is our exception handler
                             handler = toCheck;
                             break;
@@ -1037,7 +1037,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 }
                 if (handler != null) {
                     top = 0;
-                    putObject(frame, 0, e.getException());
+                    putObject(frame, 0, e.getExceptionObject());
                     top++;
                     int targetBCI = handler.getHandlerBCI();
                     checkBackEdge(curBCI, targetBCI, top, NOP);
@@ -1244,7 +1244,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         thisNode.getMethod().getName().toString().contains("findClass")) {
             return;
         }
-        System.err.println("Caught: " + e.getException().getKlass().getType() + ": " + e.getMessage() +
+        System.err.println("Caught: " + e.getExceptionObject().getKlass().getType() + ": " + e.getMessage() +
                         "\n\t In: " + thisNode + " at line: " + thisNode.getMethod().BCItoLineNumber(curBCI));
     }
 
