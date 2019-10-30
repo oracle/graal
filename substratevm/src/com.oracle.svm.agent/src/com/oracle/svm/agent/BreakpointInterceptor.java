@@ -69,6 +69,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.agent.Support.WordSupplier;
@@ -500,6 +501,50 @@ final class BreakpointInterceptor {
         }
     }
 
+    private static boolean newArrayInstance(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
+        JNIObjectHandle componentClass = getObjectArgument(0);
+        CIntPointer lengthPtr = StackValue.get(CIntPointer.class);
+        boolean lengthValid = (jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), nullHandle(), 0, 1, lengthPtr) == JvmtiError.JVMTI_ERROR_NONE);
+        return newArrayInstance0(jni, callerClass, bp, componentClass, WordFactory.signed(lengthPtr.read()), lengthValid);
+    }
+
+    private static boolean newArrayInstanceMulti(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
+        JNIObjectHandle componentClass = getObjectArgument(0);
+        JNIObjectHandle dimensionsArray = getObjectArgument(1);
+        return newArrayInstance0(jni, callerClass, bp, componentClass, dimensionsArray, dimensionsArray.notEqual(nullHandle()));
+    }
+
+    private static boolean newArrayInstance0(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp,
+                    JNIObjectHandle componentClass, WordBase lengthOrDimensions, boolean lengthOrDimensionsArgValid) {
+
+        JNIObjectHandle result = nullHandle();
+        JNIObjectHandle resultClass = nullHandle();
+        if (componentClass.notEqual(nullHandle()) && lengthOrDimensionsArgValid) {
+            result = jniFunctions().<CallObjectMethod2FunctionPointer> getCallStaticObjectMethod().invoke(jni, bp.clazz, bp.method, componentClass, lengthOrDimensions);
+            if (clearException(jni)) {
+                result = nullHandle();
+            } else {
+                resultClass = jniFunctions().getGetObjectClass().invoke(jni, result);
+                if (clearException(jni)) {
+                    resultClass = nullHandle();
+                }
+            }
+        }
+        boolean allowed = result.equal(nullHandle()) || accessVerifier == null || accessVerifier.verifyNewArray(jni, resultClass, callerClass);
+        String resultClassName = getClassNameOr(jni, resultClass, null, TraceWriter.UNKNOWN_VALUE);
+        traceBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, allowed && result.notEqual(nullHandle()), resultClassName);
+        if (allowed && result.notEqual(nullHandle())) { // do not create a second array
+            jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), result);
+        }
+        if (!allowed) {
+            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit reflective array instantiation: " +
+                            getClassNameOr(jni, resultClass, "(?)", "(?)"))) {
+                jniFunctions().getThrowNew().invoke(jni, handles().javaLangRuntimeException, message.get());
+            }
+        }
+        return allowed;
+    }
+
     private static boolean getResource(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
         return handleGetResources(jni, callerClass, bp, false);
     }
@@ -894,6 +939,8 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "getEnclosingConstructor", "()Ljava/lang/reflect/Constructor;", BreakpointInterceptor::getEnclosingMethod),
 
                     brk("java/lang/Class", "newInstance", "()Ljava/lang/Object;", BreakpointInterceptor::newInstance),
+                    brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
+                    brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
                     brk("java/lang/ClassLoader", "getResource", "(Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::getResource),
                     brk("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getResources),
