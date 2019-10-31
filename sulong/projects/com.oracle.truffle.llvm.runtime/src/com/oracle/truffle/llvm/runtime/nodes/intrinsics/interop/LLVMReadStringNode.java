@@ -64,6 +64,11 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         return address;
     }
 
+    @Specialization(guards = "isString(foreign)")
+    String readString(LLVMManagedPointer foreign) {
+        return (String) foreign.getObject();
+    }
+
     @Specialization(guards = "isForeign(foreign)")
     String readForeign(LLVMManagedPointer foreign,
                     @Cached("create()") ForeignReadStringNode read) {
@@ -77,6 +82,10 @@ public abstract class LLVMReadStringNode extends LLVMNode {
             readOther = insert(PointerReadStringNode.create());
         }
         return readOther.execute(address);
+    }
+
+    protected static boolean isString(LLVMManagedPointer pointer) {
+        return pointer.getOffset() == 0 && pointer.getObject() instanceof String;
     }
 
     protected static boolean isForeign(LLVMManagedPointer pointer) {
