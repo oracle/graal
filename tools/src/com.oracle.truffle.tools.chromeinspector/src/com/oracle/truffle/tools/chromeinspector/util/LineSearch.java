@@ -42,6 +42,7 @@ public final class LineSearch {
         for (int lineNumber = 1; lineNumber <= source.getLineCount(); lineNumber++) {
             String line = source.getCharacters(lineNumber).toString();
             if (isRegex) {
+                assert pattern != null;
                 if (pattern.matcher(line).find()) {
                     addSearchMatch(matchLines, lineNumber, line);
                 }
