@@ -625,6 +625,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [
             re.compile(
                 r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                re.MULTILINE),
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
@@ -1098,7 +1101,10 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def failurePatterns(self):
         return [
-            re.compile(r"^Errors in benchmark: ", re.MULTILINE)
+            re.compile(r"^Errors in benchmark: ", re.MULTILINE),
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
         ]
 
     def flakySuccessPatterns(self):
@@ -1285,7 +1291,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def failurePatterns(self):
         return [
-            re.compile(r"VALIDATION ERROR", re.MULTILINE)
+            re.compile(r"VALIDATION ERROR", re.MULTILINE),
+               re.compile(
+                   r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                   re.MULTILINE)
         ]
 
     def flakySuccessPatterns(self):
@@ -1373,7 +1382,11 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         ]
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def flakySuccessPatterns(self):
         return []
@@ -1484,7 +1497,11 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         ]
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def flakySuccessPatterns(self):
         return []
@@ -1724,7 +1741,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
@@ -1825,7 +1846,11 @@ class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchm
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
@@ -1914,7 +1939,11 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return []
