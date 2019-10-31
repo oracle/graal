@@ -61,7 +61,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
         return stopReqExpressionMap.get(sr);
     }
 
-    boolean getFailure(StopRequest sr){
+    boolean getFailure(StopRequest sr) {
         return stopReqAllowFailure.get(sr);
     }
 
@@ -79,7 +79,6 @@ public final class TestExpressions implements Iterable<StopRequest> {
     private List<StopRequest> stops;
     private Map<StopRequest, Map<String, String>> stopReqExpressionMap;
     private Map<StopRequest, Boolean> stopReqAllowFailure;
-
 
     private Parser newParser() {
         return new Parser();

@@ -202,7 +202,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private ExecutableNode parseAntlr(InlineParsingRequest request) {
         Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
-        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes, getCurrentContext(LLVMLanguage.class));
+        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes,
+                        getCurrentContext(LLVMLanguage.class));
         try {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
@@ -216,20 +217,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    /*private ExecutableNode parseCoCoR(InlineParsingRequest request) {
-        Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
-        final DebugExprParser d = new DebugExprParser(this, request, globalScopes);
-        try {
-            return new DebugExprExecutableNode(d.parse());
-        } catch (DebugExprException | LLVMParserException e) {
-            // error found during parsing
-            return new ExecutableNode(this) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return e.getMessage();
-                }
-            };
-        }*/
+    /*
+     * private ExecutableNode parseCoCoR(InlineParsingRequest request) { Iterable<Scope>
+     * globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class)); final DebugExprParser d
+     * = new DebugExprParser(this, request, globalScopes); try { return new
+     * DebugExprExecutableNode(d.parse()); } catch (DebugExprException | LLVMParserException e) { //
+     * error found during parsing return new ExecutableNode(this) {
+     * 
+     * @Override public Object execute(VirtualFrame frame) { return e.getMessage(); } }; }
+     */
 
     @Override
     protected boolean patchContext(LLVMContext context, Env newEnv) {

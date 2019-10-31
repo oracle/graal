@@ -46,7 +46,7 @@ public final class DebugExprNodeFactory {
     private Iterable<Scope> globalScopes;
 
     private DebugExprNodeFactory(Iterable<Scope> scopes, Iterable<Scope> globalScopes) {
-        //this.nodeFactory = nodeFactory;
+        // this.nodeFactory = nodeFactory;
         this.scopes = scopes;
         this.globalScopes = globalScopes;
     }
@@ -194,7 +194,7 @@ public final class DebugExprNodeFactory {
         return createIntegerConstant(value, true);
     }
 
-    public  static DebugExpressionPair createIntegerConstant(int value, boolean signed) {
+    public static DebugExpressionPair createIntegerConstant(int value, boolean signed) {
         LLVMExpressionNode node = CommonNodeFactory.createSimpleConstantNoArray(value, PrimitiveType.I32);
         return DebugExpressionPair.create(node, DebugExprType.getIntType(32, signed));
     }
