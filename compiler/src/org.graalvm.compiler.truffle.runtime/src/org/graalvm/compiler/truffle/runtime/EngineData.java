@@ -90,11 +90,7 @@ public final class EngineData {
     // compilation options
     public final boolean compilation;
     public final boolean compileImmediately;
-    public final int minInvokeThreshold;
-    public final int compilationThreshold;
     public final boolean multiTier;
-    public final int firstTierMinInvokeThreshold;
-    public final int firstTierCompilationThreshold;
     public final boolean returnTypeSpeculation;
     public final boolean argumentTypeSpeculation;
     public final boolean traceCompilation;
@@ -105,6 +101,11 @@ public final class EngineData {
     public final String compileOnly;
 
     public final boolean callTargetStatistics;
+
+    // computed fields.
+    public final int firstTierCallThreshold;
+    public final int firstTierCallAndLoopThreshold;
+    public final int lastTierCallThreshold;
 
     EngineData(OptionValues options) {
         this.engineOptions = options;
@@ -124,16 +125,8 @@ public final class EngineData {
         this.compilation = getValue(options, Compilation);
         this.compileOnly = getValue(options, CompileOnly);
         this.compileImmediately = getValue(options, CompileImmediately);
-        this.minInvokeThreshold = getValue(options, MinInvokeThreshold);
-        this.compilationThreshold = getValue(options, CompilationThreshold);
         this.multiTier = getValue(options, MultiTier);
-        if (multiTier) {
-            firstTierMinInvokeThreshold = getValue(options, FirstTierMinInvokeThreshold);
-            firstTierCompilationThreshold = getValue(options, FirstTierCompilationThreshold);
-        } else {
-            firstTierMinInvokeThreshold = Integer.MAX_VALUE;
-            firstTierCompilationThreshold = Integer.MAX_VALUE;
-        }
+
         this.returnTypeSpeculation = getValue(options, ReturnTypeSpeculation);
         this.argumentTypeSpeculation = getValue(options, ArgumentTypeSpeculation);
         this.traceCompilation = getValue(options, TraceCompilation);
@@ -141,12 +134,36 @@ public final class EngineData {
         this.backgroundCompilation = getValue(options, BackgroundCompilation);
         this.compilationExceptionsAreThrown = getValue(options, CompilationExceptionsAreThrown);
         this.performanceWarningsAreFatal = getValue(options, PerformanceWarningsAreFatal);
-
+        this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
+        this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
+        this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
         this.callTargetStatistics = TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
                         TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails);
 
         // the reporter requires options to be initialized
         this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
+    }
+
+    private int computeFirstTierCallThreshold(OptionValues options) {
+        if (compileImmediately) {
+            return 0;
+        }
+        if (multiTier) {
+            return Math.min(getValue(options, FirstTierMinInvokeThreshold), getValue(options, FirstTierCompilationThreshold));
+        } else {
+            return Math.min(getValue(options, MinInvokeThreshold), getValue(options, CompilationThreshold));
+        }
+    }
+
+    private int computeFirstTierCallAndLoopThreshold(OptionValues options) {
+        if (compileImmediately) {
+            return 0;
+        }
+        if (multiTier) {
+            return getValue(options, FirstTierCompilationThreshold);
+        } else {
+            return getValue(options, CompilationThreshold);
+        }
     }
 
 }

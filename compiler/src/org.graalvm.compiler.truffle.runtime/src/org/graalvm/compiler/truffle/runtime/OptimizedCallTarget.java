@@ -720,7 +720,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public Map<String, Object> getDebugProperties(TruffleInlining inlining) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        properties.putAll(getCompilationProfile().getDebugProperties());
+        properties.putAll(getCompilationProfile().getDebugProperties(this));
         return properties;
     }
 

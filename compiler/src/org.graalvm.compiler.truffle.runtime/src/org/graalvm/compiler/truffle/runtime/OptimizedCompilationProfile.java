@@ -48,7 +48,7 @@ public final class OptimizedCompilationProfile {
     private int callCount;
     private int callAndLoopCount;
 
-    private final int lastTierCompilationCallAndLoopThreshold;
+    private final int lastTierCompilationCallThreshold;
     private final long timestamp;
 
     private final int compilationCallThreshold;
@@ -75,21 +75,10 @@ public final class OptimizedCompilationProfile {
     @CompilationFinal private boolean callProfiled;
 
     OptimizedCompilationProfile(EngineData engine) {
-        boolean compileImmediately = engine.compileImmediately;
-        int callThreshold = engine.minInvokeThreshold;
-        int callAndLoopThreshold = engine.compilationThreshold;
-        assert callThreshold >= 0;
-        assert callAndLoopThreshold >= 0;
-        if (engine.multiTier) {
-            int firstTierCallThreshold = engine.firstTierMinInvokeThreshold;
-            int firstTierCallAndLoopThreshold = engine.firstTierCompilationThreshold;
-            this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
-            this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
-        } else {
-            this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
-            this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
-        }
-        this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
+        this.compilationCallThreshold = engine.firstTierCallThreshold;
+        this.compilationCallAndLoopThreshold = engine.firstTierCallAndLoopThreshold;
+        this.lastTierCompilationCallThreshold = engine.lastTierCallThreshold;
+
         if (engine.callTargetStatistics) {
             this.timestamp = System.nanoTime();
         } else {
@@ -297,7 +286,7 @@ public final class OptimizedCompilationProfile {
     boolean firstTierCall(OptimizedCallTarget callTarget) {
         // The increment and the check must be inlined into the compilation unit.
         int totalCallCount = ++callCount;
-        if (totalCallCount >= lastTierCompilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
+        if (totalCallCount >= lastTierCompilationCallThreshold && !callTarget.isCompiling() && !compilationFailed) {
             return firstTierCompile(callTarget);
         }
         return false;
@@ -372,10 +361,10 @@ public final class OptimizedCompilationProfile {
         }
     }
 
-    public Map<String, Object> getDebugProperties() {
+    public Map<String, Object> getDebugProperties(OptimizedCallTarget target) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
+        String callsThreshold = String.format("%7d/%5d", getCallCount(), target.engine.firstTierCallThreshold);
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), target.engine.firstTierCallAndLoopThreshold);
         properties.put("Calls/Thres", callsThreshold);
         properties.put("CallsAndLoop/Thres", loopsThreshold);
         return properties;
