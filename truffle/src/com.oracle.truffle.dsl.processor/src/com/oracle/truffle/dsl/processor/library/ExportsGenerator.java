@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,14 +68,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryExport;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -181,7 +173,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeTreeBuilder statics = genClass.add(new CodeExecutableElement(modifiers(STATIC), null, "<cinit>")).createBuilder();
         statics.startStatement();
-        statics.startStaticCall(context.getType(LibraryExport.class), "register");
+        statics.startStaticCall(types.LibraryExport, "register");
         statics.typeLiteral(exports.getTemplateType().asType());
 
         genClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(PRIVATE), genClass));
@@ -235,7 +227,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
         final TypeMirror exportReceiverType = library.getReceiverType();
 
-        TypeMirror baseType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(LibraryExport.class),
+        TypeMirror baseType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.LibraryExport),
                         Arrays.asList(libraryBaseType));
         CodeTypeElement exportsClass = createClass(library, null, modifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), className, baseType);
 
@@ -252,7 +244,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(uncachedType).end();
         }
 
-        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createUncached"));
+        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport, "createUncached"));
         createUncached.setReturnType(libraryBaseType);
         createUncached.getModifiers().remove(Modifier.ABSTRACT);
         createUncached.renameArguments("receiver");
@@ -286,7 +278,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(cachedType).end();
         }
 
-        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createCached"));
+        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryExport, "createCached"));
         createCached.setReturnType(libraryBaseType);
         createCached.getModifiers().remove(Modifier.ABSTRACT);
         createCached.renameArguments("receiver");
@@ -362,14 +354,14 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 builder.staticReference(useLibraryConstant(key.libraryType)).startCall(".create").tree(mergedLibraryIdentifier).end();
                 builder.string(")").end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
-                var.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
+                var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
             }
         }
 
         CodeTreeBuilder builder;
         CodeTree defaultAccepts = createDefaultAccepts(cacheClass, constructor, libraryExports, exportReceiverType, true);
 
-        CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), ACCEPTS));
+        CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
         accepts.getModifiers().remove(Modifier.ABSTRACT);
         accepts.renameArguments("receiver");
         builder = accepts.createBuilder();
@@ -416,7 +408,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cacheClass.add(accepts);
 
         if (!libraryExports.needsRewrites() && useSingleton(libraryExports, true)) {
-            CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
+            CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
             builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
                 builder.startReturn();
@@ -465,7 +457,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 boolean shared = true;
                 if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
-                    dummyNodeClass = createClass(libraryExports, null, modifiers(), "Dummy", context.getType(Node.class));
+                    dummyNodeClass = createClass(libraryExports, null, modifiers(), "Dummy", types.Node);
                     factory.create(dummyNodeClass);
                     sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
                     shared = false;
@@ -536,15 +528,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
 
         CodeTreeBuilder builder;
-        CodeExecutableElement castMethod = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(DynamicDispatchLibrary.class, "cast"));
+        CodeExecutableElement castMethod = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(types.DynamicDispatchLibrary, "cast"));
         castMethod.getModifiers().remove(Modifier.ABSTRACT);
         castMethod.renameArguments("receiver");
         builder = castMethod.createBuilder();
         if ((!cached || libraryExports.isFinalReceiver()) && ElementUtils.needsCastTo(castMethod.getParameters().get(0).asType(), exportReceiverType)) {
             GeneratorUtils.mergeSupressWarnings(castMethod, "cast");
         }
-        if (!cached && ElementUtils.findAnnotationMirror(castMethod, TruffleBoundary.class) == null) {
-            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        if (!cached && ElementUtils.findAnnotationMirror(castMethod, types.CompilerDirectives_TruffleBoundary) == null) {
+            castMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
         builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
         return castMethod;
@@ -554,8 +546,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTreeBuilder constructorBuilder;
         CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
         if (libraryExports.needsDynamicDispatch()) {
-            CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), context.getType(DynamicDispatchLibrary.class), "dynamicDispatch_"));
-            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
+            CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), types.DynamicDispatchLibrary, "dynamicDispatch_"));
+            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Child));
 
             CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
 
@@ -607,7 +599,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     private CodeVariableElement useDispatchLibraryConstant() {
-        return useLibraryConstant(context.getType(DynamicDispatchLibrary.class));
+        return useLibraryConstant(types.DynamicDispatchLibrary);
     }
 
     private CodeTree createDynamicDispatchAssertions(ExportsLibrary libraryExports) {
@@ -650,9 +642,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
         CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, constructor, libraryExports, exportReceiverType, false);
 
-        CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), ACCEPTS));
-        if (ElementUtils.findAnnotationMirror(acceptUncached, TruffleBoundary.class) == null) {
-            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Library, ACCEPTS));
+        if (ElementUtils.findAnnotationMirror(acceptUncached, types.CompilerDirectives_TruffleBoundary) == null) {
+            acceptUncached.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         }
         acceptUncached.getModifiers().remove(Modifier.ABSTRACT);
         acceptUncached.renameArguments("receiver");
@@ -677,11 +669,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
 
-        CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
+        CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
         isAdoptable.createBuilder().returnFalse();
 
-        CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
-        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(NodeCost.class), "MEGAMORPHIC")).end();
+        CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
+        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
 
         boolean firstNode = true;
 
@@ -723,8 +715,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 uncachedExecute.setSimpleName(CodeNames.of(ACCEPTS + "_"));
                 ElementUtils.setVisibility(uncachedExecute.getModifiers(), Modifier.PRIVATE);
             }
-            if (ElementUtils.findAnnotationMirror(uncachedExecute, TruffleBoundary.class) == null) {
-                uncachedExecute.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+            if (ElementUtils.findAnnotationMirror(uncachedExecute, types.CompilerDirectives_TruffleBoundary) == null) {
+                uncachedExecute.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             }
         }
         return uncachedClass;
@@ -810,7 +802,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             if (library.needsDynamicDispatch()) {
                 cast = CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), targetType).startCall("dynamicDispatch_.cast").tree(receiver).end().build();
             } else {
-                cast = CodeTreeBuilder.createBuilder().startStaticCall(context.getType(CompilerDirectives.class), "castExact").tree(receiver).string("receiverClass_").end().build();
+                cast = CodeTreeBuilder.createBuilder().startStaticCall(types.CompilerDirectives, "castExact").tree(receiver).string("receiverClass_").end().build();
             }
         }
         return cast;

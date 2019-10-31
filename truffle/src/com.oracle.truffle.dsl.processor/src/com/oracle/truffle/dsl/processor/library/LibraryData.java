@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -129,7 +128,7 @@ public final class LibraryData extends Template {
     }
 
     public boolean isDynamicDispatch() {
-        return getTemplateType().getSimpleName().toString().equals(DynamicDispatchLibrary.class.getSimpleName());
+        return getTemplateType().getSimpleName().toString().equals(types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
     }
 
     void setObjectExports(ExportsLibrary objectExports) {

@@ -26,27 +26,61 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.meta.SharedMethod;
 
+/** Observes the life of one piece of runtime-compiled code. */
 public interface InstalledCodeObserver {
-    public interface InstalledCodeObserverHandle {
-        default void activate() {
+
+    interface Factory {
+        /** Creates an observer for the specified code. */
+        InstalledCodeObserver create(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code);
+    }
+
+    /**
+     * Installs the observer and returns a handle to its state in unmanaged memory. Use the
+     * {@linkplain InstalledCodeObserverHandle#getAccessor() accessor} to activate the observer and
+     * for further actions.
+     */
+    InstalledCodeObserverHandle install();
+
+    @RawStructure
+    interface InstalledCodeObserverHandle extends PointerBase {
+        /**
+         * Provides an accessor object to perform actions with this handle. This object lives in the
+         * image heap so it is safe to access even across different isolates of the same image.
+         */
+        @PinnedObjectField
+        @RawField
+        InstalledCodeObserverHandleAccessor getAccessor();
+
+        @PinnedObjectField
+        @RawField
+        void setAccessor(InstalledCodeObserverHandleAccessor accessor);
+    }
+
+    @SuppressWarnings("unused")
+    interface InstalledCodeObserverHandleAccessor {
+        default void activate(InstalledCodeObserverHandle handle) {
         }
 
-        default void release() {
+        default void release(InstalledCodeObserverHandle handle) {
+        }
+
+        default void detachFromCurrentIsolate(InstalledCodeObserverHandle handle) {
+        }
+
+        default void attachToCurrentIsolate(InstalledCodeObserverHandle handle) {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-        default void releaseOnTearDown() {
+        default void releaseOnTearDown(InstalledCodeObserverHandle handle) {
         }
-    }
-
-    InstalledCodeObserverHandle install();
-
-    interface Factory {
-        InstalledCodeObserver create(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ public abstract class AbstractPolyglotTest {
     protected TruffleLanguage<?> language;
     protected TruffleInstrument.Env instrumentEnv;
     protected boolean cleanupOnSetup = true;
+    protected boolean enterContext = true;
 
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);
@@ -129,7 +130,9 @@ public abstract class AbstractPolyglotTest {
 
         newContext.initialize(languageId);
         // enter current context
-        newContext.enter();
+        if (enterContext) {
+            newContext.enter();
+        }
 
         assertNotNull(this.languageEnv);
         assertNotNull(this.language);
@@ -167,13 +170,23 @@ public abstract class AbstractPolyglotTest {
     @After
     public final void cleanup() {
         if (context != null) {
-            context.leave();
+            if (enterContext) {
+                context.leave();
+            }
+
             context.close();
             context = null;
         }
     }
 
-    protected static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Runnable callable, Class<? extends Throwable> exceptionType) {
+        assertFails((Callable<?>) () -> {
+            callable.run();
+            return null;
+        }, exceptionType);
+    }
+
+    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {

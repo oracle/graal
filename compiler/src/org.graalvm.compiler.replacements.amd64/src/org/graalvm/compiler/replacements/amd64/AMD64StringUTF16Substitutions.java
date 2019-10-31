@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -181,9 +181,7 @@ public class AMD64StringUTF16Substitutions {
      */
     @MethodSubstitution
     public static int compress(char[] src, int srcIndex, byte[] dest, int destIndex, int len) {
-        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dest.length)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
+        checkLimits(src.length, srcIndex, dest.length, destIndex, len);
 
         Pointer srcPointer = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
         Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
@@ -204,13 +202,17 @@ public class AMD64StringUTF16Substitutions {
      */
     @MethodSubstitution
     public static int compress(byte[] src, int srcIndex, byte[] dest, int destIndex, int len) {
-        if (len < 0 || srcIndex < 0 || (srcIndex * 2 + len * 2 > src.length) || destIndex < 0 || (destIndex + len > dest.length)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
-        }
+        checkLimits(src.length >> 1, srcIndex, dest.length, destIndex, len);
 
         Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * 2 * byteArrayIndexScale(INJECTED));
         Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
         return AMD64StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Byte);
+    }
+
+    private static void checkLimits(int srcLen, int srcIndex, int destLen, int destIndex, int len) {
+        if (len < 0 || srcIndex < 0 || (srcIndex + len > srcLen) || destIndex < 0 || (destIndex + len > destLen)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
+        }
     }
 
 }

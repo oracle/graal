@@ -1,4 +1,4 @@
-From 58112418268dfd986dddd194321409ff7be8eaef Mon Sep 17 00:00:00 2001
+From 5c09e5cf681e63388ca696b9024d295ef10a016a Mon Sep 17 00:00:00 2001
 From: Josef Eisl <josef.eisl@oracle.com>
 Date: Tue, 18 Dec 2018 17:19:42 +0100
 Subject: [PATCH 2/4] [GR-15966] [llvm-ar] support for extract with count
@@ -11,7 +11,7 @@ Subject: [PATCH 2/4] [GR-15966] [llvm-ar] support for extract with count
 
 diff --git a/llvm/test/tools/llvm-ar/extract-with-count.test b/llvm/test/tools/llvm-ar/extract-with-count.test
 new file mode 100644
-index 00000000000..e687d6e47b1
+index 000000000000..e687d6e47b1c
 --- /dev/null
 +++ b/llvm/test/tools/llvm-ar/extract-with-count.test
 @@ -0,0 +1,63 @@
@@ -79,7 +79,7 @@ index 00000000000..e687d6e47b1
 +RUN: not llvm-ar xN 1nointeger %t.ar extract-with-count.test.tmp-add-lib1.o 2>&1 | FileCheck %s --check-prefix=CHECK-POSITIVE
 +
 diff --git a/llvm/tools/llvm-ar/llvm-ar.cpp b/llvm/tools/llvm-ar/llvm-ar.cpp
-index 1c453ee0b56..355bbf5cd76 100644
+index 1c453ee0b569..cd5d77f24a09 100644
 --- a/llvm/tools/llvm-ar/llvm-ar.cpp
 +++ b/llvm/tools/llvm-ar/llvm-ar.cpp
 @@ -67,7 +67,7 @@ OPTIONS:
@@ -129,7 +129,7 @@ index 1c453ee0b56..355bbf5cd76 100644
 +static void getCount() {
 +  if (PositionalArgs.size() == 0)
 +    fail("Expected [count] for N modifier");
-+  if (StringRef(PositionalArgs[0]).getAsInteger(10, Count) || Count == 0)
++  if (StringRef(PositionalArgs[0]).getAsInteger(10, Count) || Count <= 0)
 +    fail("Value for [count] must be positive (>0).");
 +  PositionalArgs.erase(PositionalArgs.begin());
 +}

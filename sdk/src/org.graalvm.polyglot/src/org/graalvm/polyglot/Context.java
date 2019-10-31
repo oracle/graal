@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -424,6 +424,15 @@ public final class Context implements AutoCloseable {
     }
 
     /**
+     * Resets all accumulators of resource limits for the associated context to zero.
+     *
+     * @since 19.3
+     */
+    public void resetLimits() {
+        impl.resetLimits();
+    }
+
+    /**
      * Converts a host value to a polyglot {@link Value value} representation. This conversion is
      * applied implicitly whenever {@link Value#execute(Object...) execution} or
      * {@link Value#newInstance(Object...) instantiation} arguments are provided,
@@ -671,7 +680,7 @@ public final class Context implements AutoCloseable {
      * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
      * </ul>
      * <p>
-     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * The returned context can <b>not</b> be used to {@link #enter() enter} , {@link #leave()
      * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
      * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
@@ -766,6 +775,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAccess;
+        private ResourceLimits resourceLimits;
         private Map<String, String> environment;
         private ZoneId zone;
 
@@ -1212,7 +1222,7 @@ public final class Context implements AutoCloseable {
          *
          * @return the {@link Builder}
          * @see ZoneId#systemDefault()
-         * @since 20.0.0 beta 2
+         * @since 19.2.0
          */
         public Builder timeZone(final ZoneId zone) {
             this.zone = zone;
@@ -1274,6 +1284,20 @@ public final class Context implements AutoCloseable {
         public Builder processHandler(ProcessHandler handler) {
             Objects.requireNonNull(handler, "Handler must be non null.");
             this.processHandler = handler;
+            return this;
+        }
+
+        /**
+         * Assigns resource limit configuration to a context. By default no resource limits are
+         * assigned. The limits will be enabled for all contexts created using this builder.
+         * Assigning a limit may have performance impact of all contexts that run with the same
+         * engine.
+         *
+         * @see ResourceLimits for usage examples
+         * @since 19.3.0
+         */
+        public Builder resourceLimits(ResourceLimits limits) {
+            this.resourceLimits = limits;
             return this;
         }
 
@@ -1378,6 +1402,13 @@ public final class Context implements AutoCloseable {
             if (environmentAccess == null) {
                 environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
+            Object limits;
+            if (resourceLimits != null) {
+                limits = resourceLimits.impl;
+            } else {
+                limits = null;
+            }
+
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
@@ -1404,10 +1435,11 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
+                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1415,7 +1447,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
             }
         }
 

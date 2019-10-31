@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,12 +56,14 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     private final List<Message> messages = new ArrayList<>();
+    protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     public final void addWarning(String text, Object... params) {
         getMessages().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING));

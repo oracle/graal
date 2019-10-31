@@ -31,20 +31,6 @@
 
 set -e
 
-# Resolve the location of this script
-source="${BASH_SOURCE[0]}"
-while [ -h "$source" ] ; do
-    prev_source="$source"
-    source="$(readlink "$source")";
-    if [[ "$source" != /* ]]; then
-        # if the link was relative, it was relative to where it came from
-        dir="$( cd -P "$( dirname "$prev_source" )" && pwd )"
-        source="$dir/$source"
-    fi
-done
-location="$( cd -P "$( dirname "$source" )" && pwd )"
-suite_dir="$( dirname "$( dirname "$( dirname ${location} )" )" )"
-
 unset DYNAMIC_IMPORTS
 unset DEFAULT_DYNAMIC_IMPORTS
 
@@ -52,4 +38,4 @@ if [[ "$JACOCO" != "" ]]; then
   EXTRA_MX_ARGS="--jacoco=$JACOCO --jacoco-exec-file=$suite_dir/jacoco.exec"
 fi
 
-<mx_exe> $EXTRA_MX_ARGS -p "${suite_dir}" <mx_command> "$@"
+<mx_exe> $EXTRA_MX_ARGS -p "<suite_dir>" <mx_command> "$@"

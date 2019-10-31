@@ -93,20 +93,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
-    @CompilationFinal private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
     public abstract static class Loader implements LLVMCapability {
 
         public abstract CallTarget load(LLVMContext context, Source source);
-    }
-
-    public static ContextReference<LLVMContext> getLLVMContextReference() {
-        return getCurrentLanguage(LLVMLanguage.class).getContextReference();
-    }
-
-    public NodeFactory getNodeFactory() {
-        return nodeFactory;
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
@@ -131,7 +122,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return null;
     }
 
+    /**
+     * Do not use this on fast-path.
+     */
+    public static LLVMContext getContext() {
+        CompilerAsserts.neverPartOfCompilation("Use faster context lookup methods for the fast-path.");
+        return getCurrentContext(LLVMLanguage.class);
+    }
+
+    /**
+     * Do not use this on fast-path.
+     */
     public static LLVMLanguage getLanguage() {
+        // TODO add neverPartOfCompilation.
         return getCurrentLanguage(LLVMLanguage.class);
     }
 
@@ -154,6 +157,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguageHome();
     }
 
+    public Configuration getActiveConfiguration() {
+        if (activeConfiguration != null) {
+            return activeConfiguration;
+        }
+        throw new IllegalStateException("No context, please create the context before accessing the configuration.");
+    }
+
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
@@ -164,7 +174,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
-        this.nodeFactory = activeConfiguration.createNodeFactory(context);
         return context;
     }
 
@@ -227,8 +236,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
-        LLVMContext context = getContextReference().get();
-        return getCapability(Loader.class).load(context, source);
+        return getCapability(Loader.class).load(getContext(), source);
     }
 
     @Override

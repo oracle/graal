@@ -70,6 +70,9 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         Thread thread = (Thread) receiver;
+        if (thread.getState() == Thread.State.TERMINATED) {
+            return ThreadStatus.TERMINATED;
+        }
         assert thread.getState() == Thread.State.NEW : "All threads are in NEW state during image generation";
         if (thread == JavaThreads.singleton().mainThread) {
             /* The main thread is recomputed as running. */

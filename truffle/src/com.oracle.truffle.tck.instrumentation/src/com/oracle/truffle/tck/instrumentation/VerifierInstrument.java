@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -273,7 +274,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             if (parent == null) {
                 return false;
             }
-            if (TruffleTCKAccessor.nodesAccess().isTaggedWith(parent, RootTag.class)) {
+            if (TruffleTCKAccessor.nodesAccess().isTaggedWith(parent, RootTag.class) ||
+                            parent instanceof InstrumentableNode && ((InstrumentableNode) parent).hasTag(RootTag.class)) {
                 return true;
             }
             return hasParentRootTag(parent);

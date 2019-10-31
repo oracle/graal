@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -44,6 +45,7 @@ import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -60,11 +62,14 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
@@ -163,7 +168,9 @@ public class PermissionsFeature implements Feature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try {
-            Files.deleteIfExists(reportFilePath);
+            if (Files.exists(reportFilePath) && Files.size(reportFilePath) > 0) {
+                Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            }
         } catch (IOException ioe) {
             throw UserError.abort("Cannot delete existing report file " + reportFilePath + ".");
         }
@@ -188,7 +195,8 @@ public class PermissionsFeature implements Feature {
                 Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
-                Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
+                Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang),
+                                new SafeServiceLoaderRecognizer(bigbang, accessImpl.getImageClassLoader()));
                 int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
                 maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
                 for (AnalysisMethod importantMethod : importantMethods) {
@@ -473,8 +481,25 @@ public class PermissionsFeature implements Feature {
      * @return the methods accepted by {@code filter}
      */
     static Set<AnalysisMethod> findMethods(BigBang bigBang, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
+        return findImpl(bigBang, owner.getWrappedWithoutResolve().getDeclaredMethods(), filter);
+    }
+
+    /**
+     * Finds constructors declared in {@code owner} {@link AnalysisType} using {@code filter}
+     * predicate.
+     *
+     * @param bigBang the {@link BigBang}
+     * @param owner the {@link AnalysisType} which constructors should be listed
+     * @param filter the predicate filtering constructors declared in {@code owner}
+     * @return the constructors accepted by {@code filter}
+     */
+    static Set<AnalysisMethod> findConstructors(BigBang bigBang, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
+        return findImpl(bigBang, owner.getWrappedWithoutResolve().getDeclaredConstructors(), filter);
+    }
+
+    private static Set<AnalysisMethod> findImpl(BigBang bigBang, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {
         Set<AnalysisMethod> result = new HashSet<>();
-        for (ResolvedJavaMethod m : owner.getWrappedWithoutResolve().getDeclaredMethods()) {
+        for (ResolvedJavaMethod m : methods) {
             if (filter.test(m)) {
                 result.add(bigBang.getUniverse().lookup(m));
             }
@@ -567,7 +592,108 @@ public class PermissionsFeature implements Feature {
             if (!dopriviledged.contains(method)) {
                 return false;
             }
-            return isCompilerClass(caller) || isSystemClass(caller);
+            boolean safeClass = isCompilerClass(caller) || isSystemClass(caller);
+            if (safeClass) {
+                return true;
+            }
+            StructuredGraph graph = caller.getTypeFlow().getGraph();
+            for (Invoke invoke : graph.getInvokes()) {
+                if (method.equals(invoke.callTarget().targetMethod())) {
+                    NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+                    if (args.isEmpty()) {
+                        return false;
+                    }
+                    ValueNode arg0 = args.get(0);
+                    if (!(arg0 instanceof NewInstanceNode)) {
+                        return false;
+                    }
+                    ResolvedJavaType newType = ((NewInstanceNode) arg0).instanceClass();
+                    AnalysisMethod methodCalledByAccessController = findPrivilegedEntryPoint(method, trace);
+                    if (newType == null || methodCalledByAccessController == null) {
+                        return false;
+                    }
+                    if (newType.equals(methodCalledByAccessController.getDeclaringClass())) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Finds an entry point to {@code PrivilegedAction} called by {@code dopriviledgedMethod}.
+         */
+        private AnalysisMethod findPrivilegedEntryPoint(AnalysisMethod dopriviledgedMethod, LinkedHashSet<AnalysisMethod> trace) {
+            AnalysisMethod ep = null;
+            for (AnalysisMethod m : trace) {
+                if (dopriviledgedMethod.equals(m)) {
+                    return ep;
+                }
+                ep = m;
+            }
+            return null;
+        }
+    }
+
+    private final class SafeServiceLoaderRecognizer implements CallGraphFilter {
+
+        private final ResolvedJavaMethod nextService;
+        private final ImageClassLoader imageClassLoader;
+
+        SafeServiceLoaderRecognizer(BigBang bigBang, ImageClassLoader imageClassLoader) {
+            AnalysisType serviceLoaderIterator = bigBang.forClass("java.util.ServiceLoader$LazyIterator");
+            Set<AnalysisMethod> methods = findMethods(bigBang, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");
+            }
+            this.nextService = methods.iterator().next();
+            this.imageClassLoader = imageClassLoader;
+        }
+
+        @Override
+        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
+            if (nextService.equals(method)) {
+                AnalysisType instantiatedType = findInstantiatedType(trace);
+                if (instantiatedType != null) {
+                    if (!isRegiseredInServiceLoader(instantiatedType)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Finds last constructor invocation.
+         */
+        private AnalysisType findInstantiatedType(LinkedHashSet<AnalysisMethod> trace) {
+            AnalysisType res = null;
+            for (AnalysisMethod m : trace) {
+                if ("<init>".equals(m.getName())) {
+                    res = m.getDeclaringClass();
+                }
+            }
+            return res;
+        }
+
+        /**
+         * Finds if the given type may be instantiated by ServiceLoader.
+         */
+        private boolean isRegiseredInServiceLoader(AnalysisType type) {
+            String resource = String.format("META-INF/services/%s", type.toClassName());
+            if (imageClassLoader.getClassLoader().getResource(resource) != null) {
+                return true;
+            }
+            for (AnalysisType ifc : type.getInterfaces()) {
+                if (isRegiseredInServiceLoader(ifc)) {
+                    return true;
+                }
+            }
+            AnalysisType superClz = type.getSuperclass();
+            if (superClz != null) {
+                return isRegiseredInServiceLoader(superClz);
+            }
+            return false;
         }
     }
 

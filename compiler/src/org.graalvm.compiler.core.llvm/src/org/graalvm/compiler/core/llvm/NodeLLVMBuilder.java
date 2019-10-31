@@ -95,7 +95,6 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -269,7 +268,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
     }
 
     void finish() {
-        gen.getLLVMResult().setModule(builder.getModule());
+        gen.getLLVMResult().setBitcode(builder.getBitcode());
     }
 
     @Override
@@ -412,7 +411,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
                 isVoid = isVoidType(returnType);
-                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
+                LLVMTypeRef[] argTypes = getUnknownCallArgumentTypes(arguments, callTarget);
                 assert args.length == argTypes.length;
 
                 callee = builder.buildIntToPtr(computedAddress,
@@ -455,13 +454,14 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         return arguments.stream().map(this::llvmOperand).toArray(LLVMValueRef[]::new);
     }
 
+    @SuppressWarnings("unused")
+    protected LLVMTypeRef[] getUnknownCallArgumentTypes(NodeInputList<ValueNode> arguments, LoweredCallTargetNode callTarget) {
+        return Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
+    }
+
     @Override
     public void emitReadExceptionObject(ValueNode node) {
         builder.buildLandingPad();
-
-        Register exceptionRegister = gen.getRegisterConfig().getReturnRegister(JavaKind.Object);
-        LLVMValueRef exception = builder.buildInlineGetRegister(exceptionRegister.name);
-        setResult(node, builder.buildRegisterObject(exception));
     }
 
     @Override

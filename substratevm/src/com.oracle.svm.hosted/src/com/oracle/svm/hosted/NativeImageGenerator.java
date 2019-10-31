@@ -124,6 +124,8 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -223,7 +225,9 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.SizeOfSupportImpl;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperSubstitutionProcessor;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
@@ -347,7 +351,7 @@ public class NativeImageGenerator {
             }
         } else if (hostedArchitecture instanceof AArch64) {
             if (OS.getCurrent() == OS.LINUX) {
-                return new Platform.LINUX_AArch64();
+                return new DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
             }
@@ -399,7 +403,7 @@ public class NativeImageGenerator {
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
-        } else if (includedIn(platform, Platform.AArch64.class)) {
+        } else if (includedIn(platform, Platform.AARCH64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
                 architecture = GraalAccess.getOriginalTarget().arch;
@@ -543,7 +547,7 @@ public class NativeImageGenerator {
                 registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), bigbang.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
                                 nativeLibraries, loader, false, true, bigbang.getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
-                                bigbang.getHostVM().getClassInitializationSupport());
+                                bigbang.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
                     printTypes();
@@ -800,6 +804,10 @@ public class NativeImageGenerator {
                 Providers originalProviders = GraalAccess.getOriginalProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
+                ClassInitializationSupport classInitializationSupport = new ConfigurableClassInitialization(originalMetaAccess, loader);
+                ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
+                ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
+
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
@@ -812,10 +820,8 @@ public class NativeImageGenerator {
                  * Check if any configuration factory class was registered. If not, register the
                  * basic one.
                  */
-                HostedConfiguration.setDefaultIfEmpty(access);
+                HostedConfiguration.setDefaultIfEmpty();
                 GraalConfiguration.setDefaultIfEmpty();
-
-                ClassInitializationSupport classInitializationSupport = HostedConfiguration.instance().getClassInitializationSupport();
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
@@ -901,7 +907,7 @@ public class NativeImageGenerator {
         bigbang.getAnnotationSubstitutionProcessor().processComputedValueFields(bigbang);
 
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, true, true,
-                        bigbang.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bigbang.getHostVM().getClassInitializationSupport());
+                        bigbang.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bigbang.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
         registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
 
         /*
@@ -996,7 +1002,7 @@ public class NativeImageGenerator {
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport) {
         try (StopTimer ignored = new Timer(imageName, "(cap)").start()) {
-            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport);
+            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport, tempDirectory());
             cEnumProcessor.setNativeLibraries(nativeLibs);
             processNativeLibraryImports(nativeLibs, aMetaAccess, classInitializationSupport);
 
@@ -1079,7 +1085,8 @@ public class NativeImageGenerator {
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
                     AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, boolean analysis, boolean hosted,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport) {
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport,
+                    TargetDescription target) {
         assert !analysis || hosted : "analysis must always be hosted";
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
@@ -1110,11 +1117,11 @@ public class NativeImageGenerator {
         NodeIntrinsificationProvider nodeIntrinsificationProvider;
         if (!SubstrateUtil.isBuildingLibgraal()) {
             nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection, providers.getForeignCalls(),
-                            providers.getWordTypes());
+                            providers.getWordTypes(), target);
 
         } else {
             nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection,
-                            providers.getForeignCalls(), providers.getWordTypes()) {
+                            providers.getForeignCalls(), providers.getWordTypes(), target) {
                 @Override
                 public <T> T getInjectedArgument(Class<T> type) {
                     if (type.isAssignableFrom(GraalHotSpotVMConfig.class)) {
@@ -1139,12 +1146,11 @@ public class NativeImageGenerator {
             }
         }
 
-        BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted, explicitUnsafeNullChecks);
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
-        ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacementBytecodeProvider, architecture,
+        ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
                         explicitUnsafeNullChecks, /* registerMathPlugins */false,
                         SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
                         JavaVersionUtil.JAVA_SPEC >= 11);
@@ -1156,7 +1162,7 @@ public class NativeImageGenerator {
         MetaAccessProvider pluginsMetaAccess = hosted && !analysis ? hMetaAccess : aMetaAccess;
         assert pluginsMetaAccess != null;
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor, pluginsMetaAccess,
-                        hostedSnippetReflection, plugins.getInvocationPlugins(), replacementBytecodeProvider, analysis);
+                        hostedSnippetReflection, plugins.getInvocationPlugins(), replacements, analysis);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins.getInvocationPlugins(), analysis, hosted));
 
@@ -1509,7 +1515,7 @@ public class NativeImageGenerator {
             nativeLibs.addLibrary(library.value(), library.requireStatic());
         }
 
-        nativeLibs.finish(tempDirectory());
+        nativeLibs.finish();
         nativeLibs.reportErrors();
     }
 

@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Array;
 
+import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -49,7 +50,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
         if (x == y) {
             return true;
         } else if (x instanceof SubstrateObjectConstant) {
-            return y instanceof SubstrateObjectConstant && ((SubstrateObjectConstant) x).getObject() == ((SubstrateObjectConstant) y).getObject();
+            return y instanceof SubstrateObjectConstant && ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
         } else {
             return x.equals(y);
         }
@@ -69,7 +70,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
             return null;
         }
 
-        Object a = KnownIntrinsics.convertUnknownValue(((SubstrateObjectConstant) array).getObject(), Object.class);
+        Object a = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(array), Object.class);
 
         if (index < 0 || index >= Array.getLength(a)) {
             return null;

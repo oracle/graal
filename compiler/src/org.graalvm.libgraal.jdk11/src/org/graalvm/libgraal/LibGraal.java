@@ -53,8 +53,13 @@ public class LibGraal {
         Method detachCurrentThread = null;
         Method getFailedSpeculationsAddress = null;
         boolean firstFound = false;
+        // Initialize JVMCI to ensure JVMCI opens its packages to
+        // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
+        // below will fail on JDK13+.
+        Services.initializeJVMCI();
+
+        Class<?> runtimeClass = HotSpotJVMCIRuntime.class;
         try {
-            Class<?> runtimeClass = HotSpotJVMCIRuntime.class;
             unhand = runtimeClass.getDeclaredMethod("unhand", Class.class, Long.TYPE);
             firstFound = true;
             translate = runtimeClass.getDeclaredMethod("translate", Object.class);
@@ -63,7 +68,7 @@ public class LibGraal {
             attachCurrentThread = runtimeClass.getDeclaredMethod("attachCurrentThread", Boolean.TYPE);
             detachCurrentThread = runtimeClass.getDeclaredMethod("detachCurrentThread");
             getFailedSpeculationsAddress = HotSpotSpeculationLog.class.getDeclaredMethod("getFailedSpeculationsAddress");
-        } catch (Exception e) {
+        } catch (NoSuchMethodException | SecurityException e) {
             // If the very first method is unavailable assume nothing is available. Otherwise only
             // some are missing so complain about it.
             if (firstFound) {

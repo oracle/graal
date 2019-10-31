@@ -50,6 +50,8 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -88,10 +90,10 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
 
         @Specialization
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, Object string, long len) {
+        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string, long len) {
             ByteBuffer buffer = ByteBuffer.allocate((int) len);
 
-            Object ptr = string;
+            LLVMPointer ptr = string;
             for (int i = 0; i < len; i++) {
                 byte value = (byte) load.executeWithTarget(ptr);
                 ptr = inc.executeWithTarget(ptr, Byte.BYTES);
@@ -112,14 +114,14 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
 
         @Specialization(limit = "4", guards = "charset.zeroTerminatorLen == increment")
-        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, Object string,
+        ByteBuffer doRead(@SuppressWarnings("unused") LLVMCharset charset, LLVMPointer string,
                         @Cached("charset.zeroTerminatorLen") int increment,
                         @Cached("createLoad(increment)") LLVMLoadNode load,
                         @Cached("create()") PutCharNode put) {
             int currentBufferSize = bufferSize;
             ByteBuffer result = ByteBuffer.allocate(currentBufferSize).order(ByteOrder.nativeOrder());
 
-            Object ptr = string;
+            LLVMPointer ptr = string;
             Object value;
             do {
                 value = load.executeWithTarget(ptr);

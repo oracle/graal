@@ -1,4 +1,4 @@
-From edd6ba75b3ef55f49d85e99bb390ddcb12e59d6b Mon Sep 17 00:00:00 2001
+From 42aed0e305e9cdc3c37631aa41d791f5a92bf84d Mon Sep 17 00:00:00 2001
 From: Josef Eisl <josef.eisl@oracle.com>
 Date: Fri, 25 Jan 2019 11:18:29 +0100
 Subject: [PATCH 3/4] [GR-15967] [llvm-readobj] support for dumping section in
@@ -11,7 +11,7 @@ Subject: [PATCH 3/4] [GR-15967] [llvm-readobj] support for dumping section in
  3 files changed, 45 insertions(+)
 
 diff --git a/llvm/tools/llvm-readobj/ObjDumper.cpp b/llvm/tools/llvm-readobj/ObjDumper.cpp
-index a725140c9d3..6b45530f7e6 100644
+index a725140c9d33..62baf973a10a 100644
 --- a/llvm/tools/llvm-readobj/ObjDumper.cpp
 +++ b/llvm/tools/llvm-readobj/ObjDumper.cpp
 @@ -17,6 +17,7 @@
@@ -45,7 +45,7 @@ index a725140c9d3..6b45530f7e6 100644
 +  } else
 +    Path = OptPath;
 +
-+  W.startLine() << "Dumping section '" << SectionName << "' to " + Path + "\n";
++  W.startLine() << "Dumping section '" << SectionName << "' to " << Path << "\n";
 +
 +  StringRef SectionContent;
 +  Section.getContents(SectionContent);
@@ -62,7 +62,7 @@ index a725140c9d3..6b45530f7e6 100644
 +
  } // namespace llvm
 diff --git a/llvm/tools/llvm-readobj/ObjDumper.h b/llvm/tools/llvm-readobj/ObjDumper.h
-index 13de563469a..49f0f1375c1 100644
+index 13de563469ab..49f0f1375c1b 100644
 --- a/llvm/tools/llvm-readobj/ObjDumper.h
 +++ b/llvm/tools/llvm-readobj/ObjDumper.h
 @@ -90,6 +90,7 @@ public:
@@ -74,7 +74,7 @@ index 13de563469a..49f0f1375c1 100644
  protected:
    ScopedPrinter &W;
 diff --git a/llvm/tools/llvm-readobj/llvm-readobj.cpp b/llvm/tools/llvm-readobj/llvm-readobj.cpp
-index 81ce7a59036..68f4eee76fe 100644
+index 81ce7a590364..68f4eee76fea 100644
 --- a/llvm/tools/llvm-readobj/llvm-readobj.cpp
 +++ b/llvm/tools/llvm-readobj/llvm-readobj.cpp
 @@ -175,6 +175,11 @@ namespace opts {

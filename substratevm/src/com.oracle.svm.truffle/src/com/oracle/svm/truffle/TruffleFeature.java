@@ -84,6 +84,7 @@ import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -235,7 +236,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "initializeNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.impl.HomeFinder", "initializeNativeImageState", Collections.emptyList());
     }
 
     public static void removeTruffleLanguage(String mimeType) {
@@ -274,7 +274,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) runtime;
             truffleRuntime.resetHosted();
         }
-
+        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.truffle");
         initializeTruffleReflectively(Thread.currentThread().getContextClassLoader());
     }
 
@@ -294,7 +294,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "resetPreInitializedEngine", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.interop.Message", "resetNativeImageState", Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.impl.HomeFinder", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.nodes.Node", "resetNativeImageState", Collections.emptyList());
     }
@@ -808,7 +807,7 @@ final class Target_com_oracle_truffle_polyglot_ContextThreadLocal {
      * Don't store any threads in the image.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Thread firstThread;
+    Thread activeSingleThread;
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)

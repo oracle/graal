@@ -58,6 +58,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract void stepOut(CommandPostProcessor postProcessor);
 
+    public abstract Params searchInContent(String scriptId, String query, boolean caseSensitive, boolean isRegex) throws CommandProcessException;
+
     public abstract void setBreakpointsActive(Optional<Boolean> breakpointsActive) throws CommandProcessException;
 
     public abstract void setSkipAllPauses(Optional<Boolean> skip) throws CommandProcessException;
@@ -65,6 +67,8 @@ public abstract class DebuggerDomain extends Domain {
     public abstract Params setBreakpointByUrl(String url, String urlRegex, int line, int column, String condition) throws CommandProcessException;
 
     public abstract Params setBreakpoint(Location location, String condition) throws CommandProcessException;
+
+    public abstract Params setBreakpointOnFunctionCall(String functionObjectId, String condition) throws CommandProcessException;
 
     public abstract void removeBreakpoint(String id) throws CommandProcessException;
 

@@ -148,7 +148,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    void writeHeaderFiles(Path outputDir, String imageName, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
+    void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
         /* Group methods by header files. */
         Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream()
                         .filter(this::shouldWriteHeader)
@@ -158,11 +158,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         hostedMethods.forEach((headerClass, methods) -> {
             methods.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
             Header header = headerClass == Header.class ? defaultCHeaderAnnotation(imageName) : instantiateCHeader(headerClass);
-            writeHeaderFile(outputDir, header, methods, symbolAliases, dynamic);
+            writeHeaderFile(outputDir, header, methods, dynamic);
         });
     }
 
-    private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
+    private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, boolean dynamic) {
         CSourceCodeWriter writer = new CSourceCodeWriter(outDir.getParent());
         String imageHeaderGuard = "__" + header.name().toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
         String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
@@ -194,7 +194,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("#endif");
             writer.appendln();
 
-            methods.forEach(m -> writeMethodHeader(m, writer, symbolAliases, dynamic));
+            methods.forEach(m -> writeMethodHeader(m, writer, dynamic));
 
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("}");
@@ -271,7 +271,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return 0;
     }
 
-    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, Map<ResolvedJavaMethod, String> symbolAliases, boolean dynamic) {
+    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
         String docComment = cEntryPointData.getDocumentation();
@@ -279,11 +279,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("/*");
             Arrays.stream(docComment.split("\n")).forEach(l -> writer.appendln(" * " + l));
             writer.appendln(" */");
-        }
-
-        String symbolName = symbolAliases.get(m);
-        if (symbolName == null || symbolName.isEmpty()) {
-            symbolName = cEntryPointData.getSymbolName();
         }
 
         if (dynamic) {
@@ -299,6 +294,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                         metaAccess, nativeLibs));
         writer.append(" ");
 
+        String symbolName = cEntryPointData.getSymbolName();
         assert !symbolName.isEmpty();
         if (dynamic) {
             writer.append("(*").append(symbolName).append("_fn_t)");

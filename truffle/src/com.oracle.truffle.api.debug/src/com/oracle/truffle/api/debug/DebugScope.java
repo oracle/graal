@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,6 +216,29 @@ public final class DebugScope {
             throw new DebugException(session, ex, language, null, true, null);
         }
         return receiverValue;
+    }
+
+    /**
+     * Get value that represents root instance of this scope. The value is an instance of guest
+     * language representation of the root node of this scope, e.g. a guest language function.
+     *
+     * @return the root instance value, or <code>null</code> when no such value exists.
+     * @since 19.3.0
+     */
+    public DebugValue getRootInstance() {
+        verifyValidState();
+        DebugValue functionValue = null;
+        try {
+            Object function = scope.getRootInstance();
+            if (function != null) {
+                functionValue = new DebugValue.HeapValue(session, getLanguage(), root.getName(), function);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(session, ex, language, null, true, null);
+        }
+        return functionValue;
     }
 
     /**

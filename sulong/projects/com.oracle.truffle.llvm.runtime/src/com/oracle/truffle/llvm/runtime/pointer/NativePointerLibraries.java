@@ -74,7 +74,7 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
         @Specialization(limit = "5", guards = {"value.asNative() == cachedAddress", "cachedDescriptor != null"})
         static Object doNativeCached(@SuppressWarnings("unused") LLVMPointerImpl value, Object[] args,
                         @Cached("value.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                        @Cached("getLLVMContextReference()") ContextReference<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("getDescriptor(ctxRef, value)") LLVMFunctionDescriptor cachedDescriptor,
                         @CachedLibrary("cachedDescriptor") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             return interop.execute(cachedDescriptor, args);

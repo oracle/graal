@@ -42,7 +42,8 @@ else
 LDFLAGS=-shared -g
 endif
 
-CFLAGS=-g -fPIC -DPIC -O3
+LDFLAGS+= ${EXTRA_LDFLAGS}
+CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
 bin/polyglot-mock.o: CFLAGS+=-Wno-return-type
 

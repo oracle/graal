@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -106,29 +106,104 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
+class SafeDirectoryUpdater(object):
+    """
+    Multi-thread safe context manager for creating/updating a directory.
+
+    :Example:
+    # Compiles `sources` into `dst` with javac. If multiple threads/processes are
+    # performing this compilation concurrently, the contents of `dst`
+    # will reflect the complete results of one of the compilations
+    # from the perspective of other threads/processes.
+    with SafeDirectoryUpdater(dst) as sdu:
+        mx.run([jdk.javac, '-d', sdu.directory, sources])
+
+    """
+    def __init__(self, directory, create=False):
+        """
+
+        :param directory: the target directory that will be created/updated within the context.
+                          The working copy of the directory is accessed via `self.directory`
+                          within the context.
+        """
+
+        self.target = directory
+        self.workspace = None
+        self.directory = None
+        self.create = create
+
+    def __enter__(self):
+        parent = dirname(self.target)
+        self.workspace = tempfile.mkdtemp(dir=parent)
+        self.directory = join(self.workspace, basename(self.target))
+        if self.create:
+            mx.ensure_dir_exists(self.directory)
+        self.target_timestamp = mx.TimeStampFile(self.target)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            shutil.rmtree(self.workspace)
+            raise
+
+        # Try delete the target directory if it existed prior to creating
+        # self.workspace and has not been modified in between.
+        if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
+            old_target = join(self.workspace, 'to_deleted_' + basename(self.target))
+            try:
+                os.rename(self.target, old_target)
+            except:
+                # Silently assume another process won the race to rename dst_jdk_dir
+                pass
+
+        # Try atomically move self.directory to self.target
+        try:
+            os.rename(self.directory, self.target)
+        except:
+            if not exists(self.target):
+                raise
+            else:
+                # Silently assume another process won the race to create self.target
+                pass
+
+        shutil.rmtree(self.workspace)
+
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
+
+    This runs a version of org.graalvm.compiler.hotspot.JVMCIVersionCheck that is "moved"
+    to the unnamed package. Without this, on JDK 10+, the class in the jdk.internal.vm.compiler
+    module will be run instead of the version on the class path.
     """
-    simplename = 'JVMCIVersionCheck'
-    name = 'org.graalvm.compiler.hotspot.' + simplename
+    unqualified_name = 'JVMCIVersionCheck'
+    qualified_name = 'org.graalvm.compiler.hotspot.' + unqualified_name
     binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
+
     if isinstance(_suite, mx.BinarySuite):
-        javaSource = join(binDir, simplename + '.java')
-        if not exists(javaSource):
-            dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
-            assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
-            d = dists[0]
-            assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+        dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
+        assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
+        d = dists[0]
+        assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
+        source_timestamp = getmtime(d.sourcesPath)
+        def source_supplier():
             with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
-                with open(javaSource, 'w') as fp:
-                    fp.write(zf.read(name.replace('.', '/') + '.java'))
+                return zf.read(qualified_name.replace('.', '/') + '.java')
     else:
-        javaSource = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', name.replace('.', '/') + '.java')
-    javaClass = join(binDir, name.replace('.', '/') + '.class')
-    if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
-        mx.run([jdk.javac, '-d', binDir, javaSource])
-    mx.run([jdk.java, '-cp', binDir, name])
+        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', qualified_name.replace('.', '/') + '.java')
+        source_timestamp = getmtime(source_path)
+        def source_supplier():
+            with open(source_path, 'r') as fp:
+                return fp.read()
+
+    unqualified_class_file = join(binDir, unqualified_name + '.class')
+    if not exists(unqualified_class_file) or getmtime(unqualified_class_file) < source_timestamp:
+        with SafeDirectoryUpdater(binDir, create=True) as sdu:
+            unqualified_source_path = join(sdu.directory, unqualified_name + '.java')
+            with open(unqualified_source_path, 'w') as fp:
+                fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
+            mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
+    mx.run([jdk.java, '-cp', binDir, unqualified_name])
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -235,9 +310,11 @@ def ctw(args, extraVMarguments=None):
 
     args, vmargs = parser.parse_known_args(args)
 
+    vmargs.extend(_remove_empty_entries(extraVMarguments))
+
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
-        vmargs = ['-Djava.awt.headless=true'] + vmargs
+        vmargs.append('-Djava.awt.headless=true')
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -252,9 +329,10 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
-        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-            vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs, 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs, 'UseJVMCICompiler', False):
+            if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) is None:
+                vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if not _is_jvmci_enabled(vmargs):
@@ -277,7 +355,7 @@ def ctw(args, extraVMarguments=None):
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
 
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
+    run_vm(vmargs + mainClassAndArgs)
 
 def verify_jvmci_ci_versions(args):
     """
@@ -640,11 +718,15 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
+def _is_jaotc_supported():
+    return exists(jdk.exe_path('jaotc'))
+
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
-    mx_jaotc.jaotc_gate_runner(tasks)
+    if _is_jaotc_supported():
+        mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -711,8 +793,9 @@ def _unittest_config_participant(config):
             # Export packages in all Graal modules and their dependencies
             for dist in _graal_config().dists:
                 jmd = as_java_module(dist, jdk)
-                mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
-                vmArgs.append('--add-modules=' + jmd.name)
+                if _graaljdk_override is None or jmd in _graaljdk_override.get_modules():
+                    mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
+                    vmArgs.append('--add-modules=' + jmd.name)
 
     vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
     vmArgs.append('-esa')
@@ -826,8 +909,8 @@ class StdoutUnstripping:
                     candidate = e + '.map'
                     if exists(candidate):
                         if self.mapFiles is None:
-                            self.mapFiles = set()
-                        self.mapFiles.add(candidate)
+                            self.mapFiles = []
+                        self.mapFiles.append(candidate)
             self.capture = mx.OutputCapture()
             self.out = mx.TeeOutputCapture(self.capture)
             self.err = self.out
@@ -842,7 +925,7 @@ class StdoutUnstripping:
                         inputFile.write(data)
                         inputFile.flush()
                         retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in self.mapFiles] + [inputFile.name]
+                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
                         mx.unstrip(unstrip_args, out=retraceOut)
                         if data != retraceOut.data:
                             mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
@@ -865,7 +948,8 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
-    with StdoutUnstripping(args, out, err) as u:
+    map_file = join(graaljdk.home, 'proguard.map')
+    with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
 
 _JVMCI_JDK_TAG = 'jvmci'
@@ -1051,7 +1135,7 @@ def makegraaljdk_cli(args):
     if args.license:
         shutil.copy(args.license, join(dst_jdk_dir, 'LICENSE'))
     if args.bootstrap:
-        map_file = dst_jdk_dir + '.map'
+        map_file = join(dst_jdk_dir, 'proguard.map')
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
             select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
             mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1081,7 +1165,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     update_reason = None
     if dst_jdk_dir is None:
         graaljdks_dir = mx.ensure_dir_exists(join(_suite.get_output_root(platformDependent=True), 'graaljdks'))
-        jdk_suffix = '-'.join([d.short_name for d in _graalvm_components])
+        graalvm_compiler_short_names = [c.short_name for c in mx_sdk.graalvm_components() if isinstance(c, mx_sdk.GraalVmJvmciComponent) and c.graal_compiler]
+        jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
             jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
@@ -1123,13 +1208,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
     mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
 
-    # The GraalJDK is created in a temporary directory since multiple processes
-    # may be racing to do the creation.
-    tmp_dir = tempfile.mkdtemp(prefix=basename(dst_jdk_dir), dir=dirname(dst_jdk_dir))
-    tmp_dst_jdk_dir = join(tmp_dir, 'jdk')
-    dst_jdk_dir_timestamp = mx.TimeStampFile(dst_jdk_dir)
-    try:
-
+    with SafeDirectoryUpdater(dst_jdk_dir) as sdu:
+        tmp_dst_jdk_dir = sdu.directory
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
@@ -1149,10 +1229,11 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
                 for src_jar in _graal_config().truffle_jars:
                     _copy_file(src_jar, join(truffle_dir, basename(src_jar)))
+                for jvmci_parent_jar in _graal_config().jvmci_parent_jars:
                     with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                        fp.write(join('..', 'truffle', basename(src_jar)))
+                        fp.write(join('..', 'truffle', basename(jvmci_parent_jar)))
             else:
-                boot_jars += _graal_config().truffle_jars
+                boot_jars += _graal_config().jvmci_parent_jars
 
             for src_jar in boot_jars:
                 _copy_file(src_jar, join(boot_dir, basename(src_jar)))
@@ -1160,7 +1241,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         else:
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names)
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1205,7 +1286,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
         line = None
-        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\(build.*')
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\((?:[a-zA-Z]+ )?build.*')
         for line in out.lines:
             m = pattern.match(line)
             if m:
@@ -1222,70 +1303,59 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         unstrip_map = mx.make_unstrip_map(_graal_config().dists)
         if unstrip_map:
-            with open(tmp_dst_jdk_dir + '.map', 'w') as fp:
+            with open(join(tmp_dst_jdk_dir, 'proguard.map'), 'w') as fp:
                 fp.write(unstrip_map)
 
-    except:
-        shutil.rmtree(tmp_dir)
-        raise
-
-    # Try delete the current dst_jdk_dir if it existed prior to creating
-    # tmp_dst_jdk_dir and has not be modified in between.
-    if dst_jdk_dir_timestamp.timestamp is not None and dst_jdk_dir_timestamp.timestamp == mx.TimeStampFile(dst_jdk_dir).timestamp:
-        old_dst_jdk_dir = join(tmp_dir, 'old_jdk')
-        try:
-            os.rename(dst_jdk_dir, old_dst_jdk_dir)
-        except:
-            # Silently assume another process won the race to rename dst_jdk_dir
-            pass
-
-    # Try atomically move tmp_dst_jdk_dir to dst_jdk_dir
-    try:
-        os.rename(tmp_dst_jdk_dir, dst_jdk_dir)
-    except:
-        if not exists(dst_jdk_dir):
-            raise
-        else:
-            # Silently assume another process won the race to create dst_jdk_dir
-            pass
-
-    shutil.rmtree(tmp_dir)
     return dst_jdk_dir, True
 
-#: The Graal compiler components
-_graalvm_components = []
-
-def add_compiler_component(component):
-    _graalvm_components.append(component)
-    mx_sdk.register_graalvm_component(component)
-    return component
-
-class GraalConfig:
-    """
-    The distributions and jars that together comprise the set of classes implementing the Graal compiler.
-    """
-    def __init__(self, graalvm_components):
-        self.jvmci_dists = [mx.distribution(e) for component in graalvm_components for e in component.jvmci_jars]
-        self.boot_dists = [mx.distribution(e) for component in graalvm_components for e in component.boot_jars]
-        self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
-        self.dists = self.jvmci_dists + self.boot_dists + self.truffle_dists
-        self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
-
-        self.jvmci_jars = [d.classpath_repr() for d in self.jvmci_dists]
-        self.boot_jars = [d.classpath_repr() for d in self.boot_dists]
-        self.truffle_jars = [d.classpath_repr() for d in self.truffle_dists]
-        self.jars = self.jvmci_jars + self.boot_jars + self.truffle_jars
-
-    # Singleton instance.
-    _instance = None
+__graal_config = None
 
 def _graal_config():
-    if GraalConfig._instance is None:
-        GraalConfig._instance = GraalConfig(_graalvm_components)
-    return GraalConfig._instance
+    global __graal_config
+
+    class GraalConfig:
+        """
+        The distributions and jars that together comprise the set of classes implementing the Graal compiler.
+        """
+        def __init__(self):
+            self.jvmci_dists = []
+            self.jvmci_jars = []
+            self.jvmci_parent_dists = []
+            self.jvmci_parent_jars = []
+            self.boot_dists = []
+            self.boot_jars = []
+            self.truffle_jars = []
+            self.jars = []
+
+            for component in mx_sdk.graalvm_components():
+                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                    for jar in component.jvmci_jars:
+                        d = mx.distribution(jar)
+                        self.jvmci_dists.append(d)
+                        self.jvmci_jars.append(d.classpath_repr())
+                for jar in component.jvmci_parent_jars:
+                    d = mx.distribution(jar)
+                    self.jvmci_parent_dists.append(d)
+                    self.jvmci_parent_jars.append(d.classpath_repr())
+                for jar in component.boot_jars:
+                    d = mx.distribution(jar)
+                    self.boot_dists.append(d)
+                    self.boot_jars.append(d.classpath_repr())
+
+            self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
+            self.truffle_jars = [jar.classpath_repr() for jar in self.truffle_dists]
+
+            self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
+            self.jars = self.jvmci_jars + self.jvmci_parent_jars + self.boot_jars
+
+            self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
+
+    if __graal_config is None:
+        __graal_config = GraalConfig()
+    return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8:
+    if not isJDK8 and _is_jaotc_supported():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
@@ -1298,22 +1368,15 @@ def _jvmci_jars():
             'compiler:GRAAL_MANAGEMENT',
         ]
 
-def _boot_jars():
-    if not isJDK8:
-        return ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API']
-    else:
-        # In JDK 8, Truffle is not a boot jar and is added separately to GraalVM
-        return ['sdk:GRAAL_SDK']
-
 # The community compiler component
-_compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='GraalVM compiler',
     short_name='cmp',
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['Truffle'],
     jar_distributions=[  # Dev jars (annotation processors)
         'compiler:GRAAL_PROCESSOR_COMMON',
         'compiler:GRAAL_OPTIONS_PROCESSOR',
@@ -1323,7 +1386,6 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
     jvmci_jars=_jvmci_jars(),
-    boot_jars=_boot_jars(),
     graal_compiler='graal',
 ))
 

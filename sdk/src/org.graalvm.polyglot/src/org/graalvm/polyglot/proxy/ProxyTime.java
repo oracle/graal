@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,21 +49,21 @@ import org.graalvm.polyglot.Value;
  *
  * @see Proxy
  * @see Value
- * @since 20.0.0 beta 2
+ * @since 19.2.0
  */
 public interface ProxyTime extends Proxy {
 
     /**
      * Returns the time information. The returned value must not be <code>null</code>.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     LocalTime asTime();
 
     /**
      * Creates a proxy time from a local time.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     static ProxyTime from(LocalTime time) {
         return new ProxyTime() {

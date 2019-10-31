@@ -41,7 +41,7 @@ import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinDyld;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,14 @@ public interface Replacements {
     /**
      * Registers a plugin as a substitution.
      */
-    void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options);
+    void registerMethodSubstitution(MethodSubstitutionPlugin plugin);
+
+    /**
+     * Marks a plugin as conditionally applied. In the contenxt of libgraal conditional plugins
+     * can't be used in during graph encoding for snippets and method substitutions and this is used
+     * to detect violations of this restriction.
+     */
+    void registerConditionalPlugin(InvocationPlugin plugin);
 
     /**
      * Gets a graph that is a substitution for a given method.

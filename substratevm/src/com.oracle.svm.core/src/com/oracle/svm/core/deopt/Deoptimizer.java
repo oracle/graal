@@ -507,8 +507,11 @@ public final class Deoptimizer {
         final Pointer newSp = KnownIntrinsics.readStackPointer()
                         /* Remove the size of this frame... */
                         .add(WordFactory.unsigned(deoptStubFrameSize))
-                        /* ... but compensate that there was no return address pushed. */
-                        .subtract(FrameAccess.returnAddressSize())
+                        /*
+                         * ... but compensate that there was no call which entered this method (eg.
+                         * no return address pushed).
+                         */
+                        .subtract(FrameAccess.singleton().stackPointerAdjustmentOnCall())
                         /* Remove the size of the frame that gets deoptimized. */
                         .add(WordFactory.unsigned(frame.getSourceTotalFrameSize()))
                         /* Add the size of the deoptimization target frames. */
@@ -709,19 +712,20 @@ public final class Deoptimizer {
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
     }
 
+    private static final RingBuffer.Consumer<char[]> deoptEventsConsumer = (context, entry) -> {
+        Log l = (Log) context;
+        for (char c : entry) {
+            if (c == '\n') {
+                l.newline();
+            } else {
+                l.character(c);
+            }
+        }
+    };
+
     public static void logRecentDeoptimizationEvents(Log log) {
         log.string("== [Recent Deoptimizer Events: ").newline();
-        recentDeoptimizationEvents.foreach(log, (context, entry) -> {
-            Log l = (Log) context;
-            for (int i = 0; i < entry.length; i++) {
-                char c = entry[i];
-                if (c == '\n') {
-                    l.newline();
-                } else {
-                    l.character(c);
-                }
-            }
-        });
+        recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
         log.string("]").newline();
     }
 

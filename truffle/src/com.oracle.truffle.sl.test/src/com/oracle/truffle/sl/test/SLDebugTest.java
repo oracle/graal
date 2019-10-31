@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -253,6 +254,110 @@ public class SLDebugTest {
             });
 
             assertEquals("120", expectDone());
+        }
+    }
+
+    @Test
+    public void testGuestFunctionBreakpoints() throws Throwable {
+        final Source functions = slCode("function main() {\n" +
+                        "  a = fac;\n" +
+                        "  return fac(5);\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + // break
+                        "  }\n" +
+                        "  return n * facMin1(n);\n" +
+                        "}\n" +
+                        "function facMin1(n) {\n" +
+                        "  m = n - 1;\n" +
+                        "  return fac(m);\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(functions);
+            Breakpoint[] functionBreakpoint = new Breakpoint[]{null};
+
+            expectSuspended((SuspendedEvent event) -> {
+                event.prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugValue fac = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                // Breakpoint in "fac" will not suspend in "facMin1".
+                Breakpoint breakpoint = Breakpoint.newBuilder(fac.getSourceLocation()).sourceElements(SourceElement.ROOT).rootInstance(fac).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(5, event.getSourceSection().getStartLine());
+                Assert.assertEquals(5, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertEquals(5, event.getSourceSection().getStartLine());
+                Assert.assertEquals(4, event.getTopStackFrame().getScope().getDeclaredValue("n").as(Number.class).intValue());
+                functionBreakpoint[0].dispose();
+                event.prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testBuiltInFunctionBreakpoints() throws Throwable {
+        final Source functions = slCode("function main() {\n" +
+                        "  a = isNull;\n" +
+                        "  b = nanoTime;\n" +
+                        "  isNull(a);\n" +
+                        "  isExecutable(a);\n" +
+                        "  isNull(b);\n" +
+                        "  nanoTime();\n" +
+                        "  isNull(a);\n" +
+                        "  nanoTime();\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(functions);
+            Breakpoint[] functionBreakpoint = new Breakpoint[]{null};
+
+            expectSuspended((SuspendedEvent event) -> {
+                event.prepareStepOver(2);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                DebugValue isNull = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                Breakpoint breakpoint = Breakpoint.newBuilder((URI) null).sourceElements(SourceElement.ROOT).rootInstance(isNull).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertFalse(event.getSourceSection().isAvailable());
+                Assert.assertEquals("isNull", event.getTopStackFrame().getName());
+                Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
+                frames.next(); // Skip the top one
+                DebugStackFrame mainFrame = frames.next();
+                Assert.assertEquals(4, mainFrame.getSourceSection().getStartLine());
+                // Dispose the breakpoint on isNull() and create one on nanoTime() instead:
+                functionBreakpoint[0].dispose();
+                DebugValue nanoTime = mainFrame.getScope().getDeclaredValue("b");
+                // Breakpoint in "fac" will not suspend in "facMin1".
+                Breakpoint breakpoint = Breakpoint.newBuilder(nanoTime.getSourceLocation()).sourceElements(SourceElement.ROOT).rootInstance(nanoTime).build();
+                session.install(breakpoint);
+                functionBreakpoint[0] = breakpoint;
+                event.prepareContinue();
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertFalse(event.getSourceSection().isAvailable());
+                Assert.assertEquals("nanoTime", event.getTopStackFrame().getName());
+                Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
+                frames.next(); // Skip the top one
+                DebugStackFrame mainFrame = frames.next();
+                Assert.assertEquals(7, mainFrame.getSourceSection().getStartLine());
+                functionBreakpoint[0].dispose();
+                event.prepareContinue();
+            });
+            expectDone();
         }
     }
 
@@ -829,7 +934,7 @@ public class SLDebugTest {
     public void testMisplacedLineBreakpoints() throws Throwable {
         final String sourceStr = "// A comment\n" +              // 1
                         "function invocable(n) {\n" +
-                        "  if (R3_R27_n <= 1) {\n" +
+                        "  if (R3_n <= 1) {\n" +
                         "    R4-6_one \n" +
                         "        =\n" +                 // 5
                         "          1;\n" +
@@ -838,9 +943,9 @@ public class SLDebugTest {
                         "  } else {\n" +
                         "    // A comment\n" +          // 10
                         "    while (\n" +
-                        "        R10-13_n > 0\n" +
+                        "        R10-12_n > 0\n" +
                         "          ) { \n" +
-                        "      R14-16_one \n" +
+                        "      R13-16_one \n" +
                         "          = \n" +              // 15
                         "            2;\n" +
                         "      R17-20_n = n -\n" +
@@ -849,7 +954,7 @@ public class SLDebugTest {
                         "    }\n" +                     // 20
                         "    R21_n =\n" +
                         "        n - 1; R22_n = n + 1;\n" +
-                        "    R23-26_return\n" +
+                        "    R23-27_return\n" +
                         "        n * n;\n" +
                         "    \n" +                      // 25
                         "  }\n" +
@@ -878,8 +983,8 @@ public class SLDebugTest {
     public void testMisplacedColumnBreakpoints() throws Throwable {
         final String sourceStr = "// A comment\n" +              // 1
                         "function invocable(B3_n) {\n" +
-                        "  if (R3-4_R16_n <= 1) B4_ B5_{B6_\n" +
-                        "    R5-7_one \n" +
+                        "  if (R3_n <= 1) B4_ B5_{B6_\n" +
+                        "    R4-7_one \n" +
                         "        =\n" +                 // 5
                         "          B7_1;\n" +
                         "    R8_return\n" +
@@ -887,16 +992,16 @@ public class SLDebugTest {
                         "  B8_}B9_ else B10_ {\n" +
                         "    // A commentB11_\n" +          // 10
                         "    while (\n" +
-                        "        R9-12_n > 0\n" +
+                        "        R9-11_n > 0\n" +
                         "          ) B12_ { \n" +
-                        "      one \n" +
+                        "      R12_one \n" +
                         "          = \n" +              // 15
                         "            2;\n" +
                         "      R13-14_n = n -\n" +
                         "          one *\n" +
                         "          one;\n" +
                         "   B13_ B14_}B15_\n" +                    // 20
-                        "    R15_return\n" +
+                        "    R15-16_return\n" +
                         "        n * n;\n" +
                         "    \n" +
                         "  }B16_\n" +

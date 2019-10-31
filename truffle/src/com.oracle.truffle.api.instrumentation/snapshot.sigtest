@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version
+#Version 
 
 CLSS public final com.oracle.truffle.api.instrumentation.AllocationEvent
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()
@@ -286,6 +286,7 @@ meth public abstract boolean test(com.oracle.truffle.api.source.Source)
 CLSS public final com.oracle.truffle.api.instrumentation.StandardTags
 innr public final static CallTag
 innr public final static ExpressionTag
+innr public final static RootBodyTag
 innr public final static RootTag
 innr public final static StatementTag
 innr public final static TryBlockTag
@@ -297,6 +298,10 @@ CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$Cal
 supr com.oracle.truffle.api.instrumentation.Tag
 
 CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$ExpressionTag
+ outer com.oracle.truffle.api.instrumentation.StandardTags
+supr com.oracle.truffle.api.instrumentation.Tag
+
+CLSS public final static com.oracle.truffle.api.instrumentation.StandardTags$RootBodyTag
  outer com.oracle.truffle.api.instrumentation.StandardTags
 supr com.oracle.truffle.api.instrumentation.Tag
 
@@ -334,6 +339,7 @@ meth public abstract void onThreadInitialized(com.oracle.truffle.api.TruffleCont
 CLSS public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument
 cons protected init()
 innr public abstract interface static !annotation Registration
+innr public abstract interface static Provider
 innr public final static Env
 meth protected abstract void onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
@@ -347,6 +353,8 @@ meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.InstrumentInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.lang.String)
+meth public com.oracle.truffle.api.TruffleFile getTruffleFile(java.net.URI)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
@@ -369,6 +377,12 @@ meth public void registerService(java.lang.Object)
 supr java.lang.Object
 hfds err,in,instrumenter,messageTransport,options,out,services,vmObject
 hcls GuardedExecutableNode,MessageTransportProxy
+
+CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider
+ outer com.oracle.truffle.api.instrumentation.TruffleInstrument
+meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
+meth public abstract java.lang.String getInstrumentClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
@@ -417,8 +431,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds ACCESSOR,GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
-hcls AccessorNodes
+hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Inherited()

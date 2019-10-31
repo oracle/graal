@@ -214,8 +214,6 @@ public class RuntimeCodeInfo {
             installedCode.clearAddress();
         }
 
-        InstalledCodeObserverSupport.removeObservers(RuntimeMethodInfoAccess.getCodeObserverHandles(info));
-
         /*
          * Deoptimize all invocations that are on the stack. This performs a stack walk, so all
          * metadata must be intact (even though the method was already marked as non-invokable).
@@ -268,11 +266,11 @@ public class RuntimeCodeInfo {
         logTable(Log.log());
     }
 
+    private static final RingBuffer.Consumer<String> consumer = (context, s) -> Log.log().newline().string(s);
+
     public void logRecentOperations(Log log) {
         log.string("== [Recent RuntimeCodeCache operations: ");
-        recentCodeCacheOperations.foreach((context, entry) -> {
-            Log.log().newline().string(entry);
-        });
+        recentCodeCacheOperations.foreach(consumer);
         log.string("]").newline();
     }
 

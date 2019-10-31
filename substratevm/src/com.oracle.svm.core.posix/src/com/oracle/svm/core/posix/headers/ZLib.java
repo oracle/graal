@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -49,7 +49,7 @@ import org.graalvm.word.UnsignedWord;
  *
  * We only include this class in the JNI implementation in order to add -lz to the link line.
  */
-@Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 @CLibrary("z")
 public class ZLib {

@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.ValueKind;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -74,10 +74,10 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
         CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLanguage().getNodeFactory().createStoreNode(kind);
+        return CommonNodeFactory.createStoreNode(kind);
     }
 
     protected ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type) {
-        return getNodeFactory().createForeignToLLVM(type);
+        return CommonNodeFactory.createForeignToLLVM(type);
     }
 }

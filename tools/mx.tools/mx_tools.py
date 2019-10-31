@@ -171,6 +171,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
+    name='AgentScript',
+    short_name='ats',
+    dir_name='agentscript',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:AGENTSCRIPT'],
+    support_distributions=['tools:AGENTSCRIPT_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
     name='GraalVM Profiler',
     short_name='pro',
     dir_name='profiler',

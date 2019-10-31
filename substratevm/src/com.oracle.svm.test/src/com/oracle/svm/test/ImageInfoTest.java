@@ -25,10 +25,19 @@
 package com.oracle.svm.test;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ImageInfoTest {
+    public static class TestFeature implements Feature {
+        @Override
+        public void beforeAnalysis(BeforeAnalysisAccess access) {
+            RuntimeClassInitialization.initializeAtBuildTime(ImageInfoTest.class);
+        }
+    }
+
     static {
         Assert.assertTrue(ImageInfo.inImageCode());
         Assert.assertTrue(ImageInfo.inImageBuildtimeCode());

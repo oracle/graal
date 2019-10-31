@@ -177,9 +177,9 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAllAndInstall(CodeInfo target) {
+    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(target);
+        frameInfoEncoder.encodeAllAndInstall(target, adjuster);
         encodeIPData();
 
         install(target);
@@ -381,6 +381,11 @@ public class CodeInfoEncoder {
 
     public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
         CodeInfoVerifier.verifyMethod(compilation, compilationOffset, info);
+        return true;
+    }
+
+    public boolean verifyFrameInfo(CodeInfo info) {
+        frameInfoEncoder.verifyEncoding(info);
         return true;
     }
 }

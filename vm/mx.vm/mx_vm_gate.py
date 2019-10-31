@@ -34,7 +34,7 @@ import functools
 import tempfile
 from mx_gate import Task
 
-from os import environ, listdir
+from os import environ, listdir, remove
 from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
@@ -73,8 +73,8 @@ def gate_body(args, tasks):
         if t:
             for suite, env_file_name, graalvm_dist_name in env_tests:
                 out = mx.LinesOutputCapture()
-                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
                 mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(env_file_name, suite.name, graalvm_dist_name))
+                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
                 if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
                     mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(env_file_name, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 
@@ -124,7 +124,16 @@ def gate_body(args, tasks):
                     else:
                         unittest_args = []
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-                    mx_unittest.unittest(unittest_args + extra_vm_arguments + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
+                    compiler_log_file = "graal-compiler.log"
+                    mx_unittest.unittest(unittest_args + extra_vm_arguments + [
+                        "-Dgraal.TruffleCompileImmediately=true",
+                        "-Dgraal.TruffleBackgroundCompilation=false",
+                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dgraal.PrintCompilation=true",
+                        "-Dgraal.LogFile={0}".format(compiler_log_file),
+                        "truffle"])
+                    if exists(compiler_log_file):
+                        remove(compiler_log_file)
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 

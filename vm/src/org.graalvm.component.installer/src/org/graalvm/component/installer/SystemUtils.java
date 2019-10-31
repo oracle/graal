@@ -29,9 +29,14 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -387,5 +392,114 @@ public class SystemUtils {
             }
         }
         return s.substring(0, q);
+    }
+
+    public static int getJavaMajorVersion() {
+        String v = System.getProperty("java.specification.version"); // NOI18N
+        if (v.startsWith("1.")) { // NOI18N
+            v = v.substring(2);
+        }
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    /**
+     * Provides the location of jre lib path, optionally the arch-dependent dir. The location
+     * depends on JDK version.
+     * 
+     * @param graalPath graalVM installation root
+     * @param archDir if true, returns the arch-dependent path.
+     * @return jre lib dir
+     */
+    public static Path getRuntimeLibDir(Path graalPath, boolean archDir) {
+        Path newLibPath;
+        Path base = getRuntimeBaseDir(graalPath);
+        switch (OS.get()) {
+            case LINUX:
+                String arch = System.getProperty("os.arch"); // NOI18N
+                Path temp = base.resolve(Paths.get("lib")); // NOI18N
+                if (!archDir || SystemUtils.getJavaMajorVersion() >= 10) {
+                    newLibPath = temp;
+                } else {
+                    newLibPath = temp.resolve(Paths.get(arch));
+                }
+                break;
+            case MAC:
+                newLibPath = base.resolve(Paths.get("lib")); // NOI18N
+                break;
+            case WINDOWS:
+                newLibPath = base.resolve(Paths.get("bin")); // NOI18N
+                break;
+            case UNKNOWN:
+            default:
+                return null;
+        }
+        return newLibPath;
+    }
+
+    /**
+     * Returns the JDK's runtime root dir. May be jre or ., depending on Java version
+     * 
+     * @param jdkInstallDir installation path
+     * @return runtime path
+     */
+    public static Path getRuntimeBaseDir(Path jdkInstallDir) {
+        int v = getJavaMajorVersion();
+        if (v >= 10) {
+            return jdkInstallDir;
+        } else if (v > 0) {
+            return jdkInstallDir.resolve("jre");  // NOI18N
+        }
+        // use fallback:
+        Path jre = jdkInstallDir.resolve("jre");  // NOI18N
+        if (Files.exists(jre) && Files.isDirectory(jre)) {
+            return jre;
+        } else {
+            return jdkInstallDir;
+        }
+    }
+
+    public static Path copySubtree(Path from, Path to) throws IOException {
+        Files.walkFileTree(from, new CopyDirVisitor(from, to));
+        return to;
+    }
+
+    public static class CopyDirVisitor extends SimpleFileVisitor<Path> {
+
+        private Path fromPath;
+        private Path toPath;
+        private StandardCopyOption copyOption;
+
+        public CopyDirVisitor(Path fromPath, Path toPath, StandardCopyOption copyOption) {
+            this.fromPath = fromPath;
+            this.toPath = toPath;
+            this.copyOption = copyOption;
+        }
+
+        public CopyDirVisitor(Path fromPath, Path toPath) {
+            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Path targetPath = toPath.resolve(fromPath.relativize(dir));
+            if (!Files.exists(targetPath)) {
+                Files.createDirectory(targetPath);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Files.copy(file, toPath.resolve(fromPath.relativize(file)), copyOption);
+            return FileVisitResult.CONTINUE;
+        }
     }
 }

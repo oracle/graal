@@ -47,7 +47,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticFeature
-@Platforms(Platform.AArch64.class)
+@Platforms(Platform.AARCH64.class)
 class SubstrateAArch64Feature implements Feature {
 
     @Override

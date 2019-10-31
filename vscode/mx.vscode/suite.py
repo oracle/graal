@@ -60,6 +60,12 @@ suite = {
       ],
       "class": "VSCodeExtensionProject",
     },
+    "graalvm-python" : {
+      "dependencies" : [
+        "graalvm"
+      ],
+      "class": "VSCodeExtensionProject",
+    },
   },
 
   "distributions": {
@@ -69,7 +75,8 @@ suite = {
         "./" : [
           "dependency:graalvm/*",
           "dependency:graalvm-r/*",
-          "dependency:graalvm-ruby/*"
+          "dependency:graalvm-ruby/*",
+          "dependency:graalvm-python/*"
         ]
       }
     },

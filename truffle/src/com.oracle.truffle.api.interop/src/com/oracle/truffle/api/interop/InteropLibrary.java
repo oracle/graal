@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -274,12 +274,12 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the Java boolean value if the receiver represents a {@link #isBoolean(Object)
-     * boolean} like value.
+     * Returns the Java string value if the receiver represents a {@link #isString(Object) string}
+     * like value.
      *
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
-     * @see #isBoolean(Object)
+     * @see #isString(Object)
      * @since 19.0
      */
     @Abstract(ifExported = "isString")

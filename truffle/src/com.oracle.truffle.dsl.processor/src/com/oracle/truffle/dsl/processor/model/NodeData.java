@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -190,7 +190,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public Set<TypeMirror> findSpecializedTypes(NodeExecutionData execution) {
-        Set<TypeMirror> types = new HashSet<>();
+        Set<TypeMirror> foundTypes = new HashSet<>();
         for (SpecializationData specialization : getSpecializations()) {
             if (!specialization.isSpecialized()) {
                 continue;
@@ -201,21 +201,21 @@ public class NodeData extends Template implements Comparable<NodeData> {
                 if (type == null) {
                     throw new AssertionError();
                 }
-                types.add(type);
+                foundTypes.add(type);
             }
         }
-        return types;
+        return foundTypes;
     }
 
     public Collection<TypeMirror> findSpecializedReturnTypes() {
-        Set<TypeMirror> types = new HashSet<>();
+        Set<TypeMirror> foundTypes = new HashSet<>();
         for (SpecializationData specialization : getSpecializations()) {
             if (!specialization.isSpecialized()) {
                 continue;
             }
-            types.add(specialization.getReturnType().getType());
+            foundTypes.add(specialization.getReturnType().getType());
         }
-        return types;
+        return foundTypes;
     }
 
     public int getExecutionCount() {
@@ -386,20 +386,20 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context, int evaluatedCount) {
-        List<ExecutableTypeData> types = findGenericExecutableTypes(context, evaluatedCount);
-        for (ExecutableTypeData type : types) {
+        List<ExecutableTypeData> foundTypes = findGenericExecutableTypes(evaluatedCount);
+        for (ExecutableTypeData type : foundTypes) {
             if (context.isType(type.getReturnType(), Object.class)) {
                 return type;
             }
         }
 
-        for (ExecutableTypeData type : types) {
+        for (ExecutableTypeData type : foundTypes) {
             if (!context.isType(type.getReturnType(), void.class)) {
                 return type;
             }
         }
 
-        for (ExecutableTypeData type : types) {
+        for (ExecutableTypeData type : foundTypes) {
             return type;
         }
         return null;
@@ -419,14 +419,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
     }
 
-    public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context, int evaluatedCount) {
-        List<ExecutableTypeData> types = new ArrayList<>();
+    public List<ExecutableTypeData> findGenericExecutableTypes(int evaluatedCount) {
+        List<ExecutableTypeData> foundTypes = new ArrayList<>();
         for (ExecutableTypeData type : getExecutableTypes(evaluatedCount)) {
-            if (!type.hasUnexpectedValue(context)) {
-                types.add(type);
+            if (!type.hasUnexpectedValue()) {
+                foundTypes.add(type);
             }
         }
-        return types;
+        return foundTypes;
     }
 
     public ExecutableTypeData findExecutableType(TypeMirror primitiveType, int evaluatedCount) {
@@ -637,15 +637,15 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public List<TypeMirror> getGenericTypes(NodeExecutionData execution) {
-        List<TypeMirror> types = new ArrayList<>();
+        List<TypeMirror> foundTypes = new ArrayList<>();
 
         // add types possible through return types and evaluated parameters in execute methods
         if (execution.getChild() != null) {
             for (ExecutableTypeData executable : execution.getChild().getNodeData().getExecutableTypes()) {
-                if (executable.hasUnexpectedValue(getContext())) {
+                if (executable.hasUnexpectedValue()) {
                     continue;
                 }
-                types.add(executable.getReturnType());
+                foundTypes.add(executable.getReturnType());
             }
         }
 
@@ -655,12 +655,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
                 List<TypeMirror> signatureParameters = typeData.getSignatureParameters();
                 if (executionIndex < signatureParameters.size()) {
                     TypeMirror genericType = signatureParameters.get(executionIndex);
-                    types.add(genericType);
+                    foundTypes.add(genericType);
                 }
             }
         }
 
-        return Arrays.asList(ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), types));
+        return Arrays.asList(ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), foundTypes));
     }
 
     public void setReportPolymorphism(boolean report) {

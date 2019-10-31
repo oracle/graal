@@ -2,7 +2,7 @@
 	"name": "graalvm-r",
 	"displayName": "GraalVM R",
 	"description": "Support for GraalVM R",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "OracleLabs",
 	"icon": "images/graalvm-r-logo.png",
@@ -33,13 +33,15 @@
 					"source.r",
 					"source.js",
 					"source.ruby",
-					"source.python"
+					"source.python",
+					"source.sl"
 				],
 				"scopeName": "r-inline.polyglot-langauges",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "javascript",
 					"meta.embedded.inline.python": "python",
-					"meta.embedded.inline.ruby": "ruby"
+					"meta.embedded.inline.ruby": "ruby",
+					"meta.embedded.inline.sl": "sl"
 				}
 			}
 		],

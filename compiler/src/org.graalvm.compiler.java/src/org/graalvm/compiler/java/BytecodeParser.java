@@ -271,6 +271,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -360,15 +361,16 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.FloatDivNode;
+import org.graalvm.compiler.nodes.calc.FloatNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
@@ -1332,7 +1334,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genNormalizeCompare(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        return NormalizeCompareNode.create(x, y, isUnorderedLess, JavaKind.Int, getConstantReflection());
+        return FloatNormalizeCompareNode.create(x, y, isUnorderedLess, JavaKind.Int, getConstantReflection());
+    }
+
+    protected ValueNode genIntegerNormalizeCompare(ValueNode x, ValueNode y) {
+        return IntegerNormalizeCompareNode.create(x, y, false, JavaKind.Int, getConstantReflection());
     }
 
     protected ValueNode genFloatConvert(FloatConvert op, ValueNode input) {
@@ -2483,7 +2489,8 @@ public class BytecodeParser implements GraphBuilderContext {
                         : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
                                         : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
-            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables());
+            boolean targetIsSubstitution = targetMethod.isAnnotationPresent(MethodSubstitution.class);
+            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables() && !targetIsSubstitution);
             if (!targetMethod.isStatic()) {
                 args[0] = nullCheckedValue(args[0]);
             }
@@ -2699,8 +2706,10 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
-        if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
-            throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject)));
+        ValueNode originalLockedObject = GraphUtil.originalValue(lockedObject, false);
+        ValueNode originalX = GraphUtil.originalValue(x, false);
+        if (originalLockedObject != originalX) {
+            throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", originalLockedObject, originalX));
         }
         MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
@@ -4016,10 +4025,16 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(kind, append(v));
     }
 
-    private void genCompareOp(JavaKind kind, boolean isUnorderedLess) {
+    private void genFloatCompareOp(JavaKind kind, boolean isUnorderedLess) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         frameState.push(JavaKind.Int, append(genNormalizeCompare(x, y, isUnorderedLess)));
+    }
+
+    private void genIntegerCompareOp(JavaKind kind) {
+        ValueNode y = frameState.pop(kind);
+        ValueNode x = frameState.pop(kind);
+        frameState.push(JavaKind.Int, append(genIntegerNormalizeCompare(x, y)));
     }
 
     private void genFloatConvert(FloatConvert op, JavaKind from, JavaKind to) {
@@ -5096,11 +5111,11 @@ public class BytecodeParser implements GraphBuilderContext {
             case I2B            : genSignExtend(JavaKind.Byte, JavaKind.Int); break;
             case I2S            : genSignExtend(JavaKind.Short, JavaKind.Int); break;
             case I2C            : genZeroExtend(JavaKind.Char, JavaKind.Int); break;
-            case LCMP           : genCompareOp(JavaKind.Long, false); break;
-            case FCMPL          : genCompareOp(JavaKind.Float, true); break;
-            case FCMPG          : genCompareOp(JavaKind.Float, false); break;
-            case DCMPL          : genCompareOp(JavaKind.Double, true); break;
-            case DCMPG          : genCompareOp(JavaKind.Double, false); break;
+            case LCMP           : genIntegerCompareOp(JavaKind.Long); break;
+            case FCMPL          : genFloatCompareOp(JavaKind.Float, true); break;
+            case FCMPG          : genFloatCompareOp(JavaKind.Float, false); break;
+            case DCMPL          : genFloatCompareOp(JavaKind.Double, true); break;
+            case DCMPG          : genFloatCompareOp(JavaKind.Double, false); break;
             case IFEQ           : genIfZero(Condition.EQ); break;
             case IFNE           : genIfZero(Condition.NE); break;
             case IFLT           : genIfZero(Condition.LT); break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -137,7 +137,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     protected abstract void growPrimitiveStore(Shape oldShape, Shape newShape);
 
-    private void resizeStore(Shape oldShape, Shape newShape) {
+    protected void resizeStore(Shape oldShape, Shape newShape) {
         resizeObjectStore(oldShape, newShape);
         if (((ShapeImpl) newShape).hasPrimitiveArray) {
             resizePrimitiveStore(oldShape, newShape);
@@ -309,18 +309,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         } else {
             return false;
         }
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public int size() {
-        return getShape().getPropertyCount();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public boolean isEmpty() {
-        return size() == 0;
     }
 
     /** @since 0.17 or earlier */

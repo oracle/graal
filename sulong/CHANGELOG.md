@@ -7,6 +7,8 @@ New features:
   be can be a file of any supported format such as wrapped bitcode or ELF/Mach-O
   with an embedded bitcode sections.
 
+* Added preliminary support for parsing bitcode produced by LLVM 9.
+
 Improvements:
 
 * Clang and other LLVM tools are no longer required to be installed for building

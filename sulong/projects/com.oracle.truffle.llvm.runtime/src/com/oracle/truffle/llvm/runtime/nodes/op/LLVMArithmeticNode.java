@@ -38,7 +38,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -58,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.Manage
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @NodeChild("leftNode")
 @NodeChild("rightNode")
@@ -351,15 +351,15 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             super(ArithmeticOperation.SUB);
         }
 
-        @Specialization(limit = "3", guards = "sameObject.execute(left, right)")
+        @Specialization(limit = "3", guards = "sameObject.isSame(left.getObject(), right.getObject())")
         long doSameObjectLong(LLVMManagedPointer left, LLVMManagedPointer right,
-                        @SuppressWarnings("unused") @Cached LLVMPointToSameObjectNode sameObject) {
+                        @SuppressWarnings("unused") @CachedLibrary("left.getObject()") ReferenceLibrary sameObject) {
             return left.getOffset() - right.getOffset();
         }
 
-        @Specialization(limit = "3", guards = "!sameObject.execute(left, right)")
-        long doNotSameObject(LLVMPointer left, LLVMPointer right,
-                        @SuppressWarnings("unused") @Cached LLVMPointToSameObjectNode sameObject,
+        @Specialization(limit = "3", guards = "!sameObject.isSame(left.getObject(), right.getObject())")
+        long doNotSameObject(LLVMManagedPointer left, LLVMManagedPointer right,
+                        @SuppressWarnings("unused") @CachedLibrary("left.getObject()") ReferenceLibrary sameObject,
                         @CachedLibrary("left") LLVMNativeLibrary leftLib,
                         @CachedLibrary("right") LLVMNativeLibrary rightLib) {
             return leftLib.toNativePointer(left).asNative() - rightLib.toNativePointer(right).asNative();

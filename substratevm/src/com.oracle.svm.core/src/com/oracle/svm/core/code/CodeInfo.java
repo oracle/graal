@@ -69,14 +69,8 @@ public interface CodeInfo extends PointerBase {
      */
     int INSTALLEDCODE_OBJFIELD = NAME_OBJFIELD + 1;
 
-    /**
-     * Index of element of type {@link InstalledCodeObserverHandle}[] in {@link #getObjectFields}:
-     * observers for installation and removal of this code.
-     */
-    int OBSERVERS_OBJFIELD = INSTALLEDCODE_OBJFIELD + 1;
-
     /** The size of the array in {@link #getObjectFields}. */
-    int OBJFIELDS_COUNT = OBSERVERS_OBJFIELD + 1;
+    int OBJFIELDS_COUNT = INSTALLEDCODE_OBJFIELD + 1;
 
     /**
      * The object "fields" of this structure, managed as an array for simplicity.
@@ -192,4 +186,10 @@ public interface CodeInfo extends PointerBase {
 
     @RawField
     void setDeoptimizationObjectConstants(NonmovableObjectArray<Object> deoptimizationObjectConstants);
+
+    @RawField
+    NonmovableArray<InstalledCodeObserverHandle> getCodeObserverHandles();
+
+    @RawField
+    void setCodeObserverHandles(NonmovableArray<InstalledCodeObserverHandle> handles);
 }

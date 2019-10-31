@@ -55,8 +55,6 @@ long *__sulong_start_arguments = NULL;
 
 __attribute__((visibility("hidden"))) const size_t _DYNAMIC[1];
 
-int main(int argc, char **argv, char **envp);
-
 char *__sulong_byte_array_to_native(void *java_byte_array) {
   int length = polyglot_get_array_size(java_byte_array);
   char *result = malloc(sizeof(char) * length + 1);
@@ -113,7 +111,7 @@ void __sulong_update_application_path(char *application_path, char **argv, Elf64
   auxv[0].a_un.a_val = (uint64_t)application_path;
 }
 
-int _start(int type, char *application_path_java_byte_array) {
+int _start(int type, char *application_path_java_byte_array, void *main) {
   long *p = __sulong_start_arguments;
   int argc = p[0];
   char **argv = (void *)(p + 1);
@@ -138,9 +136,11 @@ int _start(int type, char *application_path_java_byte_array) {
   switch (type) {
   /* C/C++/... */
   default:
-  case 0:
-    exit(main(argc, argv, envp));
+  case 0: {
+    int (*i32main)(int argc, char **argv, char **envp) = (int (*)(int, char **, char **))main;
+    exit(i32main(argc, argv, envp));
     break;
+  }
   /* Rust */
   case 1: {
     long (*i64main)(long argc, char **argv) = (long (*)(long, char **))main;

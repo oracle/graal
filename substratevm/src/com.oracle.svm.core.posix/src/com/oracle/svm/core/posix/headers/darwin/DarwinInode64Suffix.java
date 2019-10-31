@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -38,7 +38,7 @@ import com.oracle.svm.core.posix.headers.Stat.stat;
 
 //Checkstyle: stop
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 class DarwinInode64Suffix {
 
     @TargetClass(com.oracle.svm.core.posix.headers.Dirent.class)

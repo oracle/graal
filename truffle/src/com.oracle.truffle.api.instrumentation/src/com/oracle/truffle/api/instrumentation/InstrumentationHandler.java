@@ -84,6 +84,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.function.Supplier;
 
 /**
  * Central coordinator class for the Truffle instrumentation framework. Allocated once per
@@ -354,22 +355,23 @@ final class InstrumentationHandler {
 
     }
 
-    void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
-        Env env = new Env(vmObject, out, err, in, messageInterceptor);
-        env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClass);
-
+    void initializeInstrument(Object vmObject, String instrumentClassName, Supplier<? extends Object> instrumentSupplier) {
         if (TRACE) {
-            trace("Initialize instrument class %s %n", instrumentClass);
+            trace("Initialize instrument class %s %n", instrumentClassName);
         }
+
+        Env env = new Env(vmObject, out, err, in, messageInterceptor);
         try {
-            env.instrumenter.instrument = (TruffleInstrument) instrumentClass.getDeclaredConstructor().newInstance();
+            TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
+            env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClassName);
+            env.instrumenter.instrument = instrument;
         } catch (Exception e) {
-            failInstrumentInitialization(env, String.format("Failed to create new instrumenter class %s", instrumentClass.getName()), e);
+            failInstrumentInitialization(env, String.format("Failed to create new instrumenter class %s", instrumentClassName), e);
             return;
         }
 
         if (TRACE) {
-            trace("Initialized instrument %s class %s %n", env.instrumenter.instrument, instrumentClass);
+            trace("Initialized instrument %s class %s %n", env.instrumenter.instrument, instrumentClassName);
         }
 
         addInstrumenter(vmObject, env.instrumenter);
@@ -1574,13 +1576,13 @@ final class InstrumentationHandler {
      */
     final class InstrumentClientInstrumenter extends AbstractInstrumenter {
 
-        private final Class<?> instrumentClass;
+        private final String instrumentClassName;
         private Object[] services;
         TruffleInstrument instrument;
         private final Env env;
 
-        InstrumentClientInstrumenter(Env env, Class<?> instrumentClass) {
-            this.instrumentClass = instrumentClass;
+        InstrumentClientInstrumenter(Env env, String instrumentClassName) {
+            this.instrumentClassName = instrumentClassName;
             this.env = env;
         }
 
@@ -1603,8 +1605,8 @@ final class InstrumentationHandler {
         void verifyFilter(SourceSectionFilter filter) {
         }
 
-        Class<?> getInstrumentClass() {
-            return instrumentClass;
+        String getInstrumentClassName() {
+            return instrumentClassName;
         }
 
         Env getEnv() {
@@ -1613,14 +1615,14 @@ final class InstrumentationHandler {
 
         void create(String[] expectedServices) {
             if (TRACE) {
-                trace("Create instrument %s class %s %n", instrument, instrumentClass);
+                trace("Create instrument %s class %s %n", instrument, instrumentClassName);
             }
             services = env.onCreate(instrument);
             if (expectedServices != null && !TruffleOptions.AOT) {
                 checkServices(expectedServices);
             }
             if (TRACE) {
-                trace("Created instrument %s class %s %n", instrument, instrumentClass);
+                trace("Created instrument %s class %s %n", instrument, instrumentClassName);
             }
         }
 
@@ -1631,7 +1633,7 @@ final class InstrumentationHandler {
                         continue LOOP;
                     }
                 }
-                failInstrumentInitialization(env, String.format("%s declares service %s but doesn't register it", instrumentClass.getName(), name), null);
+                failInstrumentInitialization(env, String.format("%s declares service %s but doesn't register it", instrumentClassName, name), null);
             }
             return true;
         }

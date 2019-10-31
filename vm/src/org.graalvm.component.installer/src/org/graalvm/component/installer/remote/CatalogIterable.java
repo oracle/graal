@@ -35,14 +35,13 @@ import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
-import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentIterable;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.FileIterable.FileComponent;
-import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -56,16 +55,13 @@ import org.graalvm.component.installer.persist.MetadataLoader;
 public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
-    private final SoftwareChannel factory;
-    private final ComponentCollection remoteRegistry;
+    private ComponentCatalog remoteRegistry;
     private boolean verifyJars;
     private boolean incompatible;
 
-    public CatalogIterable(CommandInput input, Feedback feedback, ComponentCollection remoteRegistry, SoftwareChannel fact) {
+    public CatalogIterable(CommandInput input, Feedback feedback) {
         this.input = input;
         this.feedback = feedback.withBundle(CatalogIterable.class);
-        this.factory = fact;
-        this.remoteRegistry = remoteRegistry;
     }
 
     public boolean isVerifyJars() {
@@ -82,7 +78,10 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
-    ComponentCollection getRegistry() {
+    ComponentCatalog getRegistry() {
+        if (remoteRegistry == null) {
+            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input, input.getLocalRegistry());
+        }
         return remoteRegistry;
     }
 
@@ -146,7 +145,7 @@ public class CatalogIterable implements ComponentIterable {
                     // must be already initialized
                     Version gv = input.getLocalRegistry().getGraalVersion();
                     Version.Match selector = gv.match(Version.Match.Type.INSTALLABLE);
-                    Collection<ComponentInfo> infos = remoteRegistry.loadComponents(id, selector, false);
+                    Collection<ComponentInfo> infos = getRegistry().loadComponents(id, selector, false);
                     if (infos != null && !infos.isEmpty()) {
                         if (incompatible) {
                             return latest(s, infos);
@@ -161,7 +160,7 @@ public class CatalogIterable implements ComponentIterable {
                         }
                     }
                     // last try, catch obsolete components:
-                    infos = remoteRegistry.loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
+                    infos = getRegistry().loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
                     if (infos != null && !infos.isEmpty()) {
                         if (incompatible) {
                             return latest(s, infos);
@@ -187,7 +186,7 @@ public class CatalogIterable implements ComponentIterable {
 
     protected ComponentParam createComponentParam(String cmdLineString, ComponentInfo info, boolean progress) {
         RemoteComponentParam param = new CatalogItemParam(
-                        factory,
+                        getRegistry().getDownloadInterceptor(),
                         info,
                         info.getName(),
                         cmdLineString,
@@ -197,17 +196,17 @@ public class CatalogIterable implements ComponentIterable {
     }
 
     public static class CatalogItemParam extends RemoteComponentParam {
-        final SoftwareChannel channel;
+        final ComponentCatalog.DownloadInterceptor configurer;
 
-        public CatalogItemParam(SoftwareChannel channel, ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
+        public CatalogItemParam(ComponentCatalog.DownloadInterceptor conf, ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
             super(catalogInfo, dispName, spec, feedback, progress);
-            this.channel = channel;
+            this.configurer = conf;
         }
 
         @Override
         protected FileDownloader createDownloader() {
             FileDownloader d = super.createDownloader();
-            return channel.configureDownloader(getCatalogInfo(), d);
+            return configurer.processDownloader(getCatalogInfo(), d);
         }
 
         @Override

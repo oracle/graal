@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,11 +56,14 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugScope;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -1078,6 +1081,88 @@ public class BreakpointTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testMisplacedLineBreakpoints2() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    R1-9_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(1, LOOP(1,\n" +
+                        "    R10-25_STATEMENT)),\n" +
+                        "\n" +
+                        "  LOOP(3,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  LOOP(2,\n" +
+                        "    EXPRESSION)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedLineBreakpointsComplex() throws Exception {
+        // Test that breakpoints are moved to suspendable positions when we need to dive into
+        // surrounding nodes.
+        final String source = "ROOT(\n" +
+                        "  EXPRESSION,\n" +
+                        "  EXPRESSION(\n" +
+                        "    R1-4_STATEMENT,\n" +
+                        "    EXPRESSION,\n" +       // 5
+                        "    R5-7_STATEMENT,\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +
+                        "  R8-9_STATEMENT,\n" +
+                        "  LOOP(1,\n" +             // 10
+                        "    EXPRESSION,\n" +
+                        "    LOOP(1,\n" +
+                        "      R10-14_STATEMENT),\n" +
+                        "    EXPRESSION),\n" +
+                        "\n" +                      // 15
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +
+                        "      EXPRESSION)),\n" +
+                        "  EXPRESSION(\n" +
+                        "    LOOP(1,\n" +           // 20
+                        "      R15-21_STATEMENT,\n" +
+                        "      LOOP(1,\n" +
+                        "        EXPRESSION,\n" +
+                        "        R22-24_STATEMENT,\n" +
+                        "        EXPRESSION(\n" +   // 25
+                        "          R25-29_STATEMENT),\n" +
+                        "        EXPRESSION),\n" +
+                        "      EXPRESSION),\n" +
+                        "    EXPRESSION),\n" +
+                        "  EXPRESSION,\n" +         // 30
+                        "  LOOP(1,\n" +
+                        "    R30-32_STATEMENT),\n" +
+                        "\n" +
+                        "  LOOP(1,\n" +
+                        "    LOOP(1,\n" +           // 35
+                        "      EXPRESSION(\n" +
+                        "        R33-37_STATEMENT),\n" +
+                        "      R38_STATEMENT),\n" +
+                        "    R39-43_STATEMENT),\n" +
+                        "\n" +                      // 40
+                        "  LOOP(1,\n" +
+                        "    EXPRESSION)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
     public void testMisplacedBreakpointPositions() throws Exception {
         String source = " B1_{} R1-2_{S B2_}B3_\n" +
                         "R3_[SFB ]\n" +
@@ -1099,6 +1184,226 @@ public class BreakpointTest extends AbstractDebugTest {
         tester.close();
         tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+    }
+
+    @Test
+    public void testFunctionSensitiveBreakpoints1() throws Exception {
+        // Test ROOT breakpoint on foo0
+        Source source = testSource("ROOT(\n" +
+                        "  DEFINE(foo0, ROOT()),\n" +
+                        "  DEFINE(foo1, ROOT()),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo0),\n" +
+                        "  CALL(foo1)\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "STATEMENT");
+                // Retrieve the function instance
+                DebugScope functionScope = session.getTopScope(source.getLanguage());
+                DebugValue foo0 = functionScope.getDeclaredValue("foo0");
+                Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).rootInstance(foo0).sourceElements(SourceElement.ROOT).build();
+                session.install(breakpoint);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Suspend in foo0 only, not in foo1:
+                checkState(event, 2, true, " ROOT()");
+                assertEquals(1, event.getBreakpoints().size());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testFunctionSensitiveBreakpoints2() throws Exception {
+        // Test all elements breakpoints on both foo0 and foo1.
+        // Both breakpoints are hit just once in every function.
+        Source source = testSource("ROOT(\n" +
+                        "  DEFINE(\n" +
+                        "    foo0, ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(\n" +
+                        "    foo1, ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo0),\n" +
+                        "  CALL(foo1)\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+            String[] functions = new String[]{"foo0", "foo1"};
+            final Breakpoint[] breakpoints = new Breakpoint[2];
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT");
+                // Retrieve the function instances
+                DebugScope functionScope = session.getTopScope(source.getLanguage());
+                for (int f = 0; f < functions.length; f++) {
+                    DebugValue foo = functionScope.getDeclaredValue(functions[f]);
+                    // Create breakpoints for all source elements:
+                    breakpoints[f] = Breakpoint.newBuilder(getSourceImpl(source)).rootInstance(foo).sourceElements(SourceElement.values()).build();
+                    session.install(breakpoints[f]);
+                }
+            });
+            for (int f = 0; f < functions.length; f++) {
+                int ff = f;
+                for (int iElem = 0; iElem < SourceElement.values().length; iElem++) {
+                    int expectedLine = 5 * f + 3 + iElem;
+                    expectSuspended((SuspendedEvent event) -> {
+                        assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                        List<Breakpoint> bpHit = event.getBreakpoints();
+                        assertEquals(1, bpHit.size());
+                        assertSame(breakpoints[ff], bpHit.get(0));
+                    });
+                }
+            }
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testFunctionSensitiveBreakpoints3() throws Exception {
+        // Test line breakpoints in foo0 and foo1.
+        // Only 2 out of 4 breakpoints are hit.
+        Source source = testSource("ROOT(\n" +
+                        "  DEFINE(foo0,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(foo1,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo0),\n" +
+                        "  CALL(foo1)\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+            String[] functions = new String[]{"foo0", "foo1"};
+            final Breakpoint[][] breakpoints = new Breakpoint[2][2];
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT");
+                // Retrieve the function instances
+                DebugScope functionScope = session.getTopScope(source.getLanguage());
+                for (int f = 0; f < functions.length; f++) {
+                    DebugValue foo = functionScope.getDeclaredValue(functions[f]);
+                    // Create breakpoints for two lines in the two functions:
+                    breakpoints[f][0] = Breakpoint.newBuilder(getSourceImpl(source)).rootInstance(foo).lineIs(4).build();
+                    breakpoints[f][1] = Breakpoint.newBuilder(getSourceImpl(source)).rootInstance(foo).lineIs(9).build();
+                    for (Breakpoint b : breakpoints[f]) {
+                        session.install(b);
+                    }
+                }
+            });
+            for (int f = 0; f < functions.length; f++) {
+                int ff = f;
+                int expectedLine = 5 * f + 4;
+                expectSuspended((SuspendedEvent event) -> {
+                    assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                    List<Breakpoint> bpHit = event.getBreakpoints();
+                    assertEquals(1, bpHit.size());
+                    assertSame(breakpoints[ff][ff], bpHit.get(0));
+                });
+            }
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testFunctionSensitiveBreakpointsInternal() throws Exception {
+        // Test breakpoints hit on functions in internal source
+        Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  CALL(foo0),\n" +
+                        "  CALL(foo1),\n" +
+                        "  CALL(foo2)\n" +
+                        ")\n");
+        Source internalSource = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  DEFINE(foo0,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(foo1,\n" +
+                        "    ROOT(\n" +
+                        "      STATEMENT,\n" +
+                        "      EXPRESSION)\n" +
+                        "  ),\n" +
+                        "  DEFINE(foo2,\n" +
+                        "    ROOT(\n" +
+                        "      CALL(foo0),\n" +
+                        "      CALL(foo1))\n" +
+                        "  )\n" +
+                        ")\n", "SLInternal.sl").internal(true).buildLiteral();
+        boolean internalSession = false;
+        do {
+            try (DebuggerSession session = startSession()) {
+                session.setSteppingFilter(SuspensionFilter.newBuilder().includeInternal(internalSession).build());
+                startEval(internalSource);
+                expectDone();
+                session.suspendNextExecution();
+                startEval(source);
+                String[] functions = new String[]{"foo0", "foo1"};
+                final Breakpoint[] breakpoints = new Breakpoint[2];
+                expectSuspended((SuspendedEvent event) -> {
+                    checkState(event, 2, true, "STATEMENT");
+                    // Retrieve the function instances
+                    DebugScope functionScope = session.getTopScope(source.getLanguage());
+                    for (int f = 0; f < functions.length; f++) {
+                        DebugValue foo = functionScope.getDeclaredValue(functions[f]);
+                        assertTrue(foo.getSourceLocation().getSource().isInternal());
+                        // Create breakpoint for the function, use the source section, or nothing:
+                        Breakpoint.Builder builder;
+                        if (f == 0) {
+                            builder = Breakpoint.newBuilder(foo.getSourceLocation());
+                        } else {
+                            builder = Breakpoint.newBuilder((URI) null);
+                        }
+                        breakpoints[f] = builder.rootInstance(foo).sourceElements(SourceElement.ROOT).build();
+                        session.install(breakpoints[f]);
+                    }
+                });
+                if (!internalSession) {
+                    // Breakpoints hit in the non-internal source only
+                    for (int f = 0; f < functions.length; f++) {
+                        int ff = f;
+                        int expectedLine = 3 + f;
+                        expectSuspended((SuspendedEvent event) -> {
+                            assertFalse(event.getSourceSection().getSource().isInternal());
+                            assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                            List<Breakpoint> bpHit = event.getBreakpoints();
+                            assertEquals(1, bpHit.size());
+                            assertSame(breakpoints[ff], bpHit.get(0));
+                        });
+                    }
+                } else {
+                    // Only in the internal session
+                    // breakpoints are hit in the internal source in their bodies
+                    for (int f = 0; f < functions.length * 2; f++) {
+                        int ff = f % 2;
+                        int expectedLine = 2 + 5 * ff;
+                        expectSuspended((SuspendedEvent event) -> {
+                            assertTrue(event.getSourceSection().getSource().isInternal());
+                            assertEquals(expectedLine, event.getSourceSection().getStartLine());
+                            List<Breakpoint> bpHit = event.getBreakpoints();
+                            assertEquals(1, bpHit.size());
+                            assertSame(breakpoints[ff], bpHit.get(0));
+                        });
+                    }
+                }
+                expectDone();
+            }
+        } while ((internalSession = !internalSession) == true);
     }
 
     @Test

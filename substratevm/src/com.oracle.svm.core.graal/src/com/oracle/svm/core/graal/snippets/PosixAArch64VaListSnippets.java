@@ -38,10 +38,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN_AArch64;
-import org.graalvm.nativeimage.Platform.LINUX_AArch64;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AArch64;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AArch64;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -54,15 +51,15 @@ import com.oracle.svm.core.util.VMError;
 class PosixAArch64VaListSnippetsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(LINUX_AArch64.class) || Platform.includedIn(DARWIN_AArch64.class) ||
-                        Platform.includedIn(LINUX_JNI_AArch64.class) || Platform.includedIn(DARWIN_JNI_AArch64.class);
+        return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AARCH64.class) ||
+                        Platform.includedIn(Platform.LINUX_AARCH64.class) || Platform.includedIn(Platform.DARWIN_AARCH64.class);
     }
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        PosixAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        PosixAArch64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
     }
 }
 
@@ -119,7 +116,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int MAX_FP_OFFSET = 0;
     private static final int STACK_AREA_LOCATION = 0;
     private static final int STACK_AREA_GP_ALIGNMENT = 8;
-    private static final int STACK_AREA_FP_ALIGNMENT = 16;
+    private static final int STACK_AREA_FP_ALIGNMENT = 8;
     private static final int GP_TOP_LOCATION = 8;
     private static final int FP_TOP_LOCATION = 16;
 
@@ -133,7 +130,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
         if (fpOffset < MAX_FP_OFFSET) {
             Pointer regSaveArea = vaList.readWord(FP_TOP_LOCATION);
             double v = regSaveArea.readDouble(fpOffset);
-            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte XMM register
+            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte FP register
             return v;
         } else {
             Pointer overflowArgArea = vaList.readWord(STACK_AREA_LOCATION);
@@ -186,10 +183,10 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
 
-        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
+        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {

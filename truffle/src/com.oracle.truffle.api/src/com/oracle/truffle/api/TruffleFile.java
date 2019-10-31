@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,7 +181,7 @@ public final class TruffleFile {
      *
      * @since 19.0
      */
-    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<Set<PosixFilePermission>>(AttributeGroup.POSIX, Set.class, "permissions");
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, Set.class, "permissions");
 
     /**
      * The file's mode containing the protection and file type bits. Supported only by UNIX native
@@ -2002,7 +2002,7 @@ public final class TruffleFile {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends RuntimeException> T sthrow(final Throwable t) throws T {
+    private static <T extends Throwable> RuntimeException sthrow(Throwable t) throws T {
         throw (T) t;
     }
 

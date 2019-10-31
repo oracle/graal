@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -40,11 +41,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.tests.SulongSuite;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -1105,13 +1109,14 @@ public class LLVMInteropTest {
             return new ArrayObject("foo");
         }
 
-        static TruffleObject getTestToNative() {
-            return (TruffleObject) LLVMLanguage.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
+        static Object getTestToNative(LLVMContext context) {
+            return context.getEnv().importSymbol("test_to_native");
         }
 
-        @ExportMessage
-        void toNative(
-                        @Cached(value = "getTestToNative()", allowUncached = true) TruffleObject testToNative,
+        @ExportMessage(limit = "3")
+        @SuppressWarnings("unused")
+        void toNative(@CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @Cached(value = "getTestToNative(context)", allowUncached = true) Object testToNative,
                         @CachedLibrary("testToNative") InteropLibrary interop) {
             try {
                 interop.execute(testToNative, this);
@@ -1389,7 +1394,21 @@ public class LLVMInteropTest {
             runner.load();
             Assert.assertEquals("construct\n", buf.toString());
         }
-        Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
+        if (SulongSuite.IS_MAC) {
+            /*
+             * On MacOS, newer clang version implement destructors by registering it via `atexit` in
+             * a generated constructor. Our test also registers an `atexit` function in a
+             * constructor. which is called before the generated one. Thus, the destructor is called
+             * before the `atexit` function because `atexit` functions are called in the reverse
+             * registration order. Therefore, we only test that all `atexit` functions are called
+             * eventually and after the constructor.
+             */
+
+            String actual = buf.toString();
+            Assert.assertTrue("construct\natexit\ndestruct\n".equals(actual) || "construct\ndestruct\natexit\n".equals(actual));
+        } else {
+            Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
+        }
     }
 
     private static Map<String, Object> makeObjectA() {

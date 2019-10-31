@@ -31,8 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -40,6 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -53,8 +55,6 @@ import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
@@ -85,15 +85,30 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
+            /*
+             * On Linux we use --dynamic-list to ensure only our defined entrypoints end up as
+             * global symbols in the dynamic symbol table of the image.
+             */
+            try {
+                List<String> exportedSymbols = new ArrayList<>();
+                exportedSymbols.add("{");
+                StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                .filter(ObjectFile.Symbol::isGlobal)
+                                .filter(ObjectFile.Symbol::isDefined)
+                                .map(symbol -> "\"" + symbol.getName() + "\";")
+                                .forEachOrdered(exportedSymbols::add);
+                exportedSymbols.add("};");
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, exportedSymbols);
+                additionalPreOptions.add("-Wl,--dynamic-list");
+                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere();
+            }
+
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
-        }
-
-        @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            cmd.add("-Wl,--defsym");
-            cmd.add("-Wl," + ent.getValue() + "=" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()));
         }
 
         @Override
@@ -117,9 +132,29 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
+            additionalPreOptions.add("-Wl,-no_compact_unwind");
+
             if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
+            }
+
+            /*
+             * On Darwin we use -exported_symbols_list to ensure only our defined entrypoints end up
+             * as global symbols in the dynamic symbol table of the image.
+             */
+            try {
+                List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                .filter(ObjectFile.Symbol::isGlobal)
+                                .filter(ObjectFile.Symbol::isDefined)
+                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                                .collect(Collectors.toList());
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, exportedSymbols);
+                additionalPreOptions.add("-Wl,-exported_symbols_list");
+                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere();
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
@@ -129,14 +164,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             additionalPreOptions.add("-arch");
             if (Platform.includedIn(Platform.AMD64.class)) {
                 additionalPreOptions.add("x86_64");
-            } else if (Platform.includedIn(Platform.AArch64.class)) {
+            } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 additionalPreOptions.add("arm64");
             }
-        }
-
-        @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            cmd.add("-Wl,-alias,_" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()) + ",_" + ent.getValue());
         }
 
         @Override
@@ -146,7 +176,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
+                    if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -159,11 +189,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         WindowsCCLinkerInvocation() {
             setCompilerCommand("CL");
-        }
-
-        @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
-            // cmd.add("-Wl,-alias," + ent.getValue() + "," + ent.getKey());
         }
 
         @Override
@@ -187,7 +212,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(compilerCommand);
+            cmd.add(getCompilerCommand());
 
             setOutputKind(cmd);
 

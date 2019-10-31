@@ -60,7 +60,10 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateNo
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateUncached
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean inherit()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -129,6 +132,7 @@ meth public abstract !varargs {com.oracle.truffle.api.dsl.NodeFactory%0} createN
 meth public abstract java.lang.Class<{com.oracle.truffle.api.dsl.NodeFactory%0}> getNodeClass()
 meth public abstract java.util.List<java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>> getExecutionSignature()
 meth public abstract java.util.List<java.util.List<java.lang.Class<?>>> getNodeSignatures()
+meth public {com.oracle.truffle.api.dsl.NodeFactory%0} getUncachedInstance()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeField
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.dsl.NodeFields)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,13 +87,6 @@ import java.util.Formatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.test.ModuleSupport;
-import org.graalvm.compiler.test.SubprocessUtil;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -111,6 +104,12 @@ import org.graalvm.compiler.replacements.classfile.ClassfileBytecode;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.ModuleSupport;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
@@ -209,6 +208,17 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                     }
                                     try {
                                         checkClass(metaAccess, getSnippetReflection(), className);
+                                    } catch (UnsupportedClassVersionError e) {
+                                        // graal-test.jar can contain classes compiled for different
+                                        // Java versions
+                                    } catch (NoClassDefFoundError e) {
+                                        if (!e.getMessage().contains("Could not initialize class")) {
+                                            throw e;
+                                        } else {
+                                            // A second or later attempt to initialize a class
+                                            // results in this confusing error where the
+                                            // original cause of initialization failure is lost
+                                        }
                                     } catch (ClassNotFoundException e) {
                                         throw new AssertionError(e);
                                     }

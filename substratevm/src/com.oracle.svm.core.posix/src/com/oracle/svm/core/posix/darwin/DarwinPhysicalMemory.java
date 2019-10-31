@@ -44,7 +44,7 @@ import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 class DarwinPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {

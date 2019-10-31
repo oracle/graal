@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
@@ -32,9 +31,10 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-@Platforms({DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 public class NetIfDl {
     /* { Do not format quoted code: @formatter:off */

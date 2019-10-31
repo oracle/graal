@@ -32,12 +32,12 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS;
 import org.graalvm.word.PointerBase;
 
 /** Definitions hand-translated from <spawn.h>. */
-@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
+@Platforms({DARWIN_JNI_AND_SUBSTITUTIONS.class, LINUX_JNI_AND_SUBSTITUTIONS.class})
 @CContext(PosixDirectives.class)
 public class Spawn {
     /* Allow lower-case type names: Checkstyle: stop. */

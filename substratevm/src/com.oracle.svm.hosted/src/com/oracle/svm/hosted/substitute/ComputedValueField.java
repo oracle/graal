@@ -41,6 +41,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -68,7 +69,7 @@ import sun.misc.Unsafe;
  * @see RecomputeFieldValue
  * @see NativeImageReinitialize
  */
-public class ComputedValueField implements ReadableJavaField, ComputedValue {
+public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private final ResolvedJavaField original;
@@ -391,5 +392,10 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
     @Override
     public String toString() {
         return "RecomputeValueField<original " + original.toString() + ", kind " + kind + ">";
+    }
+
+    @Override
+    public Field getJavaField() {
+        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

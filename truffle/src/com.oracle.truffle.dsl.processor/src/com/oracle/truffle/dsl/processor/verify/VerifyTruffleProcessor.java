@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,21 +59,20 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.tools.Diagnostic.Kind;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.dsl.processor.ExpectError;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic.Kind;
 
-@SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child", "com.oracle.truffle.api.nodes.Node.Children"})
+import com.oracle.truffle.dsl.processor.ExpectError;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+
+@SupportedAnnotationTypes({
+                TruffleTypes.CompilerDirectives_TruffleBoundary_Name,
+                TruffleTypes.Node_Child_Name,
+                TruffleTypes.Node_Children_Name})
 public class VerifyTruffleProcessor extends AbstractProcessor {
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -129,74 +128,81 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
             return false;
         }
 
-        TypeElement virtualFrameType = ElementUtils.getTypeElement(processingEnv, "com.oracle.truffle.api.frame.VirtualFrame");
+        ProcessorContext context = ProcessorContext.enter(processingEnv);
+        try {
+            TruffleTypes types = context.getTypes();
+            TypeElement virtualFrameType = ElementUtils.castTypeElement(types.VirtualFrame);
 
-        for (Element element : roundEnv.getElementsAnnotatedWith(TruffleBoundary.class)) {
-            scope = element;
-            try {
-                if (element.getKind() != ElementKind.CONSTRUCTOR &&
-                                element.getKind() != ElementKind.METHOD) {
+            for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.CompilerDirectives_TruffleBoundary))) {
+                scope = element;
+                try {
+                    if (element.getKind() != ElementKind.CONSTRUCTOR &&
+                                    element.getKind() != ElementKind.METHOD) {
+                        continue;
+                    }
+                    ExecutableElement method = (ExecutableElement) element;
+
+                    for (VariableElement parameter : method.getParameters()) {
+                        Element paramType = processingEnv.getTypeUtils().asElement(parameter.asType());
+                        if (paramType != null && paramType.equals(virtualFrameType)) {
+                            errorMessage(element, "Method %s cannot be annotated with @%s and have a parameter of type %s", method.getSimpleName(),
+                                            types.CompilerDirectives_TruffleBoundary.asElement().getSimpleName().toString(),
+                                            paramType.getSimpleName());
+                        }
+                    }
+                } catch (Throwable t) {
+                    reportException(isBug367599(t) ? Kind.NOTE : Kind.ERROR, element, t);
+                } finally {
+                    scope = null;
+                }
+            }
+
+            TypeElement nodeType = ElementUtils.castTypeElement(types.Node);
+            TypeElement nodeInterfaceType = ElementUtils.castTypeElement(types.NodeInterface);
+            for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Node_Child))) {
+                if (e.getModifiers().contains(Modifier.FINAL)) {
+                    emitError("@Child field cannot be final", e);
                     continue;
                 }
-                ExecutableElement method = (ExecutableElement) element;
-
-                for (VariableElement parameter : method.getParameters()) {
-                    Element paramType = processingEnv.getTypeUtils().asElement(parameter.asType());
-                    if (paramType != null && paramType.equals(virtualFrameType)) {
-                        errorMessage(element, "Method %s cannot be annotated with @%s and have a parameter of type %s", method.getSimpleName(), TruffleBoundary.class.getSimpleName(),
-                                        paramType.getSimpleName());
-                    }
+                if (!processingEnv.getTypeUtils().isSubtype(e.asType(), nodeInterfaceType.asType())) {
+                    emitError("@Child field must implement NodeInterface", e);
+                    continue;
                 }
-            } catch (Throwable t) {
-                reportException(isBug367599(t) ? Kind.NOTE : Kind.ERROR, element, t);
-            } finally {
-                scope = null;
+                if (!processingEnv.getTypeUtils().isSubtype(e.getEnclosingElement().asType(), nodeType.asType())) {
+                    emitError("@Child field is allowed only in Node sub-class", e);
+                    continue;
+                }
+                if (ElementUtils.findAnnotationMirror(e, types.Executed) == null) {
+                    assertNoErrorExpected(e);
+                }
             }
-        }
-
-        TypeElement nodeType = ElementUtils.getTypeElement(processingEnv, Node.class.getName());
-        TypeElement nodeInterfaceType = ElementUtils.getTypeElement(processingEnv, NodeInterface.class.getName());
-        for (Element e : roundEnv.getElementsAnnotatedWith(Child.class)) {
-            if (e.getModifiers().contains(Modifier.FINAL)) {
-                emitError("@Child field cannot be final", e);
-                continue;
-            }
-            if (!processingEnv.getTypeUtils().isSubtype(e.asType(), nodeInterfaceType.asType())) {
-                emitError("@Child field must implement NodeInterface", e);
-                continue;
-            }
-            if (!processingEnv.getTypeUtils().isSubtype(e.getEnclosingElement().asType(), nodeType.asType())) {
-                emitError("@Child field is allowed only in Node sub-class", e);
-                continue;
-            }
-            if (e.getAnnotation(Executed.class) == null) {
-                assertNoErrorExpected(e);
-            }
-        }
-        for (Element annotatedField : roundEnv.getElementsAnnotatedWith(Children.class)) {
-            boolean reportError = false;
-            TypeMirror annotatedFieldType = annotatedField.asType();
-            if (annotatedFieldType.getKind() == TypeKind.ARRAY) {
-                TypeMirror compomentType = ((ArrayType) annotatedFieldType).getComponentType();
-                if (!processingEnv.getTypeUtils().isSubtype(compomentType, nodeInterfaceType.asType())) {
+            for (Element annotatedField : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Node_Children))) {
+                boolean reportError = false;
+                TypeMirror annotatedFieldType = annotatedField.asType();
+                if (annotatedFieldType.getKind() == TypeKind.ARRAY) {
+                    TypeMirror compomentType = ((ArrayType) annotatedFieldType).getComponentType();
+                    if (!processingEnv.getTypeUtils().isSubtype(compomentType, nodeInterfaceType.asType())) {
+                        reportError = true;
+                    }
+                } else {
                     reportError = true;
                 }
-            } else {
-                reportError = true;
+                if (reportError) {
+                    emitError("@Children field must be an array of NodeInerface sub-types", annotatedField);
+                    continue;
+                }
+                if (!processingEnv.getTypeUtils().isSubtype(annotatedField.getEnclosingElement().asType(), nodeType.asType())) {
+                    emitError("@Children field is allowed only in Node sub-class", annotatedField);
+                    continue;
+                }
+                if (ElementUtils.findAnnotationMirror(annotatedField, types.Executed) == null) {
+                    assertNoErrorExpected(annotatedField);
+                }
             }
-            if (reportError) {
-                emitError("@Children field must be an array of NodeInerface sub-types", annotatedField);
-                continue;
-            }
-            if (!processingEnv.getTypeUtils().isSubtype(annotatedField.getEnclosingElement().asType(), nodeType.asType())) {
-                emitError("@Children field is allowed only in Node sub-class", annotatedField);
-                continue;
-            }
-            if (annotatedField.getAnnotation(Executed.class) == null) {
-                assertNoErrorExpected(annotatedField);
-            }
+            return false;
+        } finally {
+            ProcessorContext.leave();
         }
-        return false;
     }
 
     void assertNoErrorExpected(Element element) {

@@ -6,19 +6,6 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"type": "node",
-			"request": "launch",
-			"name": "Run Debug Adapter",
-			"program": "${workspaceFolder}/src/graalVMDebug.ts",
-			"args": [
-				"--server=4711"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			],
-			"preLaunchTask": "npm: watch"
-		},
-		{
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
@@ -27,21 +14,20 @@
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: watch"
 		},
 		{
-			"name": "Extension Tests",
-			"type": "extensionHost",
+			"type": "node",
 			"request": "launch",
-			"runtimeExecutable": "${execPath}",
+			"name": "Run Debug Adapter",
+			"program": "${workspaceFolder}/src/graalVMDebug.ts",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test"
+				"--server=4711"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/test/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: watch"
 		}

@@ -87,7 +87,8 @@ supportedLLVMVersions = [
     '5.0',
     '6.0',
     '7.0',
-    '8.0'
+    '8.0',
+    '9.0',
 ]
 
 toolchainLLVMVersion = "8.0"
@@ -150,7 +151,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     build_tags = ['build_' + t for t in tags]
     run_tags = ['run_' + t for t in tags]
     if not unittestArgs:
-        unittestArgs = []
+        unittestArgs = ['--very-verbose', '--enable-timing']
     unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
@@ -556,20 +557,9 @@ def getLLVMMajorVersion(llvmProgram):
         return toolchainLLVMVersion.split('.')[0]
 
 
-# the makefiles do not check which version of clang they invoke
-versions_dont_have_optnone = ['3', '4']
 def getLLVMExplicitArgs(mainLLVMVersion):
-    if mainLLVMVersion:
-        for ver in versions_dont_have_optnone:
-            if mainLLVMVersion.startswith(ver):
-                return []
-    return ["-Xclang", "-disable-O0-optnone"]
-
-def getClangImplicitArgs():
-    mainLLVMVersion = getLLVMMajorVersion(mx_buildtools.ClangCompiler.CLANG)
-    return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
-
-mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
+    no_optnone = mx.get_env("CLANG_NO_OPTNONE", False)
+    return [] if no_optnone else ["-Xclang", "-disable-O0-optnone"]
 
 
 def get_mx_exe():
@@ -815,6 +805,19 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
                                               lambda name: _get_toolchain(name).get_toolchain_subdir())
 
 
+def create_toolchain_root_provider(name, dist):
+    def provider():
+        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
+        if bootstrap_graalvm:
+            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
+            if os.path.exists(ret): # jdk8 based graalvm
+                return ret
+            else: # jdk11+ based graalvm
+                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
+        return mx.distribution(dist).get_output()
+    return provider
+
+
 class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
@@ -824,7 +827,7 @@ class ToolchainConfig(object):
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
         self.name = name
         self.dist = dist
-        self.bootstrap_dist = bootstrap_dist
+        self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
@@ -834,6 +837,8 @@ class ToolchainConfig(object):
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
         })
+        # register bootstrap toolchain substitution
+        mx_subst.path_substitutions.register_no_arg(name + 'ToolchainRoot', self.bootstrap_provider)
         if self.name in _toolchains:
             mx.abort("Toolchain '{}' registered twice".format(self.name))
         _toolchains[self.name] = self
@@ -871,7 +876,7 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(mx.distribution(self.bootstrap_dist).get_output(), 'bin', self._tool_to_exe(tool))
+        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
 
     def get_toolchain_subdir(self):
         return self.name
@@ -883,7 +888,6 @@ class ToolchainConfig(object):
                 jar_distributions=[self.suite.name + ":" + self.dist],
                 main_class=self._tool_to_main(tool),
                 build_args=[
-                    '--macro:truffle',  # we need tool:truffle so that Engine.findHome works
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                 ],
                 is_main_launcher=False,

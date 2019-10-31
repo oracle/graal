@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,7 +120,7 @@ public class SubstitutionsTest extends ReplacementsTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         new PluginFactory_SubstitutionsTest().registerPlugins(invocationPlugins, null);
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        Registration r = new Registration(invocationPlugins, TestMethod.class, bytecodeProvider);
+        Registration r = new Registration(invocationPlugins, TestMethod.class, getReplacements(), bytecodeProvider);
         r.registerMethodSubstitution(TestMethodSubstitution.class, "test");
         super.registerInvocationPlugins(invocationPlugins);
     }

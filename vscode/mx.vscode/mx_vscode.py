@@ -40,7 +40,7 @@
 #
 import mx
 import os
-from os.path import join, exists
+from os.path import join, isfile, exists
 from shutil import rmtree
 
 _suite = mx.suite('vscode')
@@ -75,7 +75,10 @@ class VSCodeExtensionBuildTask(mx.ArchivableBuildTask):
         return 'Building VS Code Extension for {}'.format(self.subject)
 
     def newestInput(self):
-        inputPaths = [join(self.subject.dir, m) for m in ['.', 'images', 'snippets', 'src', 'syntaxes']]
+        inputPaths = []
+        for path in [join(self.subject.dir, m) for m in ['', 'images', 'snippets', 'src', 'syntaxes']]:
+            if exists(path):
+                inputPaths.extend(join(path, f) for f in os.listdir(path) if isfile(join(path, f)))
         return mx.TimeStampFile.newest(inputPaths)
 
     def needsBuild(self, newestInput):
@@ -85,20 +88,15 @@ class VSCodeExtensionBuildTask(mx.ArchivableBuildTask):
         return (False, None)
 
     def build(self):
-        if not self.cmd_exists('vsce'):
-            mx.run(['npm', 'install', '-g', 'vsce'], nonZeroIsFatal=True)
+        vsce = join(_suite.dir, 'node_modules', '.bin', 'vsce')
+        if not exists(vsce):
+            mx.run(['npm', 'install', 'vsce@1.66.0'], nonZeroIsFatal=True, cwd=_suite.dir)
         mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=self.subject.dir)
-        mx.run(['vsce', 'package', '--baseImagesUrl', 'https://github.com/oracle/graal/raw/master/vscode/' + self.subject.name], nonZeroIsFatal=True, cwd=self.subject.dir)
+        mx.run([vsce, 'package', '--baseImagesUrl', 'https://github.com/oracle/graal/raw/master/vscode/' + self.subject.name], nonZeroIsFatal=True, cwd=self.subject.dir)
 
     def clean(self, forBuild=False):
         for file in self.subject.getResults():
             os.remove(file)
         for path in [join(self.subject.dir, m) for m in ['dist', 'node_modules']]:
             if exists(path):
-                rmtree(path)
-
-    def cmd_exists(self, cmd):
-        return any(
-            os.access(os.path.join(path, cmd), os.X_OK)
-            for path in os.environ["PATH"].split(os.pathsep)
-        )
+                mx.rmtree(path)

@@ -35,12 +35,17 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -200,12 +205,25 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIMethodId toMethodID(JNIAccessibleMethod method) {
-        // Using the address is safe because JNIAccessibleMethod is immutable (non-movable)
-        return (method != null) ? (JNIMethodId) Word.objectToUntrackedPointer(method) : WordFactory.nullPointer();
+        SignedWord value = WordFactory.zero();
+        if (method != null) {
+            value = Word.objectToUntrackedPointer(method); // safe because it is in the image heap
+            if (SubstrateOptions.SpawnIsolates.getValue()) { // use offset: valid across isolates
+                value = value.subtract((SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
+            }
+        }
+        return (JNIMethodId) value;
     }
 
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        Object obj = ((Pointer) method).toObject();
+        Object obj = null;
+        if (method.notEqual(WordFactory.zero())) {
+            Pointer p = (Pointer) method;
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
+                p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
+            }
+            obj = p.toObject();
+        }
         return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
     }
 

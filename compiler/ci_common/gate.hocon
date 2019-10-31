@@ -20,7 +20,7 @@ gateCoverage : {
   run : [
     ${gateCmd} ["build,coverage", --jacocout, html]
     [mx, coverage-upload]
-    [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
+    # GR-18258 [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
   ]
 }
 
@@ -152,11 +152,7 @@ gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
 gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
 
-gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
-  downloads : {
-    JAVA_HOME : ${jdks.openjdk11}
-  }
-}
+gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateJAOTC : {
   environment : {

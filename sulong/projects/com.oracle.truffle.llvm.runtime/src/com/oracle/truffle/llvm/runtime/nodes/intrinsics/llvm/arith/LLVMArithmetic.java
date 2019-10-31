@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -469,7 +470,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected Object doIntrinsic(byte left, byte right, Object addr,
+        protected Object doIntrinsic(byte left, byte right, LLVMPointer addr,
                         @Cached("createStoreI8()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI8(left, right, addr, store);
@@ -478,7 +479,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected Object doIntrinsic(short left, short right, Object addr,
+        protected Object doIntrinsic(short left, short right, LLVMPointer addr,
                         @Cached("createStoreI16()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI16(left, right, addr, store);
@@ -487,7 +488,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected Object doIntrinsic(int left, int right, Object addr,
+        protected Object doIntrinsic(int left, int right, LLVMPointer addr,
                         @Cached("createStoreI32()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI32(left, right, addr, store);
@@ -496,7 +497,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected Object doIntrinsic(long left, long right, Object addr,
+        protected Object doIntrinsic(long left, long right, LLVMPointer addr,
                         @Cached("createStoreI64()") LLVMStoreNode store,
                         @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementPointer) {
             final boolean overflow = arithmetic.evalI64(left, right, addr, store);

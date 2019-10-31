@@ -67,6 +67,33 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.agentscript" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.agentscript.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.agentscript",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "com.oracle.truffle.tools.profiler" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -99,23 +126,17 @@ suite = {
     },
 
     "libraries": {
-       "NanoHTTPD" : {
-          "path" : "lib/nanohttpd-2.3.1.jar",
-          "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "7d28e2828bfe2ac04dcb8779aded934ac7dc1e52",
         },
-       "NanoHTTPD-WebSocket" : {
-          "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-websocket",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD-WebSocket" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJSON" : {
           "urls" : [
@@ -195,6 +216,38 @@ suite = {
             "description" : "Truffle Chrome Inspector support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
+            },
+        },
+        "AGENTSCRIPT": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.agentscript",
+            "dependencies": ["com.oracle.truffle.tools.agentscript"],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "agentscript",
+            },
+            "description" : "Script driven tracing and instrumentation Agent",
+        },
+        "AGENTSCRIPT_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.agentscript.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "AGENTSCRIPT",
+            ],
+            "description" : "Tests for the script driven tracing and instrumentation Agent.",
+            "maven" : False,
+        },
+        "AGENTSCRIPT_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Script driven tracing and instrumentation Agentfor the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-agentscript.properties",
             },
         },
         "TRUFFLE_PROFILER": {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,6 +193,8 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
+        public abstract boolean isExecutableObject(Object value);
+
         public abstract Object createDefaultNodeObject(Node node);
 
         public abstract boolean isValidNodeObject(Object obj);
@@ -314,7 +316,7 @@ public abstract class Accessor {
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
-        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
+        public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
 
@@ -512,7 +514,7 @@ public abstract class Accessor {
 
     public abstract static class InstrumentSupport {
 
-        public abstract void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass);
+        public abstract void initializeInstrument(Object instrumentationHandler, Object key, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
         public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
 

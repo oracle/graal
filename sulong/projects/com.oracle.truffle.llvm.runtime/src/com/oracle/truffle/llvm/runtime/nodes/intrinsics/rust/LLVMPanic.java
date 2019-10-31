@@ -35,13 +35,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -53,7 +53,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMPanic extends LLVMIntrinsic {
 
     protected PanicLocType createPanicLocation() {
-        DataLayout dataSpecConverter = lookupContextReference(LLVMLanguage.class).get().getDataSpecConverter();
+        LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
+        DataLayout dataSpecConverter = startNode.getDatalayout();
         return PanicLocType.create(dataSpecConverter);
     }
 

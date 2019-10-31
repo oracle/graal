@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        Registration r = new Registration(invocationPlugins, Original.class, replacementBytecodeProvider);
+        Registration r = new Registration(invocationPlugins, Original.class, getReplacements(), replacementBytecodeProvider);
         r.registerMethodSubstitution(Intrinsic.class, "getValue");
         super.registerInvocationPlugins(invocationPlugins);
     }

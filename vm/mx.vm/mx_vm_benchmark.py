@@ -137,11 +137,12 @@ class NativeImageVM(GraalVm):
 
             return benchmark_run_args
 
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, hotspot_pgo, is_gate):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, hotspot_pgo, is_gate, is_llvm=False):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.pgo_instrumented_iterations = pgo_instrumented_iterations
         self.hotspot_pgo = hotspot_pgo
         self.is_gate = is_gate
+        self.is_llvm = is_llvm
 
     @staticmethod
     def supported_vm_args():
@@ -220,7 +221,7 @@ class NativeImageVM(GraalVm):
 
                 if needs_config:
                     config.config_dir = mx.mkdtemp(suffix='config', prefix='native-image')
-                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
+                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
                 if self.hotspot_pgo:
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
@@ -245,6 +246,8 @@ class NativeImageVM(GraalVm):
             base_image_build_args += ['-H:Name=' + executable_name, '-H:Path=' + image_cwd]
             if needs_config:
                 base_image_build_args += ['-H:ConfigurationFileDirectories=' + config.config_dir]
+            if self.is_llvm:
+                base_image_build_args += ['-H:CompilerBackend=llvm', '-H:-SpawnIsolates']
             base_image_build_args += config.extra_image_build_arguments
 
             # PGO instrumentation
@@ -350,12 +353,14 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={
 
 
 def register_graalvm_vms():
-    graalvm_hostvm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
-    for config_name, java_args, launcher_args, priority in mx_sdk.graalvm_hostvm_configs:
-        mx_benchmark.java_vm_registry.add_vm(GraalVm(graalvm_hostvm_name, config_name, java_args, launcher_args), _suite, priority)
-    if mx_vm.has_component('svm'):
-        _native_image_vm_registry.add_vm(NativeImageBuildVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
-        _gu_vm_registry.add_vm(GuVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
+    default_host_vm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
+    host_vm_names = ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else []) + [default_host_vm_name]
+    for host_vm_name in host_vm_names:
+        for config_name, java_args, launcher_args, priority in mx_sdk.graalvm_hostvm_configs:
+            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
+        if mx_vm.has_component('svm'):
+            _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
+            _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
@@ -364,6 +369,8 @@ def register_graalvm_vms():
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-' + config_suffix, None, None, 1, False, False), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot-' + config_suffix, None, None, 0, True, False), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, 0, True, True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, 0, False, False, True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-pgo-' + config_suffix, None, None, 1, False, False, True), _suite, 10)
             break
 
 # Add VMs for libgraal

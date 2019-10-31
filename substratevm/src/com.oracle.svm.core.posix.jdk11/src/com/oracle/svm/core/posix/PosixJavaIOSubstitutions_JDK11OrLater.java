@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -38,7 +38,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 public final class PosixJavaIOSubstitutions_JDK11OrLater {
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDK11OrLater.class)
 final class Target_java_io_UnixFileSystem_JDK11OrLater {
 

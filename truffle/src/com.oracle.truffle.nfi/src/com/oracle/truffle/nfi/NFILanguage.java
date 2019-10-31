@@ -73,7 +73,7 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
             backendId = source.getNFIBackendId();
         }
 
-        NFIBackend backend = getContextReference().get().getBackend(backendId);
+        NFIBackend backend = getCurrentContext(NFILanguage.class).getBackend(backendId);
         CallTarget loadLibrary = backend.parse(source.getLibraryDescriptor());
         return Truffle.getRuntime().createCallTarget(new NFIRootNode(this, loadLibrary, source));
     }

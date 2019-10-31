@@ -51,6 +51,10 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 
 include $(TOP)/Makefile.common
 
+ifdef GRAALVM_LLVM_HOME
+%/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+endif
+
 %/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^

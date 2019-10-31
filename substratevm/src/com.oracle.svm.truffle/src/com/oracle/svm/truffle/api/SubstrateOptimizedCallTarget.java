@@ -127,7 +127,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
          * that no longer contains executable code.
          */
         long start = address;
-        if (start != 0) {
+        if (!inInlinedCode() && start != 0) {
             CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             return KnownIntrinsics.convertUnknownValue(target.invoke(this, args), Object.class);
         } else {

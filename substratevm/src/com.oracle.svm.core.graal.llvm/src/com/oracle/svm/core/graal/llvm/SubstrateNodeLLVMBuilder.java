@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.llvm;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.getJavaFrameAnchor;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.hasJavaFrameAnchor;
 
+import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -104,6 +106,12 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     }
 
     @Override
+    protected LLVMTypeRef[] getUnknownCallArgumentTypes(NodeInputList<ValueNode> arguments, LoweredCallTargetNode callTarget) {
+        LLVMTypeRef[] types = super.getUnknownCallArgumentTypes(arguments, callTarget);
+        return gen.getUnknownCallArgumentTypes(types, callTarget.callType());
+    }
+
+    @Override
     protected LLVMValueRef emitCondition(LogicNode condition) {
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
@@ -144,5 +152,15 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
         newArgs[1] = callee;
         System.arraycopy(args, 0, newArgs, 2, args.length);
         return super.emitCall(invoke, callTarget, wrapper, patchpointId, newArgs);
+    }
+
+    @Override
+    public void emitReadExceptionObject(ValueNode node) {
+        super.emitReadExceptionObject(node);
+
+        LLVMValueRef retrieveExceptionFunction = gen.getRetrieveExceptionFunction();
+        LLVMValueRef[] arguments = gen.getCallArguments(new LLVMValueRef[0], SubstrateCallingConventionType.JavaCall, null);
+        LLVMValueRef exception = builder.buildCall(retrieveExceptionFunction, arguments);
+        setResult(node, exception);
     }
 }

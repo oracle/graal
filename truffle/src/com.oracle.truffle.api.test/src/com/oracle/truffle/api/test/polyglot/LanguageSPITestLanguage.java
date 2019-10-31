@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,6 +119,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
         context.initialized = true;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void disposeContext(LanguageContext context) {
         if (context.initialized) {

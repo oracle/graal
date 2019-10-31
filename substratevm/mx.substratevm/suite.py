@@ -32,13 +32,6 @@ suite = {
                     {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
-            {
-                "name": "regex",
-                "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-            },
         ]
     },
 
@@ -1033,7 +1026,7 @@ suite = {
             "platformDependent" : False,
             "description" : "Native Image support distribution for the GraalVM",
             "layout" : {
-                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE.md",
+                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE",
             },
         },
 

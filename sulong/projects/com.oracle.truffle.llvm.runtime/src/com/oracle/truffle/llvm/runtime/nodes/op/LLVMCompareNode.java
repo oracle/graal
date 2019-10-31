@@ -29,17 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.op;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesLongPointer;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode.LLVMPointerEqualsNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
+@TypeSystemReference(LLVMTypesLongPointer.class)
 public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
-
-    public abstract boolean executeCompare(Object val1, Object val2);
 
     public abstract static class LLVMEqNode extends LLVMCompareNode {
         @Specialization
@@ -63,8 +67,14 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         }
 
         @Specialization
-        protected boolean eq(long val1, long val2) {
+        protected boolean eqLong(long val1, long val2) {
             return val1 == val2;
+        }
+
+        @Specialization(replaces = "eqLong")
+        protected boolean eqPointer(LLVMPointer val1, LLVMPointer val2,
+                        @Cached LLVMPointerEqualsNode equals) {
+            return equals.execute(val1, val2);
         }
 
         @Specialization
@@ -95,8 +105,14 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
         }
 
         @Specialization
-        protected boolean nq(long val1, long val2) {
+        protected boolean nqLong(long val1, long val2) {
             return val1 != val2;
+        }
+
+        @Specialization(replaces = "nqLong")
+        protected boolean nqPointer(LLVMPointer val1, LLVMPointer val2,
+                        @Cached LLVMPointerEqualsNode equals) {
+            return !equals.execute(val1, val2);
         }
 
         @Specialization

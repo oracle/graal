@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class ParameterAttributes implements ParserListener {
 
@@ -50,12 +51,20 @@ public class ParameterAttributes implements ParserListener {
     private static final int WELL_KNOWN_INTEGER_ATTRIBUTE_KIND = 1;
     private static final int STRING_ATTRIBUTE_KIND = 3;
     private static final int STRING_VALUE_ATTRIBUTE_KIND = 4;
+    private static final int BYVAL_ATTRIBUTE_KIND = 5;
+    private static final int TYPED_BYVAL_ATTRIBUTE_KIND = 6;
 
     // stores attributes defined in PARAMATTR_GRP_CODE_ENTRY
     private final List<AttributesGroup> attributes = new ArrayList<>();
 
     // store code entries defined in PARAMATTR_CODE_ENTRY
     private final List<AttributesCodeEntry> parameterCodeEntry = new ArrayList<>();
+
+    private final Types types;
+
+    public ParameterAttributes(Types types) {
+        this.types = types;
+    }
 
     /**
      * Get ParsedAttributeGroup by Bitcode index.
@@ -232,6 +241,23 @@ public class ParameterAttributes implements ParserListener {
                     String strAttr = readString(buffer);
                     String strVal = readString(buffer);
                     group.addAttribute(new Attribute.StringValueAttribute(strAttr, strVal));
+                    break;
+                }
+
+                case BYVAL_ATTRIBUTE_KIND: {
+                    Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
+                    if (attr == Attribute.Kind.BYVAL) {
+                        group.addAttribute(new Attribute.KnownAttribute(Attribute.Kind.BYVAL));
+                    }
+                    break;
+                }
+
+                case TYPED_BYVAL_ATTRIBUTE_KIND: {
+                    Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
+                    if (attr == Attribute.Kind.BYVAL) {
+                        final Type valueType = types.get(buffer.read());
+                        group.addAttribute(new Attribute.KnownTypedAttribute(Attribute.Kind.BYVAL, valueType));
+                    }
                     break;
                 }
 

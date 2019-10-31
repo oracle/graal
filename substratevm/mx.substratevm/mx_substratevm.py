@@ -107,7 +107,9 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
     'jdk.internal.vm.ci/jdk.vm.ci.services',
     'jdk.internal.vm.ci/jdk.vm.ci.common',
-    'jdk.internal.vm.ci/jdk.vm.ci.code.site']
+    'jdk.internal.vm.ci/jdk.vm.ci.code.site',
+    'jdk.internal.vm.ci/jdk.vm.ci.code.stack',
+]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 graal_compiler_opens_packages = [
@@ -416,6 +418,8 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             _native_image(['--server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature'
+
 
 def svm_gate_body(args, tasks):
     build_native_image_image()
@@ -444,12 +448,12 @@ def svm_gate_body(args, tasks):
                         blacklist.flush()
                         blacklist_args = ['--blacklist', blacklist.name]
 
-                    native_unittest(['--build-args', '--initialize-at-build-time'] + blacklist_args)
+                    native_unittest(['--build-args', _native_unittest_features] + blacklist_args)
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--initialize-at-build-time', '--language:nfi',
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
@@ -466,7 +470,7 @@ def svm_gate_body(args, tasks):
                         mx.abort('TCK tests not found.')
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--macro:truffle', '--initialize-at-build-time',
+                    tests_image = native_image(vm_image_args + ['--macro:truffle',
                                                                 '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
                                                                 '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
                                                                 '-H:MaxRuntimeCompileMethods=3000'])
@@ -761,7 +765,7 @@ def _javac_image(native_image, path, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(['--initialize-at-build-time', "-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
@@ -819,7 +823,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler'],
+    dependencies=['GraalVM compiler', 'Truffle Macro', 'Truffle NFI'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -963,6 +967,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
 ))
 
 if 'LIBGRAAL' in os.environ:
+    jar_distributions = [
+        'substratevm:GRAAL_HOTSPOT_LIBRARY',
+        'compiler:GRAAL_LIBGRAAL_JNI',
+        'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL']
+    jdk8 = mx.get_jdk(mx.JavaCompliance(8), cancel='GRAAL_MANAGEMENT_LIBGRAAL will be not added', purpose="configure jvmcicompiler", tag=mx.DEFAULT_JDK_TAG)
+    if jdk8:
+        jar_distributions.append('compiler:GRAAL_MANAGEMENT_LIBGRAAL')
     mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         suite=suite,
         name='LibGraal',
@@ -978,10 +989,7 @@ if 'LIBGRAAL' in os.environ:
             mx_sdk.LibraryConfig(
                 destination="<lib:jvmcicompiler>",
                 jvm_library=True,
-                jar_distributions=[
-                    'substratevm:GRAAL_HOTSPOT_LIBRARY',
-                    'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL'
-                ],
+                jar_distributions=jar_distributions,
                 build_args=[
                     '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
                     '--initialize-at-build-time',
@@ -1130,13 +1138,6 @@ def _ensure_vm_built():
 
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
-    save_args = []
-    for arg in args:
-        if arg == '--no-server' or arg.startswith('--server'):
-            mx.warn('Ignoring server-mode native-image argument ' + arg)
-        else:
-            save_args.append(arg)
-
     _ensure_vm_built()
     if mx.is_windows():
         config = graalvm_jvm_configs[-1]
@@ -1146,7 +1147,7 @@ def native_image_on_jvm(args, **kwargs):
         executable = join(vm_link, 'bin', 'native-image')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
-    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + save_args, **kwargs)
+    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 
 
 @mx.command(suite.name, 'native-image-configure')

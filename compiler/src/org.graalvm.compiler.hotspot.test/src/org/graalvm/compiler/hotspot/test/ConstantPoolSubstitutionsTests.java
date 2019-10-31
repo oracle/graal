@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 
 package org.graalvm.compiler.hotspot.test;
-
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 
 import java.lang.reflect.Method;
 
@@ -75,9 +73,27 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
         return graph;
     }
 
+    private static String getMiscPackage() {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            return "sun.misc";
+        }
+        try {
+            String miscPackage = "jdk.internal.access";
+            Class.forName(miscPackage + ".SharedSecrets");
+            return miscPackage;
+        } catch (ClassNotFoundException e) {
+            try {
+                String miscPackage = "jdk.internal.misc";
+                Class.forName(miscPackage + ".SharedSecrets");
+                return miscPackage;
+            } catch (ClassNotFoundException ex) {
+            }
+            throw new AssertionError(e);
+        }
+    }
+
     private static Object getConstantPoolForObject() {
-        String miscPackage = JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc"
-                        : (JavaVersionUtil.JAVA_SPEC <= 11 ? "jdk.internal.misc" : "jdk.internal.access");
+        String miscPackage = getMiscPackage();
         try {
             Class<?> sharedSecretsClass = Class.forName(miscPackage + ".SharedSecrets");
             Class<?> javaLangAccessClass = Class.forName(miscPackage + ".JavaLangAccess");
@@ -112,8 +128,7 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest {
      * This test uses some non-public API.
      */
     private static void addExports(Class<?> c) {
-        String packageName = JAVA_SPEC <= 11 ? "jdk.internal.misc" : "jdk.internal.access";
-        ModuleSupport.exportPackageTo(String.class, packageName, c);
+        ModuleSupport.exportPackageTo(String.class, getMiscPackage(), c);
         ModuleSupport.exportPackageTo(String.class, "jdk.internal.reflect", c);
     }
 

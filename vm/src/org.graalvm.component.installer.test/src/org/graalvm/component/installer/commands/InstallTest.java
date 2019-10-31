@@ -263,8 +263,7 @@ public class InstallTest extends CommandTestBase {
                         u);
 
         registry = new CatalogContents(this, rcd.getStorage(), localRegistry);
-        componentIterable = new CatalogIterable(this, this,
-                        getRegistry(), rcd);
+        componentIterable = new CatalogIterable(this, this);
     }
 
     @Test

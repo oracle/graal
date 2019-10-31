@@ -76,7 +76,7 @@ meth public static java.util.List<java.lang.Object> getArguments(com.oracle.truf
 meth public static long sendAsPointer(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.interop.TruffleObject) throws com.oracle.truffle.api.interop.UnsupportedMessageException
  anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds ACCESSOR,LEGACY_TO_LIBRARY_BRIDGE,factory,initThread,languageCheckSupplier
+hfds LEGACY_TO_LIBRARY_BRIDGE,factory,initThread,languageCheckSupplier
 hcls DelegatingFactory,RootNodeSupplier
 
 CLSS public abstract interface static com.oracle.truffle.api.interop.ForeignAccess$Factory
@@ -137,6 +137,8 @@ meth public boolean isArrayElementModifiable(java.lang.Object,long)
 meth public boolean isArrayElementReadable(java.lang.Object,long)
 meth public boolean isArrayElementRemovable(java.lang.Object,long)
 meth public boolean isBoolean(java.lang.Object)
+meth public boolean isDate(java.lang.Object)
+meth public boolean isDuration(java.lang.Object)
 meth public boolean isExecutable(java.lang.Object)
 meth public boolean isInstantiable(java.lang.Object)
 meth public boolean isMemberInsertable(java.lang.Object,java.lang.String)
@@ -149,10 +151,13 @@ meth public boolean isNull(java.lang.Object)
 meth public boolean isNumber(java.lang.Object)
 meth public boolean isPointer(java.lang.Object)
 meth public boolean isString(java.lang.Object)
+meth public boolean isTime(java.lang.Object)
+meth public boolean isTimeZone(java.lang.Object)
 meth public byte asByte(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public double asDouble(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public final boolean isArrayElementExisting(java.lang.Object,long)
 meth public final boolean isArrayElementWritable(java.lang.Object,long)
+meth public final boolean isInstant(java.lang.Object)
 meth public final boolean isMemberExisting(java.lang.Object,java.lang.String)
 meth public final boolean isMemberWritable(java.lang.Object,java.lang.String)
 meth public final java.lang.Object getMembers(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -162,6 +167,11 @@ meth public java.lang.Object getMembers(java.lang.Object,boolean) throws com.ora
 meth public java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.Object readMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public java.lang.String asString(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.time.Duration asDuration(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.time.Instant asInstant(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.time.LocalDate asDate(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.time.LocalTime asTime(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public java.time.ZoneId asTimeZone(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long asLong(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long asPointer(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public long getArraySize(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
@@ -399,8 +409,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds ACCESSOR,GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
-hcls AccessorNodes
+hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 

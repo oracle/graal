@@ -62,10 +62,17 @@ final class PostInstProcess {
 
     String replaceTokens(ComponentInfo info, String message) {
         Map<String, String> tokens = new HashMap<>();
-        String graalPath = input.getGraalHomePath().normalize().toString();
+        Path graalPath = input.getGraalHomePath().normalize();
+
+        Path archPath = SystemUtils.getRuntimeLibDir(graalPath, true);
+
+        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, graalPath.toString());
+        tokens.put(CommonConstants.TOKEN_GRAALVM_LANG_DIR, SystemUtils.getRuntimeBaseDir(graalPath).resolve("languages").toString()); // NOI18N
+        tokens.put(CommonConstants.TOKEN_GRAALVM_RTLIB_ARCH_DIR, archPath.toString());
+        tokens.put(CommonConstants.TOKEN_GRAALVM_RTLIB_DIR, SystemUtils.getRuntimeLibDir(graalPath, false).toString());
+
         tokens.putAll(info.getRequiredGraalValues());
         tokens.putAll(input.getLocalRegistry().getGraalCapabilities());
-        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, graalPath);
 
         Matcher m = TOKEN_PATTERN.matcher(message);
         StringBuilder result = null;
@@ -76,7 +83,7 @@ final class PostInstProcess {
             String val = tokens.get(token);
             if (val != null) {
                 if (result == null) {
-                    result = new StringBuilder(graalPath.length() * 2);
+                    result = new StringBuilder(archPath.toString().length() * 2);
                 }
                 result.append(message.substring(last, m.start()));
                 result.append(val);

@@ -35,8 +35,6 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
-import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -56,9 +54,12 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
+import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
@@ -78,17 +79,19 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final Source source;
     private final LazyFunctionParser parser;
     private final DebugInfoFunctionProcessor diProcessor;
+    private final DataLayout dataLayout;
 
     private RootCallTarget resolved;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, FunctionDefinition method, Source source, LazyFunctionParser parser,
-                    DebugInfoFunctionProcessor diProcessor) {
+                    DebugInfoFunctionProcessor diProcessor, DataLayout dataLayout) {
         this.runtime = runtime;
         this.method = method;
         this.source = source;
         this.parser = parser;
         this.diProcessor = diProcessor;
         this.resolved = null;
+        this.dataLayout = dataLayout;
     }
 
     @Override
@@ -122,14 +125,14 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                         ? SulongEngineOption.getStream(options.get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS))
                         : null;
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, phis, method, logLivenessStream);
-        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory);
+        LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory, dataLayout);
         List<FrameSlot> notNullable = new ArrayList<>();
 
         LLVMRuntimeDebugInformation dbgInfoHandler = new LLVMRuntimeDebugInformation(frame, runtime.getContext(), notNullable, symbols);
         dbgInfoHandler.registerStaticDebugSymbols(method);
 
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime.getContext(), runtime.getLibrary(), frame, uniquesRegion, phis, method.getParameters().size(), symbols, method,
-                        liveness, notNullable, dbgInfoHandler);
+                        liveness, notNullable, dbgInfoHandler, dataLayout, runtime.getNodeFactory());
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableBeforeBlock(), notNullable);
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableAfterBlock(), notNullable);
@@ -137,11 +140,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         List<LLVMStatementNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(LLVMStatementNode.NO_STATEMENTS);
-        LLVMExpressionNode body = runtime.getContext().getLanguage().getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(),
+        LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(),
                         uniquesRegion.build(),
-                        nullableBeforeBlock, nullableAfterBlock, copyArgumentsToFrameArray, location);
+                        nullableBeforeBlock, nullableAfterBlock, copyArgumentsToFrameArray, location, frame);
 
-        RootNode rootNode = runtime.getContext().getLanguage().getNodeFactory().createFunctionStartNode(body, frame, method.getName(), method.getSourceName(),
+        RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(body, frame, method.getName(), method.getSourceName(),
                         method.getParameters().size(), source, location);
         method.onAfterParse();
 
@@ -180,23 +183,23 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMStatementNode> formalParamInits = new ArrayList<>();
-        LLVMExpressionNode stackPointerNode = runtime.getContext().getLanguage().getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
-        formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
+        LLVMExpressionNode stackPointerNode = runtime.getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
+        formalParamInits.add(runtime.getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
 
         int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
             argIndex++;
         }
         for (FunctionParameter parameter : parameters) {
-            LLVMExpressionNode parameterNode = runtime.getContext().getLanguage().getNodeFactory().createFunctionArgNode(argIndex++, parameter.getType());
+            LLVMExpressionNode parameterNode = runtime.getNodeFactory().createFunctionArgNode(argIndex++, parameter.getType());
             FrameSlot slot = frame.findFrameSlot(parameter.getName());
             if (isStructByValue(parameter)) {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
                 formalParamInits.add(
-                                runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(parameter.getType(),
-                                                runtime.getContext().getLanguage().getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
+                                runtime.getNodeFactory().createFrameWrite(parameter.getType(),
+                                                runtime.getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
             } else {
-                formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot));
+                formalParamInits.add(runtime.getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot));
             }
         }
         return formalParamInits;

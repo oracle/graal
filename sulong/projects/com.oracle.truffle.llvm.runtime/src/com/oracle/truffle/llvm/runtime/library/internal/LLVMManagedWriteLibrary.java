@@ -33,6 +33,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -94,5 +95,11 @@ public abstract class LLVMManagedWriteLibrary extends Library {
      */
     public void writePointer(Object receiver, long offset, LLVMPointer value) {
         writeGenericI64(receiver, offset, value);
+    }
+
+    private static final LibraryFactory<LLVMManagedWriteLibrary> FACTORY = LibraryFactory.resolve(LLVMManagedWriteLibrary.class);
+
+    public static LibraryFactory<LLVMManagedWriteLibrary> getFactory() {
+        return FACTORY;
     }
 }

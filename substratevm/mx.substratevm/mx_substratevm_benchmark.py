@@ -327,10 +327,6 @@ def list_jars(path):
     return jars
 
 
-_RENAISSANCE_EXTRA_VM_ARGS = {
-    "db-shootout"     : '--initialize-at-build-time=net.openhft.chronicle.wire.ReadMarshallable,net.openhft.chronicle.wire.WriteMarshallable',
-}
-
 _RENAISSANCE_EXTRA_AGENT_ARGS = [
     '-Dnative-image.benchmark.extra-agent-run-arg=-r',
     '-Dnative-image.benchmark.extra-agent-run-arg=1'
@@ -342,7 +338,7 @@ RENAISSANCE_EXTRA_PROFILE_ARGS = [
 ]
 
 _renaissance_config = {
-    "akka-uct"         : ("actors", 11),
+    "akka-uct"         : ("actors", 11), # GR-17994
     "reactors"         : ("actors", 11),
     "scala-kmeans"     : ("scala-stdlib", 12),
     "mnemonics"        : ("jdk-streams", 12),
@@ -350,13 +346,13 @@ _renaissance_config = {
     "rx-scrabble"      : ("rx", 11),
     "als"              : ("apache-spark", 11),
     "chi-square"       : ("apache-spark", 11),
-    "db-shootout"      : ("database", 11),
+    "db-shootout"      : ("database", 11), # GR-17975, GR-17943 (with --report-unsupported-elements-at-runtime)
     "dec-tree"         : ("apache-spark", 11),
-    "dotty"            : ("scala-dotty", 12),
+    "dotty"            : ("scala-dotty", 12), # GR-17985
     "finagle-chirper"  : ("twitter-finagle", 11),
     "finagle-http"     : ("twitter-finagle", 11),
     "fj-kmeans"        : ("jdk-concurrent", 12),
-    "future-genetic"   : ("jdk-concurrent", 12),
+    "future-genetic"   : ("jdk-concurrent", 12), # GR-17988
     "gauss-mix"        : ("apache-spark", 11),
     "log-regression"   : ("apache-spark", 11),
     "movie-lens"       : ("apache-spark", 11),
@@ -415,7 +411,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         else:
             bench_arg = benchmarks[0]
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + self.extra_vm_args(bench_arg)
+        vm_args = self.vmArgs(bmSuiteArgs)
 
         agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
         pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
@@ -428,8 +424,6 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
 
     def extra_vm_args(self, benchmark):
-        if benchmark in _RENAISSANCE_EXTRA_VM_ARGS:
-            return ['-Dnative-image.benchmark.extra-image-build-argument=' + _RENAISSANCE_EXTRA_VM_ARGS[benchmark]]
         return []
 
     class RenaissanceDependency(mx.ClasspathDependency):
@@ -482,7 +476,9 @@ mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 _DACAPO_EXTRA_VM_ARGS = {
     'avrora' :     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
                     'org.h2.Driver,org.apache.derby.jdbc.AutoloadedDriver,'
-                    'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder']
+                    'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder'],
+    'h2' :         ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,org.h2.Driver'],
+    'pmd' :        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver']
 }
 
 _DACAPO_EXTRA_AGENT_ARGS = [
@@ -521,19 +517,19 @@ _dacapo_resources = {
 
 _daCapo_iterations = {
     'avrora'     : 20,
-    'batik'      : 40,
+    'batik'      : 40, # GR-17645
     'eclipse'    : -1, # Not supported on Hotspot
-    'fop'        : 40,
-    'h2'         : 25,
+    'fop'        : 40, # GR-17645
+    'h2'         : 25, # GR-17919
     'jython'     : -1, # Dynamically generates classes, hence can't be supported on SVM for now
-    'luindex'    : 15,
-    'lusearch'   : 40,
-    'pmd'        : 30,
+    'luindex'    : 15, # GR-17943
+    'lusearch'   : 40, # GR-17943
+    'pmd'        : 30, # GR-17919
     'sunflow'    : 35,
     'tomcat'     : -1, # Not supported on Hotspot
     'tradebeans' : -1, # Not supported on Hotspot
     'tradesoap'  : -1, # Not supported on Hotspot
-    'xalan'      : 30,
+    'xalan'      : 30, # GR-17891
 }
 
 

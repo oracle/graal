@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Basic support for GraalVM",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "OracleLabs",
 	"icon": "images/graalvm-logo.png",
@@ -51,6 +51,11 @@
 				"command": "extension.graalvm.installGraalVMComponent",
 				"title": "Install GraalVM Component",
 				"category": "GraalVM"
+			},
+			{
+				"command": "extension.graalvm.addNativeImageToPOM",
+				"title": "Add Maven Native Image Plugin",
+				"category": "GraalVM"
 			}
 		],
 		"languages": [
@@ -74,15 +79,34 @@
 				"path": "./syntaxes/sl.tmLanguage.json"
 			},
 			{
-				"path": "./syntaxes/polyglot-injection.json",
+				"path": "./syntaxes/js-polyglot-injection.json",
 				"injectTo": [
+					"source.js",
+					"source.r",
+					"source.ruby",
+					"source.pyhon",
+					"source.sl"
+				],
+				"scopeName": "js.inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.python": "python",
+					"meta.embedded.inline.r": "r",
+					"meta.embedded.inline.ruby": "ruby",
+					"meta.embedded.inline.sl": "sl"
+				}
+			},
+			{
+				"path": "./syntaxes/sl-polyglot-injection.json",
+				"injectTo": [
+					"source.sl",
 					"source.js",
 					"source.r",
 					"source.ruby",
 					"source.pyhon"
 				],
-				"scopeName": "js.inline.polyglot-langauges",
+				"scopeName": "sl.inline.polyglot-langauges",
 				"embeddedLanguages": {
+					"meta.embedded.inline.js": "js",
 					"meta.embedded.inline.python": "python",
 					"meta.embedded.inline.r": "r",
 					"meta.embedded.inline.ruby": "ruby"
@@ -92,7 +116,11 @@
 		"snippets": [
 			{
 				"language": "javascript",
-				"path": "./snippets/polyglot-snippets.json"
+				"path": "./snippets/js-polyglot-snippets.json"
+			},
+			{
+				"language": "sl",
+				"path": "./snippets/sl-polyglot-snippets.json"
 			}
 		],
 		"debuggers": [
@@ -129,6 +157,14 @@
 								],
 								"description": "Where to launch the debug target: internal console, or integrated terminal.",
 								"default": "internalConsole"
+							},
+							"outputCapture": {
+								"enum": [
+									"console",
+									"std"
+								],
+								"description": "From where to capture output messages: The debug API, or stdout/stderr streams.",
+								"default": "console"
 							},
 							"cwd": {
 								"type": "string",
@@ -212,6 +248,7 @@
 							"type": "graalvm",
 							"request": "launch",
 							"name": "Launch Node App",
+							"outputCapture": "std",
 							"program": "^\"\\${workspaceFolder}/${1:app.js}\""
 						}
 					},
@@ -223,6 +260,17 @@
 							"request": "launch",
 							"name": "Launch JavaScript",
 							"runtimeExecutable": "js",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
+						"label": "GraalVM: Launch Polyglot Application",
+						"description": "Launch a Polyglot Application in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch Polyglot App",
+							"runtimeExecutable": "polyglot",
 							"program": "^\"${1:\\${file\\}}\""
 						}
 					},
@@ -263,12 +311,14 @@
 	},
 	"dependencies": {
 		"tar": "^4.4.8",
+		"sax": "^1.2.4",
 		"vscode-chrome-debug-core": "^6.7.53"
 	},
 	"devDependencies": {
 		"@types/mocha": "^2.2.42",
 		"@types/node": "^8.10.25",
 		"@types/tar": "^4.0.0",
+		"@types/sax": "^1.2.0",
 		"ts-loader": "^6.0.2",
 		"tslint": "^5.8.0",
 		"typescript": "^3.1.4",

@@ -61,6 +61,12 @@ public abstract class FrameAccess {
     }
 
     /**
+     * Gets the amount by which the stack pointer is adjusted by a call instruction.
+     */
+    @Fold
+    public abstract int stackPointerAdjustmentOnCall();
+
+    /**
      * Returns the size in bytes of the saved base pointer in the stack frame. The saved base
      * pointer must be located immediately after the return address (if this is not the case in a
      * new architecture, bigger modifications to code like the Deoptimizer is required).

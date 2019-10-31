@@ -8,6 +8,7 @@
 import * as Core from 'vscode-chrome-debug-core';
 
 type ConsoleType = 'internalConsole' | 'integratedTerminal';
+type OutputCaptureType = 'console' | 'std';
 
 export interface ICommonRequestArgs extends Core.ICommonRequestArgs {
     /** TCP/IP address of process to be debugged. Default is 'localhost'. */
@@ -31,6 +32,8 @@ export interface ILaunchRequestArguments extends Core.ILaunchRequestArgs, ICommo
     console?: ConsoleType;
     /** Manually selected debugging port */
     port?: number;
+    /** Source of the debug output */
+    outputCapture?: OutputCaptureType;
     /** Optional path to GraalVM home directory. */
     graalVMHome?: string;
 }

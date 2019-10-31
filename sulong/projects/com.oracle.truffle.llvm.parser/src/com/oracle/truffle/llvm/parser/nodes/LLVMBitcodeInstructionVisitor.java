@@ -86,9 +86,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
@@ -114,8 +116,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
     public static LLVMBitcodeInstructionVisitor create(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
-                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
-        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler);
+                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler,
+                    DataLayout dataLayout, NodeFactory nodeFactory) {
+        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler, dataLayout, nodeFactory);
     }
 
     private final LLVMContext context;
@@ -130,6 +133,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
     private final LLVMStack.UniquesRegion uniquesRegion;
+    private final DataLayout dataLayout;
 
     private final List<LLVMStatementNode> blockInstructions;
     private int instructionIndex;
@@ -139,9 +143,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
                     LLVMContext context, LLVMContext.ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable,
-                    LLVMRuntimeDebugInformation dbgInfoHandler) {
+                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout, NodeFactory nodeFactory) {
         this.context = context;
-        this.nodeFactory = context.getLanguage().getNodeFactory();
+        this.nodeFactory = nodeFactory;
         this.frame = frame;
         this.blockPhis = blockPhis;
         this.argCount = argCount;
@@ -152,6 +156,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.dbgInfoHandler = dbgInfoHandler;
         this.lastLocation = null;
         this.uniquesRegion = uniquesRegion;
+        this.dataLayout = dataLayout;
 
         this.blockInstructions = new ArrayList<>();
     }
@@ -178,7 +183,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type type = allocate.getPointeeType();
         int alignment;
         if (allocate.getAlign() == 0) {
-            alignment = context.getByteAlignment(type);
+            alignment = type.getAlignment(dataLayout);
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -246,7 +251,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -296,7 +301,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
-        LLVMExpressionNode getStack = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        LLVMExpressionNode getStack = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(allocateLandingPadValue, getExceptionSlot(), landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
                         entries, getStack);
         createFrameWrite(landingPad, landingpadInstruction);
@@ -339,7 +344,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(DebugTrapInstruction inst) {
-        final LLVMStatementNode debugTrap = nodeFactory.createDebugTrap();
+        final LLVMStatementNode debugTrap = CommonNodeFactory.createDebugTrap();
         assignSourceLocation(debugTrap, inst, SourceInstrumentationStrategy.FORCED);
         addInstruction(debugTrap);
     }
@@ -351,7 +356,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -395,7 +400,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
@@ -461,7 +466,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
+        args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -580,11 +585,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        long offset = context.getIndexOffset(targetIndex, aggregateType);
+        long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += context.getBytePadding(offset, targetType);
+            offset += Type.getPadding(offset, targetType, dataLayout);
         }
 
         if (offset != 0) {
@@ -643,9 +648,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(sourceType, uniquesRegion);
 
-        final long offset = context.getIndexOffset(targetIndex, sourceType);
+        final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                        context.getByteSize(sourceType), offset, valueToInsert, valueType);
+                        sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -653,7 +658,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LoadInstruction load) {
         LLVMExpressionNode source = symbols.resolve(load.getSource());
-        LLVMExpressionNode result = nodeFactory.createLoad(load.getType(), source);
+        LLVMExpressionNode result = CommonNodeFactory.createLoad(load.getType(), source);
         createFrameWrite(result, load);
     }
 
@@ -751,6 +756,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             case MIN:
             case UMIN:
             case UMAX:
+            case FADD:
+            case FSUB:
             default:
                 throw new LLVMParserException("Unsupported read-modify-write operation: " + op);
         }
@@ -928,8 +935,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         final Type pointee = ((PointerType) type).getPointeeType();
 
-        final int size = context.getByteSize(pointee);
-        int alignment = context.getByteAlignment(pointee);
+        final int size = pointee.getSize(dataLayout);
+        int alignment = pointee.getAlignment(dataLayout);
         for (Attribute attr : paramAttr.getAttributes()) {
             if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                 alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();

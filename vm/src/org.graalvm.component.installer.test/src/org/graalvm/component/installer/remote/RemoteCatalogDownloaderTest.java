@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.IncompatibleException;
@@ -51,12 +52,12 @@ import org.junit.Test;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
 
-    ComponentCollection openCatalog(SoftwareChannel ch) throws IOException {
+    ComponentCatalog openCatalog(SoftwareChannel ch) throws IOException {
         return openCatalog(ch, getLocalRegistry().getGraalVersion());
     }
 
-    ComponentCollection openCatalog(SoftwareChannel ch, Version v) throws IOException {
-        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
+    ComponentCatalog openCatalog(SoftwareChannel ch, Version v) throws IOException {
+        ComponentCatalog cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
         cc.getComponentIDs();
         return cc;
     }

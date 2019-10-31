@@ -83,6 +83,6 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
     @Fallback
     LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMPolyglotException(this, "Don't call __polyglot_as_typeid function directly, use POLYGLOT_DECLARE_* macros.");
+        throw new LLVMPolyglotException(this, "Couldn't find runtime type information. Make sure the LLVM bitcode is compiled with debug information (-g).");
     }
 }

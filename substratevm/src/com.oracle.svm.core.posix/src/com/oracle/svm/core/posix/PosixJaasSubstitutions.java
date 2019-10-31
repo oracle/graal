@@ -26,11 +26,11 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -52,7 +52,7 @@ public final class PosixJaasSubstitutions {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(className = "com.sun.security.auth.module.UnixSystem")
 final class Target_com_sun_security_auth_module_UnixSystem {
     @Alias String username;

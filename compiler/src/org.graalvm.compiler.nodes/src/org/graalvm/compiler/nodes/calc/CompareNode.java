@@ -184,8 +184,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     realCondition = realCondition.mirror();
                 }
                 return optimizeConditional(constant, (ConditionalNode) nonConstant, constantReflection, realCondition, unorderedIsTrue);
-            } else if (nonConstant instanceof NormalizeCompareNode) {
-                return optimizeNormalizeCompare(constantReflection, metaAccess, options, smallestCompareWidth, constant, (NormalizeCompareNode) nonConstant, mirrored, view);
+            } else if (nonConstant instanceof AbstractNormalizeCompareNode) {
+                return optimizeNormalizeCompare(constantReflection, metaAccess, options, smallestCompareWidth, constant, (AbstractNormalizeCompareNode) nonConstant, mirrored, view);
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
                 boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
@@ -241,7 +241,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
         @SuppressWarnings("unused")
         protected LogicNode optimizeNormalizeCompare(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
-                        Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored, NodeView view) {
+                        Constant constant, AbstractNormalizeCompareNode normalizeNode, boolean mirrored, NodeView view) {
             throw new PermanentBailoutException("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
         }
 

@@ -34,17 +34,20 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public final class LLVMParserRuntime {
     private final LLVMContext context;
     private final ExternalLibrary library;
     private final LLVMScope fileScope;
+    private final NodeFactory nodeFactory;
 
-    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope) {
+    public LLVMParserRuntime(LLVMContext context, ExternalLibrary library, LLVMScope fileScope, NodeFactory nodeFactory) {
         this.context = context;
         this.library = library;
         this.fileScope = fileScope;
+        this.nodeFactory = nodeFactory;
     }
 
     public ExternalLibrary getLibrary() {
@@ -61,6 +64,10 @@ public final class LLVMParserRuntime {
 
     public LLVMScope getGlobalScope() {
         return context.getGlobalScope();
+    }
+
+    public NodeFactory getNodeFactory() {
+        return nodeFactory;
     }
 
     public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {

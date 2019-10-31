@@ -48,7 +48,7 @@ import com.oracle.svm.core.util.VMError;
  * <p>
  * Implementation: linear probing hash table adapted from OpenJDK {@link java.util.IdentityHashMap}.
  */
-class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
+public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
     @Fold
     public static RuntimeMethodInfoMemory singleton() {
         return ImageSingletons.lookup(RuntimeMethodInfoMemory.class);

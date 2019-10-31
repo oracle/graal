@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,10 +122,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         size = newSize;
     }
 
-    public boolean isList() {
-        return true;
-    }
-
     protected abstract void update(T oldNode, T newNode);
 
     public abstract Edges.Type getEdgesType();
@@ -157,7 +153,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @SuppressWarnings("unchecked")
     @Override
     public boolean add(Node node) {
-        assert node == null || !node.isDeleted();
+        assert node == null || !node.isDeleted() : node;
         self.incModCount();
         incModCount();
         int length = nodes.length;

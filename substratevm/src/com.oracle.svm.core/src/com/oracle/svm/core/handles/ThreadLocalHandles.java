@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * Implementation of local object handles, which are bound to a specific thread and can be created
  * and destroyed implicitly or explicitly. Local handles can be managed in frames and a frame can be
@@ -36,8 +38,8 @@ import org.graalvm.word.WordFactory;
 public final class ThreadLocalHandles<T extends ObjectHandle> {
     private static final int INITIAL_NUMBER_OF_FRAMES = 4;
 
-    private static final int MIN_VALUE = Math.toIntExact(1 + nullHandle().rawValue());
-    private static final int MAX_VALUE = Integer.MAX_VALUE;
+    public static final int MIN_VALUE = Math.toIntExact(1 + nullHandle().rawValue());
+    public static final int MAX_VALUE = Integer.MAX_VALUE;
 
     public static <U extends SignedWord> U nullHandle() {
         return WordFactory.signed(0);
@@ -57,6 +59,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
         objects = new Object[MIN_VALUE + initialNumberOfHandles];
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends ObjectHandle> int toIndex(T handle) {
         return (int) handle.rawValue();
     }
@@ -90,6 +93,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <U> U getObject(T handle) {
         return (U) objects[toIndex(handle)];
     }

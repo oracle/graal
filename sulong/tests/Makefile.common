@@ -82,6 +82,12 @@ BC_FILE=%/O0.bc.o
 endif # darwin
 endif # NO_FEMBED_BITCODE
 
+ifdef CLANG_NO_OPTNONE
+SULONG_MAKE_CLANG_IMPLICIT_ARGS=
+else
+SULONG_MAKE_CLANG_IMPLICIT_ARGS=-Xclang -disable-O0-optnone
+endif
+
 tool-info.txt:
 	@echo "Tools:" > $@
 	@echo "  CLANG: $(CLANG)" >> $@
@@ -91,6 +97,12 @@ tool-info.txt:
 	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
 	@echo "  FC: $(FC)" >> $@
 	@cat $@
+
+ifdef GRAALVM_LLVM_HOME
+%.cpp.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%.cc.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+%.C.dir/ref.out: LDFLAGS+=-Wl,-rpath,${GRAALVM_LLVM_HOME}/native/lib
+endif
 
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)

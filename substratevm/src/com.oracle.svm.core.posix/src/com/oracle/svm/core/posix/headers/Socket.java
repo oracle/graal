@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -37,6 +36,7 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -67,7 +67,7 @@ public class Socket {
     public static native int AF_UNSPEC();
 
     @CConstant
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
     public static native int AF_LINK();
 
     @CConstant
@@ -82,7 +82,7 @@ public class Socket {
     @CStruct(addStructKeyword = true)
     public interface sockaddr extends PointerBase {
 
-        @Platforms(Platform.DARWIN.class)
+        @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
         @CField
         @AllowWideningCast
         int sa_len();
@@ -200,14 +200,14 @@ public class Socket {
     public static native long SIOCGIFBRDADDR();
 
     @CConstant
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     public static native int SIOCGIFHWADDR();
 
     @CConstant
     public static native long SIOCGIFNETMASK();
 
     @CConstant
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     public static native int SIOCGIFINDEX();
 
     @CConstant

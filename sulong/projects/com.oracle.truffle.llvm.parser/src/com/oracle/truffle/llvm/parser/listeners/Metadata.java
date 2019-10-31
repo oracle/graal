@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDImportedEntity;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLabel;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -115,7 +116,7 @@ public final class Metadata implements ParserListener {
     private static final int METADATA_GLOBAL_VAR_EXPR = 37;
     private static final int METADATA_INDEX_OFFSET = 38;
     private static final int METADATA_INDEX = 39;
-    // private static final int METADATA_LABEL = 40;
+    private static final int METADATA_LABEL = 40;
     private static final int METADATA_COMMON_BLOCK = 44;
 
     public Type getTypeById(long id) {
@@ -318,6 +319,10 @@ public final class Metadata implements ParserListener {
 
             case METADATA_COMMON_BLOCK:
                 metadata.add(MDCommonBlock.create(args, metadata));
+                break;
+
+            case METADATA_LABEL:
+                metadata.add(MDLabel.create(args, metadata));
                 break;
 
             case METADATA_INDEX_OFFSET:
