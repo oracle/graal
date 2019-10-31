@@ -90,7 +90,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -571,7 +570,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
             LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            TruffleJDKServices.exportTo(layoutFactory.getClass());
+            CompilerRuntimeAccessor.jdkServicesAccessor().exportTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());

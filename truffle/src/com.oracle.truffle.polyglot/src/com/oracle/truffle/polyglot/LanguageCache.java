@@ -73,7 +73,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
@@ -495,7 +494,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * language since the Truffle API module descriptor only exports the packages to
                  * modules known at build time (such as the Graal module).
                  */
-                TruffleJDKServices.exportTo(loader, null);
+                EngineAccessor.JDKSERVICES.exportTo(loader, null);
             }
         }
 
