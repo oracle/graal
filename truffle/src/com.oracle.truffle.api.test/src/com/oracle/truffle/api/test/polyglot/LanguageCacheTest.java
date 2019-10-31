@@ -66,7 +66,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -125,7 +127,21 @@ public class LanguageCacheTest {
             final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, LanguageCacheTest.class.getClassLoader());
             final Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", List.class);
             createLanguages.setAccessible(true);
-            return (Map<String, Object>) createLanguages.invoke(null, Arrays.asList(loaders));
+            class LoaderSupplier implements Supplier<ClassLoader> {
+
+                private final ClassLoader classLoader;
+
+                LoaderSupplier(ClassLoader classLoader) {
+                    this.classLoader = classLoader;
+                }
+
+                @Override
+                public ClassLoader get() {
+                    return classLoader;
+                }
+            }
+            return (Map<String, Object>) createLanguages.invoke(null,
+                            Arrays.stream(loaders).map(LoaderSupplier::new).collect(Collectors.toList()));
         } catch (InvocationTargetException ite) {
             throw ite.getCause();
         } catch (ReflectiveOperationException re) {
