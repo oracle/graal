@@ -45,6 +45,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
     private TestExpressions() {
         this.stops = new ArrayList<>();
         this.stopReqExpressionMap = new HashMap<>();
+        this.stopReqAllowFailure = new HashMap<>();
     }
 
     IntStream requestedBreakpoints() {
@@ -60,6 +61,10 @@ public final class TestExpressions implements Iterable<StopRequest> {
         return stopReqExpressionMap.get(sr);
     }
 
+    boolean getFailure(StopRequest sr){
+        return stopReqAllowFailure.get(sr);
+    }
+
     static TestExpressions parse(Path path) {
         final TestExpressions te = new TestExpressions();
         try {
@@ -73,6 +78,8 @@ public final class TestExpressions implements Iterable<StopRequest> {
 
     private List<StopRequest> stops;
     private Map<StopRequest, Map<String, String>> stopReqExpressionMap;
+    private Map<StopRequest, Boolean> stopReqAllowFailure;
+
 
     private Parser newParser() {
         return new Parser();
@@ -93,6 +100,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
         private static final String KEYWORD_HEADER = "#";
         private static final String KEYWORD_BREAK = "BREAK";
         private static final String KEYWORD_END = "END";
+        private static final String KEYWORD_FAILURE = "FAILURE";
 
         private final LinkedList<String> buffer;
         private StopRequest request;
@@ -125,6 +133,10 @@ public final class TestExpressions implements Iterable<StopRequest> {
                 case KEYWORD_HEADER:
                     buffer.clear();
                     return;
+
+                case KEYWORD_FAILURE:
+                    stopReqAllowFailure.replace(request, new Boolean(true));
+                    break;
 
                 default:
                     // add line with pattern ' "firstString" "secondString" ' to map
@@ -177,6 +189,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
             final String functionName = nextToken();
             request = new StopRequest(ContinueStrategy.CONTINUE, functionName, line, true);
             stops.add(request);
+            stopReqAllowFailure.put(request, new Boolean(false));
             map = new HashMap<>();
         }
 

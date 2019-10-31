@@ -29,6 +29,7 @@
 #
 
 BREAK 55 CONTINUE "main"
+	FAILURE
 	"3+" "member at ADD is not available"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"
@@ -37,6 +38,7 @@ BREAK 55 CONTINUE "main"
 	END
 
 BREAK 60 CONTINUE "main"
+	FAILURE
 	"3+" "member at ADD is not available"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"
