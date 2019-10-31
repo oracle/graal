@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+/**
+ * Class representing common JDWP options.
+ */
 public class JDWPOptions {
     public final String transport;
     public final String address;

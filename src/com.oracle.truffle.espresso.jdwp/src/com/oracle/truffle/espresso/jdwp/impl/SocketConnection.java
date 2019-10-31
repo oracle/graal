@@ -79,7 +79,6 @@ public class SocketConnection implements Runnable {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (IOException ex) {
-                // TODO(Gregersen) - we should add a retry mechanism or verification of communication
                 throw new RuntimeException("Failed sending packet to debugger instance", ex);
             } catch (ConnectionClosedException e) {
                 if (!Thread.currentThread().isInterrupted()) {

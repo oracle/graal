@@ -91,9 +91,9 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public boolean isValidClassLoader(Object classLoader) {
-        if (classLoader instanceof StaticObject) {
-            StaticObject loader = (StaticObject) classLoader;
+    public boolean isValidClassLoader(Object object) {
+        if (object instanceof StaticObject) {
+            StaticObject loader = (StaticObject) object;
             return context.getRegistries().isClassLoader(loader);
         }
         return false;
@@ -179,19 +179,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public byte getSpecificObjectTag(Object object) {
-        if (object instanceof StaticObject) {
-            if (((StaticObject) object).isArray()) {
-                return TagConstants.ARRAY;
-            }
-            else if (JAVA_LANG_STRING.equals(((StaticObject) object).getKlass().getType().toString())) {
-                return TagConstants.STRING;
-            }
-        }
-        return TagConstants.OBJECT;
-    }
-
-    @Override
     public byte getTag(Object object) {
         byte tag = TagConstants.OBJECT;
         if (object instanceof StaticObject) {
@@ -237,9 +224,9 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public boolean isArray(Object array) {
-        if (array instanceof StaticObject) {
-            StaticObject staticObject = (StaticObject) array;
+    public boolean isArray(Object object) {
+        if (object instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) object;
             return staticObject.isArray();
         }
         return false;
@@ -252,8 +239,8 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public byte getTypeTag(Object object) {
-        StaticObject staticObject = (StaticObject) object;
+    public byte getTypeTag(Object array) {
+        StaticObject staticObject = (StaticObject) array;
         byte tag;
         if (staticObject.isArray()) {
             ArrayKlass arrayKlass = (ArrayKlass) staticObject.getKlass();
@@ -269,7 +256,7 @@ public final class JDWPContextImpl implements JDWPContext {
             tag = staticObject.getKlass().getTagConstant();
             // Object type, so check for String
             if (tag == TagConstants.OBJECT) {
-                if (JAVA_LANG_STRING.equals(((StaticObject) object).getKlass().getType().toString())) {
+                if (JAVA_LANG_STRING.equals(((StaticObject) array).getKlass().getType().toString())) {
                     tag = TagConstants.STRING;
                 }
             }
@@ -285,27 +272,27 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public void setStaticFieldValue(FieldRef field, KlassRef klassRef, Object value) {
-        field.setValue(((ObjectKlass) klassRef).tryInitializeAndGetStatics(), value);
+    public void setStaticFieldValue(FieldRef field, Object value) {
+        field.setValue(((ObjectKlass) field.getDeclaringKlass()).tryInitializeAndGetStatics(), value);
     }
 
     @Override
-    public Object getArrayValue(Object array, int i) {
+    public Object getArrayValue(Object array, int index) {
         StaticObject arrayRef = (StaticObject) array;
         Object value;
         if (arrayRef.getKlass().getComponentType().isPrimitive()) {
             // primitive array type needs wrapping
             Object boxedArray = getUnboxedArray(array);
-            value = Array.get(boxedArray, i);
+            value = Array.get(boxedArray, index);
         } else {
-            value = arrayRef.get(i);
+            value = arrayRef.get(index);
         }
         return value;
     }
 
     @Override
-    public void setArrayValue(Object array, int i, Object value) {
+    public void setArrayValue(Object array, int index, Object value) {
         StaticObject arrayRef = (StaticObject) array;
-        arrayRef.putObject((StaticObject) value, i, context.getMeta());
+        arrayRef.putObject((StaticObject) value, index, context.getMeta());
     }
 }

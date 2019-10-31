@@ -39,7 +39,7 @@ public class EspressoVirtualMachine implements JDWPVirtualMachine {
         return SIZE;
     }
 
-    public int getSizeofObjectRefRef() {
+    public int getSizeofObjectRef() {
         return SIZE;
     }
 

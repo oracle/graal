@@ -22,54 +22,97 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.VMEventListener;
 
+/**
+ * A class that keeps track of VM event listeners for which
+ * events are fired as they occur in the underlying VM.
+ */
 public class VMEventListeners {
 
+    /**
+     * The default instance
+     */
     private static final VMEventListeners DEFAULT = new VMEventListeners();
 
+    /**
+     * The single listener instance that must be registered through
+     * registerListener() on the default instance.
+     */
     private VMEventListener listener;
+
 
     public static VMEventListeners getDefault() {
         return DEFAULT;
     }
 
+    /**
+     * Registeres a VM event listener.
+     * @param listener
+     */
     public void registerListener(VMEventListener listener) {
         this.listener = listener;
     }
 
+    /**
+     * Fire a class prepare event on the listener.
+     * @param klass the class that has just been prepared by the VM
+     * @param currentThread the thread used when preparing the class
+     */
     public void classPrepared(KlassRef klass, Object currentThread) {
         if (listener != null) {
             listener.classPrepared(klass, currentThread);
         }
     }
 
+    /**
+     * Fire a class unload event on the listener.
+     * @param klass that was just unloaded
+     */
     public void classUnloaded(KlassRef klass) {
         if (listener != null) {
             listener.classUnloaded(klass);
         }
     }
 
+    /**
+     * Fire a thread started event on the listener.
+     * @param thread that has just been started
+     */
     public void threadStarted(Object thread) {
         if (listener != null) {
             listener.threadStarted(thread);
         }
     }
 
+    /**
+     * Fire a thread stopped event on the listener.
+     * @param thread that was just stopped
+     */
     public void threadDied(Object thread) {
         if (listener != null) {
             listener.threadDied(thread);
         }
     }
 
+    /**
+     * Fire a breakpoint hit event on the listener.
+     * @param info information about the breakpoint that was hit
+     * @param currentThread the thread in which the breakpoint was hit
+     */
     public void breakpointHit(BreakpointInfo info, Object currentThread) {
         if (listener != null) {
             listener.breakpointHIt(info, currentThread);
         }
     }
 
+    /**
+     * Fire a step completed event on the listener. Example of a step is when the
+     * VM performed e.g. a STEP_OVER command.
+     * @param commandRequestId the ID that requested the step to be performed
+     * @param currentFrame the frame for the current code location after the step
+     */
     public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
         if (listener != null) {
             listener.stepCompleted(commandRequestId, currentFrame);

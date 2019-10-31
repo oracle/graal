@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
@@ -199,7 +200,7 @@ public class RequestedJDWPEvents {
         return null;
     }
 
-    public JDWPResult clearRequest(Packet packet, DebuggerConnection debuggerConnection) {
+    public JDWPResult clearRequest(Packet packet) {
         PacketStream reply = new PacketStream().id(packet.id).replyPacket();
         PacketStream input = new PacketStream(packet);
 
@@ -239,12 +240,12 @@ public class RequestedJDWPEvents {
                         break;
                 }
             } else {
-                reply.errorCode(102);
+                reply.errorCode(JDWPErrorCodes.INVALID_EVENT_TYPE);
             }
         } else {
-            reply.errorCode(102); // TODO(Gregersen) - add INVALID_EVENT_TYPE constant
+            reply.errorCode(JDWPErrorCodes.INVALID_EVENT_TYPE);
         }
 
-        return new JDWPResult(reply, null);
+        return new JDWPResult(reply);
     }
 }

@@ -20,10 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 
+/**
+ * Class holding information about a breakpoint that cannot be obtained from
+ * the Truffle Breakpoint instance.
+ */
 public class BreakpointInfo {
 
     private final RequestFilter filter;

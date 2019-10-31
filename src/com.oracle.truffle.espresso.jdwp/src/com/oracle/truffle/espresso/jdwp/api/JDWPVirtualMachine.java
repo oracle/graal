@@ -22,21 +22,49 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+/**
+ * A simple virtual machine interface used to retrieve basic
+ * information about the VM through JDWP.
+ */
 public interface JDWPVirtualMachine {
 
+    /**
+     * @return the number of bytes for representing a FieldRef.
+     */
     int getSizeOfFieldRef();
 
+    /**
+     * @return the number of bytes for representing a MethodRef.
+     */
     int getSizeOfMethodRef();
 
-    int getSizeofObjectRefRef();
+    /**
+     * @return the number of bytes for representing a Object.
+     */
+    int getSizeofObjectRef();
 
+    /**
+     * @return the number of bytes for representing a class.
+     */
     int getSizeOfClassRef();
 
+    /**
+     * @return the number of bytes for representing a frame.
+     */
     int getSizeOfFrameRef();
 
+    /**
+     * @return a description of the underlying VM.
+     */
     String getVmDescription();
 
+    /**
+     * @return the version of the underlying VM.
+     */
     String getVmVersion();
 
+    /**
+     * @return the name of the underlying VM.
+     */
     String getVmName();
 }

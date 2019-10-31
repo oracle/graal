@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;
@@ -161,8 +162,8 @@ public class DebuggerConnection implements JDWPCommands {
                             if (currentTime > limit) {
                                 started = true;
                                 // allow the main thread to continue starting up the program
-                                synchronized (JDWP.suspendStartupLock) {
-                                    JDWP.suspendStartupLock.notifyAll();
+                                synchronized (JDWPInstrument.suspendStartupLock) {
+                                    JDWPInstrument.suspendStartupLock.notifyAll();
                                 }
                                 processPacket(Packet.fromByteArray(connection.readPacket()));
                             } else {
@@ -406,7 +407,7 @@ public class DebuggerConnection implements JDWPCommands {
                                 break;
                             }
                             case JDWP.EventRequest.CLEAR.ID: {
-                                result = requestedJDWPEvents.clearRequest(packet, DebuggerConnection.this);
+                                result = requestedJDWPEvents.clearRequest(packet);
                                 break;
                             }
                             default:

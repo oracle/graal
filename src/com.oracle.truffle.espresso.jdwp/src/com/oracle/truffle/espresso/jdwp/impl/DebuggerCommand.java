@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
+
 class DebuggerCommand {
 
     enum Kind {

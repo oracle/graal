@@ -22,14 +22,43 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+/**
+ * Interface representing a local variable, e.g. a method parameter or a
+ * variable declared within a method.
+ */
 public interface LocalRef {
+
+    /**
+     * Returned the first code index within the declaring method, for which
+     * the local variable is visible.
+     * @return the start bci
+     */
     int getStartBCI();
 
+    /**
+     * Returns a String representation of the name of the local.
+     * @return the variable name
+     */
     String getNameAsString();
 
+    /**
+     * Returns the String representation of the type of the local according to the field
+     * descriptor grammar.
+     * See https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.2
+     * @return the variable type descriptor name
+     */
     String getTypeAsString();
 
+    /**
+     * Returned the last code index within the declaring method, for which
+     * the local variable is visible.
+     * @return the end bci
+     */
     int getEndBCI();
 
+    /**
+     * Returns the index of the frameslot used to store the local
+     * @return the slot index
+     */
     int getSlot();
 }

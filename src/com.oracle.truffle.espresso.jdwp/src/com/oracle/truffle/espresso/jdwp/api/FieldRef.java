@@ -22,21 +22,61 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+/**
+ * Interface representing a Field in a running program.
+ */
 public interface FieldRef {
 
+    /**
+     * Returns the TypeTag constant as defined in the JDWP protocol.
+     * See https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_TypeTag
+     * @return the TypeTag constant
+     */
     byte getTagConstant();
 
+    /**
+     * Returns a String representation of the name of the field.
+     * @return the field name
+     */
     String getNameAsString();
 
+    /**
+     * Returns the String representation of the type of the field according to the field
+     * descriptor grammar.
+     * See https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.2
+     * @return the field type descriptor name
+     */
     String getTypeAsString();
 
+    /**
+     * Returns the generic String representation of the type of the field according to the field.
+     * @return the field type descriptor name including generics information
+     */
     String getGenericSignatureAsString();
 
+    /**
+     * Returns the modifiers mask of the field.
+     * @return the field modifiers
+     */
     int getModifiers();
 
+    /**
+     * Returns the declaring class of the field.
+     * @return the {@KlassRef} which declared this field
+     */
     KlassRef getDeclaringKlass();
 
+    /**
+     * Gets the field value for a specified object.
+     * @param self the object (or class/null) for which to read the field value from.
+     * @return the value of the field
+     */
     Object getValue(Object self);
 
+    /**
+     * Sets the value of the field on the specified object.
+     * @param self the object (or class/null) for which to read the field value from.
+     * @param value the value to set
+     */
     void setValue(Object self, Object value);
 }

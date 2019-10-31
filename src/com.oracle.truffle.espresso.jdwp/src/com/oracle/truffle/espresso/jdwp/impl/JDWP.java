@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
@@ -38,8 +39,6 @@ import java.util.concurrent.Callable;
 import static com.oracle.truffle.espresso.jdwp.impl.TagConstants.BOOLEAN;
 
 class JDWP {
-
-    public static Object suspendStartupLock = new Object();
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
@@ -118,7 +117,7 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(vm.getSizeOfFieldRef());
                 reply.writeInt(vm.getSizeOfMethodRef());
-                reply.writeInt(vm.getSizeofObjectRefRef());
+                reply.writeInt(vm.getSizeofObjectRef());
                 reply.writeInt(vm.getSizeOfClassRef());
                 reply.writeInt(vm.getSizeOfFrameRef());
                 return new JDWPResult(reply);
@@ -289,7 +288,7 @@ class JDWP {
                     Object value = context.getStaticFieldValue(field);
 
                     if (tag == TagConstants.OBJECT) {
-                        tag = context.getSpecificObjectTag(value);
+                        tag = context.getTag(value);
                     }
                     writeValue(tag, value, reply, true, context);
                 }
@@ -552,10 +551,10 @@ class JDWP {
                     byte tag = field.getTagConstant();
 
                     if (tag == TagConstants.OBJECT) {
-                        tag = context.getSpecificObjectTag(field.getTypeAsString());
+                        tag = context.getTag(field.getTypeAsString());
                     }
                     Object value = readValue(tag, input, context);
-                    context.setStaticFieldValue(field, klass, value);
+                    context.setStaticFieldValue(field, value);
                 }
                 return new JDWPResult(reply);
             }
@@ -768,7 +767,7 @@ class JDWP {
                     byte tag = field.getTagConstant();
 
                     if (tag == TagConstants.OBJECT) {
-                        tag = context.getSpecificObjectTag(value);
+                        tag = context.getTag(value);
                     }
                     writeValue(tag, value, reply, true, context);
                 }
@@ -803,7 +802,7 @@ class JDWP {
 
                     byte tag = field.getTagConstant();
                     if (tag == TagConstants.OBJECT) {
-                        tag = context.getSpecificObjectTag(field.getTypeAsString());
+                        tag = context.getTag(field.getTypeAsString());
                     }
                     Object value = readValue(tag, input, context);
                     field.setValue(object, value);
@@ -1437,7 +1436,7 @@ class JDWP {
                             reply.writeByte(sigbyte);
                             reply.writeLong(context.getIds().getIdAsLong(value));
                         } else if (sigbyte == TagConstants.OBJECT) {
-                            sigbyte = context.getSpecificObjectTag(value);
+                            sigbyte = context.getTag(value);
                             reply.writeByte(sigbyte);
                             reply.writeLong(context.getIds().getIdAsLong(value));
                         } else {

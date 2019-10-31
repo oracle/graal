@@ -26,7 +26,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,6 +35,7 @@ import java.util.Collection;
 public class JDWPInstrument extends TruffleInstrument implements Runnable {
 
     public static final String ID = "jdwp";
+    public static Object suspendStartupLock = new Object();
 
     private JDWPDebuggerController controller;
     TruffleInstrument.Env env;
@@ -105,9 +105,9 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
             if (controller.shouldWaitForAttach()) {
                 doConnect();
                 // take all initial commands from the debugger before resuming to main thread
-                synchronized (JDWP.suspendStartupLock) {
+                synchronized (suspendStartupLock) {
                     try {
-                        JDWP.suspendStartupLock.wait();
+                        suspendStartupLock.wait();
                     } catch (InterruptedException e) {
                         throw new RuntimeException("JDWP connection interrupted");
                     }

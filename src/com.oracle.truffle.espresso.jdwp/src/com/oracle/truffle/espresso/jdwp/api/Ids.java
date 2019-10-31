@@ -24,11 +24,28 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import java.lang.ref.WeakReference;
 
+
+/**
+ * Class that keeps an ID representation of all entities when
+ * communicating with a debugger through JDWP.
+ * Each entity will be assigned a unique ID.
+ * Only weak references are kept for entities.
+ */
 public class Ids {
 
     private static volatile long uniqueID = 1;
+
+    /**
+     * All entities stored while communicating with the debugger.
+     * The array will be expanded whenever an ID for a new entity
+     * is requested.
+     */
     private WeakReference[] objects = new WeakReference[1];
 
+    /**
+     * A special object representing the null value.
+     * This object must be passed on by the implementing language.
+     */
     private final Object nullObject;
 
     public Ids(Object nullObject) {
@@ -36,31 +53,43 @@ public class Ids {
         this.nullObject = nullObject;
     }
 
+    /**
+     * Returns the unique ID representing the input object.
+     * @param object
+     * @return the ID of the object
+     */
     public long getIdAsLong(Object object) {
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
             Object obj = objects[i].get();
             if (obj == object) {
-                //System.out.println("returning ID: " + i + " from cache for object: " + object);
                 return i;
             }
         }
-        // cache miss
+        // cache miss, so generate a new ID
         return generateUniqueId(object);
     }
 
+    /**
+     * Returns the object that is stored under the input ID.
+     * @param id the ID assigned to a object by {@code getIdAsLong()}
+     * @return the object stored under the ID
+     */
     public Object fromId(int id) {
         WeakReference<Object> ref = objects[id];
         Object o = ref.get();
         if (o == null) {
             return nullObject;
         } else {
-            //System.out.println("getting object: " + o + " from ID: " + id);
             return o;
         }
     }
 
+    /*
+    Generate a unique ID for a given object. Expand the underlying array and
+    insert the object at the last index in the new array.
+     */
     private synchronized long generateUniqueId(Object object) {
         long id = uniqueID++;
         assert objects.length == id - 1;
@@ -69,10 +98,6 @@ public class Ids {
         System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-        //System.out.println("ID: " + id + " for object: " + object + " with class " + object.getClass());
-        if (object.getClass() == Thread.class) {
-            Thread.dumpStack();
-        }
         return id;
     }
 }

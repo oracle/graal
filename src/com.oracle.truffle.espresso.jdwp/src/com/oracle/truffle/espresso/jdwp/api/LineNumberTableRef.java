@@ -22,14 +22,32 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+/**
+ * A line number table interface for methods.
+ */
 public interface LineNumberTableRef {
 
+    /**
+     * Returns all entries in the line number table
+     * @return an array of EntryRef for all entries.
+     */
     EntryRef[] getEntries();
 
+    /**
+     * Interface for entries in a line number table.
+     */
     interface EntryRef {
 
+        /**
+         * Returns the code index for an entry in a line number table.
+         * @return the bci
+         */
         int getBCI();
 
+        /**
+         * Returns the line number for an entry in a line number table.
+         * @return the line number
+         */
         int getLineNumber();
     }
 }

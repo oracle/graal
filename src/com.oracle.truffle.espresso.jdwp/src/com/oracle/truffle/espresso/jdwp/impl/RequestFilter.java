@@ -70,10 +70,6 @@ public class RequestFilter {
         nextIndex++;
     }
 
-    public KlassRef[] getKlassRefPatterns() {
-        return klassRefPatterns;
-    }
-
     public boolean isKlassExcluded(KlassRef klass) {
         for (Pattern pattern : classExcludePatterns) {
             if (pattern != null) {
