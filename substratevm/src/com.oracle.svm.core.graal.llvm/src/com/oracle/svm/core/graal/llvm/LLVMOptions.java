@@ -44,4 +44,7 @@ public class LLVMOptions {
 
     @Option(help = "Path to a custom llc binary for LLVM compilation")//
     public static final HostedOptionKey<String> CustomLLC = new HostedOptionKey<>("");
+
+    @Option(help = "Path to a custom ld binary for LLVM linking")//
+    public static final HostedOptionKey<String> CustomLD = new HostedOptionKey<>("");
 }
