@@ -464,9 +464,8 @@ public final class ClassfileParser {
             throw classFormatError("Too many arguments in method signature: " + signature);
         }
 
-        if (name.equals(Name.finalize) && signature.equals(Signature._void) && Modifier.isStatic(methodFlags)) {
-            // this class has a finalizer method implementation
-            // (this bit will be cleared for java.lang.Object later)
+        if (name.equals(Name.finalize) && signature.equals(Signature._void) && !Modifier.isStatic(methodFlags) && !Type.Object.equals(classType)) {
+            // This class has a finalizer method implementation (ignore for java.lang.Object).
             classFlags |= ACC_FINALIZER;
         }
 

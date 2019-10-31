@@ -237,7 +237,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -331,10 +333,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] stackSlots;
 
-    @CompilationFinal //
     private final FrameSlot monitorSlot;
-
-    @CompilationFinal private final FrameSlot BCIslot;
+    private final FrameSlot bciSlot;
 
     @CompilationFinal(dimensions = 1) //
     private final int[] SOEinfo;
@@ -349,30 +349,21 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
     @TruffleBoundary
-    public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
+    public BytecodeNode(Method method, FrameDescriptor frameDescriptor, FrameSlot monitorSlot, FrameSlot bciSlot) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-        BCIslot = slots[0];
-        int startLocal = 1;
-        int lastLocal = startLocal + method.getMaxLocals();
-        int lastStack = startLocal + method.getMaxLocals() + method.getMaxStackSize();
-        assert (lastLocal - startLocal) == method.getMaxLocals();
-        assert (lastStack - lastLocal) == method.getMaxStackSize();
-        this.locals = Arrays.copyOfRange(slots, 1, lastLocal);
-        this.stackSlots = Arrays.copyOfRange(slots, lastLocal, lastStack);
-        if (method.usesMonitors() > 0) {
-            monitorSlot = slots[lastStack];
-        } else {
-            monitorSlot = null;
-        }
 
+        this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
+        this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
+        this.monitorSlot = monitorSlot;
+        this.bciSlot = bciSlot;
         this.SOEinfo = getMethod().getSOEHandlerInfo();
     }
 
     public BytecodeNode(BytecodeNode copy) {
-        this(copy.getMethod(), copy.getRootNode().getFrameDescriptor());
+        this(copy.getMethod(), copy.getRootNode().getFrameDescriptor(), copy.monitorSlot, copy.bciSlot);
         System.err.println("Copying node for " + getMethod());
     }
 
@@ -429,14 +420,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             // Checkstyle: resume
             n += expectedkind.getSlotCount();
         }
-        frame.setInt(BCIslot, 0);
+        setBCI(frame, 0);
         if (monitorSlot != null) {
             frame.setObject(monitorSlot, new MonitorStack());
         }
     }
 
     private void setBCI(VirtualFrame frame, int bci) {
-        frame.setInt(BCIslot, bci);
+        frame.setInt(bciSlot, bci);
     }
 
     int peekInt(VirtualFrame frame, int slot) {
@@ -595,12 +586,17 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                 CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 CompilerAsserts.partialEvaluationConstant(curOpcode);
+
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
                 if (instrument != null) {
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
+                }
+
+                if (Bytecodes.canTrap(curOpcode)) {
+                    setBCI(frame, curBCI);
                 }
 
                 // @formatter:off
@@ -1030,7 +1026,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         case IF_ACMPEQ: // fall through
                         case IF_ACMPNE: // fall through
 
-                            // TODO(peterssen): Order shuffled.
+                        // TODO(peterssen): Order shuffled.
                         case GOTO: // fall through
                         case GOTO_W: // fall through
                         case IFNULL: // fall through
@@ -1219,10 +1215,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         case INVOKEVIRTUAL: // fall through
                         case INVOKESPECIAL: // fall through
                         case INVOKESTATIC: // fall through
-                        case INVOKEINTERFACE: 
-                            setBCI(frame, curBCI);
-                            top += quickenInvoke(frame, top, curBCI, curOpcode);
-                            break;
+
+                        case INVOKEINTERFACE:
+                            top += quickenInvoke(frame, top, curBCI, curOpcode); break;
 
                         case NEW:
                             putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI))));
@@ -1265,13 +1260,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             CompilerAsserts.neverPartOfCompilation();
                             throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                        case INVOKEDYNAMIC: 
-                            setBCI(frame, curBCI);
-                            top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
+                        case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
+                        case QUICK: top += nodes[bs.readCPI(curBCI)].invoke(frame); break;
 
-                        case QUICK: 
-                            setBCI(frame, curBCI);
-                            top += nodes[bs.readCPI(curBCI)].invoke(frame); break;
 
                         default:
                             CompilerAsserts.neverPartOfCompilation();
@@ -1327,7 +1318,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         for (int i = 0; i < SOEinfo.length; i += 3) {
                             if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
                                 top = 0;
-                                putObject(frame, 0, e.getException());
+                                putObject(frame, 0, e.getExceptionObject());
                                 top++;
                                 curBCI = SOEinfo[i + 2];
                                 continue loop;
@@ -1336,7 +1327,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                     }
                     throw e;
                 }
-                StaticObject exceptionToHandle = e.getException();
+
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
                 ExceptionHandler handler = null;
                 for (ExceptionHandler toCheck : handlers) {
@@ -1347,7 +1338,8 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                             // instanceof
                             catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                         }
-                        if (catchType == null || InterpreterToVM.instanceOf(exceptionToHandle, catchType)) {
+
+                        if (catchType == null || InterpreterToVM.instanceOf(e.getExceptionObject(), catchType)) {
                             // the first found exception handler is our exception handler
                             handler = toCheck;
                             break;
@@ -1357,7 +1349,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
                 if (handler != null) {
                     top = 0;
-                    putObject(frame, 0, e.getException());
+                    putObject(frame, 0, e.getExceptionObject());
                     top++;
                     int targetBCI = handler.getHandlerBCI();
                     checkBackEdge(curBCI, targetBCI, top, NOP);
@@ -1422,6 +1414,15 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
     }
 
+    int readBCI(FrameInstance frameInstance) {
+        try {
+            assert bciSlot != null;
+            return frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(bciSlot);
+        } catch (FrameSlotTypeException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     private void monitorExit(VirtualFrame frame, StaticObject monitor) {
         unregisterMonitor(frame, monitor);
         InterpreterToVM.monitorExit(monitor);
@@ -1461,8 +1462,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
 
         private void exit(StaticObject monitor, BytecodeNode node) {
-            Object topMonitor = monitors[top - 1];
-            if (monitor == topMonitor) {
+            if (top > 0 && monitor == monitors[top - 1]) {
                 // Balanced locking: simply pop.
                 monitors[--top] = null;
             } else {
@@ -1603,7 +1603,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
                         thisNode.getMethod().getName().toString().contains("findClass")) {
             return;
         }
-        System.err.println("Caught: " + e.getException().getKlass().getType() + ": " + e.getMessage() +
+        System.err.println("Caught: " + e.getExceptionObject().getKlass().getType() + ": " + e.getMessage() +
                         "\n\t In: " + thisNode + " at line: " + thisNode.getMethod().BCItoLineNumber(curBCI));
     }
 

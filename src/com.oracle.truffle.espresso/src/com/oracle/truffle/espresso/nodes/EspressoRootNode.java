@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -34,6 +35,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -68,6 +70,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getName();
     }
 
+    public Object execute(VirtualFrame frame) {
+        return methodNode.execute(frame);
+    }
+
     @Override
     public final SourceSection getSourceSection() {
         return getMethodNode().getSourceSection();
@@ -94,6 +100,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
+    public int readBCI(FrameInstance frameInstance) {
+        assert methodNode instanceof BytecodeNode;
+        return ((BytecodeNode) methodNode).readBCI(frameInstance);
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode childNode) {
@@ -106,8 +117,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 Method method = getMethod();
                 assert method.isSynchronized();
                 StaticObject monitor = method.isStatic()
-                                ? /* class */ method.getDeclaringKlass().mirror()
-                                : /* receiver */ (StaticObject) frame.getArguments()[0];
+                        ? /* class */ method.getDeclaringKlass().mirror()
+                        : /* receiver */ (StaticObject) frame.getArguments()[0];
                 // No owner checks in SVM. Manual monitor accesses is a safeguard against unbalanced
                 // monitor accesses until Espresso has its own monitor handling.
                 //
@@ -121,13 +132,9 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 }
                 return result;
             } catch (EspressoException e) {
-                if (!(isBytecodeNode()) && e.isUnwinding(getMeta())) {
-                    e.addStackFrame(getMethod(), -2, getMeta());
-                }
                 throw e;
             }
         }
-
     }
 
     static final class Default extends EspressoRootNode {
@@ -141,13 +148,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             try {
                 return methodNode.execute(frame);
             } catch (EspressoException e) {
-                if (!(isBytecodeNode()) && e.isUnwinding(getMeta())) {
-                    e.addStackFrame(getMethod(), -2, getMeta());
-                }
                 throw e;
             }
         }
-
     }
-
 }

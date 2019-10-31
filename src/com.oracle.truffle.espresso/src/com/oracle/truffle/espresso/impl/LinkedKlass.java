@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
 // Klass shape, vtable and field locations can be computed at the structural level.
@@ -50,6 +52,7 @@ public final class LinkedKlass {
 
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] fields; // Field slots already computed.
+    private final boolean hasFinalizer;
 
     protected LinkedMethod[] getLinkedMethods() {
         return methods;
@@ -94,6 +97,11 @@ public final class LinkedKlass {
             linkedMethods[i] = new LinkedMethod(parserMethod, this);
         }
 
+        // Super interfaces are not checked for finalizers; a default .finalize method will be
+        // resolved to Object.finalize, making the finalizer not observable.
+        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
+        assert !this.hasFinalizer || !Type.Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
+
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;
         this.interfaces = interfaces;
@@ -104,7 +112,11 @@ public final class LinkedKlass {
     }
 
     int getFlags() {
-        return parserKlass.getFlags();
+        int flags = parserKlass.getFlags();
+        if (hasFinalizer) {
+            flags |= ACC_FINALIZER;
+        }
+        return flags;
     }
 
     ConstantPool getConstantPool() {

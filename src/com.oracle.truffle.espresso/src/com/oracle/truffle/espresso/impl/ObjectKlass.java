@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.EspressoOptions.VerifyMode;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FLAGS;
 
@@ -285,7 +286,7 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (EspressoException e) {
                     setErroneous();
-                    StaticObject cause = e.getException();
+                    StaticObject cause = e.getExceptionObject();
                     if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
                         throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
                     } else {
@@ -776,6 +777,12 @@ public final class ObjectKlass extends Klass {
             System.err.println();
         }
     }
+
+    public final boolean hasFinalizer() {
+        return (getModifiers() & ACC_FINALIZER) != 0;
+    }
+
+    // Verification data
 
     // Verification data
     @CompilationFinal //

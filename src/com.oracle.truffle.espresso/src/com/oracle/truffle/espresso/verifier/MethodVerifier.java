@@ -2272,8 +2272,8 @@ public final class MethodVerifier implements ContextAccess {
                 try {
                     field = pool.resolvedFieldAt(thisKlass, fieldCPI);
                 } catch (EspressoException e) {
-                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getException().getKlass())) {
-                        throw new VerifyError(EspressoException.getMessage(e.getException()));
+                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                        throw new VerifyError(EspressoException.getMessage(e.getExceptionObject()));
                     }
                     throw e;
                 }
@@ -2323,8 +2323,8 @@ public final class MethodVerifier implements ContextAccess {
                 try {
                     method = pool.resolvedMethodAt(thisKlass, methodCPI);
                 } catch (EspressoException e) {
-                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getException().getKlass())) {
-                        throw new VerifyError(EspressoException.getMessage(e.getException()));
+                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                        throw new VerifyError(EspressoException.getMessage(e.getExceptionObject()));
                     }
                     throw e;
                 }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -63,6 +64,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -195,6 +197,7 @@ public final class EspressoContext {
         spawnVM();
         this.initialized = true;
         VMInitializedListeners.getDefault().fire();
+        hostToGuestReferenceDrainThread.start();
     }
 
     public Source findOrCreateSource(Method method) {
@@ -209,9 +212,13 @@ public final class EspressoContext {
         }
     }
 
+    private Thread hostToGuestReferenceDrainThread;
+
     public Meta getMeta() {
         return meta;
     }
+
+    public final ReferenceQueue<StaticObject> REFERENCE_QUEUE = new ReferenceQueue<>();
 
     private void spawnVM() {
 
@@ -240,8 +247,52 @@ public final class EspressoContext {
 
         createMainThread();
 
-        // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);
+
+        // Initialize ReferenceQueues
+        this.hostToGuestReferenceDrainThread = getEnv().createThread(new Runnable() {
+            @SuppressWarnings("rawtypes")
+            @Override
+            public void run() {
+                final StaticObject lock = (StaticObject) meta.Reference_lock.get(meta.Reference.tryInitializeAndGetStatics());
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+                        // HotSpot's "new behavior": Walk down the list, self-looping the next field
+                        // so that the References are not considered active.
+                        EspressoReference head;
+                        do {
+                            head = (EspressoReference) REFERENCE_QUEUE.remove();
+                            assert head != null;
+                        } while (StaticObject.notNull((StaticObject) meta.Reference_next.get(head.getGuestReference())));
+
+                        synchronized (lock) {
+                            assert Target_java_lang_Thread.holdsLock(lock) : "must hold Reference.lock at the guest level";
+                            casNextIfNullAndMaybeClear(head);
+
+                            EspressoReference prev = head, ref;
+                            while ((ref = (EspressoReference) REFERENCE_QUEUE.poll()) != null) {
+                                if (StaticObject.notNull((StaticObject) meta.Reference_next.get(ref.getGuestReference()))) {
+                                    continue;
+                                }
+                                meta.Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                                casNextIfNullAndMaybeClear(ref);
+                                prev = ref;
+                            }
+
+                            meta.Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                            StaticObject obj = meta.Reference_pending.getAndSetObject(meta.Reference.getStatics(), head.getGuestReference());
+                            meta.Reference_discovered.set(prev.getGuestReference(), obj);
+
+                            getVM().JVM_MonitorNotify(lock);
+                        }
+                    } catch (InterruptedException e) {
+                        // ignore
+                        return;
+                    }
+                }
+            }
+        });
 
         meta.System_initializeSystemClass.invokeDirect(null);
 
@@ -273,6 +324,16 @@ public final class EspressoContext {
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
+    }
+
+    private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
+        StaticObject ref = wrapper.getGuestReference();
+        // Cleaner references extends PhantomReference but are cleared.
+        // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
+        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().Cleaner)) {
+            wrapper.clear();
+        }
+        ref.compareAndSwapField(meta.Reference_next, StaticObject.NULL, ref);
     }
 
     /**
@@ -333,6 +394,13 @@ public final class EspressoContext {
                     System.err.println("Interrupted while stopping thread in closing context.");
                 }
             }
+        }
+
+        hostToGuestReferenceDrainThread.interrupt();
+        try {
+            hostToGuestReferenceDrainThread.join();
+        } catch (InterruptedException e) {
+            // ignore
         }
         initiatingThread.interrupt();
     }

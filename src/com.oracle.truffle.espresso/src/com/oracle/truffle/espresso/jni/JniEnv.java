@@ -147,7 +147,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     // Arrays.toString(shiftedArgs));
                     return m.invoke(JniEnv.this, args);
                 } catch (EspressoException targetEx) {
-                    setPendingException(targetEx.getException());
+                    setPendingException(targetEx.getExceptionObject());
                     return defaultValue(m.returnType());
                 } catch (StackOverflowError | OutOfMemoryError e) {
                     // This will most likely SOE again. Nothing we can do about that
@@ -1505,7 +1505,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
         } catch (EspressoException e) {
-            if (InterpreterToVM.instanceOf(e.getException(), getMeta().ClassNotFoundException)) {
+            if (InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().ClassNotFoundException)) {
                 throw getMeta().throwExWithMessage(NoClassDefFoundError.class, e.getMessage());
             }
             throw e;
@@ -1751,8 +1751,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             InterpreterToVM.monitorExit(object);
         } catch (EspressoException e) {
-            assert InterpreterToVM.instanceOf(e.getException(), getMeta().IllegalMonitorStateException);
-            getThreadLocalPendingException().set(e.getException());
+            assert InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().IllegalMonitorStateException);
+            getThreadLocalPendingException().set(e.getExceptionObject());
             return JNI_ERR;
         }
         return JNI_OK;

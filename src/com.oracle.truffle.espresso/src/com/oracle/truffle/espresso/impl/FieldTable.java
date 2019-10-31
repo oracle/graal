@@ -213,6 +213,11 @@ class FieldTable {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_KEY));
             return c;
+        } else if (type == Type.java_lang_ref_Reference) {
+            // All references (including strong) get an extra hidden field, this simplifies the code
+            // for weak/soft/phantom/final references.
+            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_REFERENCE));
+            return c;
         } else if (type == Type.Throwable) {
             tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FRAMES));
             return c;
