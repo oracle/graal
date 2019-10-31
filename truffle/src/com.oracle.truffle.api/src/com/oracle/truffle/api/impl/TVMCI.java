@@ -306,6 +306,10 @@ public abstract class TVMCI {
         }
     }
 
+    protected static void resetFallbackEngineData() {
+        fallbackEngineData = null;
+    }
+
     @SuppressWarnings("unused")
     protected void reportPolymorphicSpecialize(Node node) {
     }

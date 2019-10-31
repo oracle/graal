@@ -136,6 +136,10 @@ final class GraalTVMCI extends TVMCI {
         return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 
+    static void resetEngineData() {
+        TVMCI.resetFallbackEngineData();
+    }
+
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
         final RootNode rootNode = source.getRootNode();
