@@ -11,8 +11,8 @@ jdks: {
   oraclejdk8Debug: {name : oraclejdk, version : "8u231-jvmci-19.3-b04-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.5+9-jvmci-19.3-b03", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.5+1-jvmci-19.3-b03", platformspecific: true}
+  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.5+10-jvmci-19.3-b04-dev", platformspecific: true}
+  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.5+10-jvmci-19.3-b04-dev", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
