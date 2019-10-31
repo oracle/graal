@@ -123,6 +123,8 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         primitives.put(ProxyDuration.class,
                         Primitive.create("ProxyDuration", ProxyDuration.from(Duration.ofMillis(100)),
                                         TypeDescriptor.intersection(TypeDescriptor.DURATION)));
+        primitives.put(Throwable.class,
+                        Primitive.create("java.lang.Throwable", new RuntimeException(), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.EXCEPTION)));
 
         // Java primitives
         for (Primitive primitive : primitives.values()) {

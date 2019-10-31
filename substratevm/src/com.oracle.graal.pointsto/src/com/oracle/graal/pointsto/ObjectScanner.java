@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.word.WordBase;
 
@@ -49,8 +50,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Provides functionality for scanning constant objects.
@@ -100,14 +99,14 @@ public abstract class ObjectScanner {
                         @Override
                         public void run(DebugContext debug) {
                             try {
-                                scanField(field, null, field);
+                                scanRootField(field);
                             } finally {
                                 workInProgressCount.decrementAndGet();
                             }
                         }
                     });
                 } else {
-                    scanField(field, null, field);
+                    scanRootField(field);
                 }
             }
         }
@@ -164,22 +163,32 @@ public abstract class ObjectScanner {
     public abstract void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
 
     /**
+     * Scans the value of a root field.
+     *
+     * @param field the scanned root field
+     */
+    protected final void scanRootField(AnalysisField field) {
+        scanField(field, null, null);
+    }
+
+    /**
      * Scans the value of a field giving a receiver object.
      *
      * @param field the scanned field
      * @param receiver the receiver object
-     * @param reason what triggered the scanning
+     * @param previous reference to the work list entry containing parent object
      */
-    protected final void scanField(AnalysisField field, JavaConstant receiver, Object reason) {
+    protected final void scanField(AnalysisField field, JavaConstant receiver, WorklistEntry previous) {
+        ScanReason reason = new FieldScan(field);
         try {
             JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
 
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
-                buildObjectBacktrace(reason, backtrace);
+                buildObjectBacktrace(reason, previous, backtrace);
                 throw AnalysisError.shouldNotReachHere("Could not find field " + field.format("%H.%n") +
                                 (receiver == null ? "" : " on " + bb.getSnippetReflectionProvider().asObject(Object.class, receiver).getClass()) +
-                                System.lineSeparator() + backtrace.toString());
+                                System.lineSeparator() + backtrace);
             }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(bb.getSnippetReflectionProvider().asObject(Object.class, fieldValue))) {
@@ -194,13 +203,13 @@ public abstract class ObjectScanner {
                     propagateRoot(receiver, fieldValue);
                 }
                 /* Scan the field value. */
-                scanConstant(fieldValue, reason);
+                scanConstant(fieldValue, reason, previous);
                 /* Process the field value. */
                 forNonNullFieldValue(receiver, field, fieldValue);
             }
 
         } catch (UnsupportedFeatureException ex) {
-            unsupportedFeature(field.format("%H.%n"), ex.getMessage(), reason);
+            unsupportedFeature(field.format("%H.%n"), ex.getMessage(), reason, previous);
         }
     }
 
@@ -241,14 +250,15 @@ public abstract class ObjectScanner {
      * Scans constant arrays, one element at the time.
      *
      * @param array the array to be scanned
-     * @param reason what triggered the scanning
+     * @param previous reference to the work list entry containing parent object
      */
-    protected final void scanArray(JavaConstant array, Object reason) {
+    protected final void scanArray(JavaConstant array, WorklistEntry previous) {
 
         Object valueObj = bb.getSnippetReflectionProvider().asObject(Object.class, array);
         AnalysisType arrayType = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
         assert valueObj instanceof Object[];
 
+        ScanReason reason = new ArrayScan(arrayType);
         try {
             Object[] arrayObject = (Object[]) valueObj;
             for (int idx = 0; idx < arrayObject.length; idx++) {
@@ -262,14 +272,14 @@ public abstract class ObjectScanner {
 
                     propagateRoot(array, elementConstant);
                     /* Scan the array element. */
-                    scanConstant(elementConstant, reason);
+                    scanConstant(elementConstant, reason, previous);
                     /* Process the array element. */
                     forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
 
                 }
             }
         } catch (UnsupportedFeatureException ex) {
-            unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason);
+            unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason, previous);
         }
     }
 
@@ -279,7 +289,11 @@ public abstract class ObjectScanner {
      */
     protected abstract void forScannedConstant(JavaConstant scannedValue, Object reason);
 
-    public final void scanConstant(JavaConstant value, Object reason) {
+    public final void scanConstant(JavaConstant value, ScanReason reason) {
+        scanConstant(value, reason, null);
+    }
+
+    public final void scanConstant(JavaConstant value, ScanReason reason, WorklistEntry previous) {
         Object valueObj = bb.getSnippetReflectionProvider().asObject(Object.class, value);
         if (valueObj == null || valueObj instanceof WordBase) {
             return;
@@ -290,37 +304,59 @@ public abstract class ObjectScanner {
             } finally {
                 scannedObjects.release(valueObj);
                 workInProgressCount.incrementAndGet();
-                worklist.push(new WorklistEntry(value, reason));
+                worklist.push(new WorklistEntry(previous, value, reason));
             }
         }
-
     }
 
-    private void unsupportedFeature(String key, String message, Object entry) {
+    private void unsupportedFeature(String key, String message, ScanReason reason, WorklistEntry entry) {
         StringBuilder objectBacktrace = new StringBuilder();
-        AnalysisMethod method = buildObjectBacktrace(entry, objectBacktrace);
+        AnalysisMethod method = buildObjectBacktrace(reason, entry, objectBacktrace);
         bb.getUnsupportedFeatures().addMessage(key, method, message, objectBacktrace.toString());
     }
 
-    private AnalysisMethod buildObjectBacktrace(Object entry, StringBuilder objectBacktrace) {
-        Object cur = entry;
-        AnalysisMethod method = null;
-
-        while (cur instanceof WorklistEntry) {
-            WorklistEntry curEntry = (WorklistEntry) cur;
-            objectBacktrace.append("\tobject ").append(bb.getMetaAccess().lookupJavaType(curEntry.constant).toJavaName(true)).append(System.lineSeparator());
-            cur = curEntry.reason;
+    private AnalysisMethod buildObjectBacktrace(ScanReason reason, WorklistEntry entry, StringBuilder objectBacktrace) {
+        WorklistEntry cur = entry;
+        objectBacktrace.append("Object was reached by ").append(System.lineSeparator());
+        objectBacktrace.append('\t').append(asString(reason));
+        ScanReason rootReason = null;
+        while (cur != null) {
+            objectBacktrace.append(System.lineSeparator());
+            objectBacktrace.append("\t\t").append("constant ").append(asString(cur.constant)).append(" reached by ").append(System.lineSeparator());
+            objectBacktrace.append('\t').append(asString(cur.reason));
+            rootReason = cur.reason;
+            cur = cur.previous;
         }
+        if (rootReason instanceof MethodScan) {
+            /* The root constant was found during scanning of 'method'. */
+            return ((MethodScan) rootReason).method;
+        }
+        /* The root constant was not found during method scanning. */
+        return null;
+    }
 
-        if (cur instanceof ResolvedJavaField) {
-            objectBacktrace.append("\tfield ").append(((ResolvedJavaField) cur).format("%H.%n"));
-        } else if (cur instanceof ResolvedJavaMethod) {
-            objectBacktrace.append("\tmethod ").append(((ResolvedJavaMethod) cur).format("%H.%n(%p)"));
-            method = (AnalysisMethod) cur;
+    String asString(ScanReason reason) {
+        if (reason instanceof FieldScan) {
+            FieldScan fieldScan = (FieldScan) reason;
+            if (fieldScan.field.isStatic()) {
+                return "reading field " + reason;
+            } else {
+                /* Instance field scans must have a receiver, hence the 'of'. */
+                return "reading field " + reason + " of";
+            }
+        } else if (reason instanceof MethodScan) {
+            return "scanning method " + reason;
+        } else if (reason instanceof ArrayScan) {
+            return "indexing into array";
         } else {
-            objectBacktrace.append("\t[unknown] ").append(cur.toString());
+            return reason.toString();
         }
-        return method;
+    }
+
+    private String asString(JavaConstant constant) {
+        // bb.getMetaAccess().lookupJavaType(constant).toJavaName(true);
+        Object obj = bb.getSnippetReflectionProvider().asObject(Object.class, constant);
+        return obj.getClass().getTypeName() + '@' + Integer.toHexString(obj.hashCode());
     }
 
     /**
@@ -357,7 +393,7 @@ public abstract class ObjectScanner {
                     ConstantNode cn = (ConstantNode) n;
                     JavaConstant c = (JavaConstant) cn.getValue();
                     if (c.getJavaKind() == JavaKind.Object) {
-                        scanConstant(c, method);
+                        scanConstant(c, new MethodScan(method, cn.getNodeSourcePosition()));
                     }
                 }
             }
@@ -441,20 +477,91 @@ public abstract class ObjectScanner {
     }
 
     static class WorklistEntry {
+        /** The previously processed entry. */
+        private final WorklistEntry previous;
+        /** The constant to be scanned. */
         private final JavaConstant constant;
-        private final Object reason;
+        /**
+         * The reason this constant was scanned, i.e., either reached from a method scan, from a
+         * static field, from an instance field resolved on another constant, or from a constant
+         * array indexing.
+         */
+        private final ScanReason reason;
 
-        WorklistEntry(JavaConstant constant, Object reason) {
+        WorklistEntry(WorklistEntry previous, JavaConstant constant, ScanReason reason) {
+            this.previous = previous;
             this.constant = constant;
             this.reason = reason;
+        }
+
+        public WorklistEntry getPrevious() {
+            return previous;
         }
 
         public JavaConstant getConstant() {
             return constant;
         }
 
-        public Object getReason() {
+        public ScanReason getReason() {
             return reason;
+        }
+    }
+
+    public interface ScanReason {
+        OtherReason HUB = new OtherReason("Hub");
+    }
+
+    static class OtherReason implements ScanReason {
+        final String reason;
+
+        OtherReason(String reason) {
+            this.reason = reason;
+        }
+
+        @Override
+        public String toString() {
+            return reason;
+        }
+    }
+
+    static class FieldScan implements ScanReason {
+        final AnalysisField field;
+
+        FieldScan(AnalysisField field) {
+            this.field = field;
+        }
+
+        @Override
+        public String toString() {
+            return field.format("%H.%n");
+        }
+    }
+
+    static class ArrayScan implements ScanReason {
+        final AnalysisType arrayType;
+
+        ArrayScan(AnalysisType arrayType) {
+            this.arrayType = arrayType;
+        }
+
+        @Override
+        public String toString() {
+            return arrayType.toJavaName(true);
+        }
+    }
+
+    static class MethodScan implements ScanReason {
+        final AnalysisMethod method;
+        final NodeSourcePosition sourcePosition;
+
+        MethodScan(AnalysisMethod method, NodeSourcePosition nodeSourcePosition) {
+            this.method = method;
+            this.sourcePosition = nodeSourcePosition;
+        }
+
+        @Override
+        public String toString() {
+            return sourcePosition == null ? method.format("%H.%n(%p)") : method.asStackTraceElement(sourcePosition.getBCI()).toString();
         }
     }
 

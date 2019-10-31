@@ -230,7 +230,7 @@ public class InstallCommand implements InstallerCommand {
         // do not clean knownDeps, prevents duplicates.
     }
 
-    List<ComponentParam> getDependencies() {
+    public List<ComponentParam> getDependencies() {
         return Collections.unmodifiableList(dependencies);
     }
 

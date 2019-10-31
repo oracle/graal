@@ -589,6 +589,11 @@ public abstract class TruffleLanguage<C> {
      * While finalization code is run, other language contexts may become initialized. In such a
      * case, the finalization order may be non-deterministic and/or not respect the order specified
      * by language dependencies.
+     * <p>
+     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped after
+     * finalizeContext was called. The languages are responsible for fulfilling that contract,
+     * otherwise an {@link AssertionError} is thrown. It is recommended to join all threads that
+     * were disposed.
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -647,10 +652,6 @@ public abstract class TruffleLanguage<C> {
      * language dependencies}. By default internal languages are disposed last, otherwise the
      * default order is unspecified but deterministic. During disposal no other language must be
      * accessed using the {@link Env language environment}.
-     * <p>
-     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped after
-     * dispose was called. The languages are responsible for fulfilling that contract otherwise an
-     * {@link AssertionError} is thrown. It is recommended to join all threads that were disposed.
      *
      * @param context the context created by
      *            {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)}
@@ -750,9 +751,9 @@ public abstract class TruffleLanguage<C> {
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} and
      * {@link #initializeContext(java.lang.Object)} methods are called. In the image execution time,
      * the {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
-     * called on all pre-initialized languages as a consequence of
-     * {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation. The contexts are
-     * patched in a topological order starting from dependent languages. If the
+     * called on all languages whose contexts were created during the pre-initialization a
+     * consequence of {@link org.graalvm.polyglot.Context#create(java.lang.String...)} invocation.
+     * The contexts are patched in a topological order starting from dependent languages. If the
      * {@link #patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)} is
      * successful for all pre-initialized languages the pre-initialized context is used, otherwise a
      * new context is created.

@@ -134,8 +134,6 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract boolean useContextClassLoader();
-
         public abstract Engine newEngine(AbstractEngineImpl impl);
 
         public abstract Context newContext(AbstractContextImpl impl);
@@ -735,6 +733,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract Duration asDuration(Object receiver);
+
+        public boolean isException(Object receiver) {
+            return false;
+        }
+
+        public abstract RuntimeException throwException(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

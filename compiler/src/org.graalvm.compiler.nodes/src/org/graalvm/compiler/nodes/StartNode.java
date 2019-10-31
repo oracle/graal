@@ -49,7 +49,7 @@ public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.S
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

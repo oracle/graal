@@ -68,7 +68,7 @@ public class DeoptimizationSourcePositionEncoder {
                     Object[] encodedObjectConstants, List<NodeSourcePosition> deoptimizationSourcePositions) {
 
         NonmovableObjectArray<Object> deoptimizationObjectConstants = NonmovableArrays.copyOfObjectArray(encodedObjectConstants);
-        RuntimeMethodInfoAccess.setDeoptimizationMetadata(target, deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
+        RuntimeCodeInfoAccess.setDeoptimizationMetadata(target, deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
 
         afterInstallation(deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationSourcePositions, deoptimizationObjectConstants);
     }

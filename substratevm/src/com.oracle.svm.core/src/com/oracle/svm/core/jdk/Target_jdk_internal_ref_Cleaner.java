@@ -68,8 +68,35 @@ public final class Target_jdk_internal_ref_Cleaner {
     static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 
     @Alias
-    public static native void create(Object obj, Runnable runnable);
+    native void clean();
+}
 
+/**
+ * On JDK11+, the cleaner infrastructure is quite different from JDK8:
+ * <ul>
+ * <li>java.lang.ref.Cleaner: starts a new thread to process its reference queue.</li>
+ * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner that is used in all places that
+ * don't want to start an explicit reference cleaner thread. In native-image, we do not spawn a
+ * separate thread for the reference processing. Instead, we drain the queue after garbage
+ * collections in {@link SunMiscSupport#drainCleanerQueue()}.</li>
+ * <li>jdk.internal.ref.Cleaner: this only seems to be used by DirectByteBuffer but at least the
+ * handling is the same as on JDK 8.
+ * </ul>
+ */
+@TargetClass(className = "jdk.internal.ref.CleanerFactory", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_ref_CleanerFactory {
+    @Alias
+    public static native Target_java_lang_ref_Cleaner cleaner();
+}
+
+@TargetClass(className = "java.lang.ref.Cleaner", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_ref_Cleaner {
+    @Alias//
+    public Target_jdk_internal_ref_CleanerImpl impl;
+}
+
+@TargetClass(className = "java.lang.ref.Cleaner$Cleanable", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_ref_Cleaner_Cleanable {
     @Alias
     native void clean();
 }
@@ -87,5 +114,17 @@ final class Target_jdk_internal_ref_CleanerImpl {
     Target_jdk_internal_ref_SoftCleanable softCleanableList;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
-    ReferenceQueue<Object> queue;
+    public ReferenceQueue<Object> queue;
+}
+
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_ref_PhantomCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_ref_WeakCleanable {
+}
+
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_ref_SoftCleanable {
 }

@@ -80,7 +80,7 @@ public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint imple
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
     }
 

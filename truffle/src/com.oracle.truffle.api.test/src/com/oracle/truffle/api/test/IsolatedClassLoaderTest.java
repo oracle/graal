@@ -48,7 +48,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
-import java.util.Set;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -66,7 +66,7 @@ public class IsolatedClassLoaderTest {
             return;
         }
         final URL truffleURL = source.getLocation();
-        final String locatorName = "com.oracle.truffle.api.impl.TruffleLocator";
+        final String locatorName = "com.oracle.truffle.polyglot.EngineAccessor";
         ClassLoader loader = new URLClassLoader(new URL[]{truffleURL}) {
             @Override
             public Class<?> loadClass(String name) throws ClassNotFoundException {
@@ -76,12 +76,12 @@ public class IsolatedClassLoaderTest {
                 return super.loadClass(name);
             }
         };
-        Class<?> locator = loader.loadClass(locatorName);
-        assertEquals("Right classloader", loader, locator.getClassLoader());
+        Class<?> locatorClass = loader.loadClass(locatorName);
+        assertEquals("Right classloader", loader, locatorClass.getClassLoader());
 
-        final Method loadersMethod = locator.getDeclaredMethod("loaders");
+        final Method loadersMethod = locatorClass.getDeclaredMethod("locatorOrDefaultLoaders");
         ReflectionUtils.setAccessible(loadersMethod, true);
-        Set<?> loaders = (Set<?>) loadersMethod.invoke(null);
+        List<?> loaders = (List<?>) loadersMethod.invoke(null);
         assertTrue("Contains locator's loader: " + loaders, loaders.contains(loader));
         assertTrue("Contains system loader: " + loader, loaders.contains(ClassLoader.getSystemClassLoader()));
     }

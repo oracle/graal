@@ -1,6 +1,6 @@
 suite = {
     "name": "vm",
-    "version" : "19.3.0",
+    "version" : "20.0.0",
     "mxversion" : "5.236.1",
     "release" : False,
     "groupId" : "org.graalvm",
@@ -32,7 +32,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "40ed4d772c02b0af95ddb431928efc768dce07e9",
+                "version": "2ba60ed891dcc8b896d8cfc6f202a2354e2360ee",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "40ed4d772c02b0af95ddb431928efc768dce07e9",
+                "version": "2ba60ed891dcc8b896d8cfc6f202a2354e2360ee",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -50,7 +50,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "fedd3884ef601ac92b43098139b9604876b91121",
+                "version": "ca35cc7dc8f977cf582d1aef2254c93fd7e0e46f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -74,7 +74,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "577c8eb49221ce04b29e32a69d8c520155d80bb2",
+                "version": "6609c0d1fc3fa7aef21c3455c5fd150056382125",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -83,7 +83,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "35c73b945c8b9b18613954cea626b0b7c4bdfc72",
+                "version": "1f0566fdf8c4f3a91912d0b1c236e530ef4e5a8b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -94,22 +94,12 @@ suite = {
     },
 
     "projects": {
-        "com.oracle.graalvm.locator": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "checkstyleVersion" : "8.8",
-            "javaCompliance" : "1.8+",
-            "license": "GPLv2-CPE",
-        },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "1.8+",
-            "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
+            "checkstyleVersion" : "8.8",
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -119,26 +109,12 @@ suite = {
                 "org.graalvm.component.installer"
             ],
             "javaCompliance" : "1.8+",
-            "checkstyle": "com.oracle.graalvm.locator",
+            "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
         },
     },
 
     "distributions": {
-        "LOCATOR": {
-            "subDir": "src",
-            "moduleInfo" : {
-                "name" : "org.graalvm.locator",
-                "exports" : [
-                    "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
-                ],
-            },
-            "dependencies": ["com.oracle.graalvm.locator"],
-            "distDependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "maven" : False,
-        },
         "INSTALLER": {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",

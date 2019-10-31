@@ -1,5 +1,9 @@
-vm_java_8: ${openjdk8}
-vm_java_11: ${labsjdk-ce-11}
+vm_java_8: ${openjdk8} {
+  environment: { BASE_JDK_VERSION: "8" }
+}
+vm_java_11: ${labsjdk-ce-11} {
+  environment: { BASE_JDK_VERSION: "11" }
+}
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
@@ -10,8 +14,8 @@ collect_profiles: []
 vm_setup: {
   setup: [
     [set-export, VM_ENV, ce]
-    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties"]
-    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce"]]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_VERSION}"]]
     [cd, ${vm_subdir}]
   ]
 }
@@ -58,8 +62,6 @@ builds += [
       ${maven_base_8_11.deploy_svm} [--dry-run, "lafo-maven"]
       ${maven_base_8_11.build_svm_plugin}
       # deploy_svm_plugin cannot dry-run
-      ${maven_base_8_native.build}
-      ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-linux-amd64
   }
@@ -72,8 +74,6 @@ builds += [
       ${maven_base_8_11.deploy_svm} ["lafo-maven"]
       ${maven_base_8_11.build_svm_plugin}
       ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
-      ${maven_base_8_native.build}
-      ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
   }
@@ -124,5 +124,19 @@ builds += [
       ${maven_base_8_native.deploy} ["lafo-maven"]
     ]
     name: deploy-vm-maven-windows-amd64
+  }
+  # Deploy GraalVM base on JDK11 for Linux/AARCH64
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-java11-linux-aarch64
   }
 ]

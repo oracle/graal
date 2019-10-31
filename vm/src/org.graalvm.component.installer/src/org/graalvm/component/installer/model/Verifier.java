@@ -213,7 +213,9 @@ public class Verifier {
                                     reqVal.toLowerCase());
                     matches = versionMatch.test(cv);
                 } else {
-                    matches = matches(reqVal, graalVal);
+                    Version rv = Version.fromString(reqVal);
+                    Version gv = Version.fromString(graalVal);
+                    matches = rv.installVersion().equals(gv.installVersion());
                 }
                 if (!matches) {
                     Version rq = Version.fromString(reqVal);

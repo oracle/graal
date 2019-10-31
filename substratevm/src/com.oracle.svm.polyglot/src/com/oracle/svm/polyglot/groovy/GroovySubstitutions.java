@@ -26,8 +26,8 @@ package com.oracle.svm.polyglot.groovy;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
@@ -35,22 +35,22 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
-final class GroovyFeature implements Feature {
+final class GroovyIndyInterfaceFeature implements Feature {
 
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(com.oracle.svm.polyglot.groovy.GroovyFeature.class);
+            return ImageSingletons.contains(com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.class);
         }
     }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName("org.codehaus.groovy.reflection.ClassInfo") != null;
+        return access.findClassByName("org.codehaus.groovy.vmplugin.v7.IndyInterface") != null;
     }
 }
 
-@TargetClass(className = "org.codehaus.groovy.vmplugin.v7.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyFeature.IsEnabled.class)
+@TargetClass(className = "org.codehaus.groovy.vmplugin.v7.IndyInterface", onlyWith = com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature.IsEnabled.class)
 final class Target_org_codehaus_groovy_vmplugin_v7_IndyInterface_invalidateSwitchPoints {
     @Substitute
     protected static void invalidateSwitchPoints() {

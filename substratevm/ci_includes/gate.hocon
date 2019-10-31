@@ -32,10 +32,10 @@ builds += [
   ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
-  ${labsjdk-ee-11} ${svm-common-linux-gate} {
+  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
     name: "gate-svm-build-ee-11"
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,relocations"]
+      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {

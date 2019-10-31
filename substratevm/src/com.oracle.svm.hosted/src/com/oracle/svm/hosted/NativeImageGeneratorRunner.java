@@ -35,7 +35,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TimerTask;
@@ -159,7 +159,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     private static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-        return new HashSet<>(Arrays.asList(classpath)).stream().flatMap(ImageClassLoader::toClassPathEntries).map(v -> {
+        return new LinkedHashSet<>(Arrays.asList(classpath)).stream().flatMap(ImageClassLoader::toClassPathEntries).map(v -> {
             try {
                 return v.toAbsolutePath().toUri().toURL();
             } catch (MalformedURLException e) {

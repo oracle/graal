@@ -171,7 +171,7 @@ public class FrameInfoDecoder {
                 int deoptMethodIndex = readBuffer.getSVInt();
                 if (deoptMethodIndex < 0) {
                     /* Negative number is a reference to the target method. */
-                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(info.getFrameInfoObjectConstants(), -1 - deoptMethodIndex);
+                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
                     cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
                     /* Positive number is a directly encoded method offset. */
@@ -179,7 +179,7 @@ public class FrameInfoDecoder {
                 }
 
                 curValueInfosLenght = readBuffer.getUVInt();
-                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, info.getFrameInfoObjectConstants());
+                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
             }
 
             if (prev != null) {
@@ -198,7 +198,7 @@ public class FrameInfoDecoder {
                         virtualObjects = valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
                         for (int i = 0; i < numVirtualObjects; i++) {
                             int numValues = readBuffer.getUVInt();
-                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, info.getFrameInfoObjectConstants());
+                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
                             if (virtualObjects != null) {
                                 virtualObjects[i] = decodedValues;
                             }
@@ -218,8 +218,8 @@ public class FrameInfoDecoder {
                 cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
 
-                cur.sourceClass = NonmovableArrays.getObject(info.getFrameInfoSourceClasses(), sourceClassIndex);
-                cur.sourceMethodName = NonmovableArrays.getObject(info.getFrameInfoSourceMethodNames(), sourceMethodNameIndex);
+                cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
+                cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
                 cur.sourceLineNumber = sourceLineNumber;
             }
 
@@ -228,7 +228,7 @@ public class FrameInfoDecoder {
                     int nameIndex = readBuffer.getUVInt();
                     if (cur.valueInfos != null) {
                         cur.valueInfos[i].nameIndex = nameIndex;
-                        cur.valueInfos[i].name = NonmovableArrays.getObject(info.getFrameInfoNames(), nameIndex);
+                        cur.valueInfos[i].name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoNames(info), nameIndex);
                     }
                 }
             }

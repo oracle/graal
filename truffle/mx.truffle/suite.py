@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.235.0",
   "name" : "truffle",
-  "version" : "19.3.0",
+  "version" : "20.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -120,6 +120,9 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
+      # if warnings as errors is enabled. See GR-14683.
+      "forceJavac" : "true",
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,Truffle",
@@ -697,6 +700,36 @@ suite = {
       "workingSets" : "Truffle,SimpleLanguage",
       "testProject" : True,
     },
+
+    "com.oracle.graalvm.locator": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8+",
+      "license": "GPLv2-CPE",
+    },
+
+    "com.oracle.graalvm.locator.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "overlayTarget" : "com.oracle.graalvm.locator",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8",
+      "checkPackagePrefix" : "false",
+    },
+
+    "com.oracle.graalvm.locator.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "overlayTarget" : "com.oracle.graalvm.locator",
+      "checkstyle" : "com.oracle.truffle.api",
+      "multiReleaseJarVersion" : "11",
+      "javaCompliance" : "11+",
+      "checkPackagePrefix" : "false",
+    },
    },
 
   "licenses" : {
@@ -1076,6 +1109,16 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Truffle NFI support distribution for the GraalVM",
+      "layout" : {
+        "./" : ["dependency:com.oracle.truffle.nfi.native"],
+      },
+      "maven" : False,
+    },
+
     "TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
@@ -1083,6 +1126,21 @@ suite = {
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
+      "maven" : False,
+    },
+
+    "LOCATOR": {
+      "subDir": "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.locator",
+        "exports" : [
+          "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+        ],
+      },
+      "dependencies": ["com.oracle.graalvm.locator"],
+      "distDependencies": [
+        "truffle:TRUFFLE_API",
+      ],
       "maven" : False,
     },
   },

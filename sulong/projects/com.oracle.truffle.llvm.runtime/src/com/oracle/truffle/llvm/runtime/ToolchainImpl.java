@@ -49,6 +49,8 @@ public final class ToolchainImpl implements Toolchain {
             return null;
         }
         switch (tool) {
+            case "PATH":
+                return getRoot().resolve("bin");
             case "CC":
                 return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
             case "CXX":
@@ -56,6 +58,8 @@ public final class ToolchainImpl implements Toolchain {
                     return null;
                 }
                 return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
+            case "LD":
+                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-ld");
             default:
                 return null;
         }

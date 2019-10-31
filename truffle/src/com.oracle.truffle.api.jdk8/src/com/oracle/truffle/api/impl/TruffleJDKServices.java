@@ -122,4 +122,13 @@ public class TruffleJDKServices {
             throw (InternalError) new InternalError().initCause(e);
         }
     }
+
+    public static Object getUnnamedModule(@SuppressWarnings("unused") ClassLoader classLoader) {
+        return null;
+    }
+
+    public static boolean verifyModuleVisibility(Object currentModule, @SuppressWarnings("unused") Class<?> memberClass) {
+        assert currentModule == null;
+        return true;
+    }
 }

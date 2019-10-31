@@ -42,7 +42,7 @@ import hashlib
 import io
 
 import mx_truffle
-import mx_sdk
+import mx_sdk_vm
 
 import mx
 import mx_gate
@@ -54,7 +54,7 @@ from mx_unittest import unittest
 from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
-from mx_sdk import jdk_enables_jvmci_by_default, jlink_new_jdk
+from mx_sdk_vm import jdk_enables_jvmci_by_default, jlink_new_jdk
 
 import mx_jaotc
 
@@ -235,7 +235,7 @@ def _is_jvmci_enabled(vmargs):
 
     :param list vmargs: VM arguments to inspect
     """
-    return _get_XX_option_value(vmargs, 'EnableJVMCI', mx_sdk.jdk_enables_jvmci_by_default(jdk))
+    return _get_XX_option_value(vmargs, 'EnableJVMCI', mx_sdk_vm.jdk_enables_jvmci_by_default(jdk))
 
 def _nodeCostDump(args, extraVMarguments=None):
     """list the costs associated with each Node type"""
@@ -936,12 +936,16 @@ class StdoutUnstripping:
 
 _graaljdk_override = None
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+def get_graaljdk():
     if _graaljdk_override is None:
         graaljdk_dir, _ = _update_graaljdk(jdk)
         graaljdk = mx.JDKConfig(graaljdk_dir)
     else:
         graaljdk = _graaljdk_override
+    return graaljdk
+
+def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
+    graaljdk = get_graaljdk()
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     add_exports = join(graaljdk.home, '.add_exports')
     if exists(add_exports):
@@ -963,6 +967,14 @@ class GraalJVMCIJDKConfig(mx.JDKConfig):
 
     def run_java(self, args, **kwArgs):
         return run_java(args, **kwArgs)
+
+    @property
+    def home(self):
+        return get_graaljdk().home
+
+    @home.setter
+    def home(self, home):
+        jdk.home = home # forward setting to the backing jdk
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
@@ -1165,7 +1177,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     update_reason = None
     if dst_jdk_dir is None:
         graaljdks_dir = mx.ensure_dir_exists(join(_suite.get_output_root(platformDependent=True), 'graaljdks'))
-        graalvm_compiler_short_names = [c.short_name for c in mx_sdk.graalvm_components() if isinstance(c, mx_sdk.GraalVmJvmciComponent) and c.graal_compiler]
+        graalvm_compiler_short_names = [c.short_name for c in mx_sdk_vm.graalvm_components() if isinstance(c, mx_sdk_vm.GraalVmJvmciComponent) and c.graal_compiler]
         jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
             jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
@@ -1327,20 +1339,19 @@ def _graal_config():
             self.truffle_jars = []
             self.jars = []
 
-            for component in mx_sdk.graalvm_components():
-                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+            for component in mx_sdk_vm.graalvm_components():
+                if isinstance(component, mx_sdk_vm.GraalVmJvmciComponent):
                     for jar in component.jvmci_jars:
                         d = mx.distribution(jar)
                         self.jvmci_dists.append(d)
                         self.jvmci_jars.append(d.classpath_repr())
-                for jar in component.jvmci_parent_jars:
-                    d = mx.distribution(jar)
-                    self.jvmci_parent_dists.append(d)
-                    self.jvmci_parent_jars.append(d.classpath_repr())
                 for jar in component.boot_jars:
                     d = mx.distribution(jar)
                     self.boot_dists.append(d)
                     self.boot_jars.append(d.classpath_repr())
+
+            self.jvmci_parent_dists = [mx.distribution('truffle:TRUFFLE_API')]
+            self.jvmci_parent_jars = [jar.classpath_repr() for jar in self.jvmci_parent_dists]
 
             self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
             self.truffle_jars = [jar.classpath_repr() for jar in self.truffle_dists]
@@ -1369,7 +1380,7 @@ def _jvmci_jars():
         ]
 
 # The community compiler component
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
     suite=_suite,
     name='GraalVM compiler',
     short_name='cmp',

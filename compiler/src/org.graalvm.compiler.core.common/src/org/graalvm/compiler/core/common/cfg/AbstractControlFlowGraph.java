@@ -46,7 +46,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     T getStartBlock();
 
     /**
-     * True if block {@code a} is dominated by block {@code b}.
+     * True if block {@code a} is dominated by block {@code b} or {@code a} is equal to {@code b}.
      */
     static boolean isDominatedBy(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
         int domNumberA = a.getDominatorNumber();

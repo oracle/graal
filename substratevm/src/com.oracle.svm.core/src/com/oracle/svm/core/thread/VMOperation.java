@@ -55,6 +55,11 @@ public abstract class VMOperation {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected boolean isGC() {
+        return false;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final boolean getCausesSafepoint() {
         return systemEffect == SystemEffect.SAFEPOINT;
     }
@@ -115,6 +120,12 @@ public abstract class VMOperation {
         return inProgress.getExecutingThread() == CurrentIsolate.getCurrentThread();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isGCInProgress() {
+        VMOperation op = VMOperationControl.get().getInProgress().getOperation();
+        return op != null && op.isGC();
+    }
+
     /** Check that there is a VMOperation in progress. */
     public static void guaranteeInProgress(String message) {
         if (!isInProgress()) {
@@ -131,6 +142,12 @@ public abstract class VMOperation {
 
     public static void guaranteeInProgressAtSafepoint(String message) {
         if (!isInProgressAtSafepoint()) {
+            throw VMError.shouldNotReachHere(message);
+        }
+    }
+
+    public static void guaranteeGCInProgress(String message) {
+        if (!isGCInProgress()) {
             throw VMError.shouldNotReachHere(message);
         }
     }

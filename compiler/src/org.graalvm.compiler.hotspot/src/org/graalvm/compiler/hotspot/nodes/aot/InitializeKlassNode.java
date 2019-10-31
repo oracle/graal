@@ -64,7 +64,7 @@ public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implement
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

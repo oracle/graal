@@ -244,18 +244,6 @@ final class Target_sun_misc_MessageUtils {
     }
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_PhantomCleanable {
-}
-
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_WeakCleanable {
-}
-
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_SoftCleanable {
-}
-
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override

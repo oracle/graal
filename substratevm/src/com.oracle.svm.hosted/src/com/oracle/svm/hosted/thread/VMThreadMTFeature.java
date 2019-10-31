@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.GuardedAnnotationAccess;
 
@@ -51,8 +52,6 @@ import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
-import com.oracle.svm.core.graal.thread.VMThreadLocalMTObjectReferenceWalker;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.MemoryBarriers;
@@ -74,12 +74,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class VMThreadMTFeature implements GraalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
-    private final VMThreadLocalMTObjectReferenceWalker objectReferenceWalker = new VMThreadLocalMTObjectReferenceWalker();
+    private final VMThreadLocalMTSupport threadLocalSupport = new VMThreadLocalMTSupport();
     private FastThreadLocal threadLocalAtOffsetZero;
 
     public int getVMThreadSize() {
-        assert objectReferenceWalker.vmThreadSize != -1 : "not yet initialized";
-        return objectReferenceWalker.vmThreadSize;
+        assert threadLocalSupport.vmThreadSize != -1 : "not yet initialized";
+        return threadLocalSupport.vmThreadSize;
     }
 
     @Override
@@ -89,8 +89,8 @@ public class VMThreadMTFeature implements GraalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
+        ImageSingletons.add(VMThreadLocalMTSupport.class, threadLocalSupport);
         config.registerObjectReplacer(threadLocalCollector);
-        Heap.getHeap().getGC().registerObjectReferenceWalker(objectReferenceWalker);
     }
 
     /**
@@ -246,7 +246,7 @@ public class VMThreadMTFeature implements GraalFeature {
     }
 
     public void setThreadLocalAtOffsetZero(FastThreadLocal threadLocal) {
-        VMError.guarantee(objectReferenceWalker.vmThreadSize < 0, "VM thread locals have already been placed");
+        VMError.guarantee(threadLocalSupport.vmThreadSize < 0, "VM thread locals have already been placed");
         VMError.guarantee(threadLocalAtOffsetZero == null, "may not be set more than once");
         threadLocalAtOffsetZero = threadLocal;
     }
@@ -281,9 +281,9 @@ public class VMThreadMTFeature implements GraalFeature {
         InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
         encoder.add(referenceMap);
         NonmovableArray<Byte> referenceMapEncoding = encoder.encodeAll();
-        objectReferenceWalker.vmThreadReferenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
-        objectReferenceWalker.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
-        objectReferenceWalker.vmThreadSize = nextOffset;
+        threadLocalSupport.vmThreadReferenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
+        threadLocalSupport.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
+        threadLocalSupport.vmThreadSize = nextOffset;
 
         /* Remember the final sorted list. */
         VMThreadLocalInfos.setInfos(sortedThreadLocalInfos);

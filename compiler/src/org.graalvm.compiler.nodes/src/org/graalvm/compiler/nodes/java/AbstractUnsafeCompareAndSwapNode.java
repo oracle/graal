@@ -97,7 +97,7 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
     }
 

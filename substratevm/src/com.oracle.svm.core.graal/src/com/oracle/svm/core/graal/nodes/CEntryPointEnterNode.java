@@ -58,28 +58,30 @@ public final class CEntryPointEnterNode extends FixedWithNextNode implements Low
 
     @OptionalInput protected ValueNode parameter;
     private final boolean ensureJavaThread;
+    private final boolean isCrashHandler;
 
     public static CEntryPointEnterNode createIsolate(ValueNode parameters) {
-        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false);
+        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false, false);
     }
 
     public static CEntryPointEnterNode attachThread(ValueNode isolate, boolean ensureJavaThread) {
-        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, ensureJavaThread);
+        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, ensureJavaThread, false);
     }
 
     public static CEntryPointEnterNode enter(ValueNode isolateThread) {
-        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false);
+        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false, false);
     }
 
-    public static CEntryPointEnterNode enterIsolate(ValueNode isolate) {
-        return new CEntryPointEnterNode(EnterAction.EnterIsolate, isolate, false);
+    public static CEntryPointEnterNode enterIsolate(ValueNode isolate, boolean isCrashHandler) {
+        return new CEntryPointEnterNode(EnterAction.EnterIsolate, isolate, false, isCrashHandler);
     }
 
-    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean ensureJavaThread) {
+    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean ensureJavaThread, boolean isCrashHandler) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.enterAction = enterAction;
         this.parameter = parameter;
         this.ensureJavaThread = ensureJavaThread;
+        this.isCrashHandler = isCrashHandler;
     }
 
     public EnterAction getEnterAction() {
@@ -94,13 +96,17 @@ public final class CEntryPointEnterNode extends FixedWithNextNode implements Low
         return ensureJavaThread;
     }
 
+    public boolean isCrashHandler() {
+        return isCrashHandler;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

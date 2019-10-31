@@ -31,37 +31,44 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
- * Functionality to query {@link CodeInfo} for information about a unit of compiled code.
+ * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
+ * object. This helper class is necessary to ensure that {@link CodeInfo} objects are used
+ * correctly, as they are garbage collected even though they live in unmanaged memory. For that
+ * purpose, every {@link CodeInfo} object has a tether object. The garbage collector can free a
+ * {@link CodeInfo} object if its tether object is unreachable at a safepoint, that is, in any
+ * method that is not annotated with {@link Uninterruptible}.
+ * <p>
+ * For better type-safety (i.e., to indicate if the tether of a {@link CodeInfo} object was already
+ * acquired), we distinguish between {@link UntetheredCodeInfo} and {@link CodeInfo}.
+ * <p>
+ * {@link UntetheredCodeInfo} objects could be freed at any safepoint. To prevent that, it is
+ * possible to call {@link #acquireTether(UntetheredCodeInfo)} from uninterruptible code to create a
+ * strong reference to the tether object, which prevents the garbage collector from freeing the
+ * object. Subsequently, the {@link UntetheredCodeInfo} should be
+ * {@link #convert(UntetheredCodeInfo, Object) converted} to a {@link CodeInfo} object.
+ * <p>
+ * {@link CodeInfo} objects can be safely passed to interruptible code as their tether was already
+ * acquired (calling a separate method with {@link Uninterruptible#calleeMustBe()} == false is
+ * recommended). When no further data needs to be accessed, the tether must be
+ * {@link #releaseTether(UntetheredCodeInfo, Object) released}. For concrete code examples, see the
+ * usages of these methods.
  * <p>
  * Callers of these methods must take into account that frames on the stack can be deoptimized at
- * any safepoint check, that is, in any method that is not annotated with {@link Uninterruptible}
- * unless it is executed in a {@linkplain VMOperation VM operation in a safepoint}. When a method is
- * deoptimized, its code can also be {@linkplain CodeInfoTable#invalidateInstalledCode invalidated},
- * successive {@linkplain CodeInfoTable#lookupCodeInfo lookups of instruction pointers} within the
- * deoptimized code fail, and any existing pointers to the {@link CodeInfo} become invalid and
- * accesses with them lead to a crash.
- * <p>
- * This can be avoided by {@linkplain Uninterruptible uninterruptibly} reading the current
- * instruction pointer from the stack, calling {@link #lookupCodeInfo} to obtain the corresponding
- * {@link CodeInfo}, and then {@linkplain #acquireTether acquiring a "tether" object} and keeping
- * that object referenced through a variable to ensure that the {@link CodeInfo} and its data remain
- * accessible. At that point, processing can continue in interruptible code (calling a separate
- * method with {@link Uninterruptible#calleeMustBe()} == false is recommended). Note however that
- * the frame on the stack can nevertheless be deoptimized at a safepoint check, and later lookups
- * via the instruction pointer can fail, so only the acquired {@link CodeInfo} must be used.
- * Eventually, the tether must be {@linkplain #releaseTether(CodeInfo, Object) released}, and its
- * reference must be set to null. (See usages of these methods for concrete code examples.)
+ * any safepoint check. When a method is deoptimized, its code can also be
+ * {@linkplain CodeInfoTable#invalidateInstalledCode invalidated}, successive
+ * {@linkplain CodeInfoTable#lookupCodeInfo lookups of instruction pointers} within the deoptimized
+ * code will fail. So, only the initially looked up {@link CodeInfo} object must be used.
  */
 public final class CodeInfoAccess {
     private CodeInfoAccess() {
@@ -72,69 +79,109 @@ public final class CodeInfoAccess {
         return SubstrateOptions.getRuntimeAssertionsForClass(CodeInfoAccess.class.getName());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Object acquireTether(CodeInfo info) {
-        Object tether = getObjectField(info, CodeInfo.TETHER_OBJFIELD);
+    @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)
+    public static Object acquireTether(UntetheredCodeInfo info) {
+        Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(info);
         /*
-         * Do not interact with the tether object during VM ops, it could be during GC while the
-         * reference is not safe to access (e.g. forwarded). Tethering is not needed then, either.
+         * Do not interact with the tether object during GCs, as the reference might be forwarded
+         * and therefore not safe to access. Tethering is not needed then, either.
          */
-        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
+        assert VMOperation.isGCInProgress() || ((CodeInfoTether) tether).incrementCount() > 0;
         return tether;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isTethered(CodeInfo info) {
-        return !haveAssertions() || VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) getObjectField(info, CodeInfo.TETHER_OBJFIELD)).get() > 0;
+    @NeverInline("Prevent elimination of object reference in caller.")
+    public static void releaseTether(UntetheredCodeInfo info, Object tether) {
+        assert VMOperation.isGCInProgress() || UntetheredCodeInfoAccess.getTetherUnsafe(info) == null || UntetheredCodeInfoAccess.getTetherUnsafe(info) == tether;
+        assert VMOperation.isGCInProgress() || ((CodeInfoTether) tether).decrementCount() >= 0;
     }
 
+    /**
+     * Try to avoid using this method. It is similar to
+     * {@link #releaseTether(UntetheredCodeInfo, Object)} but with less verification.
+     */
+    @Uninterruptible(reason = "Called during teardown.", callerMustBe = true)
     @NeverInline("Prevent elimination of object reference in caller.")
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void releaseTether(CodeInfo info, Object tether) {
-        assert tether == getObjectField(info, CodeInfo.TETHER_OBJFIELD) || getObjectField(info, CodeInfo.TETHER_OBJFIELD) == null;
-        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).getAndDecrement() > 0;
+    public static void releaseTetherUnsafe(@SuppressWarnings("unused") UntetheredCodeInfo info, Object tether) {
+        assert VMOperation.isGCInProgress() || ((CodeInfoTether) tether).decrementCount() >= 0;
+    }
+
+    @Uninterruptible(reason = "Should be called from the same method as acquireTether.", callerMustBe = true)
+    public static CodeInfo convert(UntetheredCodeInfo untetheredInfo, Object tether) {
+        assert UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == null || UntetheredCodeInfoAccess.getTetherUnsafe(untetheredInfo) == tether;
+        return convert(untetheredInfo);
+    }
+
+    /**
+     * Try to avoid using this method. It is similar to {@link #convert(UntetheredCodeInfo, Object)}
+     * but with less verification.
+     */
+    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    public static CodeInfo convert(UntetheredCodeInfo untetheredInfo) {
+        assert isValid(untetheredInfo);
+        return (CodeInfo) untetheredInfo;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isValid(UntetheredCodeInfo info) {
+        return SubstrateUtil.HOSTED || !haveAssertions() || VMOperation.isGCInProgress() || UntetheredCodeInfoAccess.getTetherUnsafe(info) == null ||
+                        ((CodeInfoTether) UntetheredCodeInfoAccess.getTetherUnsafe(info)).getCount() > 0;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void setState(CodeInfo info, int state) {
+        assert getState(info) < state;
+        cast(info).setState(state);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static int getState(CodeInfo info) {
+        return cast(info).getState();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
-        return info.getCodeStart();
+        return cast(info).getCodeStart();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeSize(CodeInfo info) {
-        return info.getCodeSize();
+        return cast(info).getCodeSize();
     }
 
     public static UnsignedWord getMetadataSize(CodeInfo info) {
+        CodeInfoImpl impl = cast(info);
         return SizeOf.unsigned(CodeInfo.class)
-                        .add(NonmovableArrays.byteSizeOf(info.getObjectFields()))
-                        .add(NonmovableArrays.byteSizeOf(info.getCodeInfoIndex()))
-                        .add(NonmovableArrays.byteSizeOf(info.getCodeInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(info.getReferenceMapEncoding()))
-                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoSourceClasses()))
-                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoSourceMethodNames()))
-                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoNames()))
-                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationStartOffsets()))
-                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationEncodings()))
-                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationObjectConstants()))
-                        .add(NonmovableArrays.byteSizeOf(info.getObjectsReferenceMapEncoding()));
+                        .add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getReferenceMapEncoding()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
+                        .add(NonmovableArrays.byteSizeOf(impl.getObjectsReferenceMapEncoding()));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean contains(CodeInfo info, CodePointer ip) {
-        return ((UnsignedWord) ip).subtract((UnsignedWord) info.getCodeStart()).belowThan(info.getCodeSize());
+        CodeInfoImpl impl = cast(info);
+        return ((UnsignedWord) ip).subtract((UnsignedWord) impl.getCodeStart()).belowThan(impl.getCodeSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long relativeIP(CodeInfo info, CodePointer ip) {
         assert contains(info, ip);
-        return ((UnsignedWord) ip).subtract((UnsignedWord) info.getCodeStart()).rawValue();
+        return ((UnsignedWord) ip).subtract((UnsignedWord) cast(info).getCodeStart()).rawValue();
     }
 
     public static CodePointer absoluteIP(CodeInfo info, long relativeIP) {
-        return (CodePointer) ((UnsignedWord) info.getCodeStart()).add(WordFactory.unsigned(relativeIP));
+        return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(WordFactory.unsigned(relativeIP));
     }
 
     public static long initFrameInfoReader(CodeInfo info, CodePointer ip, ReusableTypeReader frameInfoReader) {
@@ -149,7 +196,6 @@ public final class CodeInfoAccess {
 
     public static FrameInfoQueryResult nextFrameInfo(CodeInfo info, long entryOffset, ReusableTypeReader frameInfoReader,
                     FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
-
         int entryFlags = CodeInfoDecoder.loadEntryFlags(info, entryOffset);
         boolean isDeoptEntry = CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, resultAllocator, valueInfoAllocator, fetchFirstFrame);
@@ -158,11 +204,11 @@ public final class CodeInfoAccess {
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> T getObjectField(CodeInfo info, int index) {
-        return (T) NonmovableArrays.getObject(info.getObjectFields(), index);
+        return (T) NonmovableArrays.getObject(cast(info).getObjectFields(), index);
     }
 
     public static String getName(CodeInfo info) {
-        return getObjectField(info, CodeInfo.NAME_OBJFIELD);
+        return getObjectField(info, CodeInfoImpl.NAME_OBJFIELD);
     }
 
     public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
@@ -178,7 +224,7 @@ public final class CodeInfoAccess {
     }
 
     public static NonmovableArray<Byte> getReferenceMapEncoding(CodeInfo info) {
-        return info.getReferenceMapEncoding();
+        return cast(info).getReferenceMapEncoding();
     }
 
     public static long lookupReferenceMapIndex(CodeInfo info, long ip) {
@@ -192,18 +238,19 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
     public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
                     NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
-
-        info.setFrameInfoEncodings(encodings);
-        info.setFrameInfoObjectConstants(objectConstants);
-        info.setFrameInfoSourceClasses(sourceClasses);
-        info.setFrameInfoSourceMethodNames(sourceMethodNames);
-        info.setFrameInfoNames(names);
+        CodeInfoImpl impl = cast(info);
+        impl.setFrameInfoEncodings(encodings);
+        impl.setFrameInfoObjectConstants(objectConstants);
+        impl.setFrameInfoSourceClasses(sourceClasses);
+        impl.setFrameInfoSourceMethodNames(sourceMethodNames);
+        impl.setFrameInfoNames(names);
     }
 
     public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
-        info.setCodeInfoIndex(index);
-        info.setCodeInfoEncodings(encodings);
-        info.setReferenceMapEncoding(referenceMapEncoding);
+        CodeInfoImpl impl = cast(info);
+        impl.setCodeInfoIndex(index);
+        impl.setCodeInfoEncodings(encodings);
+        impl.setReferenceMapEncoding(referenceMapEncoding);
     }
 
     public static Log log(CodeInfo info, Log log) {
@@ -212,23 +259,58 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getTier(CodeInfo info) {
-        return info.getTier();
+        return cast(info).getTier();
     }
 
     static NonmovableArray<Integer> getDeoptimizationStartOffsets(CodeInfo info) {
-        return info.getDeoptimizationStartOffsets();
+        return cast(info).getDeoptimizationStartOffsets();
     }
 
     static NonmovableArray<Byte> getDeoptimizationEncodings(CodeInfo info) {
-        return info.getDeoptimizationEncodings();
+        return cast(info).getDeoptimizationEncodings();
     }
 
     static NonmovableObjectArray<Object> getDeoptimizationObjectConstants(CodeInfo info) {
-        return info.getDeoptimizationObjectConstants();
+        return cast(info).getDeoptimizationObjectConstants();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static CodePointer getCodeEnd(CodeInfo info) {
-        return (CodePointer) ((UnsignedWord) info.getCodeStart()).add(info.getCodeSize());
+        CodeInfoImpl impl = cast(info);
+        return (CodePointer) ((UnsignedWord) impl.getCodeStart()).add(impl.getCodeSize());
+    }
+
+    public static NonmovableArray<Byte> getCodeInfoIndex(CodeInfo info) {
+        return cast(info).getCodeInfoIndex();
+    }
+
+    public static NonmovableArray<Byte> getCodeInfoEncodings(CodeInfo info) {
+        return cast(info).getCodeInfoEncodings();
+    }
+
+    public static NonmovableArray<Byte> getFrameInfoEncodings(CodeInfo info) {
+        return cast(info).getFrameInfoEncodings();
+    }
+
+    public static NonmovableObjectArray<Object> getFrameInfoObjectConstants(CodeInfo info) {
+        return cast(info).getFrameInfoObjectConstants();
+    }
+
+    public static NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses(CodeInfo info) {
+        return cast(info).getFrameInfoSourceClasses();
+    }
+
+    public static NonmovableObjectArray<String> getFrameInfoSourceMethodNames(CodeInfo info) {
+        return cast(info).getFrameInfoSourceMethodNames();
+    }
+
+    public static NonmovableObjectArray<String> getFrameInfoNames(CodeInfo info) {
+        return cast(info).getFrameInfoNames();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    private static CodeInfoImpl cast(UntetheredCodeInfo info) {
+        assert isValid(info);
+        return (CodeInfoImpl) info;
     }
 }

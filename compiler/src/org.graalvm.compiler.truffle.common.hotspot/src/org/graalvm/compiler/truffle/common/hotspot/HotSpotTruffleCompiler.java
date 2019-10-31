@@ -30,7 +30,9 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
 
     /**
      * Compiles and installs special code for
-     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}.
+     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}. See also
+     * AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod() for disabling compilation and
+     * inlining for truffle call boundary methods.
      */
     void installTruffleCallBoundaryMethods();
 

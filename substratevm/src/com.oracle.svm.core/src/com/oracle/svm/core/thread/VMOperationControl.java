@@ -282,6 +282,7 @@ public final class VMOperationControl {
      * always returns false if {@linkplain SubstrateOptions#MultiThreaded} is disabled as no
      * safepoints are needed in that case.
      */
+    @Uninterruptible(reason = "called from isolate setup code", mayBeInlined = true)
     public static boolean isFrozen() {
         boolean result = Safepoint.Master.singleton().isFrozen();
         assert !result || MultiThreaded.getValue();
@@ -763,6 +764,7 @@ public final class VMOperationControl {
         IsolateThread queueingThread;
         IsolateThread executingThread;
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public VMOperation getOperation() {
             return operation;
         }

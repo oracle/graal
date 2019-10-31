@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.deopt.DeoptTester;
+import com.oracle.svm.core.graal.snippets.DeoptTester;
 
 /**
  * Inserted for deoptimization stress test. This node is lowered to a runtime call which calls
@@ -81,7 +81,7 @@ public final class DeoptTestNode extends FixedWithNextNode implements Lowerable,
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

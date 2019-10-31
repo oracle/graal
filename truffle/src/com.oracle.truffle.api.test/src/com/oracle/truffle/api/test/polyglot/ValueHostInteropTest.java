@@ -53,6 +53,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
 import java.util.AbstractMap;
@@ -91,6 +93,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
 
+    public static final boolean Java9OrLater = System.getProperty("java.specification.version").compareTo("1.9") >= 0;
+
     public static class Data {
         public int x;
         public double y;
@@ -113,6 +117,34 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Before
     public void initObjects() {
         setupEnv();
+    }
+
+    @Test
+    public void testAccessInvisibleAPIVirtualCall() {
+        if (TruffleOptions.AOT) {
+            return;
+        }
+        Value imageClass = context.asValue(java.awt.image.BufferedImage.class);
+        Value image = imageClass.newInstance(450, 450, BufferedImage.TYPE_INT_RGB);
+        Value graphics = image.invokeMember("getGraphics");
+        graphics.invokeMember("setBackground", Color.white);
+    }
+
+    @Test
+    public void testAccessInvisibleAPIDirect() {
+        if (TruffleOptions.AOT) {
+            return;
+        }
+        try {
+            languageEnv.lookupHostSymbol("sun.awt.image.OffScreenImage");
+            if (Java9OrLater) {
+                fail("On >= Java9 sun.awt.image should not be visible.");
+            }
+        } catch (RuntimeException e) {
+            if (!Java9OrLater) {
+                fail("On < Java9 sun.awt.image should be visible.");
+            }
+        }
     }
 
     @Test

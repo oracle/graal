@@ -77,7 +77,7 @@ public class UnsafeMemoryStoreNode extends AbstractStateSplit implements Lowerab
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
     }
 }

@@ -65,8 +65,8 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -266,7 +266,23 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        return new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+    }
+
+    private boolean isAnonymousClass(Class<?> javaClass) {
+        /*
+         * Meta programs and languages often get the naming of their anonymous classes wrong. This
+         * makes, getSimpleName in isAnonymousClass to fail and prevents us from compiling those
+         * bytecodes. Since, isAnonymousClass is not very important for anonymous classes we can
+         * ignore this failure.
+         */
+        try {
+            return javaClass.isAnonymousClass();
+        } catch (InternalError e) {
+            warn("unknown anonymous info of class " + javaClass.getName() + ", assuming class is not anonymous. To remove the warning report an issue " +
+                            "to the library or language author. The issue is caused by " + javaClass.getName() + " which is not following the naming convention.");
+            return false;
+        }
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {

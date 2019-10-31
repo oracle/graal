@@ -37,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.MetadataException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.commands.MockStorage;
@@ -177,13 +178,13 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testHashString() throws Exception {
-        byte[] bytes = RemotePropertiesStorage.toHashBytes("test", truffleruby2HashString, this);
+        byte[] bytes = SystemUtils.toHashBytes(truffleruby2HashString);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
 
     @Test
     public void testHashStringDivided() throws Exception {
-        byte[] bytes = RemotePropertiesStorage.toHashBytes("test", truffleruby2HashString2, this);
+        byte[] bytes = SystemUtils.toHashBytes(truffleruby2HashString2);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
 

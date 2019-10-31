@@ -124,8 +124,11 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
 
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        PrintStream out = new PrintStream(env.out());
+        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
         if (sampler.hasStackOverflowed()) {
             out.println("-------------------------------------------------------------------------------- ");
             out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");

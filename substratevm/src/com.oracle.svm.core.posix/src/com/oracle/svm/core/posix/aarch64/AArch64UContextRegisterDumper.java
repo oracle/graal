@@ -24,19 +24,26 @@
  */
 package com.oracle.svm.core.posix.aarch64;
 
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.mcontext_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.aarch64.AArch64;
 
 @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class)
 @AutomaticFeature
@@ -95,5 +102,33 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
         log.indent(false);
 
         SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(pcValue));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public PointerBase getHeapBase(ucontext_t uContext) {
+        mcontext_t sigcontext = uContext.uc_mcontext();
+        GregsPointer regs = sigcontext.regs();
+        return WordFactory.pointer(regs.read(getHeapBaseRegisterNumber()));
+    }
+
+    @Fold
+    static int getHeapBaseRegisterNumber() {
+        VMError.guarantee(AArch64.r27.equals(SubstrateAArch64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
+        return 27;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public PointerBase getThreadPointer(ucontext_t uContext) {
+        mcontext_t sigcontext = uContext.uc_mcontext();
+        GregsPointer regs = sigcontext.regs();
+        return WordFactory.pointer(regs.read(getThreadPointerRegisterNumber()));
+    }
+
+    @Fold
+    static int getThreadPointerRegisterNumber() {
+        VMError.guarantee(AArch64.r28.equals(SubstrateAArch64RegisterConfig.THREAD_REGISTER_CANDIDATE));
+        return 28;
     }
 }

@@ -26,8 +26,10 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -131,4 +133,9 @@ final class Target_java_io_FileDescriptor_JNI {
 final class Target_java_io_FileOutputStream_JNI {
     @Alias
     static native void initIDs();
+}
+
+@Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+@CLibrary("z")
+class ZLib {
 }

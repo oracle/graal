@@ -243,10 +243,6 @@ public class DiscoverableReferenceProcessing {
                 trace.string("  dr: ").object(dr).newline();
                 if (dr instanceof FeebleReference<?>) {
                     final FeebleReference<?> fr = (FeebleReference<?>) dr;
-                    /*
-                     * For GR-14335: Rather than getting a NullPointerException, print out some
-                     * values.
-                     */
                     if (fr.hasList()) {
                         final FeebleReferenceList<?> frList = fr.getList();
                         if (frList != null) {

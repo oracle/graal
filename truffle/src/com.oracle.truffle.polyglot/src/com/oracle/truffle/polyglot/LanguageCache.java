@@ -65,14 +65,13 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 
@@ -83,7 +82,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
-    private static final Map<ClassLoader, Map<String, LanguageCache>> runtimeCaches = new WeakHashMap<>();
+    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
     private final String className;
     private final Set<String> mimeTypes;
@@ -168,7 +167,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static Map<String, LanguageCache> createMimes() {
         Map<String, LanguageCache> mimes = new LinkedHashMap<>();
-        for (LanguageCache cache : languages(null).values()) {
+        for (LanguageCache cache : languages().values()) {
             for (String mime : cache.getMimeTypes()) {
                 mimes.put(mime, cache);
             }
@@ -176,27 +175,28 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return mimes;
     }
 
-    static Map<String, LanguageCache> languages(ClassLoader additionalLoader) {
+    static Map<String, LanguageCache> languages() {
+        return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
+    }
+
+    private static Map<String, LanguageCache> loadLanguages(List<ClassLoader> classLoaders) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
         synchronized (LanguageCache.class) {
-            Map<String, LanguageCache> cache = runtimeCaches.get(additionalLoader);
+            Map<String, LanguageCache> cache = runtimeCaches.get(classLoaders);
             if (cache == null) {
-                cache = createLanguages(additionalLoader);
-                runtimeCaches.put(additionalLoader, cache);
+                cache = createLanguages(classLoaders);
+                runtimeCaches.put(classLoaders, cache);
             }
             return cache;
         }
     }
 
-    private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
+    private static Map<String, LanguageCache> createLanguages(List<ClassLoader> loaders) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : EngineAccessor.allLoaders()) {
+        for (ClassLoader loader : loaders) {
             Loader.load(loader, caches);
-        }
-        if (additionalLoader != null) {
-            Loader.load(additionalLoader, caches);
         }
         Map<String, LanguageCache> cacheToId = new HashMap<>();
         for (LanguageCache languageCache : caches) {
@@ -311,12 +311,19 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static void resetNativeImageCacheLanguageHomes() {
-        for (LanguageCache languageCache : languages(null).values()) {
-            languageCache.languageHome = null;
+        synchronized (LanguageCache.class) {
+            if (nativeImageCache != null) {
+                resetNativeImageCacheLanguageHomes(nativeImageCache);
+            }
+            for (Map<String, LanguageCache> caches : runtimeCaches.values()) {
+                resetNativeImageCacheLanguageHomes(caches);
+            }
         }
-        final ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        for (LanguageCache languageCache : languages(loader).values()) {
-            languageCache.languageHome = null;
+    }
+
+    private static void resetNativeImageCacheLanguageHomes(Map<String, LanguageCache> caches) {
+        for (LanguageCache cache : caches.values()) {
+            cache.languageHome = null;
         }
     }
 
@@ -330,7 +337,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(createLanguages(imageClassLoader));
+        nativeImageCache.putAll(createLanguages(Arrays.asList(imageClassLoader)));
         nativeImageMimes.putAll(createMimes());
     }
 

@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
-@NodeInfo(nameTemplate = "Proxy({i#value})")
+@NodeInfo(nameTemplate = "ValueProxy({i#value})")
 public final class ValueProxyNode extends ProxyNode implements Canonicalizable, Virtualizable, ValueProxy {
 
     public static final NodeClass<ValueProxyNode> TYPE = NodeClass.create(ValueProxyNode.class);
@@ -65,8 +65,13 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
+        Node result = super.canonical(tool);
+        if (result != this) {
+            return result;
+        }
+
         ValueNode curValue = value;
-        if (curValue.isConstant()) {
+        if (curValue.getNodeClass().isLeafNode()) {
             return curValue;
         }
         if (loopPhiProxy && !loopExit.loopBegin().isPhiAtMerge(curValue)) {

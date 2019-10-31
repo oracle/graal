@@ -102,7 +102,7 @@ public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint imp
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

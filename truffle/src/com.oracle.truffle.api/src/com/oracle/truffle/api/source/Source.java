@@ -783,7 +783,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static LiteralBuilder newBuilder(String language, CharSequence characters, String name) {
-        return EMPTY.new LiteralBuilder(language, characters).name(name);
+        return EMPTY.new LiteralBuilder(language, characters, false).name(name);
     }
 
     /**
@@ -802,7 +802,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static LiteralBuilder newBuilder(String language, ByteSequence bytes, String name) {
-        return EMPTY.new LiteralBuilder(language, bytes).name(name);
+        return EMPTY.new LiteralBuilder(language, bytes, false).name(name);
     }
 
     /**
@@ -820,14 +820,14 @@ public abstract class Source {
      * @since 19.0
      */
     public static SourceBuilder newBuilder(String language, TruffleFile file) {
-        return EMPTY.new LiteralBuilder(language, file);
+        return EMPTY.new LiteralBuilder(language, file, true);
     }
 
     /*
      * Internal constructor only for polyglot sources.
      */
     static SourceBuilder newBuilder(String language, File source) {
-        return EMPTY.new LiteralBuilder(language, source);
+        return EMPTY.new LiteralBuilder(language, source, true);
     }
 
     /**
@@ -845,7 +845,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static SourceBuilder newBuilder(String language, URL url) {
-        return EMPTY.new LiteralBuilder(language, url);
+        return EMPTY.new LiteralBuilder(language, url, true);
     }
 
     /**
@@ -859,7 +859,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static SourceBuilder newBuilder(String language, Reader source, String name) {
-        return EMPTY.new LiteralBuilder(language, source).name(name);
+        return EMPTY.new LiteralBuilder(language, source, true).name(name);
     }
 
     /**
@@ -1702,8 +1702,11 @@ public abstract class Source {
      */
     public final class LiteralBuilder extends SourceBuilder {
 
-        LiteralBuilder(String language, Object origin) {
+        private boolean buildThrowsIOException;
+
+        LiteralBuilder(String language, Object origin, boolean originReadingThrows) {
             super(language, origin);
+            this.buildThrowsIOException = originReadingThrows;
         }
 
         LiteralBuilder(Source source) {
@@ -1716,6 +1719,29 @@ public abstract class Source {
             uri(((SourceImpl) source).toKey().uri);
             path = source.getPath();
             url = source.getURL();
+            buildThrowsIOException = false;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 19.3
+         */
+        @Override
+        public LiteralBuilder content(CharSequence characters) {
+            buildThrowsIOException = false;
+            return super.content(characters);
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @since 19.3
+         */
+        @Override
+        public LiteralBuilder content(ByteSequence bytes) {
+            buildThrowsIOException = false;
+            return super.content(bytes);
         }
 
         /**
@@ -1800,7 +1826,11 @@ public abstract class Source {
             try {
                 return super.build();
             } catch (IOException e) {
-                throw silenceException(RuntimeException.class, e);
+                if (buildThrowsIOException) {
+                    throw silenceException(RuntimeException.class, e);
+                } else {
+                    throw new AssertionError("Unexpected IOException", e);
+                }
             }
         }
     }
@@ -1975,7 +2005,7 @@ public abstract class Source {
 
     static {
         // force loading source accessor
-        SourceAccessor.allLoaders();
+        SourceAccessor.load();
     }
 }
 
