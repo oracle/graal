@@ -131,7 +131,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final WeakReference<OptimizedDirectCallNode> UNINITIALIZED = new WeakReference<>(null);
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED;
     private boolean needsSplit;
-
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -144,6 +143,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
         this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
         tvmci.setCallTarget(rootNode, this);
+// getCompilationProfile();
     }
 
     /**
@@ -251,7 +251,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
-            getCompilationProfile().profileDirectCall(args);
+            getCompilationProfile().profileDirectCall(this, args);
             try {
                 Object result = doInvoke(args);
                 if (CompilerDirectives.inCompiledCode()) {
@@ -345,7 +345,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
         Object result = callProxy(createFrame(getRootNode().getFrameDescriptor(), args));
         if (profile != null) {
-            profile.profileReturnValue(result);
+            profile.profileReturnValue(this, result);
         }
         return result;
     }
@@ -365,7 +365,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
                 if (!isValid()) {
-                    getCompilationProfile().reportInvalidated();
+                    getCompilationProfile().reportInvalidated(this);
                 }
                 notifyDeoptimized(frame);
             }
@@ -675,9 +675,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         OptimizedCompilationProfile profile = this.compilationProfile;
         if (profile != null) {
-            profile.reportNodeReplaced();
+            profile.reportNodeReplaced(this);
             if (cancelInstalledTask(newNode, reason)) {
-                profile.reportInvalidated();
+                profile.reportInvalidated(this);
             }
         }
         return false;

@@ -50,9 +50,7 @@ public final class OptimizedCompilationProfile {
     private int callAndLoopCount;
 
     private final int lastTierCompilationCallAndLoopThreshold;
-    private final boolean multiTierEnabled;
     private final long timestamp;
-    private final EngineData engineData;
 
     /**
      * The values below must only be written under lock, or in the constructor, because they are
@@ -81,20 +79,18 @@ public final class OptimizedCompilationProfile {
     private volatile boolean compilationFailed;
     @CompilationFinal private boolean callProfiled;
 
-    OptimizedCompilationProfile(EngineData engineData) {
-        this.engineData = engineData;
-        boolean compileImmediately = engineData.compileImmediately;
-        int callThreshold = engineData.minInvokeThreshold;
-        int callAndLoopThreshold = engineData.compilationThreshold;
+    OptimizedCompilationProfile(EngineData engine) {
+        boolean compileImmediately = engine.compileImmediately;
+        int callThreshold = engine.minInvokeThreshold;
+        int callAndLoopThreshold = engine.compilationThreshold;
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.multiTierEnabled = engineData.multiTier;
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
-        if (multiTierEnabled) {
-            int firstTierCallThreshold = engineData.firstTierMinInvokeThreshold;
-            int firstTierCallAndLoopThreshold = engineData.firstTierCompilationThreshold;
+        if (engine.multiTier) {
+            int firstTierCallThreshold = engine.firstTierMinInvokeThreshold;
+            int firstTierCallAndLoopThreshold = engine.firstTierCompilationThreshold;
             this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
             this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
         }
@@ -167,11 +163,11 @@ public final class OptimizedCompilationProfile {
     }
 
     @ExplodeLoop
-    void profileDirectCall(Object[] args) {
+    void profileDirectCall(OptimizedCallTarget target, Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             if (CompilerDirectives.inInterpreter()) {
-                initializeProfiledArgumentTypes(args);
+                initializeProfiledArgumentTypes(target, args);
             }
         } else {
             Class<?>[] types = profiledArgumentTypes;
@@ -209,12 +205,12 @@ public final class OptimizedCompilationProfile {
         // nothing to profile for inlined calls by default
     }
 
-    void profileReturnValue(Object result) {
+    void profileReturnValue(OptimizedCallTarget target, Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (engineData.returnTypeSpeculation) {
+            if (target.engine.returnTypeSpeculation) {
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             }
@@ -293,15 +289,15 @@ public final class OptimizedCompilationProfile {
         compilationFailed = true;
     }
 
-    void reportInvalidated() {
+    void reportInvalidated(OptimizedCallTarget target) {
         invalidationCount++;
-        int reprofile = engineData.invalidationReprofileCount;
+        int reprofile = target.engine.invalidationReprofileCount;
         ensureProfiling(reprofile, reprofile);
     }
 
-    void reportNodeReplaced() {
+    void reportNodeReplaced(OptimizedCallTarget target) {
         // delay compilation until tree is deemed stable enough
-        int replaceBackoff = engineData.replaceReprofileCount;
+        int replaceBackoff = target.engine.replaceReprofileCount;
         ensureProfiling(1, replaceBackoff);
     }
 
@@ -328,14 +324,14 @@ public final class OptimizedCompilationProfile {
         if (callThreshold == 0 || (intCallCount >= callThreshold //
                         && intAndLoopCallCount >= compilationCallAndLoopThreshold //
                         && !compilationFailed && !callTarget.isCompiling())) {
-            return callTarget.compile(!multiTierEnabled);
+            return callTarget.compile(!callTarget.engine.multiTier);
         }
         return false;
     }
 
-    private void initializeProfiledArgumentTypes(Object[] args) {
+    private void initializeProfiledArgumentTypes(OptimizedCallTarget target, Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (args.length <= MAX_PROFILED_ARGUMENTS && engineData.argumentTypeSpeculation) {
+        if (args.length <= MAX_PROFILED_ARGUMENTS && target.engine.argumentTypeSpeculation) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);

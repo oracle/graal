@@ -184,7 +184,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 }
 
                 if (callTarget != null) {
-                    callTarget.getCompilationProfile().reportInvalidated();
+                    callTarget.getCompilationProfile().reportInvalidated(callTarget);
                 }
             }
             e = e.next;
