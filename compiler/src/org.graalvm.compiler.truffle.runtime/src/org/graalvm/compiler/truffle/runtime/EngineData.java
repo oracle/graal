@@ -33,12 +33,10 @@ import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompileOnly;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.InvalidationReprofileCount;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Splitting;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingAllowForcedSplits;
@@ -98,8 +96,6 @@ public final class EngineData {
     public final int firstTierMinInvokeThreshold;
     public final int firstTierCompilationThreshold;
     public final boolean returnTypeSpeculation;
-    public final int invalidationReprofileCount;
-    public final int replaceReprofileCount;
     public final boolean argumentTypeSpeculation;
     public final boolean traceCompilation;
     public final boolean traceCompilationDetails;
@@ -139,8 +135,6 @@ public final class EngineData {
             firstTierCompilationThreshold = Integer.MAX_VALUE;
         }
         this.returnTypeSpeculation = getValue(options, ReturnTypeSpeculation);
-        this.invalidationReprofileCount = getValue(options, InvalidationReprofileCount);
-        this.replaceReprofileCount = getValue(options, ReplaceReprofileCount);
         this.argumentTypeSpeculation = getValue(options, ArgumentTypeSpeculation);
         this.traceCompilation = getValue(options, TraceCompilation);
         this.traceCompilationDetails = getValue(options, TraceCompilationDetails);

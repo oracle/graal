@@ -51,12 +51,8 @@ public final class OptimizedCompilationProfile {
     private final int lastTierCompilationCallAndLoopThreshold;
     private final long timestamp;
 
-    /**
-     * The values below must only be written under lock, or in the constructor, because they are
-     * modified by {@link #ensureProfiling(int, int)}.
-     */
-    private int compilationCallThreshold;
-    private int compilationCallAndLoopThreshold;
+    private final int compilationCallThreshold;
+    private final int compilationCallAndLoopThreshold;
 
     /*
      * Updating profiling information and its Assumption objects is done without synchronization and
@@ -84,15 +80,16 @@ public final class OptimizedCompilationProfile {
         int callAndLoopThreshold = engine.compilationThreshold;
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
-        this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
-        this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
         if (engine.multiTier) {
             int firstTierCallThreshold = engine.firstTierMinInvokeThreshold;
             int firstTierCallAndLoopThreshold = engine.firstTierCompilationThreshold;
             this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
             this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
+        } else {
+            this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
+            this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         }
+        this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
         if (engine.callTargetStatistics) {
             this.timestamp = System.nanoTime();
         } else {
@@ -292,17 +289,6 @@ public final class OptimizedCompilationProfile {
         compilationFailed = true;
     }
 
-    void reportInvalidated(OptimizedCallTarget target) {
-        int reprofile = target.engine.invalidationReprofileCount;
-        ensureProfiling(reprofile, reprofile);
-    }
-
-    void reportNodeReplaced(OptimizedCallTarget target) {
-        // delay compilation until tree is deemed stable enough
-        int replaceBackoff = target.engine.replaceReprofileCount;
-        ensureProfiling(1, replaceBackoff);
-    }
-
     @CompilerDirectives.TruffleBoundary
     private static boolean firstTierCompile(OptimizedCallTarget callTarget) {
         return callTarget.compile(true);
@@ -383,21 +369,6 @@ public final class OptimizedCompilationProfile {
             return class1;
         } else {
             return null;
-        }
-    }
-
-    private synchronized void ensureProfiling(int calls, int callsAndLoop) {
-        if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
-            return;
-        }
-        int increaseCallAndLoopThreshold = callsAndLoop - Math.max(0, this.compilationCallAndLoopThreshold - this.callAndLoopCount);
-        if (increaseCallAndLoopThreshold > 0) {
-            this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
-        }
-
-        int increaseCallsThreshold = calls - Math.max(0, this.compilationCallThreshold - this.callCount);
-        if (increaseCallsThreshold > 0) {
-            this.compilationCallThreshold += increaseCallsThreshold;
         }
     }
 

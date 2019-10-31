@@ -364,9 +364,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
-                if (!isValid()) {
-                    getCompilationProfile().reportInvalidated(this);
-                }
                 notifyDeoptimized(frame);
             }
         }
@@ -673,13 +670,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         /* Notify compiled method that have inlined this call target that the tree changed. */
         invalidateNodeRewritingAssumption();
 
-        OptimizedCompilationProfile profile = this.compilationProfile;
-        if (profile != null) {
-            profile.reportNodeReplaced(this);
-            if (cancelInstalledTask(newNode, reason)) {
-                profile.reportInvalidated(this);
-            }
-        }
+        cancelInstalledTask(newNode, reason);
         return false;
     }
 
