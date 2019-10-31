@@ -34,7 +34,7 @@ import java.io.PrintStream;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -44,13 +44,13 @@ public class DebugExprParser {
     private final Scanner scanner;
     private final CocoInputStream cis;
 
-    public DebugExprParser(LLVMLanguage language, InlineParsingRequest request, Iterable<Scope> globalScopes) {
+    public DebugExprParser(InlineParsingRequest request, Iterable<Scope> globalScopes, LLVMContext context) {
         cis = new CocoInputStream(request.getSource().getCharacters());
         scanner = new Scanner(cis);
         parser = new Parser(scanner);
 
-        final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), LLVMLanguage.getLLVMContextReference().get());
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(language.getNodeFactory(), scopes, globalScopes);
+        final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(scopes, globalScopes);
         parser.setNodeFactory(nodeFactory);
     }
 

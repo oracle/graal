@@ -33,19 +33,31 @@ package com.oracle.truffle.llvm.asm.amd64;
 
 // DO NOT MODIFY - generated from InlineAssembly.g4 using "mx create-asm-parser"
 
+import java.util.List;
+
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.NoViableAltException;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.RuntimeMetaData;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.Vocabulary;
+import org.antlr.v4.runtime.VocabularyImpl;
+import org.antlr.v4.runtime.atn.ATN;
+import org.antlr.v4.runtime.atn.ATNDeserializer;
+import org.antlr.v4.runtime.atn.ParserATNSimulator;
+import org.antlr.v4.runtime.atn.PredictionContextCache;
+import org.antlr.v4.runtime.dfa.DFA;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import org.antlr.v4.runtime.atn.*;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.misc.*;
-import org.antlr.v4.runtime.tree.*;
-import java.util.List;
-import java.util.Iterator;
-import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class InlineAssemblyParser extends Parser {
@@ -355,7 +367,7 @@ public class InlineAssemblyParser extends Parser {
 	    }
 	}
 
-	public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets, NodeFactory nodeFactory) {
+	public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
 	    InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
 	    InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
 	    lexer.removeErrorListeners();
@@ -364,7 +376,7 @@ public class InlineAssemblyParser extends Parser {
 	    lexer.addErrorListener(listener);
 	    parser.addErrorListener(listener);
 	    parser.snippet = asmSnippet;
-	    parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets, nodeFactory);
+	    parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets);
 	    parser.inline_assembly();
 	    if (parser.root == null) {
 	        throw new IllegalStateException("no roots produced by inline assembly snippet");

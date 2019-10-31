@@ -56,7 +56,6 @@ import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -198,12 +197,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (!Boolean.getBoolean("debugexpr.antlr")) {
             return parseAntlr(request);
         }
-        return parseCoCoR(request);
+        throw new IllegalStateException("The antlr parser is not enabled.");
     }
 
     private ExecutableNode parseAntlr(InlineParsingRequest request) {
-        Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
-        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(this, request, globalScopes);
+        Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
+        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(request, globalScopes, getCurrentContext(LLVMLanguage.class));
         try {
             return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
@@ -217,8 +216,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    private ExecutableNode parseCoCoR(InlineParsingRequest request) {
-        Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
+    /*private ExecutableNode parseCoCoR(InlineParsingRequest request) {
+        Iterable<Scope> globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class));
         final DebugExprParser d = new DebugExprParser(this, request, globalScopes);
         try {
             return new DebugExprExecutableNode(d.parse());
@@ -230,8 +229,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     return e.getMessage();
                 }
             };
-        }
-    }
+        }*/
 
     @Override
     protected boolean patchContext(LLVMContext context, Env newEnv) {

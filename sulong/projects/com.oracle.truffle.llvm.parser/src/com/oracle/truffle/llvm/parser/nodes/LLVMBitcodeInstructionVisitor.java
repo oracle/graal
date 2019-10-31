@@ -224,7 +224,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
         LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
-        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator(), operation.getType());
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createArithmeticInstruction(lhs, rhs, operation.getOperator(), operation.getType());
         createFrameWrite(result, operation);
     }
 
@@ -534,13 +534,13 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         Type from = cast.getValue().getType();
         Type to = cast.getType();
 
-        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createCast(nodeFactory, fromNode, to, from, cast.getOperator());
+        LLVMExpressionNode result = LLVMBitcodeTypeHelper.createCast(fromNode, to, from, cast.getOperator());
         createFrameWrite(result, cast);
     }
 
     @Override
     public void visit(CompareInstruction compare) {
-        LLVMExpressionNode result = nodeFactory.createComparison(compare.getOperator(),
+        LLVMExpressionNode result = CommonNodeFactory.createComparison(compare.getOperator(),
                         compare.getLHS().getType(),
                         symbols.resolve(compare.getLHS()),
                         symbols.resolve(compare.getRHS()));

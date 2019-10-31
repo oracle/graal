@@ -33,7 +33,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
@@ -83,7 +83,7 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
 
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
             Object llvmPointerValue = llvmPointerObject.getValue();
-            Builder builder = LLVMLanguage.getLLVMContextReference().get().getLanguage().getNodeFactory().createDebugDeclarationBuilder();
+            Builder builder = CommonNodeFactory.createDebugDeclarationBuilder();
             LLVMDebugValue dereferencedValue = builder.build(llvmPointerValue);
             LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourceType, 0L,
                             dereferencedValue, null);

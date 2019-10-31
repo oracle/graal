@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
@@ -55,7 +54,6 @@ public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccess
     }
 
     private Pair<Object, DebugExprType> findMemberAndType() {
-        LLVMLanguage.getLLVMContextReference().get();
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
         for (Scope scope : scopes) {
             Object vars = scope.getVariables();

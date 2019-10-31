@@ -50,7 +50,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
@@ -88,11 +87,7 @@ public interface NodeFactory {
 
     LLVMStatementNode createFence();
 
-    LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right);
-
     LLVMExpressionNode createLiteral(Object value, Type type);
-
-    LLVMExpressionNode createSimpleConstantNoArray(Object constant, Type instructionType);
 
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type);
 
@@ -109,20 +104,6 @@ public interface NodeFactory {
                     LLVMStatementNode unwindPhiWriteNodes);
 
     LLVMStatementNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot);
-
-    LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);
-
-    LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, Type targetType);
-
-    LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, PrimitiveKind kind);
-
-    LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, Type targetType);
-
-    LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, PrimitiveKind kind);
-
-    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType);
-
-    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, PrimitiveKind kind);
 
     LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress);
 

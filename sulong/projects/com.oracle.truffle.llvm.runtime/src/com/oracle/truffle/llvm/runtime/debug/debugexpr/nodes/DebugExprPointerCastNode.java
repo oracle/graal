@@ -31,7 +31,7 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
@@ -72,7 +72,7 @@ public class DebugExprPointerCastNode extends LLVMExpressionNode implements Memb
 
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
             Object llvmPointerValue = llvmPointerObject.getValue();
-            Builder builder = LLVMLanguage.getLLVMContextReference().get().getLanguage().getNodeFactory().createDebugValueBuilder();
+            Builder builder = CommonNodeFactory.createDebugValueBuilder();
             LLVMDebugValue pointerValue = builder.build(llvmPointerValue);
             LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourcePointerType, 0L,
                             pointerValue, null);
