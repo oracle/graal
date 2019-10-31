@@ -30,19 +30,10 @@ import java.util.List;
 public interface GC {
 
     /** Cause a collection of the Heap's choosing. */
-    void collect(String cause);
+    void collect(GCCause cause);
 
     /** Cause a full collection. */
-    void collectCompletely(String cause);
-
-    /*
-     * Registered walkers of object reference roots. Since these walkers are used during collection,
-     * they must not move, either by being in the image heap, or by being pinned.
-     */
-
-    void registerObjectReferenceWalker(ObjectReferenceWalker walker);
-
-    void unregisterObjectReferenceWalker(ObjectReferenceWalker walker);
+    void collectCompletely(GCCause cause);
 
     /*
      * Registered collection watchers.

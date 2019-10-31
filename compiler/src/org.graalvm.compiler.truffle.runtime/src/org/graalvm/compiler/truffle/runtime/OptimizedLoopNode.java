@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,12 +44,18 @@ public final class OptimizedLoopNode extends LoopNode {
         return repeatingNode;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public int executeLoopWithStatus(VirtualFrame frame) {
-        int status;
+    public void executeLoop(VirtualFrame frame) {
+        execute(frame);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Object status;
         int loopCount = 0;
         try {
-            while ((status = repeatingNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS) {
+            while ((status = repeatingNode.executeRepeatingWithValue(frame)) == CONTINUE_LOOP_STATUS) {
                 if (CompilerDirectives.inInterpreter()) {
                     loopCount++;
                 }

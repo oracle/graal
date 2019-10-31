@@ -370,6 +370,14 @@ public final class InspectServerSession implements MessageEndpoint {
             case "Debugger.stepOut":
                 debugger.stepOut(postProcessor);
                 break;
+            case "Debugger.searchInContent":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.searchInContent(
+                                json.optString("scriptId"),
+                                json.optString("query"),
+                                json.optBoolean("caseSensitive", false),
+                                json.optBoolean("isRegex", false));
+                break;
             case "Debugger.setAsyncCallStackDepth":
                 debugger.setAsyncCallStackDepth(cmd.getParams().getMaxDepth());
                 break;
@@ -398,6 +406,12 @@ public final class InspectServerSession implements MessageEndpoint {
                 json = cmd.getParams().getJSONObject();
                 resultParams = debugger.setBreakpoint(
                                 Location.create(json.getJSONObject("location")),
+                                json.optString("condition"));
+                break;
+            case "Debugger.setBreakpointOnFunctionCall":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.setBreakpointOnFunctionCall(
+                                json.optString("objectId"),
                                 json.optString("condition"));
                 break;
             case "Debugger.removeBreakpoint":

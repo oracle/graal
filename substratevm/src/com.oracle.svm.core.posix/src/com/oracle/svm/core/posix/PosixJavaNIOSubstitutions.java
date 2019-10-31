@@ -123,7 +123,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -134,7 +133,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -142,7 +141,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -158,7 +156,6 @@ import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
@@ -192,91 +189,13 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
-import com.oracle.svm.core.util.VMError;
 
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@AutomaticFeature
-@CLibrary(value = "nio", requireStatic = true)
-class PosixJavaNIOSubstituteFeature implements Feature {
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileKey"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.IOUtil"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.nio.file.FileSystems"), "required for substitutions");
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            if (OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.LINUX) {
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mode"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ino"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_dev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_rdev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_nlink"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_uid"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_gid"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_size"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_nsec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_nsec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_nsec"));
-
-                // Only needed ifdef _DARWIN_FEATURE_64_BIT_INODE
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_birthtime_sec"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_frsize"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_blocks"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bfree"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bavail"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("name"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dir"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("fstype"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("opts"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dev"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_dev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_ino"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl").getDeclaredField("fd"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("sender"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderInetAddress"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderPort"));
-
-                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception"));
-                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception").getDeclaredConstructor());
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(int.class));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(String.class));
-            }
-
-        } catch (NoSuchFieldException | NoSuchMethodException e) {
-            VMError.shouldNotReachHere("JNIRuntimeAccess.register failed: ", e);
-
-        }
-    }
-}
-
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.ch.IOStatus")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     public static final class Target_sun_nio_ch_IOStatus {
         @Alias @TargetElement(name = "EOF")//
         public static int IOS_EOF;
@@ -293,7 +212,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.FileDispatcher")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_FileDispatcher {
         @Alias @TargetElement(name = "NO_LOCK")//
         protected static int FD_NO_LOCK;
@@ -387,7 +306,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.Cancellable")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_Cancellable {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;
@@ -396,7 +315,7 @@ public final class PosixJavaNIOSubstitutions {
     /** See the comments on {@link sun.nio.ch.NativeThread}. */
     /* Translated from: jdk/src/solaris/native/sun/nio/ch/NativeThread.c?v=Java_1.8.0_40_b10 */
     @TargetClass(className = "sun.nio.ch.NativeThread")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_NativeThread {
         /* { Do not re-format commented code: @formatter:off */
 
@@ -469,7 +388,7 @@ public final class PosixJavaNIOSubstitutions {
      */
 
     @TargetClass(className = "sun.nio.ch.IOUtil")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_IOUtil {
 
         @Substitute
@@ -590,10 +509,10 @@ public final class PosixJavaNIOSubstitutions {
             if (getrlimit(RLIMIT_NOFILE(), rlp) < 0) {
                 throw PosixUtils.newIOExceptionWithLastError("getrlimit failed");
             }
-            if (rlp.rlim_max() < 0 || rlp.rlim_max() > Integer.MAX_VALUE) {
+            if (rlp.rlim_max().belowThan(0) || rlp.rlim_max().aboveThan(Integer.MAX_VALUE)) {
                 return Integer.MAX_VALUE;
             } else {
-                return (int) rlp.rlim_max();
+                return (int) rlp.rlim_max().rawValue();
             }
         }
     }
@@ -609,7 +528,7 @@ public final class PosixJavaNIOSubstitutions {
 
     /** Translations of src/solaris/native/sun/nio/ch/Net.c?v=Java_1.8.0_40_b10. */
     @TargetClass(className = "sun.nio.ch.Net")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_Net {
 
     /* Do not re-format commented-out code: @formatter:off */
@@ -852,7 +771,7 @@ public final class PosixJavaNIOSubstitutions {
                 }
             }
             // 276 #if defined(__linux__)
-            if (Platform.includedIn(Platform.LINUX.class)) {
+            if (Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION.class)) {
                 // 277     if (type == SOCK_DGRAM) {
                 if (type == Socket.SOCK_DGRAM()) {
                     // 278         int arg = 0;
@@ -880,7 +799,7 @@ public final class PosixJavaNIOSubstitutions {
             }
             // 289 #endif
             // 291 #if defined(__linux__) && defined(AF_INET6)
-            if (Platform.includedIn(Platform.LINUX.class)) {
+            if (Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION.class)) {
                 // 292     /* By default, Linux uses the route default */
                 // 293     if (domain == AF_INET6 && type == SOCK_DGRAM) {
                 if ((domain == Socket.AF_INET6()) && (type == Socket.SOCK_DGRAM())) {
@@ -1174,7 +1093,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.ServerSocketChannelImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_ServerSocketChannelImpl {
 
         // jdk/src/share/classes/sun/nio/ch/ServerSocketChannelImpl.java?v=Java_1.8.0_40_b10
@@ -1363,7 +1282,7 @@ public final class PosixJavaNIOSubstitutions {
 
     /** Translations of src/solaris/native/sun/nio/ch/FileDispatcherImpl.c?v=Java_1.8.0_40_b10. */
     @TargetClass(className = "sun.nio.ch.FileDispatcherImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_FileDispatcherImpl {
 
         @Substitute
@@ -1609,7 +1528,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixException")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @SuppressWarnings({"unused"})
     static final class Target_sun_nio_fs_UnixException {
         @Alias
@@ -1619,7 +1538,7 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.fs.UnixFileAttributes")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixFileAttributes {
         @Alias int st_mode;
         @Alias long st_ino;
@@ -1640,7 +1559,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileStoreAttributes")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixFileStoreAttributes {
         @Alias long f_frsize;
         @Alias long f_blocks;
@@ -1649,7 +1568,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixMountEntry")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixMountEntry {
         @Alias byte[] name;
         @Alias byte[] dir;
@@ -1730,7 +1649,7 @@ public final class PosixJavaNIOSubstitutions {
     // Checkstyle: resume
 
     @TargetClass(className = "sun.nio.fs.UnixNativeDispatcher")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixNativeDispatcher {
 
         @Substitute
@@ -2576,7 +2495,7 @@ public final class PosixJavaNIOSubstitutions {
         }
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Util_sun_nio_fs_UnixNativeDispatcher {
         /**
          * Size of password or group entry when not available via sysconf.
@@ -2677,7 +2596,7 @@ public final class PosixJavaNIOSubstitutions {
     // Checkstyle: resume
 
     @TargetClass(className = "sun.nio.fs.LinuxNativeDispatcher")
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     static final class Target_sun_nio_fs_LinuxNativeDispatcher {
 
         @Substitute
@@ -2808,7 +2727,7 @@ public final class PosixJavaNIOSubstitutions {
 
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     static final class Util_sun_nio_fs_LinuxNativeDispatcher {
 
         // Checkstyle: stop
@@ -2836,7 +2755,7 @@ public final class PosixJavaNIOSubstitutions {
      */
 
     @TargetClass(className = "sun.nio.fs.MacOSXNativeDispatcher")
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
     static final class Target_sun_nio_fs_MacOSXNativeDispatcher {
 
         @Substitute
@@ -2854,7 +2773,7 @@ public final class PosixJavaNIOSubstitutions {
      */
 
     @TargetClass(className = "sun.nio.ch.FileChannelImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     @SuppressWarnings("static-method")
     static final class Target_sun_nio_ch_FileChannelImpl {
         @Alias @TargetElement(name = "fd") private FileDescriptor fdfield;
@@ -2930,7 +2849,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         @TargetElement(name = "transferTo0")
-        @Platforms(Platform.LINUX.class)
+        @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
         private long transferTo0Linux(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
             CLongPointer offset = StackValue.get(CLongPointer.class);
             offset.write(position);
@@ -2953,7 +2872,7 @@ public final class PosixJavaNIOSubstitutions {
 
         @Substitute
         @TargetElement(name = "transferTo0")
-        @Platforms(Platform.DARWIN.class)
+        @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
         private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
             CLongPointer numBytes = StackValue.get(CLongPointer.class);
             int result;
@@ -2990,7 +2909,7 @@ public final class PosixJavaNIOSubstitutions {
      */
 
     @TargetClass(className = "sun.nio.ch.FileKey")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_FileKey {
         // Checkstyle: stop
         @Alias long st_dev;
@@ -3026,7 +2945,7 @@ public final class PosixJavaNIOSubstitutions {
      */
 
     @TargetClass(className = "sun.nio.fs.UnixCopyFile")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixCopyFile {
 
         /**
@@ -3075,7 +2994,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.SocketChannelImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_SocketChannelImpl {
 
         @Substitute
@@ -3240,7 +3159,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousSocketChannelImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_UnixAsynchronousSocketChannelImpl {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3277,7 +3196,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3300,12 +3219,12 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystem")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixFileSystem {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_sun_nio_fs_UnixFileSystemProvider {
         @Alias
         native Target_sun_nio_fs_UnixFileSystem newFileSystem(String s);
@@ -3317,7 +3236,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(FileSystems.class)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
     static final class Target_java_nio_file_FileSystems {
         @Substitute
         static FileSystem getDefault() {
@@ -3339,7 +3258,7 @@ public final class PosixJavaNIOSubstitutions {
      * Translated from:
      * jdk/src/solaris/native/sun/nio/fs/GnomeFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.fs.GnomeFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_GnomeFileTypeDetector {
 
@@ -3640,7 +3559,7 @@ public final class PosixJavaNIOSubstitutions {
         }
     }
 
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     static final class Util_sun_nio_fs_GnomeFileTypeDetector {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3767,7 +3686,7 @@ public final class PosixJavaNIOSubstitutions {
      * Translated from:
      * jdk/src/solaris/native/sun/nio/fs/MagicFileTypeDetector.c?v=Java_1.8.0_40_b10
      */
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     @TargetClass(className = "sun.nio.fs.MagicFileTypeDetector", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_fs_MagicFileTypeDetector {
         /* { Do not format quoted code: @formatter:off */
@@ -3925,7 +3844,7 @@ public final class PosixJavaNIOSubstitutions {
         }
     }
 
-    @Platforms({Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     static class Util_sun_nio_fs_MagicFileTypeDetector {
 
         /* { Do not format quoted code: @formatter:off */
@@ -3980,7 +3899,7 @@ public final class PosixJavaNIOSubstitutions {
     /* { Allow names with non-standard names: Checkstyle: stop */
     @SuppressWarnings({"unused", "static-method"})
     @TargetClass(className = "sun.nio.ch.DatagramChannelImpl")
-    @Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
     static final class Target_sun_nio_ch_DatagramChannelImpl {
 
         @Alias //

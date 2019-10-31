@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -34,7 +37,9 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -45,7 +50,6 @@ import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
-import java.util.concurrent.atomic.AtomicReference;
 
 final class BreakpointsHandler {
 
@@ -189,6 +193,41 @@ final class BreakpointsHandler {
             builder.columnIs(column);
         }
         return builder;
+    }
+
+    Params createFunctionBreakpoint(DebugValue functionValue, String condition) {
+        SourceSection functionLocation = functionValue.getSourceLocation();
+        Breakpoint.Builder builder;
+        if (functionLocation != null) {
+            builder = Breakpoint.newBuilder(functionLocation);
+        } else {
+            builder = Breakpoint.newBuilder((URI) null);
+        }
+        builder.rootInstance(functionValue);
+        builder.sourceElements(SourceElement.ROOT);
+        Breakpoint bp = builder.build();
+        if (condition != null && !condition.isEmpty()) {
+            bp.setCondition(condition);
+        }
+        ds.install(bp);
+        long id;
+        synchronized (bpIDs) {
+            id = ++lastID;
+            bpIDs.put(bp, id);
+        }
+        JSONObject json = new JSONObject();
+        json.put("breakpointId", Long.toString(id));
+        return new Params(json);
+    }
+
+    void removeFunctionBreakpoint(DebugValue functionValue) {
+        List<Breakpoint> breakpoints = functionValue.getRootInstanceBreakpoints();
+        for (Breakpoint breakpoint : breakpoints) {
+            String id = getId(breakpoint);
+            if (id != null) {
+                removeBreakpoint(id);
+            }
+        }
     }
 
     private final class ResolvedHandler implements Breakpoint.ResolveListener {

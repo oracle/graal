@@ -100,7 +100,7 @@ public final class CEntryPointEnterNode extends FixedWithNextNode implements Low
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

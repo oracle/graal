@@ -44,13 +44,16 @@ import org.graalvm.word.LocationIdentity;
 public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Canonicalizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
+    private final boolean volatileAccess;
 
-    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
+    public WriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean volatileAccess) {
         super(TYPE, address, location, value, barrierType);
+        this.volatileAccess = volatileAccess;
     }
 
     protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(c, address, location, value, barrierType);
+        this.volatileAccess = false;
     }
 
     @Override
@@ -61,7 +64,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
     @Override
     public boolean canNullCheck() {
-        return true;
+        return !isVolatile();
     }
 
     @Override
@@ -73,11 +76,23 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     public Node canonical(CanonicalizerTool tool) {
         if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
             WriteNode write = (WriteNode) next();
-            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp().isCompatible(write.getAccessStamp())) {
+            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp().isCompatible(write.getAccessStamp()) && !isVolatile()) {
                 write.setLastLocationAccess(getLastLocationAccess());
                 return write;
             }
         }
         return this;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (isVolatile()) {
+            return LocationIdentity.any();
+        }
+        return getLocationIdentity();
+    }
+
+    public boolean isVolatile() {
+        return volatileAccess;
     }
 }

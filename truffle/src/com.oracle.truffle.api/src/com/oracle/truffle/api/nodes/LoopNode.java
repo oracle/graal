@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,7 +132,7 @@ public abstract class LoopNode extends Node {
     }
 
     /**
-     * Invokes one loop invocation by repeatedly call
+     * Invokes one loop invocation by repeatedly calling
      * {@link RepeatingNode#executeRepeating(VirtualFrame) execute)} on the repeating node the loop
      * was initialized with. Any exceptions that occur in the execution of the repeating node will
      * just be forwarded to this method and will cancel the current loop invocation.
@@ -142,18 +142,25 @@ public abstract class LoopNode extends Node {
      * @return the loop exit status - this is useful for languages that need to return some information
      *            when exiting out of a loop (e.g. WebAssembly).
      * @since 0.8 or earlier
+     * @deprecated use {@link #execute(VirtualFrame)} instead
      */
-    public abstract int executeLoopWithStatus(VirtualFrame frame);
+    @Deprecated
+    public abstract void executeLoop(VirtualFrame frame);
 
     /**
-     * Same as {@link #executeLoopWithStatus(VirtualFrame)}, but ignores the loop exit status.
-     * Provides backwards compatibility with language implementations that already depend on this method.
+     * Invokes one loop invocation by repeatedly calling
+     * {@link RepeatingNode#executeRepeating(VirtualFrame) execute)} on the repeating node the loop
+     * was initialized with. Any exceptions that occur in the execution of the repeating node will
+     * just be forwarded to this method and will cancel the current loop invocation.
      *
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
+     * @return a value different than {@link RepeatingNode#CONTINUE_LOOP_STATUS}, which can be used
+     *         in a language-specific way (for example, to encode structured jumps)
+     * @since 19.3
      */
-    public void executeLoop(VirtualFrame frame) {
-        executeLoopWithStatus(frame);
+    public Object execute(VirtualFrame frame) {
+        throw new AbstractMethodError("This method must be overridden in concrete subclasses.");
     }
 
     /**

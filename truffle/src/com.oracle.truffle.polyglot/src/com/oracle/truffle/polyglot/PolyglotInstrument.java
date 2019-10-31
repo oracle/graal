@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.util.function.Supplier;
 
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -85,6 +87,10 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         return optionValues;
     }
 
+    OptionValuesImpl getOptionValuesIfExists() {
+        return optionValues;
+    }
+
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;
@@ -95,8 +101,12 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
             synchronized (instrumentLock) {
                 if (!initialized) {
                     try {
-                        Class<?> loadedInstrument = cache.getInstrumentationClass();
-                        INSTRUMENT.initializeInstrument(engine.instrumentationHandler, this, loadedInstrument);
+                        INSTRUMENT.initializeInstrument(engine.instrumentationHandler, this, cache.getClassName(), new Supplier<TruffleInstrument>() {
+                            @Override
+                            public TruffleInstrument get() {
+                                return cache.loadInstrument();
+                            }
+                        });
                         this.options = INSTRUMENT.describeOptions(engine.instrumentationHandler, this, cache.getId());
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);

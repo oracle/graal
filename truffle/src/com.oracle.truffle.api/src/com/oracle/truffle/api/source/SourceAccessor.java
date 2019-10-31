@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,14 @@ package com.oracle.truffle.api.source;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
-import java.util.Collection;
+import java.nio.charset.Charset;
+import java.util.Set;
+
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.util.Set;
 
 final class SourceAccessor extends Accessor {
 
@@ -58,8 +58,7 @@ final class SourceAccessor extends Accessor {
     private SourceAccessor() {
     }
 
-    static Collection<ClassLoader> allLoaders() {
-        return ACCESSOR.loaders();
+    public static void load() {
     }
 
     static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {

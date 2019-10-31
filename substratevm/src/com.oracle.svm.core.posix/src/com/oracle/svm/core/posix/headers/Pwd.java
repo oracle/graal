@@ -41,34 +41,26 @@ import org.graalvm.word.UnsignedWord;
 @CContext(PosixDirectives.class)
 public class Pwd {
 
-    /** The passwd structure. */
     @CStruct(addStructKeyword = true)
     public interface passwd extends PointerBase {
-        /** Username. */
         @CField
         CCharPointer pw_name();
 
-        /** Password. */
         @CField
         CCharPointer pw_passwd();
 
-        /** User ID. */
         @CField
         int pw_uid();
 
-        /** Group ID. */
         @CField
         int pw_gid();
 
-        /** Real name. */
         @CField
         CCharPointer pw_gecos();
 
-        /** Home directory. */
         @CField
         CCharPointer pw_dir();
 
-        /** Shell program. */
         @CField
         CCharPointer pw_shell();
     }
@@ -80,48 +72,21 @@ public class Pwd {
         void write(PointerBase value);
     }
 
-    /** Rewind the password-file stream. */
     @CFunction
     public static native void setpwent();
 
-    /** Close the password-file stream. */
-    @CFunction
-    public static native void endpwent();
-
-    /** Read an entry from the password-file stream, opening it if necessary. */
     @CFunction
     public static native passwd getpwent();
 
-    /** Search for an entry with a matching user ID. */
     @CFunction
     public static native passwd getpwuid(int __uid);
 
-    /** Search for an entry with a matching username. */
     @CFunction
     public static native passwd getpwnam(CCharPointer __name);
-
-    // /**
-    // * Reasonable value for the buffer sized used in the reentrant functions below. But better use
-    // * `sysconf'.
-    // */
-    // @CConstant
-    // public static native int NSS_BUFLEN_PASSWD();
-
-    /** Reentrant versions of some of the functions above. */
-    @CFunction
-    public static native int getpwent_r(passwd __resultbuf, CCharPointer __buffer, UnsignedWord __buflen, passwdPointer __result);
 
     @CFunction
     public static native int getpwuid_r(int __uid, passwd __resultbuf, CCharPointer __buffer, UnsignedWord __buflen, passwdPointer __result);
 
     @CFunction
     public static native int getpwnam_r(CCharPointer __name, passwd __resultbuf, CCharPointer __buffer, UnsignedWord __buflen, passwdPointer __result);
-
-    /**
-     * Re-construct the password-file line for the given uid in the given buffer. This knows the
-     * format that the caller will expect, but this need not be the format of the password file.
-     */
-    @CFunction
-    public static native int getpw(int __uid, CCharPointer __buffer);
-
 }

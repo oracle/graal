@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
@@ -258,7 +257,6 @@ public class ForeignCallStub extends Stub {
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
 
             kit.inlineInvokes("Foreign call stub.", "Backend");
-            new RemoveValueProxyPhase().apply(graph);
 
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Stub graph before compilation");
             return graph;

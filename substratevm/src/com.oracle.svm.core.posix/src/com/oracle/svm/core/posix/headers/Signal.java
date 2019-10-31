@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
@@ -60,7 +61,6 @@ public class Signal {
     public interface sigset_tPointer extends PointerBase {
     }
 
-    /** The interface to a C signal handler. */
     public interface SignalDispatcher extends CFunctionPointer {
 
         /** From signal(2): typedef void (*sig_t) (int). */
@@ -68,23 +68,18 @@ public class Signal {
         void dispatch(int sig);
     }
 
-    /** Register a signal handler. */
     @CFunction
     public static native SignalDispatcher signal(int signum, SignalDispatcher handler);
 
-    /** The signal handler that does the default action for a signal. */
     @CConstant
     public static native SignalDispatcher SIG_DFL();
 
-    /** The signal handler that ignores a signal. */
     @CConstant
     public static native SignalDispatcher SIG_IGN();
 
-    /** The signal handler that represents an error result. */
     @CConstant
     public static native SignalDispatcher SIG_ERR();
 
-    /** Send a signal to the current thread. */
     @CFunction
     public static native int raise(int signum);
 
@@ -93,13 +88,13 @@ public class Signal {
         /* Fields unused */
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
     }
 
-    @Platforms(Platform.LINUX_AMD64.class)
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
     @CEnum
     @CContext(PosixDirectives.class)
     public enum GregEnum {
@@ -131,7 +126,7 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CStruct
     public interface ucontext_t extends PointerBase {
         /*-
@@ -145,7 +140,7 @@ public class Signal {
                 __sigset_t uc_sigmask;
                 struct _libc_fpstate __fpregs_mem;
               } ucontext_t;
-
+        
             // Context to describe whole processor state.
             typedef struct
               {
@@ -156,7 +151,7 @@ public class Signal {
             } mcontext_t;
          */
         @CFieldAddress("uc_mcontext.gregs")
-        @Platforms(Platform.LINUX_AMD64.class)
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
         GregsPointer uc_mcontext_gregs();
 
         /*-
@@ -182,16 +177,16 @@ public class Signal {
         };
         */
         @CFieldAddress("uc_mcontext")
-        @Platforms(Platform.LINUX_AArch64.class)
+        @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class, Platform.LINUX_AARCH64.class})
         mcontext_t uc_mcontext();
 
         @CField("uc_mcontext")
-        @Platforms(Platform.DARWIN_AMD64.class)
+        @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
         MContext64 uc_mcontext64();
 
     }
 
-    @Platforms({Platform.DARWIN_AMD64.class})
+    @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
     @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
     public interface MContext64 extends PointerBase {
 
@@ -251,7 +246,7 @@ public class Signal {
     }
 
     @CStruct
-    @Platforms(Platform.LINUX_AArch64.class)
+    @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class, Platform.LINUX_AARCH64.class})
     public interface mcontext_t extends PointerBase {
         @CField
         long fault_address();
@@ -269,7 +264,6 @@ public class Signal {
         long pstate();
     }
 
-    /** Advanced interface to a C signal handler. */
     public interface AdvancedSignalDispatcher extends CFunctionPointer {
 
         /** From SIGACTION(2): void (*sa_sigaction)(int, siginfo_t *, void *). */
@@ -277,7 +271,7 @@ public class Signal {
         void dispatch(int signum, siginfo_t siginfo, WordPointer opaque);
     }
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CConstant
     public static native int SA_SIGINFO();
 
@@ -315,106 +309,63 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
-    /** Advanced signal handler register function. */
     @CFunction
     public static native int sigaction(SignalEnum signum, sigaction act, sigaction oldact);
 
-    /**
-     * An alphabetical list of the signals on POSIX platforms. The signal numbers come from
-     * {@link #getCValue()}.
-     */
     @CEnum
     @CContext(PosixDirectives.class)
     public enum SignalEnum {
-        /* create core image: abort program (formerly SIGIOT) */
         SIGABRT,
-        /* terminate process: real-time timer expired */
         SIGALRM,
-        /* create core image: bus error */
         SIGBUS,
-        /* discard signal: child status has changed */
         SIGCHLD,
-        /* discard signal: continue after stop */
         SIGCONT,
-        /* create core image: floating-point exception */
         SIGFPE,
-        /* terminate process: terminal line hangup */
         SIGHUP,
-        /* create core image: illegal instruction */
         SIGILL,
-        /* terminate process: interrupt program */
         SIGINT,
-        /* discard signal: I/O is possible on a descriptor (see fcntl(2)) */
         SIGIO,
-        /* create core image: abort program (replaced by SIGABRT) */
         SIGIOT,
-        /* terminate process: kill program */
         SIGKILL,
-        /* terminate process: write on a pipe with no reader */
         SIGPIPE,
-        /* terminate process: profiling timer alarm (see setitimer(2)) */
         SIGPROF,
-        /* create core image: quit program */
         SIGQUIT,
-        /* create core image: segmentation violation */
         SIGSEGV,
-        /* stop process: stop (cannot be caught or ignored) */
         SIGSTOP,
-        /* create core image: non-existent system call invoked */
         SIGSYS,
-        /* terminate process: software termination signal */
         SIGTERM,
-        /* create core image: trace trap */
         SIGTRAP,
-        /* stop process: stop signal generated from keyboard */
         SIGTSTP,
-        /* stop process: background read attempted from control terminal */
         SIGTTIN,
-        /* stop process: background write attempted to control terminal */
         SIGTTOU,
-        /* discard signal: urgent condition present on socket */
         SIGURG,
-        /* terminate process: User defined signal 1 */
         SIGUSR1,
-        /* terminate process: User defined signal 2 */
         SIGUSR2,
-        /* terminate process: virtual time alarm (see setitimer(2)) */
         SIGVTALRM,
-        /* discard signal: Window size change */
         SIGWINCH,
-        /* terminate process: cpu time limit exceeded (see setrlimit(2)) */
         SIGXCPU,
-        /* terminate process: file size limit exceeded (see setrlimit(2)) */
         SIGXFSZ;
 
         @CEnumValue
         public native int getCValue();
     }
 
-    /** An alphabetical list of Linux-specific signals. */
-    /* Workaround for GR-7858: @Platform @CEnum members. */
-    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum LinuxSignalEnum {
-        /* Pollable event (Sys V). Synonym for SIGIO */
         SIGPOLL,
-        /* Power failure restart (System V). */
         SIGPWR;
 
         @CEnumValue
         public native int getCValue();
     }
 
-    /** An alphabetical list of Darwin-specific signals. */
-    /* Workaround for GR-7858: @Platform @CEnum members. */
-    @Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+    @Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum DarwinSignalEnum {
-        /* status request from keyboard */
         SIGINFO,
-        /* EMT instruction */
         SIGEMT;
 
         @CEnumValue

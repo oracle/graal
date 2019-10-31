@@ -5,7 +5,7 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
  */
 
-import { ChromeDebugAdapter, ErrorWithMessage, logger } from 'vscode-chrome-debug-core';
+import { ChromeDebugAdapter, Crdp, ErrorWithMessage, logger } from 'vscode-chrome-debug-core';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { OutputEvent } from 'vscode-debugadapter';
 
@@ -22,6 +22,8 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
 
     private _childProcessId: number = 0;
     private _supportsRunInTerminalRequest: boolean | undefined;
+    private _lastEarlyNodeMsgSeen: boolean | undefined;
+    private _captureStdOutput: boolean | undefined;
 
     public initialize(args: DebugProtocol.InitializeRequestArguments): DebugProtocol.Capabilities {
         this._supportsRunInTerminalRequest = args.supportsRunInTerminalRequest;
@@ -105,6 +107,8 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
         }
 
         launchArgs = runtimeArgs.concat(launchArgs, program ? [program] : [], programArgs);
+
+        this._captureStdOutput = args.outputCapture === 'std';
 
         if (args.console === 'integratedTerminal' && this._supportsRunInTerminalRequest) {
             const termArgs: DebugProtocol.RunInTerminalRequestArguments = {
@@ -215,28 +219,34 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
             });
             const noDebugMode = (<ILaunchRequestArguments>this._launchAttachArgs).noDebug;
             childProcess.stdout.on('data', (data: string) => {
-                if (!this._launchAttachArgs._suppressConsoleOutput) {
+                if ((noDebugMode || this._captureStdOutput) && !this._launchAttachArgs._suppressConsoleOutput) {
                     let msg = data.toString();
                     this._session.sendEvent(new OutputEvent(msg, 'stdout'));
                 }
             });
             childProcess.stderr.on('data', (data: string) => {
                 let msg = data.toString();
-                let lastEarlyNodeMsgSeen = noDebugMode;
-                if (!lastEarlyNodeMsgSeen) {
+                if (!this._lastEarlyNodeMsgSeen && !noDebugMode) {
                     msg = msg.replace(/^\s*To start debugging, open the following URL in Chrome:\s*$/m, '');
                     let regExp = /^\s*chrome-devtools:\/\/devtools\/bundled\/js_app\.html\?ws=\S*\s*$/m;
                     if (msg.match(regExp)) {
                         msg = msg.replace(regExp, '');
-                        lastEarlyNodeMsgSeen = true;
+                        this._lastEarlyNodeMsgSeen = true;
                     }
                 }
-                if (!this._launchAttachArgs._suppressConsoleOutput) {
+                if ((noDebugMode || this._captureStdOutput) && !this._launchAttachArgs._suppressConsoleOutput) {
                     this._session.sendEvent(new OutputEvent(msg, 'stderr'));
                 }
             });
             resolve();
          });
+    }
+
+    protected onConsoleAPICalled(params: Crdp.Runtime.ConsoleAPICalledEvent): void {
+        this._lastEarlyNodeMsgSeen = true;
+        if (!this._captureStdOutput) {
+            super.onConsoleAPICalled(params);
+        }
     }
 
     private logLaunchCommand(executable: string, args: string[]) {

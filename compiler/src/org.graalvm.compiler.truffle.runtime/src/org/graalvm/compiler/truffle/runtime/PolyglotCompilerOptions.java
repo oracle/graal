@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,6 +214,12 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold.getDefaultValue());
+
+    @Option(help = "Enable partial compilation for BlockNode.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);
+
+    @Option(help = "Sets the target non-trivial Truffle node size for partial compilation of BlockNode nodes.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> PartialBlockCompilationSize = new OptionKey<>(3000);
 
     /*
      * TODO planned options (GR-13444):

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,10 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
+import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
 final class DefaultTVMCI extends TVMCI {
 
@@ -79,6 +81,11 @@ final class DefaultTVMCI extends TVMCI {
     @Override
     protected CastUnsafe getCastUnsafe() {
         return CAST_UNSAFE;
+    }
+
+    @Override
+    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
+        return new DefaultBlockNode<>(elements, executor);
     }
 
     private static final DefaultCastUnsafe CAST_UNSAFE = new DefaultCastUnsafe();

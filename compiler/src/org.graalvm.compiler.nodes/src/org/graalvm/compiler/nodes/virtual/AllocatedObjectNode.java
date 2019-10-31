@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
+import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
  * {@link VirtualObjectNode}.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class AllocatedObjectNode extends FloatingNode implements Virtualizable, ArrayLengthProvider {
+public final class AllocatedObjectNode extends FloatingNode implements VirtualizableAllocation, ArrayLengthProvider {
 
     public static final NodeClass<AllocatedObjectNode> TYPE = NodeClass.create(AllocatedObjectNode.class);
     @Input VirtualObjectNode virtualObject;

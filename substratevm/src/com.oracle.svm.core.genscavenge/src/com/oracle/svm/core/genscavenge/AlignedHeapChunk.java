@@ -41,7 +41,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -182,7 +181,7 @@ public class AlignedHeapChunk extends HeapChunk {
         return getEnclosingAlignedHeapChunkFromPointer(ptr);
     }
 
-    private static AlignedHeader getEnclosingAlignedHeapChunkFromPointer(Pointer ptr) {
+    static AlignedHeader getEnclosingAlignedHeapChunkFromPointer(Pointer ptr) {
         final Pointer result = PointerUtils.roundDown(ptr, HeapPolicy.getAlignedHeapChunkAlignment());
         return (AlignedHeader) result;
     }
@@ -400,7 +399,7 @@ public class AlignedHeapChunk extends HeapChunk {
         Pointer current = getAlignedHeapChunkStart(that);
         while (current.belowThan(that.getTop())) {
             trace.newline().string("  current: ").hex(current);
-            final UnsignedWord header = ObjectHeader.readHeaderFromPointer(current);
+            final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(current);
             if (!ObjectHeaderImpl.getObjectHeaderImpl().isAlignedHeader(header)) {
                 trace.string("  does not have an aligned header: ").hex(header).string("  returns: false").string("]").newline();
                 return false;

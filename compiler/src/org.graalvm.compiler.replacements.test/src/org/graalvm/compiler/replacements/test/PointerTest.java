@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordCastNode;
@@ -150,7 +149,7 @@ public class PointerTest extends SnippetsTest {
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordJavaKind, cast.stamp(NodeView.DEFAULT).getStackKind());
 
-        Assert.assertEquals(locationIdentity, write.getLocationIdentity());
+        Assert.assertEquals(locationIdentity, write.getKilledLocationIdentity());
 
         if (indexConvert) {
             SignExtendNode convert = (SignExtendNode) address.getOffset();
@@ -409,7 +408,7 @@ public class PointerTest extends SnippetsTest {
         HighTierContext context = new HighTierContext(getProviders(), null, OptimisticOptimizations.ALL);
 
         StructuredGraph graph = parseEager(snippetName, AllowAssumptions.YES);
-        new CanonicalizerPhase().apply(graph, context);
+        this.createCanonicalizerPhase().apply(graph, context);
         Assert.assertEquals(expectedWordCasts, graph.getNodes().filter(WordCastNode.class).count());
     }
 

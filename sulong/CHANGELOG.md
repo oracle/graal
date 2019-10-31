@@ -1,11 +1,30 @@
 # Version 19.3.0
 
+Changes:
+
+* The [Toolchain](docs/TOOLCHAIN.md) is no longer experimental.
+
 New features:
 
 * Added `mx extract-bitcode` command for extracting embedded bitcode.
   Usage: `mx extract-bitcode inputFile.so outputFile.bc`, where `inputFile` can
   be can be a file of any supported format such as wrapped bitcode or ELF/Mach-O
   with an embedded bitcode sections.
+
+* Added preliminary support for parsing bitcode produced by LLVM 9.
+
+* We are now shipping native `libc++` and `libc++abi` libraries with the LLVM runtime,
+  so users no longer need to install them manually.
+
+* We added linker support to the LLVM toolchain. A path to the linker can be requested
+  via the `LD` tool name.
+
+* Added the `--print-toolchain-path` command line flag to `lli` to print the location
+  of the toolchain on the standard output.
+
+* The toolchain Java API can be used to query the toolchain path using the `PATH` name.
+
+* Added intrinsics for pthread thread management functions.
 
 Improvements:
 

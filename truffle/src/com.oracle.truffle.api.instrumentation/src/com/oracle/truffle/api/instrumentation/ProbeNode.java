@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -642,10 +642,9 @@ public final class ProbeNode extends Node {
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
-        Class<?> instrumentClass = instrumenter.getInstrumentClass();
 
         String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //
-                        eventName, instrumentClass.getName(), b.getElement());
+                        eventName, instrumenter.getInstrumentClassName(), b.getElement());
 
         Exception exception = new Exception(message, t);
         PrintStream stream = new PrintStream(instrumenter.getEnv().err());
@@ -1045,7 +1044,8 @@ public final class ProbeNode extends Node {
                     setSeenUnwind();
                 }
                 unwind = (UnwindException) exception;
-                assert unwind.getBinding() != null;
+                assert unwind.getBinding() != null : String.format("UnwindException[binding: %s, thrownFromBindingCalled: %b, hasPreferredBindingSet: %b]",
+                                unwind.getBinding(), unwind.isThrownFromBinding(), unwind.hasPreferredBinding());
             }
             if (next != null) {
                 try {

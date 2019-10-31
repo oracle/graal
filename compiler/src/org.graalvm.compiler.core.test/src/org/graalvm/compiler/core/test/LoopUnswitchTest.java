@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -133,8 +132,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         graph.clearAllStateAfter();
         referenceGraph.clearAllStateAfter();
 
-        new CanonicalizerPhase().apply(graph, getProviders());
-        new CanonicalizerPhase().apply(referenceGraph, getProviders());
+        createCanonicalizerPhase().apply(graph, getProviders());
+        createCanonicalizerPhase().apply(referenceGraph, getProviders());
         try (DebugContext.Scope s = debug.scope("Test", new DebugDumpScope("Test:" + snippet))) {
             assertEquals(referenceGraph, graph);
         } catch (Throwable e) {

@@ -28,7 +28,6 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -36,14 +35,10 @@ import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -61,40 +56,41 @@ import com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.Any;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
 
 public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    protected static Any typeEqualityTestSnippet(Object object, Any trueValue, Any falseValue, int fromTypeID) {
-        if (object != null) {
-            Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
-            int typeCheckId = loadHub(objectNonNull).getTypeID();
+    protected static Any typeEqualityTestSnippet(Object object, Any trueValue, Any falseValue, @ConstantParameter boolean allowsNull, int fromTypeID) {
+        if (object == null) {
+            return allowsNull ? trueValue : falseValue;
+        }
+        Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
+        int typeCheckId = loadHub(objectNonNull).getTypeID();
 
-            if (typeCheckId == fromTypeID) {
-                return trueValue;
-            }
+        if (typeCheckId == fromTypeID) {
+            return trueValue;
         }
         return falseValue;
     }
 
     @Snippet
-    protected static Any instanceOfSnippet(Object object, Any trueValue, Any falseValue, int fromTypeID, int numTypeIDs) {
-        if (object != null) {
-            Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
-            if (numTypeIDs > 0) {
-                int typeCheckId = loadHub(objectNonNull).getTypeID();
+    protected static Any instanceOfSnippet(Object object, Any trueValue, Any falseValue, @ConstantParameter boolean allowsNull, int fromTypeID, int numTypeIDs) {
+        if (object == null) {
+            return allowsNull ? trueValue : falseValue;
+        }
+        Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
+        if (numTypeIDs > 0) {
+            int typeCheckId = loadHub(objectNonNull).getTypeID();
 
-                if (numTypeIDs == 1) {
-                    if (typeCheckId == fromTypeID) {
-                        return trueValue;
-                    }
-                } else {
-                    if (UnsignedMath.belowThan(typeCheckId - fromTypeID, numTypeIDs)) {
-                        return trueValue;
-                    }
+            if (numTypeIDs == 1) {
+                if (typeCheckId == fromTypeID) {
+                    return trueValue;
+                }
+            } else {
+                if (UnsignedMath.belowThan(typeCheckId - fromTypeID, numTypeIDs)) {
+                    return trueValue;
                 }
             }
         }
@@ -102,9 +98,9 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
     }
 
     @Snippet
-    protected static Any instanceOfBitTestSnippet(Object object, Any trueValue, Any falseValue, int bitsOffset, byte bitMask) {
+    protected static Any instanceOfBitTestSnippet(Object object, Any trueValue, Any falseValue, @ConstantParameter boolean allowsNull, int bitsOffset, byte bitMask) {
         if (object == null) {
-            return falseValue;
+            return allowsNull ? trueValue : falseValue;
         }
         Object objectNonNull = PiNode.piCastNonNull(object, SnippetAnchorNode.anchor());
 
@@ -176,18 +172,9 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         @Override
         public void lower(FloatingNode node, LoweringTool tool) {
-            InstanceOfNode instanceOfNode = (InstanceOfNode) node;
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-                if (instanceOfNode.allowsNull()) {
-                    StructuredGraph graph = instanceOfNode.graph();
-                    ValueNode object = instanceOfNode.getValue();
-                    LogicNode newTypeCheck = graph.addOrUniqueWithInputs(InstanceOfNode.create(instanceOfNode.type(), object, instanceOfNode.profile(), instanceOfNode.getAnchor()));
-                    LogicNode newNode = LogicNode.or(graph.unique(IsNullNode.create(object)), newTypeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
-                    instanceOfNode.replaceAndDelete(newNode);
-                }
                 return;
             }
-            VMError.guarantee(!instanceOfNode.allowsNull(), "must be lowered before");
             super.lower(node, tool);
         }
 
@@ -199,8 +186,6 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             int fromTypeID = type.getInstanceOfFromTypeID();
             int numTypeIDs = type.getInstanceOfNumTypeIDs();
 
-            VMError.guarantee(!node.allowsNull(), "must be lowered before");
-
             if (typeReference.isExact()) {
                 /*
                  * We do a type check test.
@@ -209,6 +194,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
+                args.addConst("allowsNull", node.allowsNull());
                 args.add("fromTypeID", type.getHub().getTypeID());
                 return args;
             }
@@ -223,7 +209,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", false);
+                args.addConst("allowsNull", node.allowsNull());
                 return args;
             } else if (numTypeIDs >= 0) {
                 /*
@@ -233,6 +219,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
+                args.addConst("allowsNull", node.allowsNull());
                 args.add("fromTypeID", fromTypeID);
                 args.add("numTypeIDs", numTypeIDs);
                 return args;
@@ -245,6 +232,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
+                args.addConst("allowsNull", node.allowsNull());
                 args.add("bitsOffset", runtimeConfig.getInstanceOfBitOffset(fromTypeID));
                 args.add("bitMask", 1 << (fromTypeID % 8));
                 return args;

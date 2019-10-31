@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -180,6 +180,13 @@ final class OptionValuesImpl implements OptionValues {
 
     OptionValuesImpl copy() {
         return new OptionValuesImpl(this);
+    }
+
+    void copyInto(OptionValuesImpl target) {
+        if (!target.values.isEmpty()) {
+            throw new IllegalStateException("Values must be empty.");
+        }
+        target.values.putAll(values);
     }
 
     public OptionDescriptors getDescriptors() {

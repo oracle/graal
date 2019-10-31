@@ -85,8 +85,12 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
+
+    private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
+    private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -210,10 +214,28 @@ public class NativeImage {
 
     public interface BuildConfiguration {
         /**
+         * @return the name of the image generator main class.
+         */
+        default String getGeneratorMainClass() {
+            String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
+            if (useJavaModules()) {
+                generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
+            }
+            return generatorClassName;
+        }
+
+        /**
          * @return relative path usage get resolved against this path (also default path for image
          *         building)
          */
         Path getWorkingDirectory();
+
+        /**
+         * @return java.home that is associated with this BuildConfiguration
+         */
+        default Path getJavaHome() {
+            throw VMError.unimplemented();
+        }
 
         /**
          * @return path to Java executable
@@ -369,7 +391,7 @@ public class NativeImage {
             return false;
         }
 
-        default String getAgentJAR() {
+        default Path getAgentJAR() {
             return null;
         }
     }
@@ -419,6 +441,11 @@ public class NativeImage {
         }
 
         @Override
+        public Path getJavaHome() {
+            return useJavaModules() ? rootDir : rootDir.getParent();
+        }
+
+        @Override
         public Path getJavaExecutable() {
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
             if (Files.isExecutable(rootDir.resolve(binJava))) {
@@ -429,11 +456,14 @@ public class NativeImage {
             if (javaHome == null) {
                 throw showError("Environment variable JAVA_HOME is not set");
             }
-            Path javaHomePath = Paths.get(javaHome);
-            if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
+            Path javaHomeDir = Paths.get(javaHome);
+            if (!Files.isDirectory(javaHomeDir)) {
+                throw showError("Environment variable JAVA_HOME does not refer to a directory");
+            }
+            if (!Files.isExecutable(javaHomeDir.resolve(binJava))) {
                 throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
             }
-            return javaHomePath.resolve(binJava);
+            return javaHomeDir.resolve(binJava);
         }
 
         @Override
@@ -513,8 +543,8 @@ public class NativeImage {
         }
 
         @Override
-        public String getAgentJAR() {
-            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar")).toAbsolutePath().toString();
+        public Path getAgentJAR() {
+            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
         }
 
     }
@@ -677,11 +707,15 @@ public class NativeImage {
             String modulePath = config.getBuilderModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            if (!modulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            }
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            if (!upgradeModulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            }
         } else {
             config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
@@ -854,7 +888,7 @@ public class NativeImage {
                             String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
                             optionArg = propertyFileSubstitutionValues.get(optionArgKey);
                         }
-                        return resolvePropertyValue(str, optionArg, componentDirectory.toString());
+                        return resolvePropertyValue(str, optionArg, componentDirectory, config);
                     };
                     showVerboseMessage(isVerbose(), "Apply " + nativeImageMetaInfFile.toUri());
                     try {
@@ -974,10 +1008,9 @@ public class NativeImage {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
-        /* Enable class initializaiton tracing agent. */
-        if (traceClassInitialization()) {
-            imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
-        }
+        imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
+        imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
@@ -1001,7 +1034,7 @@ public class NativeImage {
 
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
-        boolean buildExecutable = !imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enableSharedLibraryFlag));
+        boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(enableSharedLibraryFlag));
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
         if (!printFlags) {
@@ -1112,7 +1145,7 @@ public class NativeImage {
         }
 
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
-        command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
+        command.add(config.getGeneratorMainClass());
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
@@ -1553,7 +1586,7 @@ public class NativeImage {
         propertyFileSubstitutionValues.put(key, value);
     }
 
-    static String resolvePropertyValue(String val, String optionArg, String componentDirectory) {
+    static String resolvePropertyValue(String val, String optionArg, Path componentDirectory, BuildConfiguration config) {
         String resultVal = val;
         if (optionArg != null) {
             /* Substitute ${*} -> optionArg in resultVal (always possible) */
@@ -1574,7 +1607,9 @@ public class NativeImage {
             }
         }
         /* Substitute ${.} -> absolute path to optionDirectory */
-        resultVal = safeSubstitution(resultVal, "${.}", componentDirectory);
+        resultVal = safeSubstitution(resultVal, "${.}", componentDirectory.toString());
+        /* Substitute ${java.home} -> to java.home of BuildConfiguration */
+        resultVal = safeSubstitution(resultVal, "${java.home}", config.getJavaHome().toString());
         return resultVal;
     }
 
@@ -1604,6 +1639,28 @@ public class NativeImage {
                 showMessage("Could not recursively delete path: " + toDelete);
                 e.printStackTrace();
             }
+        }
+    }
+
+    /**
+     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
+     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
+     * on the VM command line.
+     *
+     * Note: This is a workaround until GR-16855 is resolved.
+     */
+    public static class JDK9Plus {
+
+        // Must be distinct from NativeImage.IS_AOT since the module
+        // exporting must be executed prior to NativeImage being loaded.
+        private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
+
+        public static void main(String[] args) {
+            if (!IS_AOT) {
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+            }
+            NativeImage.main(args);
         }
     }
 }

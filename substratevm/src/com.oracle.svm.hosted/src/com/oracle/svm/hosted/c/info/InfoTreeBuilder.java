@@ -45,6 +45,8 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldAddress;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
@@ -266,8 +268,16 @@ public class InfoTreeBuilder {
             final String fieldName;
 
             RawField fieldAnnotation = getMethodAnnotation(method, RawField.class);
+            RawFieldAddress fieldAddressAnnotation = getMethodAnnotation(method, RawFieldAddress.class);
+            RawFieldOffset fieldOffsetAnnotation = getMethodAnnotation(method, RawFieldOffset.class);
             if (fieldAnnotation != null) {
                 accessorInfo = new AccessorInfo(method, getAccessorKind(method), false, hasLocationIdentityParameter(method), hasUniqueLocationIdentity(method));
+                fieldName = getStructFieldName(accessorInfo, "");
+            } else if (fieldAddressAnnotation != null) {
+                accessorInfo = new AccessorInfo(method, AccessorKind.ADDRESS, false, false, false);
+                fieldName = getStructFieldName(accessorInfo, "");
+            } else if (fieldOffsetAnnotation != null) {
+                accessorInfo = new AccessorInfo(method, AccessorKind.OFFSET, false, false, false);
                 fieldName = getStructFieldName(accessorInfo, "");
             } else if (returnsDeclaringClass(method)) {
                 accessorInfo = new AccessorInfo(method, AccessorKind.ADDRESS, getParameterCount(method) > 0, false, false);

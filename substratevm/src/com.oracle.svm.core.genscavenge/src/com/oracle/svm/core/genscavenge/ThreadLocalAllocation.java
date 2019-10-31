@@ -43,9 +43,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -318,7 +318,7 @@ public final class ThreadLocalAllocation {
         VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableThreadLocalAllocation");
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 disableThreadLocalAllocation(vmThread);
             }
         } else {
@@ -340,7 +340,8 @@ public final class ThreadLocalAllocation {
     static void tearDown() {
         final IsolateThread thread;
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            thread = VMThreads.firstThread();
+            // no other thread is alive, so it is always safe to access the first thread
+            thread = VMThreads.firstThreadUnsafe();
             VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         } else {
             thread = WordFactory.nullPointer();

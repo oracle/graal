@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
 public final class LLVMParserResult {
 
@@ -41,17 +42,20 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
     private final List<String> importedSymbols;
+    private final DataLayout dataLayout;
 
     LLVMParserResult(LLVMParserRuntime runtime,
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
-                    List<String> importedSymbols) {
+                    List<String> importedSymbols,
+                    DataLayout dataLayout) {
         this.runtime = runtime;
         this.externalFunctions = externalFunctions;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
         this.importedSymbols = importedSymbols;
+        this.dataLayout = dataLayout;
     }
 
     public LLVMParserRuntime getRuntime() {
@@ -72,5 +76,9 @@ public final class LLVMParserResult {
 
     public List<String> getImportedSymbols() {
         return importedSymbols;
+    }
+
+    public DataLayout getDataLayout() {
+        return dataLayout;
     }
 }

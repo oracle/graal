@@ -152,10 +152,6 @@ public final class MachOObjectFile extends ObjectFile {
     }
 
     @Override
-    public void setMainEntryPoint(String name) {
-    }
-
-    @Override
     protected int initialVaddr() {
         // HACK: this (and the superclass version)
         // is baking in *per-OS* knowledge, not just per-format knowledge...

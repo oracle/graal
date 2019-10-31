@@ -228,7 +228,7 @@ public class MethodTypeFlowBuilder {
                 // Register used types and fields before canonicalization can optimize them.
                 registerUsedElements();
 
-                new CanonicalizerPhase().apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().apply(graph, bb.getProviders());
 
                 // Do it again after canonicalization changed type checks and field accesses.
                 registerUsedElements();
@@ -341,7 +341,7 @@ public class MethodTypeFlowBuilder {
             return;
         }
 
-        this.bb.getUnsupportedFeatures().checkMethod(method, graph);
+        bb.getHostVM().checkMethod(bb, method, graph);
 
         processedNodes = new NodeBitMap(graph);
 

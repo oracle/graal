@@ -30,8 +30,9 @@
 import sys
 import tarfile
 import os
+import pipes
 import tempfile
-from os.path import join
+from os.path import join, exists, basename
 import shutil
 import subprocess
 from argparse import ArgumentParser
@@ -39,7 +40,7 @@ from argparse import ArgumentParser
 import mx
 import mx_gate
 import mx_subst
-import mx_sdk
+import mx_sdk_vm
 import re
 import mx_benchmark
 import mx_sulong_benchmarks
@@ -87,8 +88,11 @@ supportedLLVMVersions = [
     '5.0',
     '6.0',
     '7.0',
-    '8.0'
+    '8.0',
+    '9.0',
 ]
+
+toolchainLLVMVersion = "8.0"
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
@@ -147,7 +151,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     build_tags = ['build_' + t for t in tags]
     run_tags = ['run_' + t for t in tags]
     if not unittestArgs:
-        unittestArgs = []
+        unittestArgs = ['--very-verbose', '--enable-timing']
     unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
@@ -513,7 +517,7 @@ def pullsuite(suiteDir, urls):
 def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     """returns if the LLVM program bases on a supported LLVM version"""
     assert llvmProgram is not None
-    llvmVersion = getLLVMVersion(llvmProgram)
+    llvmVersion = getLLVMMajorVersion(llvmProgram)
     if supportedVersions is None:
         return llvmVersion in supportedLLVMVersions
     else:
@@ -538,29 +542,23 @@ def getVersion(program):
         versionString = _decode(e.output)
     return versionString
 
-def getLLVMVersion(llvmProgram):
+def getLLVMMajorVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
-    versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
-    if printLLVMVersion is None:
-        return None
-    else:
-        return printLLVMVersion.group(3)
+    try:
+        versionString = getVersion(llvmProgram)
+        printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
+        if printLLVMVersion is None:
+            return None
+        else:
+            return printLLVMVersion.group(3)
+    except OSError:
+        # clang/llvm not found -> assume we will be using the toolchain
+        return toolchainLLVMVersion.split('.')[0]
 
-# the makefiles do not check which version of clang they invoke
-versions_dont_have_optnone = ['3', '4']
+
 def getLLVMExplicitArgs(mainLLVMVersion):
-    if mainLLVMVersion:
-        for ver in versions_dont_have_optnone:
-            if mainLLVMVersion.startswith(ver):
-                return []
-    return ["-Xclang", "-disable-O0-optnone"]
-
-def getClangImplicitArgs():
-    mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
-    return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
-
-mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
+    no_optnone = mx.get_env("CLANG_NO_OPTNONE", False)
+    return [] if no_optnone else ["-Xclang", "-disable-O0-optnone"]
 
 
 def get_mx_exe():
@@ -757,32 +755,6 @@ def opt(args=None, version=None, out=None, err=None):
     """runs opt"""
     return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
 
-# Project classes
-
-import glob
-
-class ArchiveProject(mx.ArchivableProject):
-    def __init__(self, suite, name, deps, workingSets, theLicense, **args):
-        mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense)
-        assert 'prefix' in args
-        assert 'outputDir' in args
-
-    def output_dir(self):
-        return join(self.dir, self.outputDir)
-
-    def archive_prefix(self):
-        return self.prefix
-
-    def getResults(self):
-        return mx.ArchivableProject.walk(self.output_dir())
-
-class SulongDocsProject(ArchiveProject):  # pylint: disable=too-many-ancestors
-    doc_files = (glob.glob(join(_suite.dir, 'LICENSE')) +
-        glob.glob(join(_suite.dir, '*.md')))
-
-    def getResults(self):
-        return [join(_suite.dir, f) for f in self.doc_files]
-
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
@@ -806,16 +778,30 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
                                               lambda name: _get_toolchain(name).get_toolchain_subdir())
 
 
+def create_toolchain_root_provider(name, dist):
+    def provider():
+        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
+        if bootstrap_graalvm:
+            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
+            if os.path.exists(ret): # jdk8 based graalvm
+                return ret
+            else: # jdk11+ based graalvm
+                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
+        return mx.distribution(dist).get_output()
+    return provider
+
+
 class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
+        "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "ld64"],
     }
 
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
         self.name = name
         self.dist = dist
-        self.bootstrap_dist = bootstrap_dist
+        self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
@@ -825,6 +811,8 @@ class ToolchainConfig(object):
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
         })
+        # register bootstrap toolchain substitution
+        mx_subst.path_substitutions.register_no_arg(name + 'ToolchainRoot', self.bootstrap_provider)
         if self.name in _toolchains:
             mx.abort("Toolchain '{}' registered twice".format(self.name))
         _toolchains[self.name] = self
@@ -862,44 +850,85 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(mx.distribution(self.bootstrap_dist).get_output(), 'bin', self._tool_to_exe(tool))
+        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
 
     def get_toolchain_subdir(self):
         return self.name
 
     def get_launcher_configs(self):
         return [
-            mx_sdk.LauncherConfig(
+            mx_sdk_vm.LauncherConfig(
                 destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
                 jar_distributions=[self.suite.name + ":" + self.dist],
                 main_class=self._tool_to_main(tool),
                 build_args=[
-                    '--macro:truffle',  # we need tool:truffle so that Engine.findHome works
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
-                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)],
+                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
             ) for tool in self._supported_tools()
         ]
 
 
-class ToolchainLauncherProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **attrs):
-        results = ["bin/" + e for e in suite.toolchain._supported_exes()]
-        projectDir = attrs.pop('dir', None)
-        if projectDir:
-            d = join(suite.dir, projectDir)
-        elif subDir is None:
-            d = join(suite.dir, name)
-        else:
-            d = join(suite.dir, subDir, name)
-        super(ToolchainLauncherProject, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **attrs)
+class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
+        super(BootstrapToolchainLauncherProject, self).__init__(suite, name, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kwArgs)
 
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(ToolchainLauncherProject, self).getBuildEnv(replaceVar=replaceVar)
-        env['RESULTS'] = ' '.join(self.results)
-        return env
+    def launchers(self):
+        for tool in self.suite.toolchain._supported_tools():
+            for exe in self.suite.toolchain._tool_to_aliases(tool):
+                result = join(self.get_output_root(), exe)
+                yield result, tool, join('bin', exe)
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for result, _, prefixed in self.launchers():
+            yield result, prefixed
+
+    def getBuildTask(self, args):
+        return BootstrapToolchainLauncherBuildTask(self, args, 1)
+
+
+class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
+    def __str__(self):
+        return "Generating " + self.subject.name
+
+    def newestOutput(self):
+        return mx.TimeStampFile.newest([result for result, _, _ in self.subject.launchers()])
+
+    def needsBuild(self, newestInput):
+        sup = super(BootstrapToolchainLauncherBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+
+        for result, tool, _ in self.subject.launchers():
+            if not exists(result):
+                return True, result + ' does not exist'
+            with open(result, "r") as f:
+                on_disk = f.read()
+            if on_disk != self.contents(tool):
+                return True, 'command line changed for ' + basename(result)
+
+        return False, 'up to date'
+
+    def build(self):
+        mx.ensure_dir_exists(self.subject.get_output_root())
+        for result, tool, _ in self.subject.launchers():
+            with open(result, "w") as f:
+                f.write(self.contents(tool))
+            os.chmod(result, 0o755)
+
+    def clean(self, forBuild=False):
+        if exists(self.subject.get_output_root()):
+            mx.rmtree(self.subject.get_output_root())
+
+    def contents(self, tool):
+        java = mx.get_jdk().java
+        classpath_deps = [dep for dep in self.subject.buildDependencies if isinstance(dep, mx.ClasspathDependency)]
+        jvm_args = [pipes.quote(arg) for arg in mx.get_runtime_jvm_args(classpath_deps)]
+        main_class = self.subject.suite.toolchain._tool_to_main(tool)
+        command = [java] + jvm_args + [main_class, '"$@"']
+        return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
@@ -908,42 +937,46 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
                                    tools={
                                        "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
                                        "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
+                                       "LD": "com.oracle.truffle.llvm.toolchain.launchers.Linker",
                                    },
                                    suite=_suite)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Sulong',
     short_name='slg',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
-        mx_sdk.LanguageLauncherConfig(
+        mx_sdk_vm.LanguageLauncherConfig(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=[],
             language='llvm',
         ),
-    ] + _suite.toolchain.get_launcher_configs()
+    ] + _suite.toolchain.get_launcher_configs(),
+    installable=False,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
     short_name='llp',
     installable=True,
     installable_id='llvm-toolchain',
-    dir_name='jre/lib/llvm',
+    dir_name='llvm',
     license_files=[],
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
+    dependencies=[],
     support_distributions=['sulong:SULONG_LLVM_ORG']
 ))
 

@@ -1,0 +1,519 @@
+{
+    "injectionSelector": "L:source.js -comment -(string - meta.embedded), L:source.r meta.embedded.inline.js, L:source.ruby meta.embedded.inline.js, L:source.python meta.embedded.inline.js, L:source.sl meta.embedded.inline.js",
+    "scopeName": "js.inline.polyglot-langauges",
+    "patterns": [
+        {
+            "begin": "((Polyglot)\\s*(\\.)\\s*(eval))\\s*(\\()",
+            "beginCaptures": {
+                "1": {
+                    "name": "meta.function-call.js"
+                },
+                "2": {
+                    "name": "variable.other.object.js"
+                },
+                "3": {
+                    "name": "punctuation.accessor.js"
+                },
+                "4": {
+                    "name": "entity.name.function.js"
+                },
+                "5": {
+                    "name": "meta.brace.round.js"
+                }
+            },
+            "end": "(\\))",
+            "endCaptures": {
+                "1": {
+                    "name": "meta.brace.round.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#polyglot-call-r"
+                },
+                {
+                    "include": "#polyglot-call-ruby"
+                },
+                {
+                    "include": "#polyglot-call-python"
+                },
+                {
+                    "include": "#polyglot-call-sl"
+                },
+                {
+                    "include": "source.js#expression"
+                }
+            ]
+        }
+    ],
+    "repository": {
+        "polyglot-call-r": {
+            "begin": "(?:((')R('))|((\")R(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.js"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "4": {
+                    "name": "string.quoted.double.js"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "7": {
+                    "name": "punctuation.separator.comma.js"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "source.js#comment"
+                },
+                {
+                    "include": "#string-inline-r"
+                }
+            ]
+        },
+        "string-inline-r": {
+            "patterns": [
+                {
+                    "include": "#string-single-inline-r"
+                },
+                {
+                    "include": "#string-double-inline-r"
+                },
+                {
+                    "include": "#template-inline-r"
+                }
+            ]
+        },
+        "string-double-inline-r": {
+            "name": "string.quoted.double.js",
+            "contentName": "meta.embedded.inline.r",
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\")|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.r"
+                }
+            ]
+        },
+        "string-single-inline-r": {
+            "name": "string.quoted.single.js",
+            "contentName": "meta.embedded.inline.r",
+            "begin": "'",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\\')|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.r"
+                }
+            ]
+        },
+        "template-inline-r": {
+            "name": "string.template.js",
+            "contentName": "meta.embedded.inline.r",
+            "begin": "`",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                }
+            },
+            "end": "`",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.end.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.r"
+                }
+            ]
+        },
+        "polyglot-call-ruby": {
+            "begin": "(?:((')ruby('))|((\")ruby(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.js"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "4": {
+                    "name": "string.quoted.double.js"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "7": {
+                    "name": "punctuation.separator.comma.js"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "source.js#comment"
+                },
+                {
+                    "include": "#string-inline-ruby"
+                }
+            ]
+        },
+        "string-inline-ruby": {
+            "patterns": [
+                {
+                    "include": "#string-single-inline-ruby"
+                },
+                {
+                    "include": "#string-double-inline-ruby"
+                },
+                {
+                    "include": "#template-inline-ruby"
+                }
+            ]
+        },
+        "string-double-inline-ruby": {
+            "name": "string.quoted.double.js",
+            "contentName": "meta.embedded.inline.ruby",
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\")|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "string-single-inline-ruby": {
+            "name": "string.quoted.single.js",
+            "contentName": "meta.embedded.inline.ruby",
+            "begin": "'",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\\')|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "template-inline-ruby": {
+            "name": "string.template.js",
+            "contentName": "meta.embedded.inline.ruby",
+            "begin": "`",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                }
+            },
+            "end": "`",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.end.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "polyglot-call-python": {
+            "begin": "(?:((')python('))|((\")python(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.js"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "4": {
+                    "name": "string.quoted.double.js"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "7": {
+                    "name": "punctuation.separator.comma.js"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "source.js#comment"
+                },
+                {
+                    "include": "#string-inline-python"
+                }
+            ]
+        },
+        "string-inline-python": {
+            "patterns": [
+                {
+                    "include": "#string-single-inline-python"
+                },
+                {
+                    "include": "#string-double-inline-python"
+                },
+                {
+                    "include": "#template-inline-python"
+                }
+            ]
+        },
+        "string-double-inline-python": {
+            "name": "string.quoted.double.js",
+            "contentName": "meta.embedded.inline.python",
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\")|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.python"
+                }
+            ]
+        },
+        "string-single-inline-python": {
+            "name": "string.quoted.single.js",
+            "contentName": "meta.embedded.inline.python",
+            "begin": "'",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\\')|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.python"
+                }
+            ]
+        },
+        "template-inline-python": {
+            "name": "string.template.js",
+            "contentName": "meta.embedded.inline.python",
+            "begin": "`",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                }
+            },
+            "end": "`",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.end.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.python"
+                }
+            ]
+        },
+        "polyglot-call-sl": {
+            "begin": "(?:((')sl('))|((\")sl(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.js"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "4": {
+                    "name": "string.quoted.double.js"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.js"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "7": {
+                    "name": "punctuation.separator.comma.js"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "source.js#comment"
+                },
+                {
+                    "include": "#string-inline-sl"
+                }
+            ]
+        },
+        "string-inline-sl": {
+            "patterns": [
+                {
+                    "include": "#string-single-inline-sl"
+                },
+                {
+                    "include": "#string-double-inline-sl"
+                },
+                {
+                    "include": "#template-inline-sl"
+                }
+            ]
+        },
+        "string-double-inline-sl": {
+            "name": "string.quoted.double.js",
+            "contentName": "meta.embedded.inline.sl",
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\")|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.sl"
+                }
+            ]
+        },
+        "string-single-inline-sl": {
+            "name": "string.quoted.single.js",
+            "contentName": "meta.embedded.inline.sl",
+            "begin": "'",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.js"
+                }
+            },
+            "end": "(\\')|((?:[^\\\\\\n])$)",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.string.end.js"
+                },
+                "2": {
+                    "name": "invalid.illegal.newline.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.sl"
+                }
+            ]
+        },
+        "template-inline-sl": {
+            "name": "string.template.js",
+            "contentName": "meta.embedded.inline.sl",
+            "begin": "`",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.begin.js"
+                }
+            },
+            "end": "`",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.template.end.js"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "source.sl"
+                }
+            ]
+        }
+    }
+}

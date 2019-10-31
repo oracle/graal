@@ -219,36 +219,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
 
-    public final boolean classMirrorIsHandle;
-    public final int classMirrorOffset;
-    {
-        String name = "Klass::_java_mirror";
-        int offset = -1;
-        boolean isHandle = false;
-        try {
-            offset = getFieldOffset(name, Integer.class, "oop");
-        } catch (JVMCIError e) {
-
-        }
-        if (offset == -1) {
-            try {
-                offset = getFieldOffset(name, Integer.class, "jobject");
-                isHandle = true;
-            } catch (JVMCIError e) {
-                try {
-                    // JDK-8186777
-                    offset = getFieldOffset(name, Integer.class, "OopHandle");
-                    isHandle = true;
-                } catch (JVMCIError e2) {
-                }
-            }
-        }
-        if (offset == -1) {
-            throw new JVMCIError("cannot get offset of field " + name + " with type oop, jobject or OopHandle");
-        }
-        classMirrorOffset = offset;
-        classMirrorIsHandle = isHandle;
-    }
+    public final boolean classMirrorIsHandle = versioned.classMirrorIsHandle;
+    public final int classMirrorOffset = versioned.classMirrorOffset;
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
     public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
@@ -349,6 +321,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE);
     public final int javaThreadReservedStackActivationOffset = versioned.javaThreadReservedStackActivationOffset;
+    public final int jniEnvironmentOffset = getFieldOffset("JavaThread::_jni_environment", Integer.class, "JNIEnv", Integer.MIN_VALUE);
 
     public boolean requiresReservedStackCheck(List<ResolvedJavaMethod> methods) {
         if (enableStackReservedZoneAddress != 0 && methods != null) {

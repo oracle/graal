@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,6 +123,8 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         primitives.put(ProxyDuration.class,
                         Primitive.create("ProxyDuration", ProxyDuration.from(Duration.ofMillis(100)),
                                         TypeDescriptor.intersection(TypeDescriptor.DURATION)));
+        primitives.put(Throwable.class,
+                        Primitive.create("java.lang.Throwable", new RuntimeException(), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.EXCEPTION)));
 
         // Java primitives
         for (Primitive primitive : primitives.values()) {

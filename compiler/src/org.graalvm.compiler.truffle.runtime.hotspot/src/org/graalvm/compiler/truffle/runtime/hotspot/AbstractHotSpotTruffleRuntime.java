@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,11 +198,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     /**
-     * Creates a log that {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} a
-     * native failed speculations list. An important invariant is that an nmethod compiled with this
-     * log can never be executing once the log object dies. When the log object dies, it frees the
+     * Creates a log that {@code HotSpotSpeculationLog#managesFailedSpeculations() manages} a native
+     * failed speculations list. An important invariant is that an nmethod compiled with this log
+     * can never be executing once the log object dies. When the log object dies, it frees the
      * failed speculations list thus invalidating the
-     * {@linkplain HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
+     * {@code HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
      * embedded in the nmethod. If the nmethod were to execute after this point and fail a
      * speculation, it would append the failed speculation to the already freed list.
      * <p>

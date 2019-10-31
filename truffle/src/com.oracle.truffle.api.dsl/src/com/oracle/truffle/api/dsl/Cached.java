@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,11 +71,12 @@ import com.oracle.truffle.api.nodes.Node;
  * </p>
  * <p>
  * The initializer expression of a cached parameter is defined using a subset of Java. This subset
- * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=,
- * <, <=, >, >=) and integer literals. The return type of the initializer expression must be
- * assignable to the parameter type. If the annotated parameter type is derived from {@link Node}
- * then the {@link Node} instance is allowed to use the {@link Node#replace(Node)} method to replace
- * itself. Bound elements without receivers are resolved using the following order:
+ * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=,
+ * >, >=), logical negation (!), logical disjunction (||), null, true, false, and integer literals.
+ * The return type of the initializer expression must be assignable to the parameter type. If the
+ * annotated parameter type is derived from {@link Node} then the {@link Node} instance is allowed
+ * to use the {@link Node#replace(Node)} method to replace itself. Bound elements without receivers
+ * are resolved using the following order:
  * <ol>
  * <li>Dynamic and cached parameters of the enclosing specialization.</li>
  * <li>Fields defined using {@link NodeField} for the enclosing node.</li>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -337,11 +337,11 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public List<TypeMirror> getDynamicTypes() {
-        List<TypeMirror> types = new ArrayList<>();
+        List<TypeMirror> foundTypes = new ArrayList<>();
         for (Parameter param : getDynamicParameters()) {
-            types.add(param.getType());
+            foundTypes.add(param.getType());
         }
-        return types;
+        return foundTypes;
     }
 
     public static class TypeSignature implements Iterable<TypeMirror> {

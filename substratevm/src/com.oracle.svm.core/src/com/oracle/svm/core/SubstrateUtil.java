@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -327,7 +328,8 @@ public class SubstrateUtil {
         }
 
         if (VMOperationControl.isFrozen()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
+            /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
@@ -414,13 +416,15 @@ public class SubstrateUtil {
         if (deoptFrame != null) {
             return deoptFrame.getSourceTotalFrameSize();
         }
-        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
-        if (codeInfo.isNonNull()) {
-            Object tether = CodeInfoAccess.acquireTether(codeInfo);
+
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNonNull()) {
+            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
             try {
+                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 return getTotalFrameSize0(ip, codeInfo);
             } finally {
-                CodeInfoAccess.releaseTether(codeInfo, tether);
+                CodeInfoAccess.releaseTether(untetheredInfo, tether);
             }
         }
         return -1;
@@ -435,7 +439,8 @@ public class SubstrateUtil {
     private static void dumpVMThreads(Log log) {
         log.string("VMThreads info:").newline();
         log.indent(true);
-        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
+        /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
                             .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
         }

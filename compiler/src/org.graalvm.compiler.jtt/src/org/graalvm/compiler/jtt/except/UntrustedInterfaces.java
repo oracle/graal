@@ -25,7 +25,7 @@
 package org.graalvm.compiler.jtt.except;
 
 import org.graalvm.compiler.jtt.JTTTest;
-import org.graalvm.compiler.test.ExportingClassLoader;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;

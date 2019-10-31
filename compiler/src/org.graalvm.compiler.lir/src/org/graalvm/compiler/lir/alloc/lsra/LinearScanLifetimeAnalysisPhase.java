@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -881,7 +881,12 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     }
                 }
             }
-            return move.getConstant();
+            Constant constant = move.getConstant();
+            if (!(constant instanceof JavaConstant)) {
+                // Other kinds of constants might not be supported by the generic move operation.
+                return null;
+            }
+            return constant;
         }
         return null;
     }

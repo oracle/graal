@@ -155,7 +155,7 @@ public class SimpleCoverageInstrumentTest {
         coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
             Set<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
             Object[] expected = new Integer[]{47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 67};
-            Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
+            Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.stream().sorted().toArray());
         });
     }
 
@@ -191,7 +191,7 @@ public class SimpleCoverageInstrumentTest {
             coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
                 Set<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
                 Object[] expected = new Integer[]{3, 4, 5};
-                Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
+                Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.stream().sorted().toArray());
             });
         }
     }

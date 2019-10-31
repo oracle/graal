@@ -28,7 +28,6 @@ import org.graalvm.component.installer.CommandTestBase;
 import org.junit.Rule;
 
 public class NetworkTestBase extends CommandTestBase {
-
     @Rule public ProxyResource proxyResource = new ProxyResource();
 
 }

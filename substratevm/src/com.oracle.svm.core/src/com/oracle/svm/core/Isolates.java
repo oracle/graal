@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.VMError;
 
 public class Isolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
@@ -77,7 +78,8 @@ public class Isolates {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static PointerBase getHeapBase(Isolate isolate) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            return IMAGE_HEAP_BEGIN.get();
+            throw VMError.shouldNotReachHere("Without isolate support (option " + SubstrateOptions.SpawnIsolates.getName() + "), " +
+                            "the heap resides in the data section and does not have one specific base address.");
         }
         return isolate;
     }

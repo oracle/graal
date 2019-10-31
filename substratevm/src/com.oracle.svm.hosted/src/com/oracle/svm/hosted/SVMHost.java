@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -35,14 +36,19 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
+import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -60,6 +66,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -68,6 +75,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -196,7 +204,7 @@ public final class SVMHost implements HostVM {
         assert existing == null;
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
 
     @Override
@@ -258,7 +266,23 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        return new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+    }
+
+    private boolean isAnonymousClass(Class<?> javaClass) {
+        /*
+         * Meta programs and languages often get the naming of their anonymous classes wrong. This
+         * makes, getSimpleName in isAnonymousClass to fail and prevents us from compiling those
+         * bytecodes. Since, isAnonymousClass is not very important for anonymous classes we can
+         * ignore this failure.
+         */
+        try {
+            return javaClass.isAnonymousClass();
+        } catch (InternalError e) {
+            warn("unknown anonymous info of class " + javaClass.getName() + ", assuming class is not anonymous. To remove the warning report an issue " +
+                            "to the library or language author. The issue is caused by " + javaClass.getName() + " which is not following the naming convention.");
+            return false;
+        }
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
@@ -295,5 +319,37 @@ public final class SVMHost implements HostVM {
 
     public UnsafeAutomaticSubstitutionProcessor getAutomaticSubstitutionProcessor() {
         return automaticSubstitutions;
+    }
+
+    @Override
+    public void checkMethod(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
+            ValueNode receiver = graph.start().stateAfter().localAt(0);
+            if (receiver != null && receiver.hasUsages()) {
+                /*
+                 * Entry point methods should be static. However, for unit testing we also use JUnit
+                 * test methods as entry points, and they are by convention non-static. If the
+                 * receiver was used, the execution would crash because the receiver is null (or
+                 * undefined).
+                 */
+                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, "Entry point is non-static and uses its receiver: " + method.format("%r %H.%n(%p)"));
+            }
+        }
+
+        if (!NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            for (Node n : graph.getNodes()) {
+                if (n instanceof StaticDeoptimizingNode) {
+                    StaticDeoptimizingNode node = (StaticDeoptimizingNode) n;
+
+                    if (node.getReason() == DeoptimizationReason.JavaSubroutineMismatch) {
+                        bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, "The bytecodes of the method " + method.format("%H.%n(%p)") +
+                                        " contain a JSR/RET structure that could not be simplified by the compiler. The JSR bytecode is unused and deprecated since Java 6. Please recompile your application with a newer Java compiler." +
+                                        System.lineSeparator() + "To diagnose the issue, you can add the option " +
+                                        SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
+                                        ". The error is then reported at run time when the JSR/RET is executed.");
+                    }
+                }
+            }
+        }
     }
 }

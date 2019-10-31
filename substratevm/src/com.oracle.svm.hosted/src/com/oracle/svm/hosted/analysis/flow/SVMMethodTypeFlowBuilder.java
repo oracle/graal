@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -52,6 +53,10 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
     public SVMMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
         super(bb, graph);
+    }
+
+    protected SVMHost getHostVM() {
+        return (SVMHost) bb.getHostVM();
     }
 
     @Override
@@ -128,6 +133,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
             if (!field.getDeclaringClass().unsafeFieldsRecomputed() &&
+                            !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);

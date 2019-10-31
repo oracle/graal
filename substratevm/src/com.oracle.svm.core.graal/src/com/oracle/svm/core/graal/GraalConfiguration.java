@@ -106,8 +106,7 @@ public class GraalConfiguration {
      * Returns a {@link ListIterator} at the position of the last inlining phase or null if no
      * inlining phases were created.
      */
-    public ListIterator<BasePhase<? super HighTierContext>> createHostedInliners(@SuppressWarnings("unused") PhaseSuite<HighTierContext> highTier,
-                    @SuppressWarnings("unused") boolean requiresPostParseCanonicalization) {
+    public ListIterator<BasePhase<? super HighTierContext>> createHostedInliners(@SuppressWarnings("unused") PhaseSuite<HighTierContext> highTier) {
         return null;
     }
 }

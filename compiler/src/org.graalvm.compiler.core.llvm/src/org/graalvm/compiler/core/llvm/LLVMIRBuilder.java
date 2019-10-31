@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.llvm;
 
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.NULL;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
@@ -37,17 +38,21 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
 import org.bytedeco.javacpp.LLVM.LLVMModuleRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.PointerPointer;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -89,6 +94,26 @@ public class LLVMIRBuilder {
 
     public LLVMModuleRef getModule() {
         return module;
+    }
+
+    public byte[] getBitcode() {
+        if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, new BytePointer(NULL)) == TRUE) {
+            LLVM.LLVMDumpModule(module);
+            throw new GraalError("LLVM module verification failed");
+        }
+
+        LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
+        LLVM.LLVMDisposeModule(module);
+        LLVM.LLVMDisposeBuilder(builder);
+        LLVM.LLVMContextDispose(context);
+
+        BytePointer start = LLVM.LLVMGetBufferStart(buffer);
+        int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+        byte[] bitcode = new byte[size];
+        start.get(bitcode, 0, size);
+        LLVM.LLVMDisposeMemoryBuffer(buffer);
+
+        return bitcode;
     }
 
     public String getFunctionName() {
@@ -612,7 +637,7 @@ public class LLVMIRBuilder {
     /* Control flow */
     public static final AtomicLong nextPatchpointId = new AtomicLong(0);
 
-    LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
+    public LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
         return LLVM.LLVMBuildCall(builder, callee, new PointerPointer<>(args), args.length, DEFAULT_INSTR_NAME);
     }
 
@@ -739,7 +764,7 @@ public class LLVMIRBuilder {
         }
     }
 
-    LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
         return LLVM.LLVMBuildICmp(builder, getLLVMIntCond(cond), a, b, DEFAULT_INSTR_NAME);
     }
 
@@ -858,11 +883,54 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildPow(LLVMValueRef a, LLVMValueRef b) {
-        LLVMTypeRef aType = LLVM.LLVMTypeOf(a);
-        LLVMTypeRef bType = LLVM.LLVMTypeOf(b);
-        assert compatibleTypes(aType, bType) : dumpValues("invalid pow arguments", a, b);
-
         return buildIntrinsicOp("pow", a, b);
+    }
+
+    public LLVMValueRef buildRound(LLVMValueRef a) {
+        LLVMTypeRef type = LLVM.LLVMTypeOf(a);
+        LLVMTypeRef returnType;
+        String intrinsicName;
+        if (isFloatType(type)) {
+            returnType = intType();
+            intrinsicName = "llvm.lround";
+        } else if (isDoubleType(type)) {
+            returnType = longType();
+            intrinsicName = "llvm.llround";
+        } else {
+            throw shouldNotReachHere();
+        }
+
+        intrinsicName = intrinsicName + "." + intrinsicType(returnType) + "." + intrinsicType(type);
+        LLVMTypeRef intrinsicType = functionType(returnType, type);
+        return buildIntrinsicCall(intrinsicName, intrinsicType, a);
+    }
+
+    public LLVMValueRef buildRint(LLVMValueRef a) {
+        return buildIntrinsicOp("round", a);
+    }
+
+    public LLVMValueRef buildCeil(LLVMValueRef a) {
+        return buildIntrinsicOp("ceil", a);
+    }
+
+    public LLVMValueRef buildFloor(LLVMValueRef a) {
+        return buildIntrinsicOp("floor", a);
+    }
+
+    public LLVMValueRef buildMin(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("minimum", a, b);
+    }
+
+    public LLVMValueRef buildMax(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("maximum", a, b);
+    }
+
+    public LLVMValueRef buildCopysign(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("copysign", a, b);
+    }
+
+    public LLVMValueRef buildFma(LLVMValueRef a, LLVMValueRef b, LLVMValueRef c) {
+        return buildIntrinsicOp("fma", a, b, c);
     }
 
     LLVMValueRef buildBswap(LLVMValueRef a) {
@@ -915,11 +983,11 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildCtlz(LLVMValueRef a) {
-        return buildIntrinsicOp("ctlz", a, constantBoolean(true));
+        return buildIntrinsicOp("ctlz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCttz(LLVMValueRef a) {
-        return buildIntrinsicOp("cttz", a, constantBoolean(true));
+        return buildIntrinsicOp("cttz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCtpop(LLVMValueRef a) {

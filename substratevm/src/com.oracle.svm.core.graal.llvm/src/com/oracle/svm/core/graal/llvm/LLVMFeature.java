@@ -25,12 +25,12 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -47,11 +47,14 @@ import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.llvm.LLVMGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
@@ -79,10 +82,12 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 @AutomaticFeature
 @CLibrary("m")
-@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_AND_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_AND_JNI.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class,
+                InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public class LLVMFeature implements Feature, GraalFeature {
 
     private static HostedMethod personalityStub;
+    public static HostedMethod retrieveExceptionMethod;
 
     public static final int SPECIAL_REGISTER_COUNT;
     public static final int THREAD_POINTER_INDEX;
@@ -106,7 +111,9 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        checkLLVMVersion();
+        if (!LLVMOptions.CustomLLC.hasBeenSet()) {
+            checkLLVMVersion();
+        }
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
@@ -130,12 +137,29 @@ public class LLVMFeature implements Feature, GraalFeature {
                 LLVMPersonalityFunction.raiseException();
             }
         });
+
+        ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        try {
+            accessImpl.registerAsCompiled(LLVMPersonalityFunction.class.getMethod("retrieveException"));
+        } catch (NoSuchMethodException e) {
+            throw shouldNotReachHere();
+        }
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
         personalityStub = accessImpl.getUniverse().lookup(LLVMPersonalityFunction.getPersonalityStub());
+        try {
+            retrieveExceptionMethod = accessImpl.getMetaAccess().lookupJavaMethod(LLVMPersonalityFunction.class.getMethod("retrieveException"));
+        } catch (NoSuchMethodException e) {
+            throw shouldNotReachHere();
+        }
     }
 
     @Override
@@ -169,9 +193,23 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    private static void checkLLVMVersion() {
-        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1");
+    private static final int MIN_LLVM_MAJOR_VERSION = 8;
+    private static final int MIN_LLVM_MINOR_VERSION = 0;
 
+    private static void checkLLVMVersion() {
+        String version = getLLVMVersion();
+
+        String[] splitVersion = version.split("\\.");
+        assert splitVersion.length == 3;
+        int majorVersion = Integer.parseInt(splitVersion[0]);
+        int minorVersion = Integer.parseInt(splitVersion[1]);
+
+        if (majorVersion < MIN_LLVM_MAJOR_VERSION || (majorVersion == MIN_LLVM_MAJOR_VERSION && minorVersion < MIN_LLVM_MINOR_VERSION)) {
+            throw UserError.abort("Unsupported LLVM version: " + version + ". Supported versions are LLVM " + MIN_LLVM_MAJOR_VERSION + "." + MIN_LLVM_MINOR_VERSION + ".0 and above");
+        }
+    }
+
+    private static String getLLVMVersion() {
         int status;
         String output = null;
         try (OutputStream os = new ByteArrayOutputStream()) {
@@ -193,9 +231,8 @@ public class LLVMFeature implements Feature, GraalFeature {
         if (status != 0) {
             throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
         }
-        if (!supportedVersions.contains(output)) {
-            throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
-        }
+
+        return output;
     }
 }
 
@@ -266,7 +303,7 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 }
 
 @AutomaticFeature
-@Platforms(Platform.AArch64.class)
+@Platforms(Platform.AARCH64.class)
 class LLVMAArch64TargetSpecificFeature implements Feature {
     private static final int AARCH64_FP_IDX = 29;
     private static final int AARCH64_SP_IDX = 31;

@@ -41,7 +41,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
  */
 @CContext(PosixDirectives.class)
 @CLibrary("-framework CoreFoundation")
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public class CoreFoundation {
 
     public interface CFStringRef extends PointerBase {

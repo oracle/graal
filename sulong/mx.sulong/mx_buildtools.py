@@ -131,7 +131,7 @@ class ClangCompiler(Tool):
 
     def getImplicitArgs(self, tool, program):
         if tool in (ClangCompiler.CLANG, ClangCompiler.CLANGXX):
-            llvmVersion = mx_sulong.getLLVMVersion(program)
+            llvmVersion = mx_sulong.getLLVMMajorVersion(program)
             # prevent clang 5 from adding the 'optnone' attribute which would stop us from using opt
             return mx_sulong.getLLVMExplicitArgs(llvmVersion)
 

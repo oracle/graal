@@ -30,10 +30,17 @@ final class DefaultGraphTypes implements GraphTypes {
     private DefaultGraphTypes() {
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Class<?> enumClass(Object enumValue) {
         if (enumValue instanceof Enum<?>) {
-            return enumValue.getClass();
+            // check that the enum class is not actually an anonymous subclass:
+            Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) enumValue.getClass();
+            Enum<?>[] constants = enumClass.getEnumConstants();
+            if (constants == null && enumClass.isAnonymousClass()) {
+                enumClass = (Class<? extends Enum<?>>) enumClass.getSuperclass();
+            }
+            return enumClass;
         }
         return null;
     }

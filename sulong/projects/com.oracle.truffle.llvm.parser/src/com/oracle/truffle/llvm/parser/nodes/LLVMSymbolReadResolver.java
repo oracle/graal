@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -63,10 +64,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -89,10 +91,10 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 public final class LLVMSymbolReadResolver {
 
     private final LLVMParserRuntime runtime;
-    private final LLVMContext context;
     private final NodeFactory nodeFactory;
     private final FrameDescriptor frame;
     private final GetStackSpaceFactory getStackSpaceFactory;
+    private final DataLayout dataLayout;
 
     private final InternalVisitor visitor = new InternalVisitor();
     private LLVMExpressionNode resolvedNode = null;
@@ -162,23 +164,23 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(ArrayType type) {
-                final int arraySize = context.getByteSize(type);
+                final int arraySize = type.getSize(dataLayout);
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(context, type);
+                    LLVMExpressionNode target = getStackSpaceFactory.createGetStackSpace(nodeFactory, type);
                     resolvedNode = nodeFactory.createZeroNode(target, arraySize);
                 }
             }
 
             @Override
             public void visit(StructureType structureType) {
-                final int structSize = context.getByteSize(structureType);
+                final int structSize = structureType.getSize(dataLayout);
                 if (structSize == 0) {
                     final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
                 } else {
-                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(context, structureType);
+                    LLVMExpressionNode addressnode = getStackSpaceFactory.createGetStackSpace(nodeFactory, structureType);
                     resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
                 }
             }
@@ -208,6 +210,15 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void defaultAction(SymbolImpl symbol) {
             unsupported(symbol);
+        }
+
+        @Override
+        public void visit(MetadataSymbol constant) {
+            // metadata is passed as argument to some dbg.* methods. Sulong resolves required
+            // metadata already during parsing and does not require such a value at runtime. We
+            // resolve this type to a constant value here to avoid having to identify all functions,
+            // like dbg.label, that receive metadata but are in practice noops at runtime.
+            resolvedNode = nodeFactory.createSimpleConstantNoArray(0, PrimitiveType.I32);
         }
 
         @Override
@@ -405,22 +416,22 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionParameter param) {
             final FrameSlot slot = frame.findFrameSlot(param.getName());
-            resolvedNode = nodeFactory.createFrameRead(param.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(param.getType(), slot);
         }
 
         @Override
         public void visitValueInstruction(ValueInstruction value) {
             final FrameSlot slot = frame.findFrameSlot(value.getName());
-            resolvedNode = nodeFactory.createFrameRead(value.getType(), slot);
+            resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
         }
     }
 
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory) {
+    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout) {
         this.runtime = runtime;
-        this.context = runtime.getContext();
-        this.nodeFactory = context.getLanguage().getNodeFactory();
+        this.nodeFactory = runtime.getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
+        this.dataLayout = dataLayout;
     }
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {
@@ -464,14 +475,14 @@ public final class LLVMSymbolReadResolver {
                     throw new LLVMParserException("Indices on structs must be constant integers!");
                 }
                 AggregateType aggregate = (AggregateType) currentType;
-                final long indexedTypeLength = context.getIndexOffset(1, aggregate);
+                final long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
                 currentType = aggregate.getElementType(1);
                 final LLVMExpressionNode indexNode = resolve(indexSymbol);
                 currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNode, indexedTypeLength, currentType);
             } else {
                 // the index is a constant integer
                 AggregateType aggregate = (AggregateType) currentType;
-                final long addressOffset = context.getIndexOffset(indexInteger, aggregate);
+                final long addressOffset = aggregate.getOffsetOf(indexInteger, dataLayout);
                 currentType = aggregate.getElementType(indexInteger);
 
                 // creating a pointer inserts type information, this needs to happen for the address

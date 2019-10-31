@@ -62,14 +62,26 @@ public final class CEntryPointData {
     }
 
     public static CEntryPointData create(Method method) {
+        return create(method, DEFAULT_NAME);
+    }
+
+    public static CEntryPointData create(Method method, String name) {
+        assert method.getAnnotation(CEntryPoint.class).name().isEmpty() || name.isEmpty();
         return create(method.getAnnotation(CEntryPoint.class), method.getAnnotation(CEntryPointOptions.class),
-                        () -> NativeBootImage.globalSymbolNameForMethod(method));
+                        () -> !name.isEmpty() ? name : NativeBootImage.globalSymbolNameForMethod(method));
     }
 
     public static CEntryPointData create(Method method, String name, Class<? extends Function<String, String>> nameTransformation,
                     String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
         return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NO_BUILTIN, prologue, epilogue, exceptionHandler, publishAs);
+    }
+
+    public static CEntryPointData createCustomUnpublished() {
+        CEntryPointData unpublished = new CEntryPointData(null, DEFAULT_NAME, "", Builtin.NO_BUILTIN, CEntryPointOptions.NoPrologue.class, CEntryPointOptions.NoEpilogue.class,
+                        DEFAULT_EXCEPTION_HANDLER, Publish.NotPublished);
+        unpublished.symbolName = DEFAULT_NAME;
+        return unpublished;
     }
 
     @SuppressWarnings("deprecation")

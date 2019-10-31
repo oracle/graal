@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.SignedWord;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -41,7 +38,7 @@ import com.oracle.svm.core.posix.headers.Stat.stat;
 
 //Checkstyle: stop
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 class DarwinInode64Suffix {
 
     @TargetClass(com.oracle.svm.core.posix.headers.Dirent.class)
@@ -52,40 +49,8 @@ class DarwinInode64Suffix {
         private static native DIR opendir(CCharPointer name);
 
         @Substitute
-        @CFunction("readdir$INODE64")
-        private static native dirent readdir(DIR dirp);
-
-        @Substitute
         @CFunction("readdir_r$INODE64")
         private static native int readdir_r(DIR dirp, dirent entry, direntPointer result);
-
-        @Substitute
-        @CFunction("rewinddir$INODE64")
-        private static native void rewinddir(DIR dirp);
-
-        @Substitute
-        @CFunction("seekdir$INODE64")
-        private static native void seekdir(DIR dirp, long pos);
-
-        @Substitute
-        @CFunction("telldir$INODE64")
-        private static native long telldir(DIR dirp);
-
-        @Substitute
-        @CFunction("scandir$INODE64")
-        private static native int scandir(CCharPointer dir, PointerBase namelist, CFunctionPointer selector, CFunctionPointer cmp);
-
-        @Substitute
-        @CFunction("alphasort$INODE64")
-        private static native int alphasort(direntPointer e1, direntPointer e2);
-
-        /*
-         * getdirentries() doesn't work when 64-bit inodes is in effect, so we generate a link
-         * error.
-         */
-        @Substitute
-        @CFunction("_getdirentries_is_not_available_when_64_bit_inodes_are_in_effect")
-        private static native SignedWord getdirentries(int fd, CCharPointer buf, SignedWord nbytes, PointerBase basep);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Stat.class)

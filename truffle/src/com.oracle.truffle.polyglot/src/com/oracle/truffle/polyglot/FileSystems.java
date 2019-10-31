@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -340,7 +340,7 @@ final class FileSystems {
 
             void onPreInitializeContextEnd() {
                 Map<String, Path> languageHomes = new HashMap<>();
-                for (LanguageCache cache : LanguageCache.languages(null).values()) {
+                for (LanguageCache cache : LanguageCache.languages().values()) {
                     final String languageHome = cache.getLanguageHome();
                     if (languageHome != null) {
                         languageHomes.put(cache.getId(), delegate.parsePath(languageHome));
@@ -390,7 +390,7 @@ final class FileSystems {
                     String path = imageHeapPath.path;
                     Path result;
                     String newLanguageHome;
-                    if (languageId != null && (newLanguageHome = LanguageCache.languages(null).get(languageId).getLanguageHome()) != null) {
+                    if (languageId != null && (newLanguageHome = LanguageCache.languages().get(languageId).getLanguageHome()) != null) {
                         result = delegate.parsePath(newLanguageHome).resolve(path);
                     } else {
                         result = delegate.parsePath(path);
@@ -923,7 +923,7 @@ final class FileSystems {
                     res = languageHomes;
                     if (res == null) {
                         res = new HashSet<>();
-                        for (LanguageCache cache : LanguageCache.languages(null).values()) {
+                        for (LanguageCache cache : LanguageCache.languages().values()) {
                             final String languageHome = cache.getLanguageHome();
                             if (languageHome != null) {
                                 res.add(Paths.get(languageHome));

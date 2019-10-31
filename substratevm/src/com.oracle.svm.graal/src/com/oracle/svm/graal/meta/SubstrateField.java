@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
+import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.Replaced;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -63,7 +63,7 @@ public class SubstrateField implements SharedField, Replaced {
     @UnknownPrimitiveField int location;
     @UnknownPrimitiveField private boolean isAccessed;
     @UnknownPrimitiveField private boolean isWritten;
-    @UnknownObjectField(types = {SubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant")//
+    @UnknownObjectField(types = {DirectSubstrateObjectConstant.class, PrimitiveConstant.class}, fullyQualifiedTypes = "jdk.vm.ci.meta.NullConstant")//
     JavaConstant constantValue;
 
     /* Truffle access this information frequently, so it is worth caching it in a field. */

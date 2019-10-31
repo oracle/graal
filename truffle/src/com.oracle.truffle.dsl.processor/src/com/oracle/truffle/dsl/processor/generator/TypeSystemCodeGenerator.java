@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -153,13 +152,13 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         CodeExecutableElement method = new CodeExecutableElement(modifiers(STATIC), expectedType, TypeSystemCodeGenerator.expectTypeMethodName(typeSystem, expectedType));
         method.setVisibility(visibility);
         method.addParameter(new CodeVariableElement(sourceType, LOCAL_VALUE));
-        method.addThrownType(typeSystem.getContext().getTruffleTypes().getUnexpectedValueException());
+        method.addThrownType(typeSystem.getContext().getTypes().UnexpectedResultException);
 
         CodeTreeBuilder body = method.createBuilder();
         body.startIf().tree(check(typeSystem, expectedType, LOCAL_VALUE)).end().startBlock();
         body.startReturn().tree(cast(typeSystem, expectedType, LOCAL_VALUE)).end();
         body.end();
-        body.startThrow().startNew(typeSystem.getContext().getTruffleTypes().getUnexpectedValueException()).string(LOCAL_VALUE).end().end();
+        body.startThrow().startNew(typeSystem.getContext().getTypes().UnexpectedResultException).string(LOCAL_VALUE).end().end();
         return method;
     }
 
@@ -316,7 +315,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), type, name);
             method.addParameter(new CodeVariableElement(context.getType(int.class), "state"));
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
-            method.getThrownTypes().add(context.getType(UnexpectedResultException.class));
+            method.getThrownTypes().add(context.getTypes().UnexpectedResultException);
             List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
 
             CodeTreeBuilder builder = method.createBuilder();
@@ -344,7 +343,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             }
 
             builder.startElseBlock();
-            builder.startThrow().startNew(context.getType(UnexpectedResultException.class)).string(LOCAL_VALUE).end().end();
+            builder.startThrow().startNew(context.getTypes().UnexpectedResultException).string(LOCAL_VALUE).end().end();
             builder.end();
             return method;
         }

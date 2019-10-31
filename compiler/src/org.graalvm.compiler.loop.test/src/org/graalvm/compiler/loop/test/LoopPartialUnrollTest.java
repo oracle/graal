@@ -143,6 +143,35 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore
+    public void testUnsignedLoopCarried() {
+        for (int i = -1; i < 64; i++) {
+            for (int j = 0; j < 64; j++) {
+                test("testUnsignedLoopCarriedSnippet", i, j);
+            }
+        }
+        test("testUnsignedLoopCarriedSnippet", -1 - 32, -1);
+        test("testUnsignedLoopCarriedSnippet", -1 - 4, -1);
+        test("testUnsignedLoopCarriedSnippet", -1 - 32, 0);
+    }
+
+    public static int testUnsignedLoopCarriedSnippet(int start, int end) {
+        int a = 0;
+        int b = 0;
+        int c = 0;
+
+        for (int i = start; branchProbability(0.99, Integer.compareUnsigned(i, end) < 0); i++) {
+            int t1 = volatileInt;
+            int t2 = a + b;
+            c = b;
+            b = a;
+            a = t1 + t2;
+        }
+
+        return c;
+    }
+
+    @Test
     public void testLoopCarried2() {
         for (int i = -1; i < 64; i++) {
             for (int j = -1; j < 64; j++) {
@@ -273,7 +302,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         try (DebugContext.Scope buildScope = graph.getDebug().scope(name, method, graph)) {
             MidTierContext context = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, null);
 
-            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
             canonicalizer.apply(graph, context);
             new RemoveValueProxyPhase().apply(graph);
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
@@ -309,7 +338,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
         StructuredGraph referenceGraph = buildGraph(reference, false);
         StructuredGraph testGraph = buildGraph(test, true);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(testGraph, getDefaultMidTierContext());
         canonicalizer.apply(referenceGraph, getDefaultMidTierContext());
         assertEquals(referenceGraph, testGraph);

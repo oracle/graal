@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
@@ -56,7 +57,7 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
     HotSpotGraalManagement nextDeferred;
 
     @Override
-    public void initialize(HotSpotGraalRuntime runtime) {
+    public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
         if (bean == null) {
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());

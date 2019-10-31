@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.EnumMap;
@@ -254,12 +255,27 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
     }
 
+    /**
+     * Writing this as individual if statements to avoid a merge without a frame state.
+     */
     private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, Counters counters) {
-        if (probability(SLOW_PATH_PROBABILITY, srcPos < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, destPos < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, length < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, srcPos > ArrayLengthNode.arrayLength(src) - length) ||
-                        probability(SLOW_PATH_PROBABILITY, destPos > ArrayLengthNode.arrayLength(dest) - length)) {
+        if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
+            counters.checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (probability(DEOPT_PROBABILITY, destPos < 0)) {
+            counters.checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (probability(DEOPT_PROBABILITY, length < 0)) {
+            counters.checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (probability(DEOPT_PROBABILITY, srcPos > ArrayLengthNode.arrayLength(src) - length)) {
+            counters.checkAIOOBECounter.inc();
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        if (probability(DEOPT_PROBABILITY, destPos > ArrayLengthNode.arrayLength(dest) - length)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -272,13 +288,13 @@ public abstract class ArrayCopySnippets implements Snippets {
         } else if (arrayTypeCheck == ArrayCopyTypeCheck.HUB_BASED_ARRAY_TYPE_CHECK) {
             Pointer srcHub = loadHub(nonNullSrc);
             Pointer destHub = loadHub(nonNullDest);
-            if (probability(SLOW_PATH_PROBABILITY, srcHub != destHub)) {
+            if (probability(DEOPT_PROBABILITY, srcHub != destHub)) {
                 DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
             }
         } else if (arrayTypeCheck == ArrayCopyTypeCheck.LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK) {
             Pointer srcHub = loadHub(nonNullSrc);
             Pointer destHub = loadHub(nonNullDest);
-            if (probability(SLOW_PATH_PROBABILITY, getReadLayoutHelper(srcHub) != getReadLayoutHelper(destHub))) {
+            if (probability(DEOPT_PROBABILITY, getReadLayoutHelper(srcHub) != getReadLayoutHelper(destHub))) {
                 DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
             }
         } else {

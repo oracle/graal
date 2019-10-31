@@ -183,7 +183,7 @@ public class OSRCancelTest {
 
         @Override
         void execute(VirtualFrame frame) {
-            loop.executeLoop(frame);
+            loop.execute(frame);
         }
 
     }
@@ -203,7 +203,7 @@ public class OSRCancelTest {
 
         @Override
         void execute(VirtualFrame frame) {
-            loop.executeLoop(frame);
+            loop.execute(frame);
         }
 
     }

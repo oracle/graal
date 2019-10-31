@@ -32,7 +32,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 
-@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public final class DarwinCoreFoundationUtils {
 
     private DarwinCoreFoundationUtils() {

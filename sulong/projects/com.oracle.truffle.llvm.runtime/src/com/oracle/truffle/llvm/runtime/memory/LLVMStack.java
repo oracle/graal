@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -197,6 +198,7 @@ public final class LLVMStack {
 
     private long getStackPointer(LLVMMemory memory) {
         if (!isAllocated) {
+            CompilerDirectives.transferToInterpreter();
             allocate(memory);
         }
         return this.stackPointer;

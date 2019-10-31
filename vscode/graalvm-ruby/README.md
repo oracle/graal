@@ -26,9 +26,3 @@ For Ruby sources opened in editor, all the `Polyglot.eval(...)` calls are detect
 This extension depends on the following extensions:
 * [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - Ruby language support.
 * [GraalVM](https://marketplace.visualstudio.com/items?itemName=OracleLabs.graalvm) - Basic support for GraalVM.
-
-## Release Notes
-
-### 0.0.1
-
-Initial release of the extension.

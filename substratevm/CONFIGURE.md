@@ -7,6 +7,8 @@ In order to make preparing these configuration files easier and more convenient,
 /path/to/graalvm/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
 ```
 
+__Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.__
+
 During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources or request proxy accesses. The agent then generates the files `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json` in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are stand-alone configuration files in _JSON_ format which contain all intercepted dynamic accesses.
 
 It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         new PluginFactory_SubstitutionNodeSourcePositionTest().registerPlugins(invocationPlugins, null);
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestMethod.class, bytecodeProvider);
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestMethod.class, getReplacements(), bytecodeProvider);
         r.registerMethodSubstitution(TestMethodSubstitution.class, "test", int.class);
         super.registerInvocationPlugins(invocationPlugins);
     }

@@ -33,8 +33,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-import javax.xml.bind.DatatypeConverter;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -61,7 +59,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
     public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
-    private static final int HEX_WIDTH = BIT_WIDTH / BIT_TO_HEX_FACTOR;
 
     private static final int EXPONENT_BIT_WIDTH = 15;
     private static final int FRACTION_BIT_WIDTH = 64;
@@ -616,7 +613,11 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public static LLVM80BitFloat fromUnsignedByte(byte from) {
-        return fromInt(from & Byte.MIN_VALUE);
+        return fromInt(from & 0xFF);
+    }
+
+    public static LLVM80BitFloat fromUnsignedShort(short from) {
+        return fromUnsignedInt(from & 0xFFFF);
     }
 
     public static LLVM80BitFloat fromShort(short from) {
@@ -640,13 +641,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
     public static int compare(LLVM80BitFloat val1, LLVM80BitFloat val2) {
         return val1.compareOrdered(val2);
-    }
-
-    public static LLVM80BitFloat fromString(String stringValue) {
-        if (stringValue.length() != HEX_WIDTH) {
-            throw new IllegalArgumentException("unexpected length of input string!");
-        }
-        return fromBytesBigEndian(DatatypeConverter.parseHexBinary(stringValue));
     }
 
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {

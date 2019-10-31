@@ -1,7 +1,5 @@
 # Toolchain
 
-> **WARNING**: *The toolchain is experimental. Functionality may be added, changed or removed without prior notice.*
-
 The *toolchain* is a set of tools and APIs for compiling native projects, such as C and C++,
 to bitcode that can be executed with the GraalVM LLVM runtime.
 It is aimed to simplify ahead-of-time compilation for users
@@ -113,3 +111,14 @@ Bootstrapping wrappers can be found in the `mxbuild/SULONG_BOOTSTRAP_TOOLCHAIN` 
 However, the APIs will take care of providing the right one.
 These distributions are for manual usage only and are considered unstable and might change without notice.
 Do not depend on them.
+
+### Using a prebuilt GraalVM as a Bootstrapping Toolchain
+
+To speed up toolchain compilation during development, the `SULONG_BOOTSTRAP_GRAALVM` environment variable can be set
+to a _prebuilt_ GraalVM. Sulong comes with a configuration file that makes building a bootstrapping GraalVM easy:
+
+```bash
+$ mx --env toolchain-only build
+$ export SULONG_BOOTSTRAP_GRAALVM=`mx --env toolchain-only graalvm-home`
+```
+> **WARNING**: *The bootstrapping GraalVM will not be rebuilt automatically. You are responsible for keeping it up-to-date.*

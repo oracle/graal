@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -35,6 +37,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class LayoutEncoding {
 
@@ -45,9 +50,9 @@ public class LayoutEncoding {
     private static final int LAST_SPECIAL_VALUE = ABSTRACT_VALUE;
 
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
-    private static final int ARRAY_INDEX_SHIFT_MASK = 255;
+    private static final int ARRAY_INDEX_SHIFT_MASK = 0xff;
     private static final int ARRAY_BASE_SHIFT = 8 + ARRAY_INDEX_SHIFT_SHIFT;
-    private static final int ARRAY_BASE_MASK = 255;
+    private static final int ARRAY_BASE_MASK = 0xfff;
     private static final int ARRAY_TAG_BITS = 2;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
     private static final int ARRAY_TAG_PRIMITIVE_VALUE = ~0x00; // 0xC0000000 >> 30
@@ -65,24 +70,40 @@ public class LayoutEncoding {
         return ABSTRACT_VALUE;
     }
 
-    public static int forInstance(int size) {
-        assert size > LAST_SPECIAL_VALUE && size <= Integer.MAX_VALUE;
-        int encoding = size;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
+        VMError.guarantee(condition, description + ". This error is caused by an incorrect compact encoding of a type " +
+                        "(a class, array or a primitive). The error occurred with the following type, but also could be caused " +
+                        "by characteristics of the overall type hierarchy: " + type + ". Please report this problem and the " +
+                        "conditions in which it occurs and include any noteworthy characteristics of the type hierarchy and " +
+                        "architecture of the application and the libraries and frameworks it uses.");
+    }
 
-        assert isInstance(encoding) && !isArray(encoding) && !isObjectArray(encoding) && !isPrimitiveArray(encoding);
-        assert getInstanceSize(encoding).equal(WordFactory.unsigned(size));
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int forInstance(ResolvedJavaType type, int size) {
+        guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
+        int encoding = size;
+        guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
+        guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
+        guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
+        guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
+        guaranteeEncoding(type, getInstanceSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size must match type size");
         return encoding;
     }
 
-    public static int forArray(boolean isObject, int arrayBaseOffset, int arrayIndexShift) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int forArray(ResolvedJavaType type, boolean isObject, int arrayBaseOffset, int arrayIndexShift) {
         int tag = isObject ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE;
         int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
 
-        assert !isInstance(encoding) && isArray(encoding);
-        assert isObjectArray(encoding) == isObject;
-        assert isPrimitiveArray(encoding) != isObject;
-        assert getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset));
-        assert getArrayIndexShift(encoding) == arrayIndexShift;
+        guaranteeEncoding(type, isArray(encoding), "Array encoding must denote an array");
+        guaranteeEncoding(type, !isInstance(encoding), "Array encoding must not denote an instance type");
+        guaranteeEncoding(type, isObjectArray(encoding) == isObject, "Expected isObjectArray(encoding) == " + isObject);
+        guaranteeEncoding(type, isPrimitiveArray(encoding) != isObject, "Expected isPrimitiveArray(encoding) != " + isObject);
+        guaranteeEncoding(type, getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset)),
+                        "Expected array base offset of " + arrayBaseOffset + ", but encoding gives " + getArrayBaseOffset(encoding));
+        guaranteeEncoding(type, getArrayIndexShift(encoding) == arrayIndexShift,
+                        "Expected array index shift of " + arrayIndexShift + ", but encoding gives " + getArrayIndexShift(encoding));
         return encoding;
     }
 

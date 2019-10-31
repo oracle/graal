@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,10 +62,18 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 abstract class BreakpointLocation {
 
+    protected final SourceElement[] sourceElements;
+
+    protected BreakpointLocation(SourceElement[] sourceElements) {
+        this.sourceElements = sourceElements;
+    }
+
     /**
      * A source location with {@code key == null} that always matches.
      */
     static final BreakpointLocation ANY = new BreakpointSourceLocation();
+
+    static final URI ANY_SOURCE = URI.create("");
 
     static BreakpointLocation create(Object key, SourceElement[] sourceElements, SourceSection sourceSection) {
         return new BreakpointSourceLocation(key, sourceElements, sourceSection);
@@ -79,7 +87,23 @@ abstract class BreakpointLocation {
         return new BreakpointFilteredLocation(sourceElements, filter);
     }
 
+    final boolean containsRoot() {
+        if (sourceElements == null) {
+            return true;
+        }
+        for (SourceElement elem : sourceElements) {
+            if (SourceElement.ROOT == elem) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     abstract SourceFilter createSourceFilter();
+
+    abstract Predicate<Source> createSourcePredicate();
+
+    abstract boolean canAdjustLocation();
 
     abstract SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor);
 
@@ -96,7 +120,6 @@ abstract class BreakpointLocation {
     private static final class BreakpointSourceLocation extends BreakpointLocation {
 
         private final Object key;
-        private final SourceElement[] sourceElements;
         private final SourceSection sourceSection;
         private int line;
         private int column;
@@ -106,9 +129,9 @@ abstract class BreakpointLocation {
          * @param line 1-based line number, -1 for unspecified
          */
         BreakpointSourceLocation(Object key, SourceElement[] sourceElements, SourceSection sourceSection) {
+            super(sourceElements);
             assert key instanceof Source || key instanceof URI;
             this.key = key;
-            this.sourceElements = sourceElements;
             this.sourceSection = sourceSection;
             this.line = -1;
             this.column = -1;
@@ -120,19 +143,19 @@ abstract class BreakpointLocation {
          * @param column 1-based column number, -1 for unspecified
          */
         BreakpointSourceLocation(Object key, SourceElement[] sourceElements, int line, int column) {
+            super(sourceElements);
             assert key instanceof Source || key instanceof URI;
-            assert line > 0;
+            assert line > 0 || line == -1;
             assert column > 0 || column == -1;
             this.key = key;
-            this.sourceElements = sourceElements;
             this.line = line;
             this.column = column;
             this.sourceSection = null;
         }
 
         private BreakpointSourceLocation() {
+            super(null);
             this.key = null;
-            this.sourceElements = null;
             this.line = -1;
             this.column = -1;
             this.sourceSection = null;
@@ -141,13 +164,36 @@ abstract class BreakpointLocation {
         @Override
         SourceFilter createSourceFilter() {
             if (key == null) {
-                return SourceFilter.ANY;
+                return null;
             }
             SourceFilter.Builder f = SourceFilter.newBuilder();
             if (key instanceof URI) {
+                f.sourceIs(createSourcePredicate());
+            } else {
+                assert key instanceof Source;
+                Source s = (Source) key;
+                f.sourceIs(s);
+            }
+            return f.build();
+        }
+
+        @Override
+        Predicate<Source> createSourcePredicate() {
+            if (key == null) {
+                return null;
+            }
+            if (key instanceof URI) {
+                if (key == ANY_SOURCE) {
+                    return new Predicate<Source>() {
+                        @Override
+                        public boolean test(Source s) {
+                            return true;
+                        }
+                    };
+                }
                 final URI sourceUri = (URI) key;
                 final String sourceRawPath = sourceUri.getRawPath() != null ? sourceUri.getRawPath() : sourceUri.getRawSchemeSpecificPart();
-                f.sourceIs(new Predicate<Source>() {
+                return new Predicate<Source>() {
                     @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
@@ -162,13 +208,22 @@ abstract class BreakpointLocation {
                     public String toString() {
                         return "URI equals " + sourceUri;
                     }
-                });
+                };
             } else {
                 assert key instanceof Source;
-                Source s = (Source) key;
-                f.sourceIs(s);
+                Source source = (Source) key;
+                return new Predicate<Source>() {
+                    @Override
+                    public boolean test(Source s) {
+                        return source.equals(s);
+                    }
+                };
             }
-            return f.build();
+        }
+
+        @Override
+        boolean canAdjustLocation() {
+            return key != null;
         }
 
         @Override
@@ -178,6 +233,9 @@ abstract class BreakpointLocation {
             }
             if (key == null) {
                 return null;
+            }
+            if (line == -1) {
+                return source.createUnavailableSection();
             }
             boolean hasColumn = column > 0;
             SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, line, column, suspendAnchor, env);
@@ -208,10 +266,12 @@ abstract class BreakpointLocation {
             if (key == null) {
                 return f.tagIs(DebuggerTags.AlwaysHalt.class).build();
             }
-            if (source != null) {
-                f.sourceIs(source);
-            } else {
-                f.sourceFilter(createSourceFilter());
+            if (key != ANY_SOURCE) {
+                if (source != null) {
+                    f.sourceIs(source);
+                } else {
+                    f.sourceFilter(createSourceFilter());
+                }
             }
             if (line != -1) {
                 switch (suspendAnchor) {
@@ -258,16 +318,25 @@ abstract class BreakpointLocation {
     private static final class BreakpointFilteredLocation extends BreakpointLocation {
 
         private final SuspensionFilter filter;
-        private final SourceElement[] sourceElements;
 
         BreakpointFilteredLocation(SourceElement[] sourceElements, SuspensionFilter filter) {
+            super(sourceElements);
             this.filter = filter;
-            this.sourceElements = sourceElements;
         }
 
         @Override
         SourceFilter createSourceFilter() {
             return null;
+        }
+
+        @Override
+        Predicate<Source> createSourcePredicate() {
+            return null;
+        }
+
+        @Override
+        boolean canAdjustLocation() {
+            return false;
         }
 
         @Override

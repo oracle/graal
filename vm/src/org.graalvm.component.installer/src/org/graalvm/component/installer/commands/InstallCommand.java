@@ -26,11 +26,17 @@ package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
@@ -51,6 +57,8 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  * Implementation of 'add' command.
  */
 public class InstallCommand implements InstallerCommand {
+    private static final Logger LOG = Logger.getLogger(InstallCommand.class.getName());
+
     private static final Map<String, String> OPTIONS = new HashMap<>();
 
     private CommandInput input;
@@ -137,12 +145,16 @@ public class InstallCommand implements InstallerCommand {
      */
     private Version minRequiredGraalVersion;
 
-    @Override
-    public int execute() throws IOException {
+    protected void executionInit() throws IOException {
         input.getLocalRegistry().verifyAdministratorAccess();
         input.existingFiles().setVerifyJars(verifyJar);
 
         minRequiredGraalVersion = input.getLocalRegistry().getGraalVersion();
+    }
+
+    @Override
+    public int execute() throws IOException {
+        executionInit();
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output("INSTALL_Help");
             return 0;
@@ -202,29 +214,129 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
-    void prepareInstallation() throws IOException {
-        for (ComponentParam p : input.existingFiles()) {
+    /**
+     * Implied dependencies discovered during preparation.
+     */
+    private List<ComponentParam> dependencies = new ArrayList<>();
 
-            feedback.output("INSTALL_VerboseProcessingArchive", p.getDisplayName());
+    /**
+     * Unresolved dependencies, which will be reported all at once.
+     */
+    private Set<String> unresolvedDependencies = new HashSet<>();
+    private Set<ComponentInfo> knownDeps = new HashSet<>();
+
+    void cleanDependencies() {
+        dependencies = new ArrayList<>();
+        // do not clean knownDeps, prevents duplicates.
+    }
+
+    public List<ComponentParam> getDependencies() {
+        return Collections.unmodifiableList(dependencies);
+    }
+
+    void addDependencies(ComponentInfo ci) {
+        Set<ComponentInfo> deps = new HashSet<>();
+
+        LOG.log(Level.FINE, "Inspecting dependencies of {0}", ci);
+        Set<String> errors = input.getRegistry().findDependencies(ci, true, Boolean.FALSE, deps);
+        LOG.log(Level.FINE, "Direct dependencies: {0}, errors: {1}", new Object[]{deps, errors});
+        if (errors != null) {
+            unresolvedDependencies.addAll(errors);
+        }
+
+        for (ComponentInfo i : deps) {
+            if (!knownDeps.add(i)) {
+                continue;
+            }
+            ComponentParam p = input.existingFiles().createParam(i.getId(), i);
+            dependencies.add(p);
+        }
+    }
+
+    void printRequiredComponents() throws IOException {
+        if (dependencies.isEmpty()) {
+            return;
+        }
+        feedback.output("INSTALL_RequiredDependencies");
+        for (ComponentParam p : dependencies) {
+            ComponentInfo ci = p.createMetaLoader().getComponentInfo();
+            feedback.output("INSTALL_RequiredDependencyLine", p.getDisplayName(), ci.getId(), ci.getVersion().displayString());
+        }
+    }
+
+    private static final class Params implements Iterator<ComponentParam> {
+        private final Iterator<ComponentParam> first;
+        private final List<ComponentParam> second;
+        private int index = 0;
+
+        Params(Iterator<ComponentParam> first, List<ComponentParam> second) {
+            this.first = first;
+            this.second = second;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return first.hasNext() || index < second.size();
+        }
+
+        @Override
+        public ComponentParam next() {
+            if (first.hasNext()) {
+                return first.next();
+            }
+            if (index < second.size()) {
+                return second.get(index++);
+            } else {
+                throw new NoSuchElementException();
+            }
+        }
+    }
+
+    Iterable<ComponentParam> componentsWithDependencies() {
+        return () -> new Params(input.existingFiles().iterator(), dependencies);
+    }
+
+    boolean verifyInstaller(Installer inst) {
+        ComponentInfo info = inst.getComponentInfo();
+        Verifier vrf = inst.createVerifier();
+        vrf.setVersionMatch(matchInstallVesion());
+        vrf.validateRequirements(info);
+        boolean keep = force || vrf.shouldInstall(info);
+        if (!keep) {
+            // component will be skipped, do not bother with validation
+            feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
+            return false;
+        }
+        Version minV = vrf.getMinVersion();
+        if (minV != null && minV.compareTo(this.minRequiredGraalVersion) > 0) {
+            minRequiredGraalVersion = minV;
+        }
+        addDependencies(info);
+        return true;
+    }
+
+    void checkDependencyErrors() {
+        if (unresolvedDependencies.isEmpty()) {
+            return;
+        }
+        feedback.error("INSTALL_UnknownComponents", null);
+        List<String> ordered = new ArrayList<>(unresolvedDependencies);
+        Collections.sort(ordered);
+        for (String s : ordered) {
+            feedback.error("INSTALL_UnknownComponentLine", null, s);
+        }
+        throw feedback.failure("INSTALL_UnresolvedDependencies", null);
+    }
+
+    protected void processComponents(Iterable<ComponentParam> toProcess) throws IOException {
+        for (ComponentParam p : toProcess) {
+            feedback.output(p.isComplete() ? "INSTALL_VerboseProcessingArchive" : "INSTALL_VerboseProcessingComponent", p.getDisplayName());
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
             Installer inst = createInstaller(p, ldr);
-            ComponentInfo info = inst.getComponentInfo();
-
-            Verifier vrf = inst.createVerifier();
-            vrf.setVersionMatch(matchInstallVesion());
-            vrf.validateRequirements(info);
-            boolean keep = force || vrf.shouldInstall(info);
-            if (!keep) {
-                // component will be skipped, do not bother with validation
-                feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
+            if (!verifyInstaller(inst)) {
                 continue;
             }
-            Version minV = vrf.getMinVersion();
-            if (minV != null && minV.compareTo(this.minRequiredGraalVersion) > 0) {
-                minRequiredGraalVersion = minV;
-            }
-
             installers.add(inst);
             if (p.isComplete()) {
                 // null realInstaller will be handled in completeInstallers() later.
@@ -242,6 +354,20 @@ public class InstallCommand implements InstallerCommand {
                 i.validateAll();
             }
         }
+    }
+
+    protected void prepareInstallation() throws IOException {
+        processComponents(input.existingFiles());
+        // first check after explicit components have been processed.
+        checkDependencyErrors();
+        printRequiredComponents();
+        if (dependencies.isEmpty()) {
+            return;
+        }
+        // dependencies were scanned recursively; so just one additional pass should
+        // be sufficient
+        processComponents(new ArrayList<>(dependencies));
+        checkDependencyErrors();
     }
 
     public void setIgnoreFailures(boolean ignoreFailures) {
@@ -303,7 +429,7 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
-    private interface Step {
+    interface Step {
         void execute() throws IOException;
     }
 
@@ -315,12 +441,29 @@ public class InstallCommand implements InstallerCommand {
      * Creates installers with complete info. Revalidates the installers as they are now complete.
      */
     void completeInstallers() throws IOException {
+        List<ComponentParam> allDependencies = new ArrayList<>();
+        List<ComponentParam> in = new ArrayList<>(realInstallers.keySet());
+        do {
+            cleanDependencies();
+            completeInstallers0(in);
+            allDependencies.addAll(dependencies);
+            in = dependencies;
+        } while (!in.isEmpty());
+        dependencies = allDependencies;
+        checkDependencyErrors();
+        printRequiredComponents();
+    }
+
+    void completeInstallers0(List<ComponentParam> in) throws IOException {
         // now fileName real installers for parameters which were omitted
-        for (ComponentParam p : new ArrayList<>(realInstallers.keySet())) {
+        for (ComponentParam p : in) {
             Installer i = realInstallers.get(p);
             if (i == null) {
                 MetadataLoader floader = p.createFileLoader();
                 i = createInstaller(p, floader);
+                if (!verifyInstaller(i)) {
+                    continue;
+                }
                 addLicenseToAccept(i, floader);
                 installers.add(i);
 
@@ -427,5 +570,9 @@ public class InstallCommand implements InstallerCommand {
      */
     void acceptLicenses() throws IOException {
         new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
+    }
+
+    public Set<String> getUnresolvedDependencies() {
+        return Collections.unmodifiableSet(unresolvedDependencies);
     }
 }

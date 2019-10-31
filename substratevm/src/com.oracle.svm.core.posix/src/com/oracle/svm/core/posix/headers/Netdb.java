@@ -25,8 +25,6 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -34,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 // Allow methods with non-standard names: Checkstyle: stop
@@ -42,27 +41,18 @@ import org.graalvm.word.PointerBase;
  * The definitions I need, manually translated from the C header file /usr/include/netdb.h.
  */
 
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 public final class Netdb {
 
-    /** Private constructor: No instances. */
     private Netdb() {
     }
-
-    /*
-     * Constants for getnameinfo()
-     */
 
     @CConstant
     public static native int NI_MAXHOST();
 
     @CConstant
     public static native int NI_NAMEREQD();
-
-    /*
-     * Constants for addrinfo.ai_flags.
-     */
 
     @CConstant
     public static native int AI_CANONNAME();
@@ -152,19 +142,9 @@ public final class Netdb {
         Netdb.addrinfo read(int i);
     }
 
-    // @formatter:off
-    // int getaddrinfo(const char             *hostname,
-    //                 const char             *servname,
-    //                 const struct addrinfo  *hints,
-    //                 struct addrinfo       **res);
     @CFunction
-    public static native int getaddrinfo(CCharPointer          hostname,
-                                         CCharPointer          servname,
-                                         Netdb.addrinfo        hints,
-                                         Netdb.addrinfoPointer res);
-    // @formatter:on
+    public static native int getaddrinfo(CCharPointer hostname, CCharPointer servname, Netdb.addrinfo hints, Netdb.addrinfoPointer res);
 
-    // void freeaddrinfo(struct addrinfo *ai);
     @CFunction
     public static native void freeaddrinfo(Netdb.addrinfo ai);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,8 +64,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -86,14 +84,14 @@ public class GeneratorUtils {
     static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getType(CompilerDirectives.class), "transferToInterpreterAndInvalidate").end().end();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
         return builder.build();
     }
 
     public static CodeTree createTransferToInterpreter() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getType(CompilerDirectives.class), "transferToInterpreter").end().end();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreter").end().end();
         return builder.build();
     }
 
@@ -206,7 +204,7 @@ public class GeneratorUtils {
         }
         clazz.setSuperClass(resolvedSuperType);
 
-        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror((DeclaredType) context.getType(GeneratedBy.class));
+        CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror(context.getTypes().GeneratedBy);
         Element generatedByElement = templateType;
         while (generatedByElement instanceof GeneratedElement) {
             generatedByElement = generatedByElement.getEnclosingElement();
@@ -222,7 +220,7 @@ public class GeneratorUtils {
     }
 
     public static void addGeneratedBy(ProcessorContext context, CodeTypeElement generatedType, TypeElement generatedByType) {
-        DeclaredType generatedBy = (DeclaredType) context.getType(GeneratedBy.class);
+        DeclaredType generatedBy = context.getTypes().GeneratedBy;
         // only do this if generatedBy is on the classpath.
         if (generatedBy != null) {
             CodeAnnotationMirror generatedByAnnotation = new CodeAnnotationMirror(generatedBy);
@@ -273,7 +271,7 @@ public class GeneratorUtils {
         return false;
     }
 
-    public static CodeExecutableElement override(Class<?> type, String methodName) {
+    public static CodeExecutableElement override(DeclaredType type, String methodName) {
         ExecutableElement method = ElementUtils.findMethod(type, methodName);
         if (method == null) {
             return null;

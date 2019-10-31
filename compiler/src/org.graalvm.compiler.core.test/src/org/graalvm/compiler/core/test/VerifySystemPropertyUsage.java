@@ -87,14 +87,18 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
         } else if (holderQualified.equals("org.graalvm.compiler.hotspot.JVMCIVersionCheck") && caller.getName().equals("main")) {
             // The main method in JVMCIVersionCheck is only called from the shell
             return;
-        } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot")) {
-            // Truffle and Polyglot do not depend on JVMCI so cannot use
+        } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot") || packageName.startsWith("org.graalvm.home")) {
+            // Truffle and SDK do not depend on JVMCI so they cannot use
             // Services.getSavedProperties()
             return;
         } else if (packageName.startsWith("com.oracle.svm")) {
             // SVM must read system properties in:
             // * its JDK substitutions to mimic required JDK semantics
             // * native-image for config info
+            return;
+        } else if (packageName.startsWith("jdk.tools.jaotc")) {
+            // Workaround since jdk.internal.vm.ci/jdk.vm.ci.services is not exported to jdk.aot.
+            // The jaotc launcher dynamically adds these exports.
             return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {

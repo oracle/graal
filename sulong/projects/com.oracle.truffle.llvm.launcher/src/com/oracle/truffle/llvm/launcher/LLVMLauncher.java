@@ -56,6 +56,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     String[] programArgs;
     File file;
     private VersionAction versionAction = VersionAction.None;
+    private boolean printToolchainPath = false;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -89,6 +90,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     break;
                 case "--version":
                     versionAction = VersionAction.PrintAndExit;
+                    break;
+                case "--print-toolchain-path":
+                    printToolchainPath = true;
                     break;
                 default:
                     // options with argument
@@ -138,6 +142,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
             }
         }
 
+        if (printToolchainPath) {
+            polyglotOptions.put("llvm.printToolchainPath", "true");
+        }
         if (!path.isEmpty()) {
             polyglotOptions.put("llvm.libraryPath", path.stream().collect(Collectors.joining(":")));
         }
@@ -159,23 +166,23 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
-        if (file == null && versionAction != VersionAction.PrintAndExit) {
+        if (file == null && versionAction != VersionAction.PrintAndExit && !printToolchainPath) {
             throw abort("No bitcode file provided.", 6);
         }
     }
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {
-        // @formatter:off
         System.out.println();
         System.out.println("Usage: lli [OPTION]... [FILE] [PROGRAM ARGS]");
         System.out.println("Run LLVM bitcode files on the GraalVM's lli.\n");
         System.out.println("Mandatory arguments to long options are mandatory for short options too.\n");
         System.out.println("Options:");
-        printOption("-L <path>",         "set path where lli searches for libraries");
+        printOption("-L <path>", "set path where lli searches for libraries");
         printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
-        printOption("--version",         "print the version and exit");
-        printOption("--show-version",    "print the version and continue");
+        printOption("--version", "print the version and exit");
+        printOption("--show-version", "print the version and continue");
+        printOption("--print-toolchain-path", "print the toolchain path and exit");
     }
 
     @Override
@@ -201,6 +208,10 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
+            if (printToolchainPath) {
+                context.getBindings(getLanguageId()).getMember("__sulong_print_toolchain_path").execute();
+                return 0;
+            }
             Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
             if (!library.canExecute()) {
                 throw abort("no main function found");
@@ -236,7 +247,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         }
         System.err.println(e.isHostException() ? e.asHostException().toString() : e.getMessage());
         for (PolyglotException.StackFrame s : stackTrace) {
-           System.err.println("\tat " + s);
+            System.err.println("\tat " + s);
         }
     }
 }

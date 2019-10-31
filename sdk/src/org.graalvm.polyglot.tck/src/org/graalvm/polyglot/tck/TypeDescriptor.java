@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -151,6 +151,13 @@ public final class TypeDescriptor {
     public static final TypeDescriptor DURATION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DURATION));
 
     /**
+     * Type descriptor for duration.
+     *
+     * @since 19.3
+     */
+    public static final TypeDescriptor EXCEPTION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.EXCEPTION));
+
+    /**
      * Represents an executable type returning any type and accepting any number of parameters of
      * any type. To create an executable type with concrete types use
      * {@link TypeDescriptor#executable(org.graalvm.polyglot.tck.TypeDescriptor, org.graalvm.polyglot.tck.TypeDescriptor...)}
@@ -219,10 +226,11 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ANY = new TypeDescriptor(new UnionImpl(new HashSet<>(Arrays.asList(
                     NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl, EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl,
-                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl))));
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, EXCEPTION.impl))));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
-                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY, INSTANTIABLE, INSTANTIABLE_ANY, ANY
+                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY, INSTANTIABLE,
+                    INSTANTIABLE_ANY, ANY
     };
 
     private final TypeDescriptorImpl impl;
@@ -625,6 +633,9 @@ public final class TypeDescriptor {
         if (value.isDuration()) {
             descs.add(DURATION);
         }
+        if (value.isException()) {
+            descs.add(EXCEPTION);
+        }
 
         if (value.hasArrayElements()) {
             final Set<TypeDescriptor> contentTypes = new HashSet<>();
@@ -686,7 +697,8 @@ public final class TypeDescriptor {
         TIME("time"),
         TIME_ZONE("timeZone"),
         DURATION("duration"),
-        OBJECT("object");
+        OBJECT("object"),
+        EXCEPTION("exception");
 
         private final String displayName;
 

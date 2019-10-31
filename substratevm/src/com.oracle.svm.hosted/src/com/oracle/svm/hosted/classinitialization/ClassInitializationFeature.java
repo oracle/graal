@@ -32,9 +32,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -63,6 +61,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
+import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -223,14 +222,6 @@ public class ClassInitializationFeature implements Feature {
             Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
 
             if (Options.PrintClassInitialization.getValue()) {
-                List<ClassOrPackageConfig> allConfigs = classInitializationSupport.getClassInitializationConfiguration();
-                allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
-                ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
-                    for (ClassOrPackageConfig config : allConfigs) {
-                        writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
-                                        .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
-                    }
-                });
                 reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
                 reportMethodInitializationInfo(path);
             }
@@ -298,6 +289,7 @@ public class ClassInitializationFeature implements Feature {
                                  */
                                 if (!classInitializationSupport.shouldInitializeAtRuntime(c)) {
                                     provenSafe.add(type);
+                                    ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(ClassInitializationInfo.INITIALIZED_INFO_SINGLETON);
                                 }
                             }
                         });

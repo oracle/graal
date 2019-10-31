@@ -557,6 +557,8 @@ final class NativeImageServer extends NativeImage {
         }
         command.addAll(Arrays.asList("-cp", classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.addAll(javaArgs);
+        // Ensure Graal logs to System.err so users can see log output during server-based building.
+        command.add("-Dgraal.LogFile=%e");
         command.add("com.oracle.svm.hosted.server.NativeImageBuildServer");
         command.add(NativeImageBuildServer.PORT_PREFIX + serverPort);
         Path logFilePath = serverDir.resolve("server.log");

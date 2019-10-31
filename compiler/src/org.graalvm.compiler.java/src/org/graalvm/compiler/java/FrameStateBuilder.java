@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import static org.graalvm.compiler.bytecode.Bytecodes.POP2;
 import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.FrameState.TWO_SLOT_MARKER;
+import static org.graalvm.compiler.nodes.util.GraphUtil.originalValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,7 +71,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -328,8 +328,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), parent.getNonIntrinsicAncestor(), true, null, null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            FrameState newFrameState = outerFrameState.duplicateModified(outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
-            return newFrameState;
+            return outerFrameState.duplicateModified(graph, outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]});
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
@@ -384,38 +383,54 @@ public final class FrameStateBuilder implements SideEffectsState {
         return new FrameStateBuilder(this);
     }
 
-    public boolean isCompatibleWith(FrameStateBuilder other) {
+    private String incompatibilityErrorMessage(String reason, FrameStateBuilder other) {
+        return String.format("Frame states being merged are incompatible: %s%n This frame state: %s%nOther frame state: %s%nParser context: %s", reason, this, other, parser);
+    }
+
+    /**
+     * Checks invariants that must hold when merging {@code other} into this frame state.
+     *
+     * @param other
+     * @throws PermanentBailoutException if the frame states are incompatible with respect to their
+     *             locked objects. This indicates bytecode that has unstructured or unbalanced
+     *             locks.
+     * @throws GraalError if the frame states are incompatible in terms of {@link #rethrowException}
+     *             or stack slots
+     */
+    public void checkCompatibleWith(FrameStateBuilder other) {
         assert code.equals(other.code) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
         if (rethrowException != other.rethrowException) {
-            return false;
+            throw new GraalError(incompatibilityErrorMessage("mismatch in rethrowException flag", other));
         }
 
         if (stackSize() != other.stackSize()) {
-            return false;
+            throw new GraalError(incompatibilityErrorMessage("mismatch in stack sizes", other));
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stack[i];
             ValueNode y = other.stack[i];
             assert x != null && y != null;
             if (x != y && (x == TWO_SLOT_MARKER || x.isDeleted() || y == TWO_SLOT_MARKER || y.isDeleted() || x.getStackKind() != y.getStackKind())) {
-                return false;
+                throw new GraalError(incompatibilityErrorMessage("mismatch in stack types", other));
             }
         }
         if (lockedObjects.length != other.lockedObjects.length) {
-            return false;
+            throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            if (GraphUtil.originalValue(lockedObjects[i]) != GraphUtil.originalValue(other.lockedObjects[i]) || monitorIds[i] != other.monitorIds[i]) {
-                throw new PermanentBailoutException("unbalanced monitors");
+            if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
+                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
+            }
+            if (monitorIds[i] != other.monitorIds[i]) {
+                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
             }
         }
-        return true;
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
-        GraalError.guarantee(isCompatibleWith(other), "stacks do not match on merge; bytecodes would not verify:%nexpect: %s%nactual: %s", block, other);
+        checkCompatibleWith(other);
 
         for (int i = 0; i < localsSize(); i++) {
             locals[i] = merge(locals[i], other.locals[i], block);
@@ -511,21 +526,21 @@ public final class FrameStateBuilder implements SideEffectsState {
             ValueNode value = locals[i];
             if (value != null && value != TWO_SLOT_MARKER && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                locals[i] = ProxyNode.forValue(value, loopExit, graph);
+                locals[i] = ProxyNode.forValue(value, loopExit);
             }
         }
         for (int i = 0; i < stackSize(); i++) {
             ValueNode value = stack[i];
             if (value != null && value != TWO_SLOT_MARKER && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                stack[i] = ProxyNode.forValue(value, loopExit, graph);
+                stack[i] = ProxyNode.forValue(value, loopExit);
             }
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             ValueNode value = lockedObjects[i];
             if (value != null && (!loopEntryState.contains(value) || loopExit.loopBegin().isPhiAtMerge(value))) {
                 debug.log(" inserting proxy for %s", value);
-                lockedObjects[i] = ProxyNode.forValue(value, loopExit, graph);
+                lockedObjects[i] = ProxyNode.forValue(value, loopExit);
             }
         }
     }
@@ -1011,5 +1026,18 @@ public final class FrameStateBuilder implements SideEffectsState {
             sideEffects = new ArrayList<>(4);
         }
         sideEffects.add(sideEffect);
+    }
+
+    public void replaceValue(ValueNode oldValue, ValueNode newValue) {
+        for (int i = 0; i < locals.length; ++i) {
+            if (locals[i] == oldValue) {
+                locals[i] = newValue;
+            }
+        }
+        for (int i = 0; i < stack.length; ++i) {
+            if (stack[i] == oldValue) {
+                stack[i] = newValue;
+            }
+        }
     }
 }

@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -34,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
@@ -42,7 +42,7 @@ import com.oracle.svm.core.posix.headers.Time;
 /* Allow underscores in names: Checkstyle: stop. */
 
 @CContext(PosixDirectives.class)
-@Platforms({Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public class DarwinEvent {
 
     /* { Do not reformat commented-out code: @formatter:off */
@@ -55,7 +55,7 @@ public class DarwinEvent {
     //     void        *udata;     /* opaque user data identifier */
     // };
     /* } @formatter:on */
-    @CStruct("struct kevent")
+    @CStruct(addStructKeyword = true)
     public interface kevent extends PointerBase {
 
         @CField
@@ -131,7 +131,6 @@ public class DarwinEvent {
     @CFunction
     public static native int kqueue();
 
-    /* FIXME: Unused? */
     /* @formatter:off */
     @CFunction
     public static native int kevent(

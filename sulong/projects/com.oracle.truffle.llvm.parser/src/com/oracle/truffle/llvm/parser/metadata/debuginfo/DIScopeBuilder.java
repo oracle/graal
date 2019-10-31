@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDFile;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDLabel;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -517,6 +518,16 @@ final class DIScopeBuilder {
             loc = buildLocation(variable);
             globalCache.put(md, loc);
         }
+
+        @Override
+        public void visit(MDLabel md) {
+            final MDBaseNode parentScopeNode = md.getScope() != MDVoidNode.INSTANCE ? md.getScope() : md.getFile();
+            parent = buildLocation(parentScopeNode);
+            kind = LLVMSourceLocation.Kind.LABEL;
+            file = fileExtractor.extractFile(md);
+            name = MDNameExtractor.getName(md.getName());
+            line = md.getLine();
+        }
     }
 
     private LazySourceSectionImpl buildSection(MDFile file, long startLine, long startCol) {
@@ -658,6 +669,12 @@ final class DIScopeBuilder {
 
         @Override
         public void visit(MDCommonBlock md) {
+            MDBaseNode fileRef = md.getFile() != MDVoidNode.INSTANCE ? md.getFile() : md.getScope();
+            fileRef.accept(this);
+        }
+
+        @Override
+        public void visit(MDLabel md) {
             MDBaseNode fileRef = md.getFile() != MDVoidNode.INSTANCE ? md.getFile() : md.getScope();
             fileRef.accept(this);
         }

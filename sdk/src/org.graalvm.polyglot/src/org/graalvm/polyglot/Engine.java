@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -511,15 +512,12 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
-        private final boolean useContextClassLoader;
-
-        APIAccessImpl(boolean useContextClassLoader) {
-            this.useContextClassLoader = useContextClassLoader;
+        APIAccessImpl() {
         }
 
         @Override
-        public boolean useContextClassLoader() {
-            return useContextClassLoader;
+        public AbstractContextImpl getImpl(Context context) {
+            return context.impl;
         }
 
         @Override
@@ -583,7 +581,17 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public ResourceLimitEvent newResourceLimitsEvent(Object impl) {
+            return new ResourceLimitEvent(impl);
+        }
+
+        @Override
         public AbstractLanguageImpl getImpl(Language value) {
+            return value.impl;
+        }
+
+        @Override
+        public Object getImpl(ResourceLimits value) {
             return value.impl;
         }
 
@@ -661,8 +669,6 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
-                boolean useContextClassLoader = false;
-
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
                     engine = createInvalidPolyglotImpl();
                 } else {
@@ -684,15 +690,14 @@ public final class Engine implements AutoCloseable {
                 }
 
                 if (engine == null) {
+                    // >= JDK 9.
                     engine = searchServiceLoader();
-                    useContextClassLoader = true;
                 }
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
-
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
+                    engine.setConstructors(new APIAccessImpl());
                 }
                 return engine;
             }
@@ -748,46 +753,56 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractExecutionListenerImpl getExecutionListenerImpl() {
-            return new AbstractExecutionListenerImpl(this) {
+        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public Context getLimitEventContext(Object impl) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractManagementImpl getManagementImpl() {
+            return new AbstractManagementImpl(this) {
 
                 @Override
-                public boolean isStatement(Object impl) {
+                public boolean isExecutionEventStatement(Object impl) {
                     return false;
                 }
 
                 @Override
-                public boolean isRoot(Object impl) {
+                public boolean isExecutionEventRoot(Object impl) {
                     return false;
                 }
 
                 @Override
-                public boolean isExpression(Object impl) {
+                public boolean isExecutionEventExpression(Object impl) {
                     return false;
                 }
 
                 @Override
-                public String getRootName(Object impl) {
+                public String getExecutionEventRootName(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public PolyglotException getException(Object impl) {
+                public PolyglotException getExecutionEventException(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public Value getReturnValue(Object impl) {
+                public Value getExecutionEventReturnValue(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public SourceSection getLocation(Object impl) {
+                public SourceSection getExecutionEventLocation(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public List<Value> getInputValues(Object impl) {
+                public List<Value> getExecutionEventInputValues(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
@@ -802,6 +817,7 @@ public final class Engine implements AutoCloseable {
                                 Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
                     throw noPolyglotImplementationFound();
                 }
+
             };
         }
 

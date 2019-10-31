@@ -60,6 +60,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
@@ -479,9 +480,9 @@ public final class NativeImageHeap {
 
     private HeapPartition choosePartition(Object object, boolean immutable, boolean references, boolean relocatable) {
         if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            assert !spawnIsolates();
-            // Emergency use only! Alarms will sound!
-            return writableReference;
+            if (!spawnIsolates()) {
+                return writableReference;
+            }
         }
 
         if (relocatable && !isKnownImmutable(object)) {
@@ -628,16 +629,22 @@ public final class NativeImageHeap {
         ObjectInfo targetInfo = objects.get(target);
         assert targetInfo != null : "Unknown object " + target.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
 
+        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (useHeapBase()) {
-            // NOTE: we do not apply a shift to the hub reference in the object header because the
-            // least significant bits are used for state information
             long targetOffset = targetInfo.getOffsetInSection();
-            long bits = Heap.getHeap().getObjectHeader().setBootImageOnLong(targetOffset);
-            writeReferenceValue(buffer, index, bits);
+            long headerBits = objectHeader.getHeaderForImageHeapObject(targetOffset);
+            int reservedBits = objectHeader.getReservedBits();
+            if (reservedBits == 0) {
+                // We only apply a shift to the hub reference if there are no reserved bits in the
+                // header. Otherwise, we would not have any space for the reserved bits.
+                int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
+                headerBits = headerBits >>> shift;
+            }
+            writeReferenceValue(buffer, index, headerBits);
         } else {
-            // The address of the DynamicHub target will have to be added by the link editor.
-            long objectHeaderBits = Heap.getHeap().getObjectHeader().setBootImageOnLong(0L);
-            addDirectRelocationWithAddend(buffer, index, target, objectHeaderBits);
+            // The address of the DynamicHub target will be added by the link editor.
+            long headerBits = objectHeader.getHeaderForImageHeapObject(0L);
+            addDirectRelocationWithAddend(buffer, index, target, headerBits);
         }
     }
 

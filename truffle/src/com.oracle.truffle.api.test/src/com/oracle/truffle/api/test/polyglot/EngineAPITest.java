@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
+import org.graalvm.polyglot.Value;
 
 public class EngineAPITest {
 
@@ -272,7 +273,7 @@ public class EngineAPITest {
     @Test
     @SuppressWarnings("try")
     public void testListLanguagesDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState();
+        Object prev = resetSingleContextState(false);
         try {
             try (Engine engine = Engine.create()) {
                 engine.getLanguages();
@@ -290,7 +291,7 @@ public class EngineAPITest {
 
     @Test
     public void testListInstrumentsDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState();
+        Object prev = resetSingleContextState(false);
         try {
             try (Engine engine = Engine.create()) {
                 engine.getInstruments();
@@ -303,7 +304,7 @@ public class EngineAPITest {
 
     @Test
     public void testContextWithBoundEngineDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState();
+        Object prev = resetSingleContextState(false);
         try {
             try (Context ctx = Context.create()) {
                 ctx.initialize(EngineAPITestLanguage.ID);
@@ -317,7 +318,7 @@ public class EngineAPITest {
     @Test
     @SuppressWarnings("try")
     public void testListLanguagesAndCreateBoundContextDoNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState();
+        Object prev = resetSingleContextState(false);
         try {
             try (Engine engine = Engine.create()) {
                 engine.getLanguages();
@@ -331,12 +332,36 @@ public class EngineAPITest {
         }
     }
 
-    private static Object resetSingleContextState() {
+    @Test
+    public void testPrepareContextAndUseItAfterReset() throws Exception {
+        Object prev = resetSingleContextState(false);
+        try {
+            Context ctx = Context.newBuilder().build();
+            Value mul = ctx.eval("sl", "" +
+                            "function mul(a, b) {\n" +
+                            "  return a * b;\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return mul;\n" +
+                            "}\n");
+            assertFalse(mul.isNull());
+
+            assertEquals(42, mul.execute(7, 6).asInt());
+
+            resetSingleContextState(true);
+
+            assertEquals(72, mul.execute(3, 24).asInt());
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    public static Object resetSingleContextState(boolean reuse) {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            Method m = c.getDeclaredMethod("resetSingleContextState");
+            Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);
             m.setAccessible(true);
-            return m.invoke(null);
+            return m.invoke(null, reuse);
         } catch (Exception e) {
             throw new AssertionError(e);
         }

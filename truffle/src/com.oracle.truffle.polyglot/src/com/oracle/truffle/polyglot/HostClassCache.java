@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 
 final class HostClassCache {
 
@@ -64,13 +65,19 @@ final class HostClassCache {
     private final boolean arrayAccess;
     private final boolean listAccess;
     private final Map<Class<?>, Object> targetMappings;
+    private final Object unnamedModule;
 
-    private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+    private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
         this.hostAccess = conf;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
         this.apiAccess = apiAccess;
         this.targetMappings = groupMappings(apiAccess, conf);
+        this.unnamedModule = TruffleJDKServices.getUnnamedModule(classLoader);
+    }
+
+    Object getUnnamedModule() {
+        return unnamedModule;
     }
 
     boolean hasTargetMappings() {
@@ -138,20 +145,20 @@ final class HostClassCache {
         return localMappings;
     }
 
-    public static HostClassCache findOrInitialize(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+    public static HostClassCache findOrInitialize(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
         HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
         if (cache == null) {
-            cache = initializeHostCache(apiAccess, conf);
+            cache = initializeHostCache(apiAccess, conf, classLoader);
         }
         return cache;
     }
 
-    private static HostClassCache initializeHostCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
+    private static HostClassCache initializeHostCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
         HostClassCache cache;
         synchronized (conf) {
             cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
             if (cache == null) {
-                cache = new HostClassCache(apiAccess, conf);
+                cache = new HostClassCache(apiAccess, conf, classLoader);
                 apiAccess.setHostAccessImpl(conf, cache);
             }
         }

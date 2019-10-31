@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,8 +51,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -843,7 +841,7 @@ public class LanguageSPITest {
         MultiContextLanguage innerLang = OneContextLanguage.getCurrentLanguage();
         assertNotSame(innerLang, lang);
 
-        Env innerEnv = innerLang.getContextReference().get().env;
+        Env innerEnv = OneContextLanguage.getCurrentContext().env;
         innerEnv.parsePublic(truffleSource1);
         assertEquals(1, innerLang.parseCalled.size());
         assertEquals(0, innerLang.initializeMultiContextCalled.size());
@@ -1847,51 +1845,65 @@ public class LanguageSPITest {
             }
         }
         // Non registered service
-        resetLoadedLanguage(SERVICE_LANGUAGE);
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             try {
                 assertFalse(lookupLanguage(LanguageSPITestLanguageService3.class));
-                assertFalse(isLanguageLoaded(SERVICE_LANGUAGE));
             } finally {
                 context.leave();
             }
         }
     }
 
+    @Test
+    public void testConcurrentLookupWhileInitializing() throws InterruptedException {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+
+        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            context.initialize(ProxyLanguage.ID);
+
+            final CountDownLatch startCreate = new CountDownLatch(1);
+            ServiceTestLanguage.startCreate = startCreate;
+
+            Throwable[] error = new Throwable[1];
+            Thread thread = new Thread(() -> {
+                try {
+                    context.enter();
+                    startCreate.await(); // Wait until the context starts being created
+                    try {
+                        // Concurrently trying to access the service should wait for language
+                        // context creation
+                        assertTrue(lookupLanguage(LanguageSPITestLanguageService1.class));
+                    } finally {
+                        context.leave();
+                    }
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                    error[0] = t;
+                }
+            });
+
+            context.enter();
+            try {
+                thread.start();
+                // Trigger initialization of SERVICE_LANGUAGE on the main thread
+                assertTrue(lookupLanguage(LanguageSPITestLanguageService2.class));
+            } finally {
+                context.leave();
+            }
+
+            thread.join();
+            assertNull(error[0]);
+        }
+    }
+
     static final String SERVICE_LANGUAGE = "ServiceTestLanguage";
-
-    private static boolean isLanguageLoaded(String languageId) {
-        try {
-            Object languageCache = findLanguageCache(languageId);
-            Field field = languageCache.getClass().getDeclaredField("languageClass");
-            field.setAccessible(true);
-            return field.get(languageCache) != null;
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
-        }
-    }
-
-    private static void resetLoadedLanguage(String languageId) {
-        try {
-            Object languageCache = findLanguageCache(languageId);
-            Field field = languageCache.getClass().getDeclaredField("languageClass");
-            field.setAccessible(true);
-            field.set(languageCache, null);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError("Cannot reflectively read LanguageCache.languageClass field.", e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object findLanguageCache(String languageId) throws ReflectiveOperationException {
-        Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
-        Method m = clazz.getDeclaredMethod("languages", ClassLoader.class);
-        m.setAccessible(true);
-        Map<String, Object> map = (Map<String, Object>) m.invoke(null, (Object) null);
-        return map.get(languageId);
-    }
 
     @Test
     public void testRegisterService() {
@@ -1918,7 +1930,7 @@ public class LanguageSPITest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 try {
-                    getContextReference().get().env.registerService(new LanguageSPITestLanguageService3() {
+                    getCurrentContext().env.registerService(new LanguageSPITestLanguageService3() {
                     });
                     fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
                 } catch (IllegalStateException e) {
@@ -1997,13 +2009,25 @@ public class LanguageSPITest {
                     LanguageSPITestLanguageService1.class, LanguageSPITestLanguageService2.class})
     public static class ServiceTestLanguage extends TruffleLanguage<Env> {
 
+        static CountDownLatch startCreate;
+
         @Override
         protected Env createContext(Env env) {
+            if (startCreate != null) {
+                startCreate.countDown();
+                startCreate = null;
+            }
+
             env.registerService(new LanguageSPITestLanguageService1() {
             });
             env.registerService(new LanguageSPITestLanguageService2() {
             });
             return env;
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
         }
 
         @Override

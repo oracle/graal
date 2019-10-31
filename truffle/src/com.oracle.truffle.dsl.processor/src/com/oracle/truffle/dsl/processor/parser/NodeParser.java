@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.resolveAnnotati
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.uniqueSortedTypes;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -99,44 +98,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.CreateCast;
-import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.GeneratedBy;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Introspectable;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
@@ -180,12 +145,12 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public final class NodeParser extends AbstractParser<NodeData> {
 
-    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class,
-                    Specialization.class,
-                    NodeChild.class,
-                    Executed.class,
-                    NodeChildren.class,
-                    ReportPolymorphism.class);
+    public final List<DeclaredType> annotations = Arrays.asList(types.Fallback, types.TypeSystemReference,
+                    types.Specialization,
+                    types.NodeChild,
+                    types.Executed,
+                    types.NodeChildren,
+                    types.ReportPolymorphism);
 
     public enum ParseMode {
         DEFAULT,
@@ -208,10 +173,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     public static List<TypeMirror> getCachedAnnotations() {
         ProcessorContext localContext = ProcessorContext.getInstance();
-        TypeMirror cacheAnnotation = localContext.getType(Cached.class);
-        TypeMirror cachedLibraryAnnotation = localContext.getType(CachedLibrary.class);
-        TypeMirror cachedContextAnnotation = localContext.getType(CachedContext.class);
-        TypeMirror cachedLanguageAnnotation = localContext.getType(CachedLanguage.class);
+        TypeMirror cacheAnnotation = localContext.getTypes().Cached;
+        TypeMirror cachedLibraryAnnotation = localContext.getTypes().CachedLibrary;
+        TypeMirror cachedContextAnnotation = localContext.getTypes().CachedContext;
+        TypeMirror cachedLanguageAnnotation = localContext.getTypes().CachedLanguage;
         return Arrays.asList(cacheAnnotation, cachedLibraryAnnotation, cachedContextAnnotation, cachedLanguageAnnotation);
     }
 
@@ -253,13 +218,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
+    public DeclaredType getAnnotationType() {
         return null;
     }
 
     @Override
-    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
-        return ANNOTATIONS;
+    public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
+        return annotations;
     }
 
     private NodeData parseRootType(TypeElement rootType) {
@@ -301,16 +266,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
             templateType = fromTypeMirror(context.reloadTypeElement(originalTemplateType));
         }
 
-        if (!(originalTemplateType instanceof CodeTypeElement) && findAnnotationMirror(processingEnv, originalTemplateType, GeneratedBy.class) != null) {
+        if (!(originalTemplateType instanceof CodeTypeElement) && findAnnotationMirror(originalTemplateType, types.GeneratedBy) != null) {
             // generated nodes should not get called again.
             return null;
         }
 
-        if (!isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
+        if (!isAssignable(templateType.asType(), types.Node)) {
             return null;
         }
 
-        if (mode == ParseMode.DEFAULT && !getRepeatedAnnotation(templateType.getAnnotationMirrors(), ExportMessage.class).isEmpty()) {
+        if (mode == ParseMode.DEFAULT && !getRepeatedAnnotation(templateType.getAnnotationMirrors(), types.ExportMessage).isEmpty()) {
             return null;
         }
 
@@ -332,13 +297,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return node;
         }
 
-        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Introspectable.class);
+        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, types.Introspectable);
         if (reflectable != null) {
             node.setReflectable(true);
         }
 
-        AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.class);
-        AnnotationMirror excludePolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.Exclude.class);
+        AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism);
+        AnnotationMirror excludePolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism_Exclude);
         if (reportPolymorphism != null && excludePolymorphism == null) {
             node.setReportPolymorphism(true);
         }
@@ -387,6 +352,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes, boolean emitSharingWarnings) {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         Map<SharableCache, Collection<CacheExpression>> groups = computeSharableCaches(nodes);
         // compute unnecessary sharing.
 
@@ -422,7 +388,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                             "Could not find any other cached parameter that this parameter could be shared. " +
                                                             "Cached parameters are only sharable if they declare the same type and initializer expressions and if the specialization only has a single instance. " +
                                                             "Remove the @%s annotation or make the parameter sharable to resolve this.",
-                                            Shared.class.getSimpleName());
+                                            types.Cached_Shared.asElement().getSimpleName().toString());
                         } else {
                             if (declaredSharing.size() <= 1) {
                                 String error = String.format("No other cached parameters are specified as shared with the group '%s'.", group);
@@ -458,14 +424,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                                     "Could not share some of the cached parameters in group '%s': %n%sRemove the @%s annotation or resolve the described issues to allow sharing.",
                                                     group,
                                                     b.toString(),
-                                                    Shared.class.getSimpleName());
+                                                    types.Cached_Shared.asElement().getSimpleName().toString());
                                 } else {
                                     sharedExpressions.put(sharable.expression, group);
                                 }
                             }
                         }
                     } else if (expressions != null && expressions.size() > 1) {
-                        if (emitSharingWarnings && findAnnotationMirror(cache.getParameter().getVariableElement(), Exclusive.class) == null) {
+                        if (emitSharingWarnings && findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached_Exclusive) == null) {
                             StringBuilder sharedCaches = new StringBuilder();
                             Set<String> recommendedGroups = new LinkedHashSet<>();
                             for (CacheExpression cacheExpression : expressions) {
@@ -481,9 +447,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                             }
                             String recommendedGroup = recommendedGroups.size() == 1 ? recommendedGroups.iterator().next() : "group";
                             cache.addWarning("The cached parameter may be shared with: %n%s Annotate the parameter with @%s(\"%s\") or @%s to allow or deny sharing of the parameter.",
-                                            sharedCaches, Shared.class.getSimpleName(),
+                                            sharedCaches, types.Cached_Shared.asElement().getSimpleName().toString(),
                                             recommendedGroup,
-                                            Exclusive.class.getSimpleName());
+                                            types.Cached_Exclusive.asElement().getSimpleName().toString());
                         }
                     }
                 }
@@ -528,8 +494,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (requireNodeUnbound) {
                     specialization.addError("@%s annotated nodes must declare static @%s methods. " +
                                     "Add a static modifier to the method to resolve this.",
-                                    ExportMessage.class.getSimpleName(),
-                                    Specialization.class.getSimpleName());
+                                    types.ExportMessage.asElement().getSimpleName().toString(),
+                                    types.Specialization.asElement().getSimpleName().toString());
                 }
                 break;
             }
@@ -539,7 +505,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (requireNodeUnbound) {
                         guard.addError("@%s annotated nodes must only refer to static guard methods or fields. " +
                                         "Add a static modifier to the bound guard method or field to resolve this.",
-                                        ExportMessage.class.getSimpleName());
+                                        types.ExportMessage.asElement().getSimpleName().toString());
                     }
                     break;
                 }
@@ -551,7 +517,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         cache.addError("@%s annotated nodes must only refer to static cache initializer methods or fields. " +
                                         "Add a static modifier to the bound cache initializer method or field or " +
                                         "use the keyword 'this' to refer to the receiver type explicitely.",
-                                        ExportMessage.class.getSimpleName());
+                                        types.ExportMessage.asElement().getSimpleName().toString());
                     }
                     break;
                 }
@@ -562,7 +528,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     specialization.addError("@%s annotated nodes must only refer to static limit initializer methods or fields. " +
                                     "Add a static modifier to the bound cache initializer method or field or " +
                                     "use the keyword 'this' to refer to the receiver type explicitely.",
-                                    ExportMessage.class.getSimpleName());
+                                    types.ExportMessage.asElement().getSimpleName().toString());
                 }
                 break;
             }
@@ -571,20 +537,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeUncachable(NodeData node) {
-        AnnotationMirror generateUncached = findAnnotationMirror(node.getTemplateType().getAnnotationMirrors(), context.getType(GenerateUncached.class));
+        AnnotationMirror generateUncached = findAnnotationMirror(node.getTemplateType().getAnnotationMirrors(), types.GenerateUncached);
 
         boolean requireUncachable = node.isGenerateUncached();
         boolean uncachable = true;
         TypeElement type = node.getTemplateType();
         while (type != null) {
-            if (ElementUtils.typeEquals(type.asType(), context.getType(Node.class))) {
+            if (ElementUtils.typeEquals(type.asType(), types.Node)) {
                 // don't care about fields in node.
                 break;
             }
             for (VariableElement field : ElementFilter.fieldsIn(type.getEnclosedElements())) {
                 if (field.getModifiers().contains(Modifier.STATIC)) {
                     continue;
-                } else if (typeEquals(field.getEnclosingElement().asType(), context.getType(Node.class))) {
+                } else if (typeEquals(field.getEnclosingElement().asType(), types.Node)) {
                     // ignore fields in Node. They are safe.
                     continue;
                 }
@@ -594,7 +560,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (requireUncachable) {
                     node.addError(generateUncached, null, "Failed to generate code for @%s: The node must not declare any instance variables. " +
                                     "Found instance variable %s.%s. Remove instance variable to resolve this.",
-                                    GenerateUncached.class.getSimpleName(),
+                                    types.GenerateUncached.asElement().getSimpleName().toString(),
                                     getSimpleName(field.getEnclosingElement().asType()), field.getSimpleName().toString());
                 }
                 break;
@@ -612,10 +578,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (requireUncachable) {
                         cache.addError("Failed to generate code for @%s: The specialization uses @%s without valid uncached expression. %s. " +
                                         "To resolve this specify the uncached or allowUncached attribute in @%s.",
-                                        GenerateUncached.class.getSimpleName(),
-                                        Cached.class.getSimpleName(),
+                                        types.GenerateUncached.asElement().getSimpleName().toString(),
+                                        types.Cached.asElement().getSimpleName().toString(),
                                         cache.getUncachedExpresionError() != null ? cache.getUncachedExpresionError().getText() : "",
-                                        Cached.class.getSimpleName());
+                                        types.Cached.asElement().getSimpleName().toString());
                     }
                     break;
                 }
@@ -626,7 +592,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     uncachable = false;
                     if (requireUncachable) {
                         guard.addError("Failed to generate code for @%s: One of the guards bind non-static methods or fields . " +
-                                        "Add a static modifier to the bound guard method or field to resolve this.", GenerateUncached.class.getSimpleName());
+                                        "Add a static modifier to the bound guard method or field to resolve this.", types.GenerateUncached.asElement().getSimpleName().toString());
                     }
                     break;
                 }
@@ -637,7 +603,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     specialization.addError(getAnnotationValue(specialization.getMarkerAnnotation(), "rewriteOn"),
                                     "Failed to generate code for @%s: The specialization rewrites on exceptions and there is no specialization that replaces it. " +
                                                     "Add a replaces=\"%s\" class to specialization below to resolve this problem.",
-                                    GenerateUncached.class.getSimpleName(), specialization.getMethodName());
+                                    types.GenerateUncached.asElement().getSimpleName().toString(), specialization.getMethodName());
                 }
             }
 
@@ -656,7 +622,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 "The node does not declare any execute method with %s evaluated argument(s). " +
                                 "The generated uncached node does not declare an execute method that can be generated by the DSL. " +
                                 "Declare a non-final method that starts with 'execute' and takes %s argument(s) or variable arguments to resolve this.",
-                                GenerateUncached.class.getSimpleName(),
+                                types.GenerateUncached.asElement().getSimpleName().toString(),
                                 node.getExecutionCount(),
                                 node.getExecutionCount());
             }
@@ -666,8 +632,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
             uncachable = false;
             if (requireUncachable) {
                 node.addError(generateUncached, null, "Failed to generate code for @%s: The node must not declare any @%s annotations. Remove these annotations to resolve this.",
-                                GenerateUncached.class.getSimpleName(),
-                                NodeField.class.getSimpleName());
+                                types.GenerateUncached.asElement().getSimpleName().toString(),
+                                types.NodeField.asElement().getSimpleName().toString());
             }
         }
 
@@ -675,6 +641,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private static void initializeFallbackReachability(NodeData node) {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
         List<SpecializationData> specializations = node.getSpecializations();
         SpecializationData fallback = null;
         for (int i = specializations.size() - 1; i >= 0; i--) {
@@ -736,8 +703,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                                 "To fix this limit the number of instances to '1' or " +
                                                 "introduce a more generic specialization declared between this specialization and the fallback. " +
                                                 "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
-                                Fallback.class.getSimpleName(), specializationIds, Fallback.class.getSimpleName(), Cached.class.getSimpleName(), Fallback.class.getSimpleName(),
-                                Specialization.class.getSimpleName());
+                                types.Fallback.asElement().getSimpleName().toString(), specializationIds, types.Fallback.asElement().getSimpleName().toString(),
+                                types.Cached.asElement().getSimpleName().toString(), types.Fallback.asElement().getSimpleName().toString(),
+                                types.Specialization.asElement().getSimpleName().toString());
             }
 
         }
@@ -820,7 +788,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         while (elementIterator.hasNext()) {
             Element element = elementIterator.next();
             // not interested in methods of Node
-            if (typeEquals(element.getEnclosingElement().asType(), context.getTruffleTypes().getNode())) {
+            if (typeEquals(element.getEnclosingElement().asType(), types.Node)) {
                 elementIterator.remove();
             }
             // not interested in methods of Object
@@ -834,7 +802,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private boolean containsSpecializations(List<Element> elements) {
         boolean foundSpecialization = false;
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            if (findAnnotationMirror(processingEnv, method, Specialization.class) != null) {
+            if (findAnnotationMirror(method, types.Specialization) != null) {
                 foundSpecialization = true;
                 break;
             }
@@ -852,7 +820,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private void initializeImportGuards(NodeData node, List<TypeElement> lookupTypes, List<Element> elements) {
         for (TypeElement lookupType : lookupTypes) {
-            AnnotationMirror importAnnotation = findAnnotationMirror(processingEnv, lookupType, ImportStatic.class);
+            AnnotationMirror importAnnotation = findAnnotationMirror(lookupType, types.ImportStatic);
             if (importAnnotation == null) {
                 continue;
             }
@@ -979,7 +947,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private NodeData parseNodeData(TypeElement templateType, List<TypeElement> typeHierarchy) {
-        AnnotationMirror typeSystemMirror = findFirstAnnotation(typeHierarchy, TypeSystemReference.class);
+        AnnotationMirror typeSystemMirror = findFirstAnnotation(typeHierarchy, types.TypeSystemReference);
         TypeSystemData typeSystem = null;
         if (typeSystemMirror != null) {
             TypeMirror typeSystemType = getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
@@ -993,12 +961,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
             // default dummy type system
             typeSystem = new TypeSystemData(context, templateType, null, true);
         }
-        boolean useNodeFactory = findFirstAnnotation(typeHierarchy, GenerateNodeFactory.class) != null;
+        boolean useNodeFactory = findFirstAnnotation(typeHierarchy, types.GenerateNodeFactory) != null;
 
         AnnotationMirror generateUncachedMirror = null;
         boolean needsInherit = false;
         for (Element element : typeHierarchy) {
-            AnnotationMirror mirror = findAnnotationMirror(processingEnv, element, GenerateUncached.class);
+            AnnotationMirror mirror = findAnnotationMirror(element, types.GenerateUncached);
             if (mirror != null) {
                 generateUncachedMirror = mirror;
                 break;
@@ -1026,7 +994,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (VariableElement field : ElementFilter.fieldsIn(elements)) {
             if (field.getModifiers().contains(Modifier.STATIC)) {
                 continue;
-            } else if (field.getAnnotation(Executed.class) != null) {
+            } else if (ElementUtils.findAnnotationMirror(field, types.Executed) != null) {
                 continue;
             }
             if (field.getModifiers().contains(Modifier.PUBLIC) || field.getModifiers().contains(Modifier.PROTECTED)) {
@@ -1039,8 +1007,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeElement> reversedTypeHierarchy = new ArrayList<>(typeHierarchy);
         Collections.reverse(reversedTypeHierarchy);
         for (TypeElement typeElement : reversedTypeHierarchy) {
-            AnnotationMirror nodeChildrenMirror = findAnnotationMirror(processingEnv, typeElement, NodeFields.class);
-            List<AnnotationMirror> children = collectAnnotations(context, nodeChildrenMirror, "value", typeElement, NodeField.class);
+            AnnotationMirror nodeChildrenMirror = findAnnotationMirror(typeElement, types.NodeFields);
+            List<AnnotationMirror> children = collectAnnotations(nodeChildrenMirror, "value", typeElement, types.NodeField);
 
             for (AnnotationMirror mirror : children) {
                 String name = firstLetterLowerCase(getAnnotationValue(String.class, mirror, "name"));
@@ -1074,7 +1042,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private List<NodeChildData> parseChildren(NodeData node, final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
         Map<String, TypeMirror> castNodeTypes = new HashMap<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            AnnotationMirror mirror = findAnnotationMirror(processingEnv, method, CreateCast.class);
+            AnnotationMirror mirror = findAnnotationMirror(method, types.CreateCast);
             if (mirror != null) {
                 List<String> children = (getAnnotationValueList(String.class, mirror, "value"));
                 if (children != null) {
@@ -1090,7 +1058,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (field.getModifiers().contains(Modifier.STATIC)) {
                 continue;
             }
-            AnnotationMirror executed = findAnnotationMirror(field.getAnnotationMirrors(), context.getDeclaredType(Executed.class));
+            AnnotationMirror executed = findAnnotationMirror(field.getAnnotationMirrors(), types.Executed);
             if (executed != null) {
                 TypeMirror type = field.asType();
                 String name = field.getSimpleName().toString();
@@ -1103,17 +1071,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 executedFieldChildren.add(child);
 
                 if (field.getModifiers().contains(Modifier.PRIVATE)) {
-                    child.addError("Field annotated with @%s must be visible for the generated subclass to execute.", Executed.class.getSimpleName());
+                    child.addError("Field annotated with @%s must be visible for the generated subclass to execute.", types.Executed.asElement().getSimpleName().toString());
                 }
 
                 if (cardinality == Cardinality.ONE) {
-                    if (field.getAnnotation(Child.class) == null) {
-                        child.addError("Field annotated with @%s must also be annotated with @%s.", Executed.class.getSimpleName(), Child.class.getSimpleName());
+                    if (ElementUtils.findAnnotationMirror(field, types.Node_Child) == null) {
+                        child.addError("Field annotated with @%s must also be annotated with @%s.", types.Executed.asElement().getSimpleName().toString(),
+                                        types.Node_Child.asElement().getSimpleName().toString());
                     }
                 } else {
                     assert cardinality == Cardinality.MANY;
-                    if (field.getAnnotation(Children.class) == null) {
-                        child.addError("Field annotated with @%s must also be annotated with @%s.", Executed.class.getSimpleName(), Children.class.getSimpleName());
+                    if (ElementUtils.findAnnotationMirror(field, types.Node_Children) == null) {
+                        child.addError("Field annotated with @%s must also be annotated with @%s.", types.Executed.asElement().getSimpleName().toString(),
+                                        types.Node_Children.asElement().getSimpleName().toString());
                     }
                 }
             }
@@ -1127,11 +1097,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             if (names.contains(child.getName())) {
                 child.addError("Field annotated with @%s has duplicate name '%s'. " +
-                                "Executed children must have unique names.", Executed.class.getSimpleName(), child.getName());
+                                "Executed children must have unique names.", types.Executed.asElement().getSimpleName().toString(), child.getName());
             } else if (many != null) {
                 child.addError("Field annotated with @%s is hidden by executed field '%s'. " +
                                 "Executed child fields with multiple children hide all following executed child declarations. " +
-                                "Reorder or remove this executed child declaration.", Executed.class.getSimpleName(), many.getName());
+                                "Reorder or remove this executed child declaration.", types.Executed.asElement().getSimpleName().toString(), many.getName());
             } else if (child.getCardinality().isMany()) {
                 many = child;
             }
@@ -1142,14 +1112,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeElement> typeHierarchyReversed = new ArrayList<>(typeHierarchy);
         Collections.reverse(typeHierarchyReversed);
         for (TypeElement type : typeHierarchyReversed) {
-            AnnotationMirror nodeChildrenMirror = findAnnotationMirror(processingEnv, type, NodeChildren.class);
+            AnnotationMirror nodeChildrenMirror = findAnnotationMirror(type, types.NodeChildren);
 
             TypeMirror nodeClassType = type.getSuperclass();
-            if (nodeClassType.getKind() == TypeKind.NONE || !isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
+            if (nodeClassType.getKind() == TypeKind.NONE || !isAssignable(nodeClassType, types.Node)) {
                 nodeClassType = null;
             }
 
-            List<AnnotationMirror> children = collectAnnotations(context, nodeChildrenMirror, "value", type, NodeChild.class);
+            List<AnnotationMirror> children = collectAnnotations(nodeChildrenMirror, "value", type, types.NodeChild);
             int index = 0;
             for (AnnotationMirror childMirror : children) {
                 String name = getAnnotationValue(String.class, childMirror, "value");
@@ -1188,7 +1158,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (!nodeChildren.isEmpty() && !executedFieldChildren.isEmpty()) {
-            node.addError("The use of @%s and @%s at the same time is not supported.", NodeChild.class.getSimpleName(), Executed.class.getSimpleName());
+            node.addError("The use of @%s and @%s at the same time is not supported.", types.NodeChild.asElement().getSimpleName().toString(), types.Executed.asElement().getSimpleName().toString());
             return executedFieldChildren;
         } else if (!executedFieldChildren.isEmpty()) {
             return executedFieldChildren;
@@ -1232,7 +1202,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeMirror> frameTypes = context.getFrameTypes();
         // pre-parse specializations to find signature size
         for (ExecutableElement method : methods) {
-            AnnotationMirror mirror = findAnnotationMirror(processingEnv, method, Specialization.class);
+            AnnotationMirror mirror = findAnnotationMirror(method, types.Specialization);
             if (mirror == null) {
                 continue;
             }
@@ -1304,7 +1274,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (!method.getSimpleName().toString().startsWith("execute")) {
                 continue;
             }
-            if (findAnnotationMirror(context.getEnvironment(), method, Specialization.class) != null) {
+            if (findAnnotationMirror(method, types.Specialization) != null) {
                 continue;
             }
 
@@ -1379,7 +1349,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         boolean genericFound = false;
         for (ExecutableTypeData type : node.getExecutableTypes()) {
-            if (!type.hasUnexpectedValue(context)) {
+            if (!type.hasUnexpectedValue()) {
                 genericFound = true;
                 break;
             }
@@ -1420,7 +1390,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        TypeMirror unexpectedResult = context.getType(UnexpectedResultException.class);
+        TypeMirror unexpectedResult = types.UnexpectedResultException;
         TypeMirror runtimeException = context.getType(RuntimeException.class);
         Set<String> allowedCheckedExceptions = null;
         for (ExecutableTypeData type : allExecutes) {
@@ -1504,8 +1474,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (fieldNodeData == null || fieldNodeData.hasErrors()) {
                 child.addError("Node type '%s' is invalid or not a subclass of Node.", getQualifiedName(nodeType));
             } else {
-                List<ExecutableTypeData> types = child.findGenericExecutableTypes(context);
-                if (types.isEmpty()) {
+                List<ExecutableTypeData> foundTypes = child.findGenericExecutableTypes();
+                if (foundTypes.isEmpty()) {
                     AnnotationValue executeWithValue = child.getExecuteWithValue();
                     child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s and frame types %s.", child.getExecuteWith().size(),
                                     getSimpleName(nodeType), getUniqueIdentifiers(createAllowedChildFrameTypes(node)));
@@ -1517,12 +1487,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private NodeData parseChildNodeData(NodeData parentNode, NodeChildData child, TypeElement originalTemplateType) {
         TypeElement templateType = fromTypeMirror(context.reloadTypeElement(originalTemplateType));
 
-        if (findAnnotationMirror(processingEnv, originalTemplateType, GeneratedBy.class) != null) {
+        if (findAnnotationMirror(originalTemplateType, types.GeneratedBy) != null) {
             // generated nodes should not get called again.
             return null;
         }
 
-        if (!isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
+        if (!isAssignable(templateType.asType(), types.Node)) {
             return null;
         }
 
@@ -1886,7 +1856,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializeAssumptions(SpecializationData specialization, DSLExpressionResolver resolver) {
-        final DeclaredType assumptionType = context.getDeclaredType(Assumption.class);
+        final DeclaredType assumptionType = types.Assumption;
         final TypeMirror assumptionArrayType = new ArrayCodeTypeMirror(assumptionType);
         final List<String> assumptionDefinitions = getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
         List<AssumptionExpression> assumptionExpressions = new ArrayList<>();
@@ -1998,18 +1968,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         "Use @%s(\"value\") for a specialized or " +
                                         "@%s(limit=\"\") for a dispatched library. " +
                                         "See the javadoc of @%s for further details.",
-                                        CachedLibrary.class.getSimpleName(),
-                                        CachedLibrary.class.getSimpleName(),
-                                        CachedLibrary.class.getSimpleName(),
-                                        CachedLibrary.class.getSimpleName());
+                                        types.CachedLibrary.asElement().getSimpleName().toString(),
+                                        types.CachedLibrary.asElement().getSimpleName().toString(),
+                                        types.CachedLibrary.asElement().getSimpleName().toString(),
+                                        types.CachedLibrary.asElement().getSimpleName().toString());
                         continue;
                     }
                     DSLExpression limitExpression = parseCachedExpression(resolver, cache, context.getType(int.class), limit);
                     if (limitExpression == null) {
                         continue;
                     }
-                    TypeMirror libraryType = context.getType(Library.class);
-                    DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
+                    TypeMirror libraryType = types.Library;
+                    DSLExpressionResolver cachedResolver = importStatics(resolver, types.LibraryFactory);
                     TypeMirror usedLibraryType = parameter.getType();
 
                     DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
@@ -2030,32 +2000,32 @@ public final class NodeParser extends AbstractParser<NodeData> {
             } else if (cache.isCachedLanguage()) {
                 TypeMirror languageType = cache.getParameter().getType();
 
-                boolean isLanguage = ElementUtils.isAssignable(languageType, context.getType(TruffleLanguage.class));
-                boolean isLanguageReference = ElementUtils.isAssignable(languageType, context.getType(LanguageReference.class));
+                boolean isLanguage = ElementUtils.isAssignable(languageType, types.TruffleLanguage);
+                boolean isLanguageReference = ElementUtils.isAssignable(languageType, types.TruffleLanguage_LanguageReference);
 
                 if (!isLanguage && !isLanguageReference) {
                     cache.addError("Invalid @%s specification. The parameter type must be a subtype of %s or of type LanguageReference<%s>.",
-                                    CachedLanguage.class.getSimpleName(),
-                                    TruffleLanguage.class.getSimpleName(),
-                                    TruffleLanguage.class.getSimpleName());
+                                    types.CachedLanguage.asElement().getSimpleName().toString(),
+                                    types.TruffleLanguage.asElement().getSimpleName().toString(),
+                                    types.TruffleLanguage.asElement().getSimpleName().toString());
                     continue parameters;
                 }
 
                 TypeMirror supplierType;
                 if (isLanguageReference) {
                     TypeMirror typeArgument = getFirstTypeArgument(languageType);
-                    if (typeArgument == null || !ElementUtils.isAssignable(typeArgument, context.getType(TruffleLanguage.class))) {
+                    if (typeArgument == null || !ElementUtils.isAssignable(typeArgument, types.TruffleLanguage)) {
                         cache.addError("Invalid @%s specification. The first type argument of the LanguageReference must be a subtype of '%s'.",
-                                        CachedLanguage.class.getSimpleName(),
-                                        TruffleLanguage.class.getSimpleName());
+                                        types.CachedLanguage.asElement().getSimpleName().toString(),
+                                        types.TruffleLanguage.asElement().getSimpleName().toString());
                     } else {
-                        verifyLanguageType(CachedLanguage.class, cache, typeArgument);
+                        verifyLanguageType(types.CachedLanguage, cache, typeArgument);
                     }
                     supplierType = languageType;
                     languageType = typeArgument;
                 } else {
-                    verifyLanguageType(CachedLanguage.class, cache, languageType);
-                    supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(LanguageReference.class), Arrays.asList(languageType));
+                    verifyLanguageType(types.CachedLanguage, cache, languageType);
+                    supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_LanguageReference), Arrays.asList(languageType));
                 }
                 if (cache.hasErrors()) {
                     continue parameters;
@@ -2075,11 +2045,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 TypeMirror languageType = ElementUtils.getAnnotationValue(TypeMirror.class, cachedContext, "value");
                 if (!ElementUtils.isAssignable(languageType, languageType)) {
                     cache.addError("Invalid @%s specification. The value type must be a subtype of %s.",
-                                    CachedContext.class.getSimpleName(),
-                                    TruffleLanguage.class.getSimpleName());
+                                    types.CachedContext.asElement().getSimpleName().toString(),
+                                    types.TruffleLanguage.asElement().getSimpleName().toString());
                     continue parameters;
                 }
-                verifyLanguageType(CachedContext.class, cache, languageType);
+                verifyLanguageType(types.CachedContext, cache, languageType);
                 if (cache.hasErrors()) {
                     continue parameters;
                 }
@@ -2089,32 +2059,32 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 while (languageTypeElement != null) {
                     superType = languageTypeElement.getSuperclass();
                     languageTypeElement = ElementUtils.fromTypeMirror(superType);
-                    if (ElementUtils.elementEquals(context.getTypeElement(TruffleLanguage.class), languageTypeElement)) {
+                    if (ElementUtils.elementEquals(context.getTypeElement(types.TruffleLanguage), languageTypeElement)) {
                         contextType = getFirstTypeArgument(superType);
                         break;
                     }
                 }
                 if (contextType == null || contextType.getKind() != TypeKind.DECLARED) {
                     cache.addError("Invalid @%s specification. The context type could not be inferred from super type '%s' in language '%s'.",
-                                    CachedContext.class.getSimpleName(),
+                                    types.CachedContext.asElement().getSimpleName().toString(),
                                     ElementUtils.getSimpleName(superType),
                                     ElementUtils.getSimpleName(languageType));
                     continue parameters;
                 }
 
                 TypeMirror declaredContextType = parameter.getType();
-                if (ElementUtils.typeEquals(ElementUtils.eraseGenericTypes(parameter.getType()), ElementUtils.eraseGenericTypes(context.getType(ContextReference.class)))) {
+                if (ElementUtils.typeEquals(ElementUtils.eraseGenericTypes(parameter.getType()), ElementUtils.eraseGenericTypes(types.TruffleLanguage_ContextReference))) {
                     declaredContextType = getFirstTypeArgument(parameter.getType());
                 }
 
                 if (!ElementUtils.typeEquals(contextType, declaredContextType)) {
                     cache.addError("Invalid @%s specification. The parameter type must match the context type '%s' or 'ContextReference<%s>'.",
-                                    CachedContext.class.getSimpleName(),
+                                    types.CachedContext.asElement().getSimpleName().toString(),
                                     ElementUtils.getSimpleName(contextType),
                                     ElementUtils.getSimpleName(contextType));
                     continue parameters;
                 }
-                TypeMirror referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(ContextReference.class), Arrays.asList(contextType));
+                TypeMirror referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_ContextReference), Arrays.asList(contextType));
 
                 DSLExpression accessReference = new DSLExpression.Variable(null, "null");
                 cache.setReferenceType(referenceType);
@@ -2164,13 +2134,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return null;
     }
 
-    private static void verifyLanguageType(Class<?> annotationType, CacheExpression cache, TypeMirror languageType) {
-        AnnotationMirror registration = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(languageType), Registration.class);
+    private void verifyLanguageType(DeclaredType annotationType, CacheExpression cache, TypeMirror languageType) {
+        AnnotationMirror registration = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(languageType), types.TruffleLanguage_Registration);
         if (registration == null) {
             cache.addError("Invalid @%s specification. The type '%s' is not a valid language type. Valid language types must be annotated with @%s.",
-                            annotationType.getSimpleName(),
+                            annotationType.asElement().getSimpleName().toString(),
                             ElementUtils.getSimpleName(ElementUtils.eraseGenericTypes(languageType)),
-                            Registration.class.getSimpleName());
+                            types.TruffleLanguage_Registration.asElement().getSimpleName().toString());
         }
     }
 
@@ -2201,12 +2171,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Invalid library type %s. Must be a declared type.", getSimpleName(parameterType));
                 continue;
             }
-            if (!ElementUtils.isAssignable(parameterType, context.getType(Library.class))) {
-                cachedLibrary.addError("Invalid library type %s. Library is not a subclass of %s.", getSimpleName(parameterType), Library.class.getSimpleName());
+            if (!ElementUtils.isAssignable(parameterType, types.Library)) {
+                cachedLibrary.addError("Invalid library type %s. Library is not a subclass of %s.", getSimpleName(parameterType), types.Library.asElement().getSimpleName().toString());
                 continue;
             }
 
-            if (ElementUtils.findAnnotationMirror(cachedLibrary.getParameter().getVariableElement(), Shared.class) != null) {
+            if (ElementUtils.findAnnotationMirror(cachedLibrary.getParameter().getVariableElement(), types.Cached_Shared) != null) {
                 cachedLibrary.addError("Specialized cached libraries cannot be shared yet.");
                 continue;
             }
@@ -2271,11 +2241,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     guard.setLibraryAcceptsGuard(true);
                     specialization.getGuards().add(guard);
                 }
-                TypeMirror libraryType = context.getType(Library.class);
+                TypeMirror libraryType = types.Library;
 
                 TypeMirror usedLibraryType = parameterType;
                 DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
-                DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
+                DSLExpressionResolver cachedResolver = importStatics(resolver, types.LibraryFactory);
 
                 DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "create",
                                 Arrays.asList(receiverExpression));
@@ -2298,7 +2268,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         if (!libraries.isEmpty() && !specialization.hasErrors() && ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "limit", false) == null &&
                         specialization.hasMultipleInstances()) {
-            specialization.addError("The limit attribute must be specified if @%s is used with a dynamic parameter. E.g. add limit=\"3\" to resolve this.", CachedLibrary.class.getSimpleName());
+            specialization.addError("The limit attribute must be specified if @%s is used with a dynamic parameter. E.g. add limit=\"3\" to resolve this.",
+                            types.CachedLibrary.asElement().getSimpleName().toString());
         }
 
         if (!seenDynamicParameterBound) {
@@ -2339,10 +2310,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         DSLExpressionResolver resolver = originalResolver;
         AnnotationMirror cachedAnnotation = cache.getMessageAnnotation();
         if (!cache.hasErrors()) {
-            AnnotationMirror cached = findAnnotationMirror(cache.getParameter().getVariableElement(), Cached.class);
+            AnnotationMirror cached = findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached);
             cache.setDimensions(getAnnotationValue(Integer.class, cached, "dimensions"));
             if (parameter.getType().getKind() == TypeKind.ARRAY &&
-                            !isSubtype(((ArrayType) parameter.getType()).getComponentType(), context.getType(NodeInterface.class))) {
+                            !isSubtype(((ArrayType) parameter.getType()).getComponentType(), types.NodeInterface)) {
                 if (cache.getDimensions() == -1) {
                     cache.addWarning("The cached dimensions attribute must be specified for array types.");
                 }
@@ -2373,9 +2344,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializer = initializer.replace("$parameters", parameters);
         uncached = uncached.replace("$parameters", parameters);
 
-        if (ElementUtils.isAssignable(parameter.getType(), context.getType(Library.class)) && !ElementUtils.typeEquals(parameter.getType(), context.getType(Library.class))) {
+        if (ElementUtils.isAssignable(parameter.getType(), types.Library) && !ElementUtils.typeEquals(parameter.getType(), types.Library)) {
             cache.addError("The use of @%s is not supported for libraries. Use @%s instead.",
-                            Cached.class.getSimpleName(), CachedLibrary.class.getSimpleName());
+                            types.Cached.asElement().getSimpleName().toString(), types.CachedLibrary.asElement().getSimpleName().toString());
         } else if (NodeCodeGenerator.isSpecializedNode(parameter.getType())) {
             // if it is a node try to parse with the node parser to find out whether we
             // should may use the generated create and getUncached methods.
@@ -2503,7 +2474,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (generics.size() == 1 && node.getSpecializations().size() == 1) {
             // TODO this limitation should be lifted
             for (SpecializationData generic : generics) {
-                generic.addError("@%s defined but no @%s.", Fallback.class.getSimpleName(), Specialization.class.getSimpleName());
+                generic.addError("@%s defined but no @%s.", types.Fallback.asElement().getSimpleName().toString(), types.Specialization.asElement().getSimpleName().toString());
             }
         }
 
@@ -2512,7 +2483,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } else {
             if (generics.size() > 1) {
                 for (SpecializationData generic : generics) {
-                    generic.addError("Only one @%s is allowed per operation.", Fallback.class.getSimpleName());
+                    generic.addError("Only one @%s is allowed per operation.", types.Fallback.asElement().getSimpleName().toString());
                 }
             }
         }
@@ -2569,7 +2540,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private void initializePolymorphism(NodeData node) {
 
         SpecializationData generic = node.getGenericSpecialization();
-        List<VariableElement> types = new ArrayList<>();
+        List<VariableElement> foundTypes = new ArrayList<>();
 
         Collection<TypeMirror> frameTypes = new HashSet<>();
         for (SpecializationData specialization : node.getSpecializations()) {
@@ -2587,9 +2558,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (frameTypes.size() == 1) {
                 frameType = frameTypes.iterator().next();
             } else {
-                frameType = context.getType(Frame.class);
+                frameType = types.Frame;
             }
-            types.add(new CodeVariableElement(frameType, TemplateMethod.FRAME_NAME));
+            foundTypes.add(new CodeVariableElement(frameType, TemplateMethod.FRAME_NAME));
         }
 
         TypeMirror returnType = null;
@@ -2643,15 +2614,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (isReturnParameter) {
                 returnType = polymorphicType;
             } else {
-                types.add(new CodeVariableElement(polymorphicType, "param" + index));
+                foundTypes.add(new CodeVariableElement(polymorphicType, "param" + index));
             }
             index++;
         }
 
         SpecializationMethodParser parser = new SpecializationMethodParser(context, node);
-        SpecializationData polymorphic = parser.create("Polymorphic", TemplateMethod.NO_NATURAL_ORDER, null, null, returnType, types);
+        SpecializationData polymorphic = parser.create("Polymorphic", TemplateMethod.NO_NATURAL_ORDER, null, null, returnType, foundTypes);
         if (polymorphic == null) {
-            throw new AssertionError("Failed to parse polymorphic signature. " + parser.createDefaultMethodSpec(null, null, false, null) + " Types: " + returnType + " - " + types);
+            throw new AssertionError("Failed to parse polymorphic signature. " + parser.createDefaultMethodSpec(null, null, false, null) + " Types: " + returnType + " - " + foundTypes);
         }
 
         polymorphic.setKind(SpecializationKind.POLYMORPHIC);
@@ -2677,9 +2648,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return true;
     }
 
-    private static void verifyVisibilities(NodeData node) {
+    private void verifyVisibilities(NodeData node) {
         if (node.getTemplateType().getModifiers().contains(Modifier.PRIVATE) && node.getSpecializations().size() > 0) {
-            node.addError("Classes containing a @%s annotation must not be private.", Specialization.class.getSimpleName());
+            node.addError("Classes containing a @%s annotation must not be private.", types.Specialization.asElement().getSimpleName().toString());
         }
     }
 
@@ -2838,9 +2809,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private AnnotationMirror findFirstAnnotation(List<? extends Element> elements, Class<? extends Annotation> annotation) {
+    private static AnnotationMirror findFirstAnnotation(List<? extends Element> elements, DeclaredType annotation) {
         for (Element element : elements) {
-            AnnotationMirror mirror = findAnnotationMirror(processingEnv, element, annotation);
+            AnnotationMirror mirror = findAnnotationMirror(element, annotation);
             if (mirror != null) {
                 return mirror;
             }
@@ -2849,7 +2820,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private TypeMirror inheritType(AnnotationMirror annotation, String valueName, TypeMirror parentType) {
-        TypeMirror inhertNodeType = context.getTruffleTypes().getNode();
+        TypeMirror inhertNodeType = types.Node;
         TypeMirror value = getAnnotationValue(TypeMirror.class, annotation, valueName);
         if (typeEquals(inhertNodeType, value)) {
             return parentType;

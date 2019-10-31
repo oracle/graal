@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import java.util.List;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import static org.graalvm.polyglot.management.ExecutionListener.IMPL;
+import static org.graalvm.polyglot.management.Management.IMPL;
 
 /**
  * An execution event object passed to an execution listener consumer. Execution event instances
@@ -70,7 +70,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public SourceSection getLocation() {
-        return IMPL.getLocation(impl);
+        return IMPL.getExecutionEventLocation(impl);
     }
 
     /**
@@ -81,7 +81,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public String getRootName() {
-        return IMPL.getRootName(impl);
+        return IMPL.getExecutionEventRootName(impl);
     }
 
     /**
@@ -97,7 +97,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public List<Value> getInputValues() {
-        return IMPL.getInputValues(impl);
+        return IMPL.getExecutionEventInputValues(impl);
     }
 
     /**
@@ -111,7 +111,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public Value getReturnValue() {
-        return IMPL.getReturnValue(impl);
+        return IMPL.getExecutionEventReturnValue(impl);
     }
 
     /**
@@ -125,7 +125,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public PolyglotException getException() {
-        return IMPL.getException(impl);
+        return IMPL.getExecutionEventException(impl);
     }
 
     /**
@@ -136,7 +136,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isExpression() {
-        return IMPL.isExpression(impl);
+        return IMPL.isExecutionEventExpression(impl);
     }
 
     /**
@@ -147,7 +147,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isStatement() {
-        return IMPL.isStatement(impl);
+        return IMPL.isExecutionEventStatement(impl);
     }
 
     /**
@@ -158,7 +158,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isRoot() {
-        return IMPL.isRoot(impl);
+        return IMPL.isExecutionEventRoot(impl);
     }
 
     /**

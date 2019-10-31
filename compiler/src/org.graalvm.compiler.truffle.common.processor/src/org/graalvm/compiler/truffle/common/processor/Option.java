@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,6 +104,12 @@ public class Option {
             .def("true")
             .help("Enable automatic inlining of call targets")
             .deprecatedBy("Inlining"), // COMPILER
+
+        option("TruffleLanguageAgnosticInlining")
+            .type("Boolean")
+            .category("EXPERT")
+            .def("false")
+            .help("Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental)."),
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")

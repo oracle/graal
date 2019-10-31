@@ -251,8 +251,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
         kit.createReturn(returnValue, returnKind);
 
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 
     private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
@@ -326,7 +325,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         int count = invokeSignature.getParameterCount(false);
         // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
         // iOS CallVariant.VARARGS stores values as an array on the stack
-        if ((OS.getCurrent() == OS.DARWIN && Platform.includedIn(Platform.AArch64.class) && callVariant == CallVariant.VARARGS) ||
+        if ((OS.getCurrent() == OS.DARWIN && Platform.includedIn(Platform.AARCH64.class) && callVariant == CallVariant.VARARGS) ||
                         (OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);

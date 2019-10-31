@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,6 @@ import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
-import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,6 +97,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -181,7 +181,7 @@ public final class TruffleFile {
      *
      * @since 19.0
      */
-    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<Set<PosixFilePermission>>(AttributeGroup.POSIX, Set.class, "permissions");
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, Set.class, "permissions");
 
     /**
      * The file's mode containing the protection and file type bits. Supported only by UNIX native
@@ -531,7 +531,8 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
         try {
-            return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.toRealPath(path, options));
+            Path realPath = fileSystemContext.fileSystem.toRealPath(normalizedPath, options);
+            return new TruffleFile(fileSystemContext, realPath, realPath);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -1598,16 +1599,12 @@ public final class TruffleFile {
 
     static TruffleFile createTempFile(TruffleFile targetDirectory, String prefix, String suffix, boolean dir, FileAttribute<?>... attrs) throws IOException {
         Objects.requireNonNull(targetDirectory, "TargetDirectory must be non null.");
-        if (prefix == null) {
-            prefix = "";
-        }
-        if (suffix == null) {
-            suffix = dir ? "" : ".tmp";
-        }
+        String usePrefix = prefix != null ? prefix : "";
+        String useSuffix = suffix != null ? suffix : (dir ? "" : ".tmp");
         while (true) {
             TruffleFile target;
             try {
-                target = createUniquePath(targetDirectory, prefix, suffix);
+                target = createUniquePath(targetDirectory, usePrefix, useSuffix);
                 if (!target.exists()) {
                     if (dir) {
                         target.createDirectory(attrs);
@@ -1617,7 +1614,7 @@ public final class TruffleFile {
                     return target;
                 }
             } catch (InvalidPathException e) {
-                throw new IllegalArgumentException("Prefix (" + prefix + ") or suffix (" + suffix + ") are not valid file name components");
+                throw new IllegalArgumentException("Prefix (" + usePrefix + ") or suffix (" + useSuffix + ") are not valid file name components");
             } catch (FileAlreadyExistsException e) {
                 // retry with different name
             }
@@ -1636,7 +1633,7 @@ public final class TruffleFile {
     }
 
     private static final class TempFileRandomHolder {
-        static final SecureRandom RANDOM = new SecureRandom();
+        static final Random RANDOM = new Random();
     }
 
     private static final class AttributeGroup {
@@ -2006,7 +2003,7 @@ public final class TruffleFile {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends RuntimeException> T sthrow(final Throwable t) throws T {
+    private static <T extends Throwable> RuntimeException sthrow(Throwable t) throws T {
         throw (T) t;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,20 +169,10 @@ public final class TruffleRuntimeOptions {
      */
     public static boolean areTruffleCompilationExceptionsFatal(OptimizedCallTarget target) {
         /*
-         * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled but
-         * respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+         * This is duplicated in TruffleCompilerOptions#areTruffleCompilationExceptionsFatal.
          */
         boolean compilationExceptionsAreFatal = target.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal);
         boolean performanceWarningsAreFatal = target.getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal);
-
-        if (!target.getOptionValues().hasBeenSet(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
-            boolean assertOn = false;
-            assert (assertOn = true) == true;
-            if (assertOn) {
-                return true;
-            }
-        }
-
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 }

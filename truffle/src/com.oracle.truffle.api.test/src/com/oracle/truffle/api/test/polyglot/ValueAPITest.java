@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,23 +44,27 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -92,17 +96,18 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
-import org.graalvm.polyglot.proxy.ProxyTime;
-import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -142,6 +147,32 @@ public class ValueAPITest {
     @After
     public void tearDown() {
         context.close();
+    }
+
+    @Test
+    public void testGetContext() {
+
+        assertNull(Value.asValue(null).getContext());
+        assertNull(Value.asValue("").getContext());
+        assertNull(Value.asValue(42).getContext());
+        assertNull(Value.asValue(Instant.now()).getContext());
+        assertNull(Value.asValue(new EmptyObject()).getContext());
+        assertNull(Value.asValue(new Members()).getContext());
+
+        Context creator = Context.create();
+        creator.enter();
+        Context current = Context.getCurrent();
+        creator.leave();
+        assertNotSame(creator, current);
+        assertEquals(creator, current);
+
+        assertSame(current, creator.asValue(null).getContext());
+        assertSame(current, creator.asValue("").getContext());
+        assertSame(current, creator.asValue(42).getContext());
+        assertSame(current, creator.asValue(Instant.now()).getContext());
+        assertSame(current, creator.asValue(new EmptyObject()).getContext());
+        assertSame(current, creator.asValue(new Members()).getContext());
+
     }
 
     @Test
@@ -1045,6 +1076,8 @@ public class ValueAPITest {
                         "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'java.util.function.Function': Unsupported target type.");
         assertFails(() -> pipe.as(JavaInterface.class), ClassCastException.class,
                         "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'com.oracle.truffle.api.test.polyglot.ValueAPITest$JavaInterface': Unsupported target type.");
+        assertFails(() -> pipe.as(PolyglotException.class), ClassCastException.class,
+                        "Cannot convert 'not a pipe'(language: Java, type: java.lang.String) to Java type 'org.graalvm.polyglot.PolyglotException': Unsupported target type.");
 
         Value other = context.asValue(new EmptyProxy());
 
@@ -1056,6 +1089,8 @@ public class ValueAPITest {
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'java.util.function.Function': Value must be executable or instantiable.");
         assertFails(() -> other.as(JavaInterface.class), ClassCastException.class,
                         "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'com.oracle.truffle.api.test.polyglot.ValueAPITest$JavaInterface': Value must have members.");
+        assertFails(() -> other.as(PolyglotException.class), ClassCastException.class,
+                        "Cannot convert 'proxy'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$EmptyProxy) to Java type 'org.graalvm.polyglot.PolyglotException': Value must be an exception.");
 
     }
 
@@ -1740,6 +1775,44 @@ public class ValueAPITest {
         }
     }
 
+    @Test
+    public void testHostException() {
+        Value exceptionValue = context.asValue(new RuntimeException("expected"));
+        assertValue(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION);
+        try {
+            exceptionValue.throwException();
+            fail("should have thrown");
+        } catch (PolyglotException expected) {
+            // caught expected exception
+            assertThat(expected.getMessage(), containsString("expected"));
+            assertTrue("expected a host exception", expected.isHostException());
+        } catch (UnsupportedOperationException unsupported) {
+            throw new AssertionError(unsupported);
+        }
+        PolyglotException polyglotException = exceptionValue.as(PolyglotException.class);
+        assertNotNull(polyglotException);
+        assertThat(polyglotException.getMessage(), containsString("expected"));
+    }
+
+    @Test
+    public void testGuestException() {
+        Value exceptionValue = context.asValue(new ExceptionWrapper(new RuntimeException("expected")));
+        assertValue(exceptionValue, EXCEPTION);
+        try {
+            exceptionValue.throwException();
+            fail("should have thrown");
+        } catch (PolyglotException expected) {
+            // caught expected exception
+            assertThat(expected.getMessage(), containsString("expected"));
+            assertTrue("expected a guest exception", expected.isGuestException());
+        } catch (UnsupportedOperationException unsupported) {
+            throw new AssertionError(unsupported);
+        }
+        PolyglotException polyglotException = exceptionValue.as(PolyglotException.class);
+        assertNotNull(polyglotException);
+        assertThat(polyglotException.getMessage(), containsString("expected"));
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class StringWrapper implements TruffleObject {
 
@@ -1858,6 +1931,28 @@ public class ValueAPITest {
         @ExportMessage
         boolean asBoolean() {
             return delegate;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ExceptionWrapper implements TruffleObject {
+
+        final RuntimeException delegate;
+
+        ExceptionWrapper(RuntimeException delegate) {
+            this.delegate = delegate;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        RuntimeException throwException() {
+            throw delegate;
         }
 
     }

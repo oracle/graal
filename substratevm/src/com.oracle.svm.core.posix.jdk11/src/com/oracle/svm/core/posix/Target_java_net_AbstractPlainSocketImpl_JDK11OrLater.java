@@ -27,11 +27,12 @@ package com.oracle.svm.core.posix;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import org.graalvm.nativeimage.Platform;
+
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 @TargetClass(className = "java.net.AbstractPlainSocketImpl", onlyWith = JDK11OrLater.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 final class Target_java_net_AbstractPlainSocketImpl_JDK11OrLater {
     // This class must not hide the "normal" Posix variant, and should be additive
 

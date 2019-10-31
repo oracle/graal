@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -275,9 +275,9 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns <code>true</code> if the execution was cancelled. The execution can be cancelled by
-     * {@link Context#close(boolean) closing} a context or if an instrument such as a debugger
-     * decides to cancel the current execution. The context that caused a cancel event becomes
-     * unusable, i.e. closed.
+     * {@link Context#close(boolean) closing} a context, if an instrument such as a debugger decides
+     * to cancel the current execution or if a {@link ResourceLimits resource limit} was exceeded.
+     * The context that caused a cancel event becomes unusable, i.e. closed.
      *
      * @since 19.0
      */

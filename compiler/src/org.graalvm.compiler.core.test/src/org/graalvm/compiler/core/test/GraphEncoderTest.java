@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,7 +60,7 @@ public class GraphEncoderTest extends GraalCompilerTest {
                 StructuredGraph originalGraph = parseEager(javaMethod, AllowAssumptions.YES);
                 if (canonicalize) {
                     CoreProviders context = getProviders();
-                    new CanonicalizerPhase().apply(originalGraph, context);
+                    createCanonicalizerPhase().apply(originalGraph, context);
                 }
                 originalGraphs.add(originalGraph);
             }

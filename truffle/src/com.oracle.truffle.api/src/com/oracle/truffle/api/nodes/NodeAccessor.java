@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
-
-import java.util.Set;
-import java.util.concurrent.locks.Lock;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
 final class NodeAccessor extends Accessor {
 
@@ -69,6 +70,11 @@ final class NodeAccessor extends Accessor {
         IndirectCallNode callNode = super.createUncachedIndirectCall();
         assert !callNode.isAdoptable();
         return callNode;
+    }
+
+    @Override
+    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
+        return super.createBlockNode(elements, executor);
     }
 
     static final class AccessNodes extends NodeSupport {
@@ -146,4 +152,5 @@ final class NodeAccessor extends Accessor {
         }
 
     }
+
 }

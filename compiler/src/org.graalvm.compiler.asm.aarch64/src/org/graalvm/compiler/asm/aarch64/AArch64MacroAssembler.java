@@ -25,6 +25,11 @@
 
 package org.graalvm.compiler.asm.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.rscratch1;
+import static jdk.vm.ci.aarch64.AArch64.rscratch2;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SCALED;
@@ -35,13 +40,6 @@ import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGene
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
 
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
-
-import static jdk.vm.ci.aarch64.AArch64.CPU;
-import static jdk.vm.ci.aarch64.AArch64.r8;
-import static jdk.vm.ci.aarch64.AArch64.r9;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -52,7 +50,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 public class AArch64MacroAssembler extends AArch64Assembler {
 
-    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(r8), new ScratchRegister(r9)};
+    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(rscratch1), new ScratchRegister(rscratch2)};
 
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
@@ -819,7 +817,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * unsigned multiply high. dst = (src1 * src2) >> size
+     * Unsigned multiply high. dst = (src1 * src2) >> size
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or the stackpointer.
@@ -840,7 +838,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * signed multiply high. dst = (src1 * src2) >> size
+     * Signed multiply high. dst = (src1 * src2) >> size
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or the stackpointer.
@@ -858,6 +856,60 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             // xDst = xDst >> 32
             lshr(64, dst, dst, 32);
         }
+    }
+
+    /**
+     * Signed multiply long. xDst = wSrc1 * wSrc2
+     *
+     * @param size destination register size. Has to be 64.
+     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
+     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
+     */
+    public void smull(int size, Register dst, Register src1, Register src2) {
+        this.smaddl(size, dst, src1, src2, zr);
+    }
+
+    /**
+     * Signed multiply-negate long. xDst = -(wSrc1 * wSrc2)
+     *
+     * @param size destination register size. Has to be 64.
+     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
+     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
+     */
+    public void smnegl(int size, Register dst, Register src1, Register src2) {
+        this.smsubl(size, dst, src1, src2, zr);
+    }
+
+    /**
+     * Signed multiply-add long. xDst = xSrc3 + (wSrc1 * wSrc2)
+     *
+     * @param size destination register size. Has to be 64.
+     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
+     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src3 64-bit general purpose register. May not be null or the stackpointer.
+     */
+    public void smaddl(int size, Register dst, Register src1, Register src2, Register src3) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
+        assert size == 64;
+        super.smaddl(dst, src1, src2, src3);
+    }
+
+    /**
+     * Signed multiply-sub long. xDst = xSrc3 - (wSrc1 * wSrc2)
+     *
+     * @param size destination register size. Has to be 64.
+     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
+     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
+     * @param src3 64-bit general purpose register. May not be null or the stackpointer.
+     */
+    public void smsubl(int size, Register dst, Register src1, Register src2, Register src3) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
+        assert size == 64;
+        super.smsubl(dst, src1, src2, src3);
     }
 
     /**
@@ -1310,6 +1362,20 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         super.fmsub(size, dst, dst, d, n);
     }
 
+    /**
+     * dst = src1 * src2 + src3.
+     *
+     * @param size register size.
+     * @param dst floating point register. May not be null.
+     * @param src1 floating point register. May not be null.
+     * @param src2 floating point register. May not be null.
+     * @param src3 floating point register. May not be null.
+     */
+    @Override
+    public void fmadd(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.fmadd(size, dst, src1, src2, src3);
+    }
+
     /* Branches */
 
     /**
@@ -1367,32 +1433,32 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 case 64: {
                     // Be careful with registers: it's possible that x, y, and dst are the same
                     // register.
-                    Register rscratch1 = sc1.getRegister();
-                    Register rscratch2 = sc2.getRegister();
-                    mul(64, rscratch1, x, y);     // Result bits 0..63
-                    smulh(64, rscratch2, x, y);  // Result bits 64..127
+                    Register temp1 = sc1.getRegister();
+                    Register temp2 = sc2.getRegister();
+                    mul(64, temp1, x, y);     // Result bits 0..63
+                    smulh(64, temp2, x, y);  // Result bits 64..127
                     // Top is pure sign ext
-                    subs(64, zr, rscratch2, rscratch1, ShiftType.ASR, 63);
+                    subs(64, zr, temp2, temp1, ShiftType.ASR, 63);
                     // Copy all 64 bits of the result into dst
-                    mov(64, dst, rscratch1);
-                    mov(rscratch1, 0x80000000);
+                    mov(64, dst, temp1);
+                    mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
-                    cmov(32, rscratch1, rscratch1, zr, ConditionFlag.NE);
-                    cmp(32, rscratch1, 1);
+                    cmov(32, temp1, temp1, zr, ConditionFlag.NE);
+                    cmp(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;
                 }
                 case 32: {
-                    Register rscratch1 = sc1.getRegister();
-                    smaddl(rscratch1, x, y, zr);
+                    Register temp1 = sc1.getRegister();
+                    smaddl(temp1, x, y, zr);
                     // Copy the low 32 bits of the result into dst
-                    mov(32, dst, rscratch1);
-                    subs(64, zr, rscratch1, rscratch1, ExtendType.SXTW, 0);
+                    mov(32, dst, temp1);
+                    subs(64, zr, temp1, temp1, ExtendType.SXTW, 0);
                     // NE => overflow
-                    mov(rscratch1, 0x80000000);
+                    mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
-                    cmov(32, rscratch1, rscratch1, zr, ConditionFlag.NE);
-                    cmp(32, rscratch1, 1);
+                    cmov(32, temp1, temp1, zr, ConditionFlag.NE);
+                    cmp(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;
                 }

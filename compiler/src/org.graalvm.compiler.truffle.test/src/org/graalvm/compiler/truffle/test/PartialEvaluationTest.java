@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
@@ -133,6 +132,16 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         }
     }
 
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments) {
+        return partialEval(compilable, arguments, AllowAssumptions.YES, INVALID_COMPILATION_ID);
+    }
+
+    protected void compile(OptimizedCallTarget compilable, StructuredGraph graph) {
+        String methodName = "test";
+        CompilationIdentifier compilationId = getCompilationId(compilable);
+        truffleCompiler.compilePEGraph(graph, methodName, suite, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(true));
+    }
+
     @SuppressWarnings("try")
     protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
         // Executed AST so that all classes are loaded and initialized.
@@ -192,7 +201,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase().apply(graph, getProviders());
+        createCanonicalizerPhase().apply(graph, getProviders());
         new DeadCodeEliminationPhase().apply(graph);
     }
 

@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMUtils.NULL;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,16 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import org.bytedeco.javacpp.LLVM.LLVMModuleRef;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.code.DebugInfo;
@@ -63,7 +55,7 @@ public class LLVMGenerationResult {
     private final Set<AbstractBlockBase<?>> processedBlocks = new HashSet<>();
 
     private final ResolvedJavaMethod method;
-    private LLVMModuleRef module;
+    private byte[] bitcode;
 
     private List<Call> directCallTargets = new ArrayList<>();
     private List<Call> indirectCallTargets = new ArrayList<>();
@@ -80,24 +72,11 @@ public class LLVMGenerationResult {
         return method;
     }
 
-    public void setModule(LLVMModuleRef module) {
-        this.module = module;
+    public void setBitcode(byte[] bitcode) {
+        this.bitcode = bitcode;
     }
 
     public byte[] getBitcode() {
-        if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, new BytePointer(NULL)) == TRUE) {
-            LLVM.LLVMDumpModule(module);
-            throw new GraalError("LLVM module verification failed");
-        }
-
-        LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
-        LLVM.LLVMDisposeModule(module);
-
-        BytePointer start = LLVM.LLVMGetBufferStart(buffer);
-        int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
-        byte[] bitcode = new byte[size];
-        start.get(bitcode, 0, size);
-
         return bitcode;
     }
 
@@ -152,7 +131,6 @@ public class LLVMGenerationResult {
     public void populate(CompilationResult compilationResult, StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
 
-        byte[] bitcode = getBitcode();
         compilationResult.setTargetCode(bitcode, bitcode.length);
 
         compilationResult.recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);

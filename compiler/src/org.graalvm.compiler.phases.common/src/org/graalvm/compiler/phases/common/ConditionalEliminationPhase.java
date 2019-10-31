@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -186,6 +186,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
                 // Check if we can move guards upwards.
                 AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                AbstractBeginNode falseSuccessor = node.falseSuccessor();
+
                 EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
                 for (GuardNode guard : trueSuccessor.guards()) {
                     LogicNode condition = guard.getCondition();
@@ -195,7 +197,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 }
 
                 if (!trueGuards.isEmpty()) {
-                    for (GuardNode guard : node.falseSuccessor().guards().snapshot()) {
+                    for (GuardNode guard : falseSuccessor.guards().snapshot()) {
                         GuardNode otherGuard = trueGuards.get(guard.getCondition());
                         if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
                             Speculation speculation = otherGuard.getSpeculation();
@@ -210,9 +212,17 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                                 guard.getNoDeoptSuccessorPosition());
                                 GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
                                 if (otherGuard.isAlive()) {
-                                    otherGuard.replaceAndDelete(newGuard);
+                                    if (trueSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                        otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                    } else {
+                                        otherGuard.replaceAndDelete(newGuard);
+                                    }
                                 }
-                                guard.replaceAndDelete(newGuard);
+                                if (falseSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                    guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                } else {
+                                    guard.replaceAndDelete(newGuard);
+                                }
                             }
                         }
                     }
@@ -309,7 +319,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             this.conditions = new ArrayDeque<>();
             tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
                             context.getLowerer());
-            mergeMaps = EconomicMap.create();
+            mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
@@ -616,7 +626,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                         Stamp newStamp = infoElement.getStamp();
                         if (phi.stamp(NodeView.DEFAULT).tryImproveWith(newStamp) != null) {
                             if (mergeMap == null) {
-                                mergeMap = EconomicMap.create();
+                                mergeMap = EconomicMap.create(Equivalence.IDENTITY);
                                 mergeMaps.put(merge, mergeMap);
                             }
 

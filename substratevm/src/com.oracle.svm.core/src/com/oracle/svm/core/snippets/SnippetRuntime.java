@@ -57,6 +57,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -67,8 +68,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
 
-    public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION = findForeignCall(SnippetRuntime.class, "unwindException", true, LocationIdentity.any());
 
@@ -191,16 +191,10 @@ public class SnippetRuntime {
         }
     }
 
-    /** Foreign call: {@link #UNREACHED_CODE}. */
+    /** Foreign call: {@link #UNSUPPORTED_FEATURE}. */
     @SubstrateForeignCallTarget
-    private static void unreachedCode() {
-        throw VMError.unsupportedFeature("Code that was considered unreachable by closed-world analysis was reached");
-    }
-
-    /** Foreign call: {@link #UNRESOLVED}. */
-    @SubstrateForeignCallTarget
-    private static void unresolved(String sourcePosition) {
-        throw VMError.unsupportedFeature("Unresolved element found " + (sourcePosition != null ? sourcePosition : ""));
+    private static void unsupportedFeature(String msg) {
+        throw VMError.unsupportedFeature(msg);
     }
 
     /*
@@ -236,6 +230,7 @@ public class SnippetRuntime {
             Throwable exception = currentException.get();
             currentException.set(null);
 
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
 
             KnownIntrinsics.farReturn(exception, sp, handlerIP);
@@ -260,11 +255,6 @@ public class SnippetRuntime {
     public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
-    public static boolean isUnwindingForException() {
-        return currentException.get() != null;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     static boolean exceptionsAreFatal() {
         /*
          * If an exception is thrown while the thread is not in the Java state, most likely
@@ -276,10 +266,16 @@ public class SnippetRuntime {
 
     /** Foreign call: {@link #UNWIND_EXCEPTION}. */
     @SubstrateForeignCallTarget
-    @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
+    @Uninterruptible(reason = "Must not execute recurring callbacks or a stack overflow check.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP) {
+        /*
+         * Make the yellow zone available and pause recurring callbacks to avoid that unexpected
+         * exceptions are thrown. This is reverted before execution continues in the exception
+         * handler (see ExceptionStackFrameVisitor.visitFrame).
+         */
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        ThreadingSupportImpl.pauseRecurringCallback("Arbitrary code must not be executed while unwinding.");
 
         if (currentException.get() != null) {
             /*
@@ -299,6 +295,7 @@ public class SnippetRuntime {
             ImageSingletons.lookup(LogHandler.class).fatalError();
             return;
         }
+
         /*
          * callerSP and callerIP identify already the caller of the frame that wants to unwind an
          * exception. So we can start looking for the exception handler immediately in that frame,
@@ -318,7 +315,12 @@ public class SnippetRuntime {
         private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
 
         public void unwindException(Pointer callerSP) {
-            JavaStackWalker.walkCurrentThread(callerSP, stackFrameVisitor);
+            walkInline(callerSP);
+        }
+
+        @Uninterruptible(reason = "Avoid the virtual call to the visitor.")
+        private static void walkInline(Pointer callerSP) {
+            JavaStackWalker.walkCurrentThreadInline(callerSP, stackFrameVisitor);
         }
     }
 

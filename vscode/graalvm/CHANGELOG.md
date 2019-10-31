@@ -1,7 +1,13 @@
 # Change Log
-All notable changes to the "graalvm-base" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## Version 0.0.3
+* Support for Simple Language polyglot embeddings added
+* Basic support for native-image added
 
-## [Unreleased]
-- Initial release
+## Version 0.0.2
+* Basic editor support for Simple Language added
+* Lauch configuration for polyglot applications added
+* Code snippets for polyglot programming added
+
+## Version 0.0.1
+* Initial release

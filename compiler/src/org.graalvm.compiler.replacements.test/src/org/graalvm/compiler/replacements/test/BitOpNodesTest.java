@@ -303,7 +303,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
     private ValueNode parseAndInline(String name, Class<? extends ValueNode> expectedClass) {
         StructuredGraph graph = parseEager(name, AllowAssumptions.YES);
         HighTierContext context = getDefaultHighTierContext();
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, context);
         createInliningPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);

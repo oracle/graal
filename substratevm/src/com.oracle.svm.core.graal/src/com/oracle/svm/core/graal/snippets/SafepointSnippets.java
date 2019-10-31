@@ -28,9 +28,14 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.SafepointNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -44,6 +49,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.Safepoint;
 
@@ -51,7 +57,10 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
     private static void safepointSnippet() {
-        Safepoint.checkSafepointRequested();
+        final boolean needSlowPath = SafepointCheckNode.test();
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
+            callSlowPathSafepointCheck(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK);
+        }
     }
 
     private SafepointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
@@ -59,6 +68,9 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         super(options, factories, providers, snippetReflection);
         lowerings.put(SafepointNode.class, new SafepointLowering());
     }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     class SafepointLowering implements NodeLoweringProvider<SafepointNode> {
         private final SnippetInfo safepoint = snippet(SafepointSnippets.class, "safepointSnippet", Safepoint.getThreadLocalSafepointRequestedLocationIdentity());

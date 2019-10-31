@@ -43,9 +43,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -84,13 +86,23 @@ import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
-import java.util.concurrent.locks.Lock;
+import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
 
 import org.graalvm.collections.Pair;
 
 public final class InspectorDebugger extends DebuggerDomain {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
+
+    // Generic matcher of completion function
+    // (function(x){var a=[];for(var o=x;o!==null&&typeof o !== 'undefined';o=o.__proto__){
+    // a.push(Object.getOwnPropertyNames(o))
+    // };return a})(obj)
+    private static final Pattern FUNCTION_COMPLETION_PATTERN = Pattern.compile(
+                    "\\(function\\s*\\((?<x>\\w+)\\)\\s*\\{\\s*var\\s+(?<a>\\w+)\\s*=\\s*\\[\\];\\s*" +
+                                    "for\\s*\\(var\\s+(?<o>\\w+)\\s*=\\s*\\k<x>;\\s*\\k<o>\\s*\\!==\\s*null\\s*&&\\s*typeof\\s+\\k<o>\\s*\\!==\\s*.undefined.;\\k<o>\\s*=\\s*\\k<o>\\.__proto__\\)\\s*\\{" +
+                                    "\\s*\\k<a>\\.push\\(Object\\.getOwnPropertyNames\\(\\k<o>\\)\\)" +
+                                    "\\};\\s*return\\s+\\k<a>\\}\\)\\((?<object>.*)\\)$");
 
     private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
@@ -224,37 +236,51 @@ public final class InspectorDebugger extends DebuggerDomain {
         JSONArray arr = new JSONArray();
         Source source = script.getSource();
         if (source.hasCharacters() && source.getLength() > 0) {
+            int lc = source.getLineCount();
             int l1 = start.getLine();
             int c1 = start.getColumn();
             if (c1 <= 0) {
                 c1 = 1;
             }
+            if (l1 > lc) {
+                l1 = lc;
+                c1 = source.getLineLength(l1);
+            }
             int l2;
             int c2;
             if (end != null) {
-                int lc = source.getLineCount();
-                if (end.getLine() > lc) {
-                    l2 = lc;
-                    c2 = source.getLineLength(l2);
-                } else {
-                    c2 = end.getColumn();
-                    if (c2 <= 1) {
-                        l2 = end.getLine() - 1;
-                        if (l2 <= 0) {
-                            l2 = 1;
-                        }
+                l2 = end.getLine();
+                c2 = end.getColumn();
+                // The end should be exclusive, but not all clients adhere to that.
+                if (l1 != l2 || c1 != c2) {
+                    // Only when start != end consider end as exclusive:
+                    if (l2 > lc) {
+                        l2 = lc;
                         c2 = source.getLineLength(l2);
                     } else {
-                        l2 = end.getLine();
-                        c2 = c2 - 1;
+                        if (c2 <= 1) {
+                            l2 = l2 - 1;
+                            if (l2 <= 0) {
+                                l2 = 1;
+                            }
+                            c2 = source.getLineLength(l2);
+                        } else {
+                            c2 = c2 - 1;
+                        }
                     }
-                }
-                if (l1 > l2) {
-                    l1 = l2;
+                    if (l1 > l2) {
+                        l1 = l2;
+                    }
                 }
             } else {
                 l2 = l1;
                 c2 = source.getLineLength(l2);
+            }
+            if (c2 == 0) {
+                c2 = 1; // 1-based column on zero-length line
+            }
+            if (l1 == l2 && c2 < c1) {
+                c1 = c2;
             }
             SourceSection range = source.createSection(l1, c1, l2, c2);
             Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, debuggerSession, context.getEnv());
@@ -271,6 +297,13 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (scriptId == null) {
             throw new CommandProcessException("A scriptId required.");
         }
+        CharSequence characters = getScript(scriptId).getCharacters();
+        JSONObject json = new JSONObject();
+        json.put("scriptSource", characters.toString());
+        return new Params(json);
+    }
+
+    private Script getScript(String scriptId) throws CommandProcessException {
         Script script;
         try {
             script = scriptsHandler.getScript(Integer.parseInt(scriptId));
@@ -280,9 +313,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         } catch (NumberFormatException nfe) {
             throw new CommandProcessException(nfe.getMessage());
         }
-        JSONObject json = new JSONObject();
-        json.put("scriptSource", script.getCharacters().toString());
-        return new Params(json);
+        return script;
     }
 
     @Override
@@ -355,7 +386,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         for (DebugStackFrame frame : frames) {
             depthAll++;
             SourceSection sourceSection = frame.getSourceSection();
-            if (sourceSection == null) {
+            if (sourceSection == null || !sourceSection.isAvailable()) {
                 continue;
             }
             if (!context.isInspectInternal() && frame.isInternal()) {
@@ -461,6 +492,23 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    public Params searchInContent(String scriptId, String query, boolean caseSensitive, boolean isRegex) throws CommandProcessException {
+        if (scriptId.isEmpty() || query.isEmpty()) {
+            throw new CommandProcessException("Must specify both scriptId and query.");
+        }
+        Source source = getScript(scriptId).getSource();
+        JSONArray matchLines;
+        try {
+            matchLines = LineSearch.matchLines(source, query, caseSensitive, isRegex);
+        } catch (PatternSyntaxException ex) {
+            throw new CommandProcessException(ex.getDescription());
+        }
+        JSONObject match = new JSONObject();
+        match.put("properties", matchLines);
+        return new Params(match);
+    }
+
+    @Override
     public void setBreakpointsActive(Optional<Boolean> active) throws CommandProcessException {
         if (!active.isPresent()) {
             throw new CommandProcessException("Must specify active argument.");
@@ -503,6 +551,34 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    public Params setBreakpointOnFunctionCall(String functionObjectId, String condition) throws CommandProcessException {
+        if (functionObjectId == null) {
+            throw new CommandProcessException("Must specify function object ID.");
+        }
+        RemoteObject functionObject = context.getRemoteObjectsHandler().getRemote(functionObjectId);
+        if (functionObject != null) {
+            DebugValue functionValue = functionObject.getDebugValue();
+            try {
+                return context.executeInSuspendThread(new SuspendThreadExecutable<Params>() {
+                    @Override
+                    public Params executeCommand() throws CommandProcessException {
+                        return breakpointsHandler.createFunctionBreakpoint(functionValue, condition);
+                    }
+
+                    @Override
+                    public Params processException(DebugException dex) {
+                        return new Params(new JSONObject());
+                    }
+                });
+            } catch (NoSuspendedThreadException e) {
+                return new Params(new JSONObject());
+            }
+        } else {
+            throw new CommandProcessException("Function with object ID " + functionObjectId + " does not exist.");
+        }
+    }
+
+    @Override
     public void removeBreakpoint(String id) throws CommandProcessException {
         if (!breakpointsHandler.removeBreakpoint(id)) {
             throw new CommandProcessException("No breakpoint with id '" + id + "'");
@@ -523,13 +599,13 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
-    public Params evaluateOnCallFrame(String callFrameId, String expression, String objectGroup,
+    public Params evaluateOnCallFrame(String callFrameId, String expressionOrig, String objectGroup,
                     boolean includeCommandLineAPI, boolean silent, boolean returnByValue,
                     boolean generatePreview, boolean throwOnSideEffect) throws CommandProcessException {
         if (callFrameId == null) {
             throw new CommandProcessException("A callFrameId required.");
         }
-        if (expression == null) {
+        if (expressionOrig == null) {
             throw new CommandProcessException("An expression required.");
         }
         int frameId;
@@ -537,6 +613,18 @@ public final class InspectorDebugger extends DebuggerDomain {
             frameId = Integer.parseInt(callFrameId);
         } catch (NumberFormatException ex) {
             throw new CommandProcessException(ex.getLocalizedMessage());
+        }
+        ConsoleUtilitiesAPI cuAPI;
+        if (includeCommandLineAPI) {
+            cuAPI = ConsoleUtilitiesAPI.parse(expressionOrig);
+        } else {
+            cuAPI = null;
+        }
+        final String expression;
+        if (cuAPI != null) {
+            expression = cuAPI.getExpression();
+        } else {
+            expression = expressionOrig;
         }
         JSONObject jsonResult;
         try {
@@ -548,11 +636,20 @@ public final class InspectorDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
-                    LanguageInfo languageInfo = cf.getFrame().getLanguage();
-                    DebugValue value = null;
-                    if (languageInfo == null || !languageInfo.isInteractive()) {
-                        value = getVarValue(expression, cf);
-                        if (value == null) {
+                    if (runSpecialFunctions(expression, cf, generatePreview, json)) {
+                        return json;
+                    }
+                    DebugValue value = getVarValue(expression, cf);
+                    if (value == null) {
+                        try {
+                            value = cf.getFrame().eval(expression);
+                        } catch (IllegalStateException ex) {
+                            // Not an interactive language
+                        }
+                    }
+                    if (value == null) {
+                        LanguageInfo languageInfo = cf.getFrame().getLanguage();
+                        if (languageInfo == null || !languageInfo.isInteractive()) {
                             String errorMessage = getEvalNonInteractiveMessage();
                             ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
                             json.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
@@ -561,10 +658,14 @@ public final class InspectorDebugger extends DebuggerDomain {
                             err.putOpt("type", "string");
                             json.put("result", err);
                         }
-                    } else {
-                        value = cf.getFrame().eval(expression);
                     }
                     if (value != null) {
+                        if (cuAPI != null) {
+                            value = cuAPI.process(value, breakpointsHandler);
+                            if (value == null) {
+                                return json;
+                            }
+                        }
                         RemoteObject ro = new RemoteObject(value, generatePreview, context);
                         context.getRemoteObjectsHandler().register(ro);
                         json.put("result", ro.toJSON());
@@ -596,6 +697,28 @@ public final class InspectorDebugger extends DebuggerDomain {
             jsonResult.put("result", err);
         }
         return new Params(jsonResult);
+    }
+
+    private boolean runSpecialFunctions(String expression, CallFrame cf, boolean generatePreview, JSONObject json) {
+        // Test whether code-completion on an object was requested:
+        Matcher completionMatcher = FUNCTION_COMPLETION_PATTERN.matcher(expression);
+        if (completionMatcher.matches()) {
+            String objectOfCompletion = completionMatcher.group("object");
+            DebugValue value = getVarValue(objectOfCompletion, cf);
+            if (value == null) {
+                try {
+                    value = cf.getFrame().eval(objectOfCompletion);
+                } catch (IllegalStateException ex) {
+                    // Not an interactive language
+                }
+            }
+            if (value != null) {
+                JSONObject result = InspectorRuntime.createCodecompletion(value, null, generatePreview, context, false);
+                json.put("result", result);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Get value of variable "name", if any. */
@@ -867,7 +990,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         // Debugger has been disabled while waiting on locks
                         return;
                     }
-                    if (se.hasSourceElement(SourceElement.ROOT) && !se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE) {
+                    if (se.hasSourceElement(SourceElement.ROOT) && !se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE && se.getBreakpoints().isEmpty()) {
                         // Suspend requested and we're at the begining of a ROOT.
                         debuggerSession.suspendNextExecution();
                         return;

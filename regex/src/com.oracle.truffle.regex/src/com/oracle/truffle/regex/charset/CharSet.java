@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.charset;
 
@@ -52,8 +68,8 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 public final class CharSet implements ImmutableSortedListOfRanges, Comparable<CharSet>, JsonConvertible {
 
     private static final CharSet BYTE_RANGE = new CharSet(new char[]{0x00, 0xff});
-    private static final CharSet CONSTANT_EMPTY = new CharSet(new char[0]);
-    private static final CharSet CONSTANT_FULL = new CharSet(new char[]{Character.MIN_VALUE, Character.MAX_VALUE});
+    private static final CharSet CONSTANT_EMPTY = new CharSet(new char[0], true);
+    private static final CharSet CONSTANT_FULL = new CharSet(new char[]{Character.MIN_VALUE, Character.MAX_VALUE}, true);
 
     private static final CharSet[] CONSTANT_ASCII = new CharSet[128];
     private static final CharSet[] CONSTANT_INVERSE_ASCII = new CharSet[128];
@@ -75,16 +91,22 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         }
         CONSTANT_CODE_POINT_SETS_MB = new CharSet[Constants.CONSTANT_CODE_POINT_SETS.length];
         for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
-            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i]);
+            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i], false);
         }
     }
 
     private final char[] ranges;
 
-    private CharSet(char[] ranges) {
+    private CharSet(char[] ranges, boolean staticInit) {
         this.ranges = ranges;
         assert (ranges.length & 1) == 0 : "ranges array must have an even length!";
         assert rangesAreSortedAndDisjoint() : rangesToString(ranges, true);
+        assert staticInit || ranges.length != 0;
+        assert staticInit || !(ranges.length == 2 && ranges[0] == Character.MIN_VALUE && ranges[1] == Character.MAX_VALUE);
+    }
+
+    private CharSet(char[] ranges) {
+        this(ranges, false);
     }
 
     public char[] getRanges() {
@@ -123,24 +145,26 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         if (codePointSet.matchesNothing()) {
             return CONSTANT_EMPTY;
         }
-        if (codePointSet.matchesEverything()) {
-            return CONSTANT_FULL;
-        }
-        if (codePointSet.matchesSingleAscii()) {
-            return CONSTANT_ASCII[codePointSet.getLo(0)];
-        }
-        if (codePointSet.size() == 2) {
-            CharSet ret = checkInverseAndCaseFoldAscii(codePointSet.getLo(0), codePointSet.getHi(0), codePointSet.getLo(1), codePointSet.getHi(1));
-            if (ret != null) {
-                return ret;
+        if (codePointSet.getHi(codePointSet.size() - 1) <= Character.MAX_VALUE) {
+            if (codePointSet.equalsListOfRanges(CONSTANT_FULL)) {
+                return CONSTANT_FULL;
+            }
+            if (codePointSet.matchesSingleAscii()) {
+                return CONSTANT_ASCII[codePointSet.getLo(0)];
+            }
+            if (codePointSet.size() == 2) {
+                CharSet ret = checkInverseAndCaseFoldAscii(codePointSet.getLo(0), codePointSet.getHi(0), codePointSet.getLo(1), codePointSet.getHi(1));
+                if (ret != null) {
+                    return ret;
+                }
+            }
+            for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
+                if (codePointSet.equals(Constants.CONSTANT_CODE_POINT_SETS[i])) {
+                    return CONSTANT_CODE_POINT_SETS_MB[i];
+                }
             }
         }
-        for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
-            if (codePointSet.equals(Constants.CONSTANT_CODE_POINT_SETS[i])) {
-                return CONSTANT_CODE_POINT_SETS_MB[i];
-            }
-        }
-        return createTrimCodePointSet(codePointSet);
+        return createTrimCodePointSet(codePointSet, true);
     }
 
     private static CharSet checkConstants(char[] ranges, int length) {
@@ -194,7 +218,7 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         return null;
     }
 
-    private static CharSet createTrimCodePointSet(SortedListOfRanges codePointSet) {
+    private static CharSet createTrimCodePointSet(SortedListOfRanges codePointSet, boolean dedup) {
         int size = 0;
         for (int i = 0; i < codePointSet.size(); i++) {
             if (codePointSet.intersects(i, Constants.BMP_RANGE.getLo(0), Constants.BMP_RANGE.getHi(0))) {
@@ -207,12 +231,27 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
                 setRange(ranges, i, codePointSet.getLo(i), Math.min(codePointSet.getHi(i), Constants.BMP_RANGE.getHi(0)));
             }
         }
+        if (dedup) {
+            CharSet cs = checkConstants(ranges, ranges.length);
+            return cs == null ? new CharSet(ranges) : cs;
+        }
         return new CharSet(ranges);
     }
 
     private static void setRange(char[] arr, int i, int lo, int hi) {
         arr[i * 2] = (char) lo;
         arr[i * 2 + 1] = (char) hi;
+    }
+
+    @Override
+    public boolean matchesNothing() {
+        return this == getEmpty();
+    }
+
+    @Override
+    public boolean matchesEverything() {
+        assert !(size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue()) || this == getFull();
+        return this == getFull();
     }
 
     @SuppressWarnings("unchecked")
@@ -539,11 +578,14 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof CharSet) {
             return Arrays.equals(ranges, ((CharSet) obj).ranges);
         }
         if (obj instanceof SortedListOfRanges) {
-            return equals((SortedListOfRanges) obj);
+            return equalsListOfRanges((SortedListOfRanges) obj);
         }
         return false;
     }

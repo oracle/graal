@@ -1,0 +1,5 @@
+Bundle-Name: LLVM Toolchain
+Bundle-Symbolic-Name: org.graalvm.llvm-toolchain
+Bundle-Version: 19.3.0.0
+Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=19.3.0.0
+ )(os_arch=amd64))"

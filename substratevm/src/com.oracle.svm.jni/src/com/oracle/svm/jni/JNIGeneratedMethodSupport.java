@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,11 +58,11 @@ public final class JNIGeneratedMethodSupport {
     }
 
     static int nativeCallPrologue() {
-        return JNIThreadLocalHandles.get().pushFrame(JNIThreadLocalHandles.NATIVE_CALL_MINIMUM_HANDLE_CAPACITY);
+        return JNIObjectHandles.pushLocalFrame(JNIObjectHandles.NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
     }
 
     static void nativeCallEpilogue(int handleFrame) {
-        JNIThreadLocalHandles.get().popFramesIncluding(handleFrame);
+        JNIObjectHandles.popLocalFramesIncluding(handleFrame);
     }
 
     static JNIEnvironment environment() {
@@ -70,7 +70,7 @@ public final class JNIGeneratedMethodSupport {
     }
 
     static JNIObjectHandle boxObjectInLocalHandle(Object obj) {
-        return JNIThreadLocalHandles.get().create(obj);
+        return JNIObjectHandles.createLocal(obj);
     }
 
     static Object unboxHandle(JNIObjectHandle handle) {

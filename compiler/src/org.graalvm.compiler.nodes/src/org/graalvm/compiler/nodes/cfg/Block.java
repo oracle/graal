@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -260,10 +260,10 @@ public final class Block extends AbstractBlockBase<Block> {
         LocationSet result = new LocationSet();
         for (FixedNode node : this.getNodes()) {
             if (node instanceof MemoryCheckpoint.Single) {
-                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+                LocationIdentity identity = ((MemoryCheckpoint.Single) node).getKilledLocationIdentity();
                 result.add(identity);
             } else if (node instanceof MemoryCheckpoint.Multi) {
-                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getKilledLocationIdentities()) {
                     result.add(identity);
                 }
             }
@@ -364,5 +364,27 @@ public final class Block extends AbstractBlockBase<Block> {
 
     protected void setPostDominator(Block postdominator) {
         this.postdominator = postdominator;
+    }
+
+    /**
+     * Checks whether {@code this} block is in the same loop or an outer loop of the block given as
+     * parameter.
+     */
+    public boolean isInSameOrOuterLoopOf(Block block) {
+
+        if (this.loop == null) {
+            // We are in no loop, so this holds true for every other block.
+            return true;
+        }
+
+        Loop<Block> l = block.loop;
+        while (l != null) {
+            if (l == this.loop) {
+                return true;
+            }
+            l = l.getParent();
+        }
+
+        return false;
     }
 }

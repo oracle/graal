@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 //Checkstyle: stop
 
@@ -57,27 +57,27 @@ public class Locale {
     @CConstant
     public static native int LC_MESSAGES();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_PAPER();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_NAME();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_ADDRESS();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
     @CConstant
     public static native int LC_IDENTIFICATION();
 

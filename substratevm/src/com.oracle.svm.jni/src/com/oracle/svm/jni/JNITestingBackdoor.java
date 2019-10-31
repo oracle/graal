@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jni;
 
-import com.oracle.svm.core.handles.ObjectHandlesTestingBackdoor;
 import com.oracle.svm.jni.access.JNIReflectionDictionary;
 
 /**
@@ -33,11 +32,11 @@ import com.oracle.svm.jni.access.JNIReflectionDictionary;
 public final class JNITestingBackdoor {
 
     public static int getThreadLocalHandleCount() {
-        return JNIThreadLocalHandles.get().getHandleCount();
+        return JNIObjectHandles.getLocalHandleCount();
     }
 
     public static long getGlobalHandleCount() {
-        return ObjectHandlesTestingBackdoor.getCurrentCount(JNIGlobalHandles.singleton());
+        return JNIObjectHandles.computeCurrentGlobalHandleCount();
     }
 
     public static int getThreadLocalPinnedObjectCount() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -139,10 +137,10 @@ public final class ExportsLibrary extends Template {
     private boolean isReceiverDynamicDispatched() {
         TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverType);
         while (receiverTypeElement != null) {
-            List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), ExportLibrary.class);
+            List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), types.ExportLibrary);
             for (AnnotationMirror export : exportLibrary) {
                 TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
-                if (ElementUtils.typeEquals(exportedLibrary, ProcessorContext.getInstance().getType(DynamicDispatchLibrary.class))) {
+                if (ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
                     return true;
                 }
             }

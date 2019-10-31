@@ -34,15 +34,12 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -71,11 +68,6 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    public static NodeFactory getNodeFactory() {
-        CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLanguage().getNodeFactory();
-    }
-
     public static LLVMMemory getLLVMMemory() {
         CompilerAsserts.neverPartOfCompilation();
         return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
@@ -96,27 +88,6 @@ public abstract class LLVMNode extends Node {
         return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
-    public boolean hasTag(Class<? extends Tag> tag) {
-        // only nodes that have a SourceSection attached are considered to be tagged by any
-        // anything, for sulong only those nodes that actually represent source language statements
-        // should have one
-        return tag == StandardTags.StatementTag.class;
-    }
-
-    public LLVMSourceLocation getSourceLocation() {
-        return null;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        final LLVMSourceLocation location = getSourceLocation();
-        if (location != null) {
-            return location.getSourceSection();
-        }
-
-        return null;
-    }
-
     protected static boolean isFunctionDescriptor(Object object) {
         return object instanceof LLVMFunctionDescriptor;
     }
@@ -128,5 +99,19 @@ public abstract class LLVMNode extends Node {
     protected static boolean isSameObject(Object a, Object b) {
         // used as a workaround for a DSL bug
         return a == b;
+    }
+
+    public final DataLayout getDataLayout() {
+        Node datalayoutNode = this;
+        while (!(datalayoutNode instanceof LLVMHasDatalayoutNode)) {
+            if (datalayoutNode.getParent() != null) {
+                assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
+                datalayoutNode = datalayoutNode.getParent();
+            } else {
+                return LLVMLanguage.getContext().getLibsulongDataLayout();
+            }
+        }
+        return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
+
     }
 }

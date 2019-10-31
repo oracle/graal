@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.util;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.NoSuchElementException;
+import java.util.ResourceBundle;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -33,11 +37,15 @@ public final class ModuleSupport {
     private ModuleSupport() {
     }
 
+    public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
+        return ResourceBundle.getBundle(bundleName, locale, loader);
+    }
+
     /**
-     * Provide a list of all resources in the JVMCI module.
+     * Gets all resources in the modules named by {@code modules} from the Java runtime image.
      */
     @SuppressWarnings("unused")
-    public static List<String> getJVMCIModuleResources() {
+    public static List<String> getModuleResources(Collection<String> names) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return Collections.emptyList();
@@ -63,5 +71,26 @@ public final class ModuleSupport {
 
     public static ClassLoader getPlatformClassLoader() {
         return ClassLoader.getSystemClassLoader();
+    }
+
+    /**
+     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     *
+     * @param optional if {@code false} and there is no module named {@code name},
+     *            {@link NoSuchElementException} is thrown
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+    }
+
+    /**
+     * Gets the name of the module containing {@code clazz}.
+     */
+    @SuppressWarnings("unused")
+    public static String getModuleName(Class<?> clazz) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return null;
     }
 }

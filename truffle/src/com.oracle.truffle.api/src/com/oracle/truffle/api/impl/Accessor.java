@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,10 @@ import java.lang.reflect.Constructor;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -64,6 +66,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -77,11 +80,12 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -90,9 +94,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
-import java.util.List;
-import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -106,11 +107,6 @@ import org.graalvm.polyglot.io.ProcessHandler;
 @SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
-    @SuppressWarnings("all")
-    protected final Collection<ClassLoader> loaders() {
-        return TruffleLocator.loaders();
-    }
-
     protected void initializeNativeImageTruffleLocator() {
         TruffleLocator.initializeNativeImageTruffleLocator();
     }
@@ -121,6 +117,10 @@ public abstract class Accessor {
 
     protected IndirectCallNode createUncachedIndirectCall() {
         return SUPPORT.createUncachedIndirectCall();
+    }
+
+    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
+        return SUPPORT.createBlockNode(elements, executor);
     }
 
     public abstract static class NodeSupport {
@@ -187,6 +187,8 @@ public abstract class Accessor {
         public abstract boolean isTruffleObject(Object value);
 
         public abstract void checkInteropType(Object result);
+
+        public abstract boolean isExecutableObject(Object value);
 
         public abstract Object createDefaultNodeObject(Node node);
 
@@ -309,7 +311,7 @@ public abstract class Accessor {
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
-        public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
+        public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
 
@@ -507,7 +509,7 @@ public abstract class Accessor {
 
     public abstract static class InstrumentSupport {
 
-        public abstract void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass);
+        public abstract void initializeInstrument(Object instrumentationHandler, Object key, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
         public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
 
@@ -597,7 +599,6 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
-        private static final Accessor.DumpSupport DUMP;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are usable
@@ -609,11 +610,6 @@ public abstract class Accessor {
             IO = loadSupport("com.oracle.truffle.api.io.IOAccessor$IOSupportImpl");
             FRAMES = loadSupport("com.oracle.truffle.api.frame.FrameAccessor$FramesImpl");
             ENGINE = loadSupport("com.oracle.truffle.polyglot.EngineAccessor$EngineImpl");
-            if (TruffleOptions.TraceASTJSON) {
-                DUMP = loadSupport("com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor$DumpImpl");
-            } else {
-                DUMP = null;
-            }
         }
 
         @SuppressWarnings("unchecked")
@@ -660,10 +656,6 @@ public abstract class Accessor {
 
     public final LanguageSupport languageSupport() {
         return Constants.LANGUAGE;
-    }
-
-    public final DumpSupport dumpSupport() {
-        return Constants.DUMP;
     }
 
     public final EngineSupport engineSupport() {

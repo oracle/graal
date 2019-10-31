@@ -25,8 +25,6 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -34,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
 //Allow methods with non-standard names: Checkstyle: stop
@@ -42,7 +41,7 @@ import org.graalvm.word.PointerBase;
  * The definitions I need, manually translated from the C header file.
  */
 
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 @CContext(PosixDirectives.class)
 public class Poll {
 
@@ -80,41 +79,17 @@ public class Poll {
         void set_revents(int value);
     }
 
-    /*
-     * Requestable events. If poll(2) finds any of these set, they are copied to revents on return.
-     */
     @CConstant
     public static native int POLLIN();
-
-    @CConstant
-    public static native int POLLPRI();
 
     @CConstant
     public static native int POLLOUT();
 
     @CConstant
-    public static native int POLLRDNORM();
-
-    @CConstant
-    public static native int POLLWRNORM();
-
-    @CConstant
-    public static native int POLLRDBAND();
-
-    @CConstant
-    public static native int POLLWRBAND();
-
-    /*
-     * These events are set if they occur regardless of whether they were requested.
-     */
-    @CConstant
     public static native int POLLERR();
 
     @CConstant
     public static native int POLLHUP();
-
-    @CConstant
-    public static native int POLLNVAL();
 
     // @formatter:off
     // typedef unsigned int nfds_t;

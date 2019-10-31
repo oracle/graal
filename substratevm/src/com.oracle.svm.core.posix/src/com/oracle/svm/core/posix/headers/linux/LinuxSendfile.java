@@ -40,12 +40,6 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 @CContext(PosixDirectives.class)
 public class LinuxSendfile {
 
-    /**
-     * Send up to COUNT bytes from file associated with IN_FD starting at OFFSET to descriptor
-     * OUT_FD. Set *OFFSET to the IN_FD's file position following the read bytes. If OFFSET is a
-     * null pointer, use the normal file position instead. Return the number of written bytes, or -1
-     * in case of error.
-     */
     @CFunction
     public static native SignedWord sendfile(int out_fd, int in_fd, CLongPointer offset, UnsignedWord count);
 }

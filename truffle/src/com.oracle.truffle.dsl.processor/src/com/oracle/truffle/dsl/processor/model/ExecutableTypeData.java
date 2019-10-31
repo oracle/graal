@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
@@ -188,8 +187,8 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         return returnType;
     }
 
-    public boolean hasUnexpectedValue(ProcessorContext context) {
-        return method == null ? false : ElementUtils.canThrowTypeExact(method.getThrownTypes(), context.getType(UnexpectedResultException.class));
+    public boolean hasUnexpectedValue() {
+        return method == null ? false : ElementUtils.canThrowTypeExact(method.getThrownTypes(), types.UnexpectedResultException);
     }
 
     public boolean isFinal() {
@@ -213,7 +212,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         ProcessorContext context = node.getContext();
 
         // we cannot delegate from generic to unexpected
-        if (!from.hasUnexpectedValue(context) && to.hasUnexpectedValue(context)) {
+        if (!from.hasUnexpectedValue() && to.hasUnexpectedValue()) {
             return false;
         }
 
@@ -266,7 +265,7 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
             return result;
         }
 
-        result = Boolean.compare(o1.hasUnexpectedValue(context), o2.hasUnexpectedValue(context));
+        result = Boolean.compare(o1.hasUnexpectedValue(), o2.hasUnexpectedValue());
         if (result != 0) {
             return result;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,9 +245,9 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private void assertLookupsInnerContext() {
         /*
-         * We currently have all optimizations disabled with inner contexts.
+         * We currently have some optimizations disabled with inner contexts.
          */
-        assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
         assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
         assertBailout(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
         assertBailout(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
@@ -261,7 +261,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
 
-        assertMagicNumberReads(1, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(0, Exclusive.get(), Exclusive.get());
         assertMagicNumberReads(1, Exclusive.get(), Shared.get());
         assertMagicNumberReads(1, Shared.get(), Exclusive.get());
         assertMagicNumberReads(1, Shared.get(), Shared.get());
@@ -343,7 +343,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         ResolvedJavaField resolvedField = getMetaAccess().lookupJavaField(field);
 
         int count = 0;
-        for (ReadNode readNode : graph.getNodes(ReadNode.TYPE)) {
+        for (ReadNode readNode : graph.getNodes().filter(ReadNode.class)) {
             LocationIdentity location = readNode.getLocationIdentity();
             if (location instanceof FieldLocationIdentity) {
                 if (((FieldLocationIdentity) location).getField().equals(resolvedField)) {
@@ -542,9 +542,9 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     private static void resetSingleContextState() {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState");
+            java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);
             m.setAccessible(true);
-            m.invoke(null);
+            m.invoke(null, false);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -566,10 +566,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        public static ContextReference<LanguageContext> getCurrentContextReference() {
-            return getCurrentLanguage(Exclusive.class).getContextReference();
         }
 
         public static LanguageContext getCurrentContext() {
@@ -612,6 +608,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return false;
         }
 
+        @SuppressWarnings("deprecation")
         public static ContextReference<LanguageContext> getCurrentContextReference() {
             return getCurrentLanguage(Shared.class).getContextReference();
         }

@@ -30,15 +30,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -46,6 +51,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -58,6 +64,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -89,8 +96,8 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final LinkedHashSet<String> libraries;
-    private final LinkedHashSet<String> staticLibraries;
+    private final List<String> libraries;
+    private final List<String> staticLibraries;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -98,13 +105,16 @@ public final class NativeLibraries {
 
     private final CAnnotationProcessorCache cache;
 
+    public final Path tempDirectory;
+
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
-                    ClassInitializationSupport classInitializationSupport) {
+                    ClassInitializationSupport classInitializationSupport, Path tempDirectory) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.classInitializationSupport = classInitializationSupport;
+        this.tempDirectory = tempDirectory;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -119,8 +129,17 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new LinkedHashSet<>();
-        staticLibraries = new LinkedHashSet<>();
+        /*
+         * Libraries can be added during the static analysis, which runs multi-threaded. So the
+         * lists must be synchronized.
+         *
+         * Also note that it is necessary to support duplicate entries, i.e., it must remain a List
+         * and not a Set. The list is passed to the linker, and duplicate entries allow linking of
+         * libraries that have cyclic dependencies.
+         */
+        libraries = Collections.synchronizedList(new ArrayList<>());
+        staticLibraries = Collections.synchronizedList(new ArrayList<>());
+
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
@@ -145,27 +164,21 @@ public final class NativeLibraries {
         LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
 
         Path staticLibsDir = null;
+        String hint = null;
 
         /* Probe for static JDK libraries in JDK lib directory */
         try {
             Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
-            if (Files.isDirectory(jdkLibDir)) {
-                if (Files.list(jdkLibDir).filter(path -> {
-                    if (Files.isDirectory(path)) {
-                        return false;
-                    }
-                    String libName = path.getFileName().toString();
-                    if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
-                        return false;
-                    }
-                    String lib = libName.substring(libPrefix.length(), libName.length() - libSuffix.length());
-                    return PlatformNativeLibrarySupport.defaultBuiltInLibraries.contains(lib);
-                }).count() == PlatformNativeLibrarySupport.defaultBuiltInLibraries.size()) {
-                    staticLibsDir = jdkLibDir;
-                }
+            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
+            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));
+            if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
+                staticLibsDir = jdkLibDir;
+            } else {
+                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries:", ""));
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             /* Fallthrough to next strategy */
+            hint = e.getMessage();
         }
 
         if (staticLibsDir == null) {
@@ -175,10 +188,15 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            UserError.guarantee(OS.getCurrent() != OS.WINDOWS,
-                            "Building images for " + OS.getCurrent().className +
-                                            " requires static JDK libraries." +
-                                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases");
+            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                /* Fail if we will statically link JDK libraries but do not have them available */
+                String message = "Building images for " + ImageSingletons.lookup(Platform.class).getClass().getName() + " requires static JDK libraries." +
+                                "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases or https://github.com/graalvm/labs-openjdk-11/releases";
+                if (hint != null) {
+                    message += "\n" + hint;
+                }
+                UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class), message);
+            }
         }
         return libraryPaths;
     }
@@ -239,6 +257,27 @@ public final class NativeLibraries {
     }
 
     public Collection<Path> getStaticLibraries() {
+        Map<Path, Path> allStaticLibs = getAllStaticLibs();
+        List<Path> staticLibs = new ArrayList<>();
+        for (String staticLibraryName : staticLibraries) {
+            Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
+            if (libraryPath == null) {
+                continue;
+            }
+            staticLibs.add(libraryPath);
+        }
+        return staticLibs;
+    }
+
+    public Path getStaticLibraryPath(String staticLibraryName) {
+        return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
+    }
+
+    private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
+        return allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+    }
+
+    private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         for (String libraryPath : getLibraryPaths()) {
             try {
@@ -250,15 +289,7 @@ public final class NativeLibraries {
                 UserError.abort("Invalid library path " + libraryPath, e);
             }
         }
-        List<Path> staticLibs = new ArrayList<>();
-        for (String staticLibraryName : staticLibraries) {
-            Path libraryPath = allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
-            if (libraryPath == null) {
-                continue;
-            }
-            staticLibs.add(libraryPath);
-        }
-        return staticLibs;
+        return allStaticLibs;
     }
 
     public Collection<String> getLibraryPaths() {
@@ -328,7 +359,7 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish(Path tempDirectory) {
+    public void finish() {
         libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {

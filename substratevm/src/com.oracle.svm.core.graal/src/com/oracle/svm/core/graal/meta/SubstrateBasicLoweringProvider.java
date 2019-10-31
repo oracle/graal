@@ -80,7 +80,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateVirtualArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateVirtualInstanceNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
@@ -190,12 +190,18 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         AddressNode headerAddress = graph.unique(new OffsetAddressNode(object, headerOffset));
         ValueNode headerBits = graph.unique(new FloatingReadNode(headerAddress, NamedLocationIdentity.FINAL_LOCATION, null, headerBitsStamp, null, BarrierType.NONE));
         ValueNode hubBits;
-        int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
-        if (encodingShift != 0) {
-            assert (Long.MAX_VALUE << encodingShift) == ObjectHeader.BITS_CLEAR.rawValue() : "Compression shift must mask object header bits";
-            hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
+        int reservedBits = Heap.getHeap().getObjectHeader().getReservedBits();
+        if (reservedBits != 0) {
+            // get rid of the reserved header bits and extract the actual pointer to the hub
+            int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+            if (encodingShift != 0) {
+                assert (reservedBits >>> encodingShift) == 0 : "Compression shift must mask object header bits";
+                hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
+            } else {
+                hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBits, graph)));
+            }
         } else {
-            hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ObjectHeader.BITS_CLEAR.rawValue(), graph)));
+            hubBits = headerBits;
         }
         FloatingWordCastNode hubRef = graph.unique(new FloatingWordCastNode(hubStamp, hubBits));
         return maybeUncompress(hubRef);

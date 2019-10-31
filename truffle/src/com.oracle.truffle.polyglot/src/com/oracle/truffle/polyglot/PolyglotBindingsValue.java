@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ final class PolyglotBindingsValue extends PolyglotValue {
     PolyglotBindingsValue(PolyglotLanguageContext context) {
         super(context);
         this.values = context.context.polyglotBindings;
-        this.delegateBindings = context.asValue(new PolyglotBindings(context, values));
+        this.delegateBindings = context.asValue(new PolyglotBindings(context));
     }
 
     @Override

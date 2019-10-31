@@ -29,6 +29,7 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -58,7 +59,14 @@ final class Target_java_net_URL {
     @Delete private static Hashtable<?, ?> handlers;
 
     @Substitute
-    private static URLStreamHandler getURLStreamHandler(String protocol) {
+    private static URLStreamHandler getURLStreamHandler(String protocol) throws MalformedURLException {
+        /*
+         * The original version of this method does not throw MalformedURLException directly, but
+         * instead returns null if no handler is found. The callers then check the result and throw
+         * the exception when the return value is null. Implementing our substitution the same way
+         * would mean that we cannot provide a helpful exception message why a protocol is not
+         * available, and how to add a protocol at image build time.
+         */
         return JavaNetSubstitutions.getURLStreamHandler(protocol);
     }
 }
@@ -150,7 +158,7 @@ public final class JavaNetSubstitutions {
         }
     }
 
-    static URLStreamHandler getURLStreamHandler(String protocol) {
+    static URLStreamHandler getURLStreamHandler(String protocol) throws MalformedURLException {
         URLStreamHandler result = URLProtocolsSupport.get(protocol);
         if (result == null) {
             if (onDemandProtocols.contains(protocol)) {
@@ -192,8 +200,12 @@ public final class JavaNetSubstitutions {
         };
     }
 
-    private static void unsupported(String message) {
-        throw VMError.unsupportedFeature(message);
+    private static void unsupported(String message) throws MalformedURLException {
+        /*
+         * We throw a MalformedURLException and not our own unsupported feature error to be
+         * consistent with the specification of URL.
+         */
+        throw new MalformedURLException(message);
     }
 
     static String supportedProtocols() {

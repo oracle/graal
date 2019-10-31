@@ -37,210 +37,209 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdclNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsflNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BswapNodeFactory.LLVMAMD64BswaplNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64BswapNodeFactory.LLVMAMD64BswapqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmplNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchglNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64CpuidNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DeclNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagEqualNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagGNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagLENodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNegNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNorNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagOrNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagXorNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I16NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I1NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I32NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I8NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imull3NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImullNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imulq3NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imulw3NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64InclNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64LahfNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64ReadFlagswNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MullNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NeglNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PoplNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PopqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PopwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RepNode;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RollNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SallNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetFlagNode;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShllNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StoreFlagsFactory.LLVMAMD64SahfNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StoreFlagsFactory.LLVMAMD64WriteFlagswNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosdNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StoswNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SublNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64Ud2Node;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchglNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorbNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorlNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorwNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressDisplacementComputationNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressNoBaseOffsetComputationNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressOffsetComputationNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressSegmentComputationNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64GetTlsNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Target;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI16ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI32ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI8ToR64NodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSFlagsNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteAddressRegisterNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
-import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInstructionNode;
-import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWritePointerNode;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
-import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RepNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SetFlagNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64Ud2Node;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64Flags;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64Target;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSFlagsNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdatePZSOFlagsNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteBooleanNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode.LLVMWritePointerNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdclNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64AndNodeFactory.LLVMAMD64AndwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsflNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsfNodeFactory.LLVMAMD64BsfwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BsrNodeFactory.LLVMAMD64BsrwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BswapNodeFactory.LLVMAMD64BswaplNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64BswapNodeFactory.LLVMAMD64BswapqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmplNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpNodeFactory.LLVMAMD64CmpwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchglNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CmpXchgNodeFactory.LLVMAMD64CmpXchgwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64CpuidNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DeclNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DecNodeFactory.LLVMAMD64DecwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagEqualNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagGNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagLENodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNegNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagOrNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagXorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I1NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImmNodeFactory.LLVMAMD64I8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imull3NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImullNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imulq3NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64Imulw3NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ImulNodeFactory.LLVMAMD64ImulwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64InclNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64LahfNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64ReadFlagswNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MullNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NeglNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64NotNodeFactory.LLVMAMD64NotwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PoplNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PopqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PopNodeFactory.LLVMAMD64PopwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64PushNodeFactory.LLVMAMD64PushwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdRandNodeFactory.LLVMAMD64RdRandwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdSeedNodeFactory.LLVMAMD64RdSeedwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RdtscNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RollNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RolNodeFactory.LLVMAMD64RolwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64RorNodeFactory.LLVMAMD64RorwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShllNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64ShrNodeFactory.LLVMAMD64ShrwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StoreFlagsFactory.LLVMAMD64SahfNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StoreFlagsFactory.LLVMAMD64WriteFlagswNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosdNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StosqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64StosNodeFactory.LLVMAMD64StoswNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SublNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchglNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XchgNodeFactory.LLVMAMD64XchgwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorbNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorlNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorqNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XorNodeFactory.LLVMAMD64XorwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressDisplacementComputationNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressNoBaseOffsetComputationNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressOffsetComputationNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressSegmentComputationNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64GetTlsNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI16ToR64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI32ToR64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ToRegisterNodeFactory.LLVMI8ToR64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteAddressRegisterNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToAddressNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.StructLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
@@ -273,12 +272,10 @@ class AsmFactory {
 
     private final LLVMLanguage language;
     private final NodeFactory nodeFactory;
-    private final LLVMSourceLocation sourceLocation;
 
-    AsmFactory(LLVMLanguage language, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets, NodeFactory nodeFactory) {
         this.language = language;
-        this.nodeFactory = language.getNodeFactory();
-        this.sourceLocation = sourceLocation;
+        this.nodeFactory = nodeFactory;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
@@ -406,7 +403,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -416,9 +413,9 @@ class AsmFactory {
     void createInt(AsmImmediateOperand nr) {
         long id = nr.getValue();
         if (id == 3) {
-            statements.add(new LLVMDebugTrapNode(sourceLocation));
+            statements.add(new LLVMDebugTrapNode());
         } else {
-            statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, LLVMUnsupportedException.UnsupportedReason.INLINE_ASSEMBLER, "interrupt " + nr));
+            statements.add(LLVMUnsupportedInstructionNode.create(LLVMUnsupportedException.UnsupportedReason.INLINE_ASSEMBLER, "interrupt " + nr));
         }
     }
 
@@ -440,7 +437,7 @@ class AsmFactory {
             case "clc":
             case "cli":
             case "cmc":
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 break;
             case "lahf": {
                 LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
@@ -473,7 +470,7 @@ class AsmFactory {
                 break;
             case "stc":
             case "sti":
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 break;
             case "nop":
             case "pause":
@@ -550,7 +547,7 @@ class AsmFactory {
                 break;
             }
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
     }
@@ -757,7 +754,7 @@ class AsmFactory {
                 }
                 break;
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         if (dstType == null) {
@@ -943,7 +940,7 @@ class AsmFactory {
                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                 return;
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1210,11 +1207,11 @@ class AsmFactory {
                 break;
             case "pmovmskb":
                 srcA = getOperandLoad(getType(a), a);
-                LLVMX86_ConversionNode.LLVMX86_Pmovmskb128 pmovmskb128 = LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen.create(srcA, sourceLocation);
+                LLVMX86_ConversionNode.LLVMX86_Pmovmskb128 pmovmskb128 = LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen.create(srcA);
                 out = pmovmskb128;
                 break;
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1588,7 +1585,7 @@ class AsmFactory {
                 out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                 break;
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1619,7 +1616,7 @@ class AsmFactory {
                                 getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, srcA, srcB));
                 return;
             default:
-                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
     }
@@ -1712,7 +1709,7 @@ class AsmFactory {
                     assert arg.isMemory();
                     slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getOutIndex()]);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getOutIndex());
-                    arguments.add(LLVMWritePointerNodeGen.create(slot, sourceLocation, argnode));
+                    arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
                 }
             }
 
@@ -1725,23 +1722,23 @@ class AsmFactory {
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                     if (argTypes[arg.getInIndex()] instanceof PointerType) {
-                        arguments.add(LLVMWritePointerNodeGen.create(slot, null, argnode));
+                        arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
                     } else if (argTypes[arg.getInIndex()] instanceof VectorType) {
-                        arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, null, argnode));
+                        arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, argnode));
                     } else {
                         LLVMExpressionNode node = nodeFactory.createSignedCast(argnode, PrimitiveType.I64);
-                        arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
+                        arguments.add(LLVMWriteI64NodeGen.create(slot, node));
                     }
                 }
                 slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
                 LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                 if (arg.getType() instanceof PrimitiveType) {
                     LLVMExpressionNode node = nodeFactory.createSignedCast(argnode, PrimitiveType.I64);
-                    arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
+                    arguments.add(LLVMWriteI64NodeGen.create(slot, node));
                 } else if (arg.getType() instanceof VectorType) {
-                    arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, null, argnode));
+                    arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, argnode));
                 } else if (arg.getType() instanceof PointerType) {
-                    arguments.add(LLVMWritePointerNodeGen.create(slot, null, argnode));
+                    arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
                 } else {
                     throw invalidOperandType(arg.getType());
                 }
@@ -1751,7 +1748,7 @@ class AsmFactory {
         if (retType instanceof StructureType) {
             LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
             FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", null, FrameSlotKind.Object);
-            LLVMWritePointerNode writeAddr = LLVMWritePointerNodeGen.create(slot, null, addrArg);
+            LLVMWritePointerNode writeAddr = LLVMWritePointerNodeGen.create(slot, addrArg);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);
             this.result = StructLiteralNodeGen.create(retOffsets, writeNodes, valueNodes, addr);
@@ -1765,25 +1762,25 @@ class AsmFactory {
             }
             LLVMExpressionNode node = LLVMAMD64I64NodeGen.create(0);
             FrameSlot slot = getRegisterSlot(register);
-            arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
+            arguments.add(LLVMWriteI64NodeGen.create(slot, node));
         }
 
         // initialize flags
         LLVMExpressionNode zero = LLVMAMD64I1NodeGen.create(false);
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.CF), sourceLocation, zero));
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.PF), sourceLocation, zero));
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.AF), sourceLocation, zero));
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.ZF), sourceLocation, zero));
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.SF), sourceLocation, zero));
-        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.OF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.CF), zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.PF), zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.AF), zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.ZF), zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.SF), zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.OF), zero));
 
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
         frameDescriptor.setFrameSlotKind(stackSlot, FrameSlotKind.Object);
-        arguments.add(LLVMWritePointerNodeGen.create(frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation, stackPointer));
+        arguments.add(LLVMWritePointerNodeGen.create(frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), stackPointer));
 
-        arguments.add(LLVMWritePointerNodeGen.create(getRegisterSlot("rsp"), null, stackPointer));
+        arguments.add(LLVMWritePointerNodeGen.create(getRegisterSlot("rsp"), stackPointer));
 
         assert retType instanceof VoidType || retType != null;
     }
@@ -2030,7 +2027,7 @@ class AsmFactory {
                 default:
                     throw new AsmParseException("unsupported operand type: " + op.getType());
             }
-            return LLVMWriteI64NodeGen.create(frame, null, out);
+            return LLVMWriteI64NodeGen.create(frame, out);
         } else if (operand instanceof AsmArgumentOperand) {
             AsmArgumentOperand op = (AsmArgumentOperand) operand;
             Argument info = argInfo.get(op.getIndex());
@@ -2057,7 +2054,7 @@ class AsmFactory {
                 LLVMExpressionNode register = LLVMAMD64ReadRegisterNodeGen.create(frame);
                 LLVMExpressionNode out = null;
                 if (type instanceof PointerType || info.getType() instanceof PointerType) {
-                    return LLVMAMD64WriteAddressRegisterNodeGen.create(sourceLocation, from, frame);
+                    return LLVMAMD64WriteAddressRegisterNodeGen.create(from, frame);
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
@@ -2075,7 +2072,7 @@ class AsmFactory {
                     default:
                         throw unsupportedOperandType(type);
                 }
-                return LLVMWriteI64NodeGen.create(frame, null, out);
+                return LLVMWriteI64NodeGen.create(frame, out);
             } else {
                 throw new AssertionError("this should not happen; " + info);
             }
@@ -2083,13 +2080,13 @@ class AsmFactory {
             LLVMExpressionNode address = getOperandAddress(operand);
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I8:
-                    return LLVMI8StoreNodeGen.create(null, address, from);
+                    return LLVMI8StoreNodeGen.create(address, from);
                 case I16:
-                    return LLVMI16StoreNodeGen.create(null, address, from);
+                    return LLVMI16StoreNodeGen.create(address, from);
                 case I32:
-                    return LLVMI32StoreNodeGen.create(null, address, from);
+                    return LLVMI32StoreNodeGen.create(address, from);
                 case I64:
-                    return LLVMI64StoreNodeGen.create(null, address, from);
+                    return LLVMI64StoreNodeGen.create(address, from);
                 default:
                     throw unsupportedOperandType(type);
             }

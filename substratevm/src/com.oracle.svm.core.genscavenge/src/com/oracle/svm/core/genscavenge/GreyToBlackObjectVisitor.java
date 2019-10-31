@@ -36,7 +36,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.NativeImageInfo;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -185,7 +184,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     log.string("  objectEntry: ").hex(objectEntry);
                     /* The decoding of the object header. */
                     final UnsignedWord headerEntry = headerHistory[index];
-                    final UnsignedWord headerHubBits = ObjectHeader.clearBits(headerEntry);
+                    final UnsignedWord headerHubBits = ObjectHeaderImpl.clearBits(headerEntry);
                     final UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
                     log.string("  headerEntry: ").hex(headerEntry)
                                     .string(" = ").hex(headerHubBits)

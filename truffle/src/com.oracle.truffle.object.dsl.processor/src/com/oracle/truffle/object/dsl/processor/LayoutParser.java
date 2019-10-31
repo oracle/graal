@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,10 @@
  */
 package com.oracle.truffle.object.dsl.processor;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.Layout.ImplicitCast;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.dsl.Layout;
-import com.oracle.truffle.api.object.dsl.Nullable;
-import com.oracle.truffle.api.object.dsl.Volatile;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
-import com.oracle.truffle.object.dsl.processor.model.NameUtils;
-import com.oracle.truffle.object.dsl.processor.model.PropertyBuilder;
-import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -62,10 +54,13 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.NameUtils;
+import com.oracle.truffle.object.dsl.processor.model.PropertyBuilder;
+import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
 
 public class LayoutParser {
 
@@ -84,7 +79,8 @@ public class LayoutParser {
     private boolean hasBuilder;
     private final List<String> constructorProperties = new ArrayList<>();
     private final Map<String, PropertyBuilder> properties = new HashMap<>();
-    private List<ImplicitCast> implicitCasts = new ArrayList<>();
+    private List<VariableElement> implicitCasts = new ArrayList<>();
+    private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     public LayoutParser(LayoutProcessor processor) {
         this.processor = processor;
@@ -107,15 +103,17 @@ public class LayoutParser {
         }
 
         for (AnnotationMirror annotationMirror : layoutElement.getAnnotationMirrors()) {
-            if (isSameType(annotationMirror.getAnnotationType(), Layout.class)) {
+            if (isSameType(annotationMirror.getAnnotationType(), types.Layout)) {
                 objectTypeSuperclass = ElementUtils.getAnnotationValue(TypeMirror.class, annotationMirror, "objectTypeSuperclass");
 
                 if (ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "implicitCastIntToLong")) {
-                    implicitCasts.add(ImplicitCast.IntToLong);
+                    VariableElement var = ElementUtils.findVariableElement(types.Layout_ImplicitCast, "IntToLong");
+                    implicitCasts.add(var);
                 }
 
                 if (ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "implicitCastIntToDouble")) {
-                    implicitCasts.add(ImplicitCast.IntToDouble);
+                    VariableElement var = ElementUtils.findVariableElement(types.Layout_ImplicitCast, "IntToDouble");
+                    implicitCasts.add(var);
                 }
             }
         }
@@ -244,7 +242,7 @@ public class LayoutParser {
                                 firstParameter.getSimpleName());
             }
 
-            if (!isSameType(firstParameter.asType(), DynamicObjectFactory.class)) {
+            if (!isSameType(firstParameter.asType(), types.DynamicObjectFactory)) {
                 processor.reportError(firstParameter, "If an @Layout has shape properties, the first parameter of the constructor must be of type DynamicObjectFactory (was %s)",
                                 firstParameter.asType());
             }
@@ -261,7 +259,7 @@ public class LayoutParser {
 
         List<? extends VariableElement> parameters = methodElement.getParameters();
 
-        if (!isSameType(methodElement.getReturnType(), Object[].class)) {
+        if (!isSameType(methodElement.getReturnType(), ProcessorContext.getInstance().getType(Object[].class))) {
             processor.reportError(methodElement, "build() must have Object[] for return type");
         }
 
@@ -360,13 +358,13 @@ public class LayoutParser {
         final String parameterName = parameter.getSimpleName().toString();
         final String expectedParameterName;
 
-        if (isSameType(type, DynamicObject.class)) {
+        if (isSameType(type, types.DynamicObject)) {
             hasDynamicObjectGuard = true;
             expectedParameterName = "object";
-        } else if (isSameType(type, ObjectType.class)) {
+        } else if (isSameType(type, types.ObjectType)) {
             hasObjectTypeGuard = true;
             expectedParameterName = "objectType";
-        } else if (isSameType(type, Object.class)) {
+        } else if (isSameType(type, ProcessorContext.getInstance().getType(Object.class))) {
             hasObjectGuard = true;
             expectedParameterName = "object";
         } else {
@@ -392,15 +390,15 @@ public class LayoutParser {
         final boolean isObjectTypeGetter;
         final String expectedParameterName;
 
-        if (isSameType(parameterType, DynamicObject.class)) {
+        if (isSameType(parameterType, types.DynamicObject)) {
             isShapeGetter = false;
             isObjectTypeGetter = false;
             expectedParameterName = "object";
-        } else if (isSameType(parameterType, DynamicObjectFactory.class)) {
+        } else if (isSameType(parameterType, types.DynamicObjectFactory)) {
             isShapeGetter = true;
             isObjectTypeGetter = false;
             expectedParameterName = "factory";
-        } else if (isSameType(parameterType, ObjectType.class)) {
+        } else if (isSameType(parameterType, types.ObjectType)) {
             isShapeGetter = false;
             isObjectTypeGetter = true;
             expectedParameterName = "objectType";
@@ -441,10 +439,10 @@ public class LayoutParser {
         final boolean isShapeSetter;
         final String expectedParameterName;
 
-        if (isSameType(parameterType, DynamicObject.class)) {
+        if (isSameType(parameterType, types.DynamicObject)) {
             isShapeSetter = false;
             expectedParameterName = "object";
-        } else if (isSameType(parameterType, DynamicObjectFactory.class)) {
+        } else if (isSameType(parameterType, types.DynamicObjectFactory)) {
             isShapeSetter = true;
             expectedParameterName = "factory";
         } else {
@@ -496,7 +494,7 @@ public class LayoutParser {
         final VariableElement currentValueParameter = methodElement.getParameters().get(1);
         final VariableElement newValueParameter = methodElement.getParameters().get(2);
 
-        if (!isSameType(objectParameter.asType(), DynamicObject.class)) {
+        if (!isSameType(objectParameter.asType(), types.DynamicObject)) {
             processor.reportError(methodElement, "@Layout compare and set method should have a first parameter of type DynamicObject");
         }
 
@@ -529,7 +527,7 @@ public class LayoutParser {
         final VariableElement objectParameter = methodElement.getParameters().get(0);
         final VariableElement newValueParameter = methodElement.getParameters().get(1);
 
-        if (!isSameType(objectParameter.asType(), DynamicObject.class)) {
+        if (!isSameType(objectParameter.asType(), types.DynamicObject)) {
             processor.reportError(methodElement, "@Layout get and set method should have a first parameter of type DynamicObject");
         }
 
@@ -550,26 +548,18 @@ public class LayoutParser {
         setPropertyType(methodElement, property, methodElement.getReturnType());
     }
 
-    private static void parseConstructorParameterAnnotations(PropertyBuilder property, Element element) {
-        if (element.getAnnotation(Nullable.class) != null) {
+    private void parseConstructorParameterAnnotations(PropertyBuilder property, Element element) {
+        if (ElementUtils.findAnnotationMirror(element, types.Nullable) != null) {
             property.setNullable(true);
         }
 
-        if (element.getAnnotation(Volatile.class) != null) {
+        if (ElementUtils.findAnnotationMirror(element, types.Volatile) != null) {
             property.setVolatile(true);
         }
     }
 
-    private TypeMirror getType(Class<?> klass) {
-        return ElementUtils.getType(processor.getProcessingEnv(), klass);
-    }
-
     private boolean isSameType(TypeMirror a, TypeMirror b) {
         return processor.getProcessingEnv().getTypeUtils().isSameType(a, b);
-    }
-
-    private boolean isSameType(TypeMirror a, Class<?> klass) {
-        return processor.getProcessingEnv().getTypeUtils().isSameType(a, getType(klass));
     }
 
     // Whether the parameter name is a fake generated one (argX).

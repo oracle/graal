@@ -1,0 +1,472 @@
+{
+    "injectionSelector": "L:source.python -comment -(string - meta.embedded), L:source.js meta.embedded.inline.python, L:source.r meta.embedded.inline.python, L:source.ruby meta.embedded.inline.python, L:source.sl meta.embedded.inline.python",
+    "scopeName": "python-inline.polyglot-langauges",
+    "patterns": [
+        {
+            "begin": "polyglot\\s*(\\.)\\s*((eval)\\s*(\\())",
+            "beginCaptures": {
+                "1": {
+                    "name": "punctuation.separator.period.python"
+                },
+                "2": {
+                    "name": "meta.function-call.python"
+                },
+                "3": {
+                    "name": "meta.function-call.generic.python"
+                },
+                "4": {
+                    "name": "punctuation.definition.arguments.begin.python"
+                }
+            },
+            "contentName": "meta.function-call.python meta.function-call.arguments.python",
+            "end": "\\)",
+            "endCaptures": {
+                "0": {
+                    "name": "meta.function-call.python punctuation.definition.arguments.end.python"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#polyglot-call-js"
+                },
+                {
+                    "include": "#polyglot-call-r"
+                },
+                {
+                    "include": "#polyglot-call-ruby"
+                },
+                {
+                    "include": "#polyglot-call-sl"
+                },
+                {
+                    "include": "#function-arguments"
+                }
+           ]
+        }
+    ],
+    "repository": {
+        "function-arguments": {
+            "patterns": [
+                {
+                    "name": "punctuation.separator.arguments.python",
+                    "match": "(,)"
+                },
+                {
+                    "match": "(?x)\n  (?:(?<=[,(])|^) \\s* (\\*{1,2})\n",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.operator.unpacking.arguments.python"
+                        }
+                    }
+                },
+                {
+                    "include": "source.python#lambda-incomplete"
+                },
+                {
+                    "include": "source.python#illegal-names"
+                },
+                {
+                    "match": "\\b([[:alpha:]_]\\w*)\\s*(=)(?!=)",
+                    "captures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        }
+                    }
+                },
+                {
+                    "name": "keyword.operator.assignment.python",
+                    "match": "=(?!=)"
+                },
+                {
+                    "include": "source.python#expression"
+                },
+                {
+                    "match": "\\s*(\\))\\s*(\\()",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.definition.arguments.end.python"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.arguments.begin.python"
+                        }
+                    }
+                }
+            ]
+        },
+        "polyglot-call-js": {
+            "begin": "(language)\\s*(=)\\s*((['\"])js(\\4))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1" : {
+                    "name": "variable.parameter.function-call.python"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.python"
+                },
+                "3": {
+                    "name": "string.quoted.single.python"
+                },
+                "4": {
+                    "name": "punctuation.definition.string.begin.python"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.end.python"
+                },
+                "6": {
+                    "name": "punctuation.separator.arguments.python"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-js"
+                },
+                {
+                    "include": "#function-arguments"
+                }
+            ]
+        },
+        "strings-inline-js": {
+            "patterns": [
+                {
+                    "name": "string.quoted.multi.python",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-r": {
+            "begin": "(language)\\s*(=)\\s*((['\"])R(\\4))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1" : {
+                    "name": "variable.parameter.function-call.python"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.python"
+                },
+                "3": {
+                    "name": "string.quoted.single.python"
+                },
+                "4": {
+                    "name": "punctuation.definition.string.begin.python"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.end.python"
+                },
+                "6": {
+                    "name": "punctuation.separator.arguments.python"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-r"
+                },
+                {
+                    "include": "#function-arguments"
+                }
+            ]
+        },
+        "strings-inline-r": {
+            "patterns": [
+                {
+                    "name": "string.quoted.multi.python",
+                    "contentName": "meta.embedded.inline.r",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.r"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.r",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.r"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-ruby": {
+            "begin": "(language)\\s*(=)\\s*((['\"])ruby(\\4))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1" : {
+                    "name": "variable.parameter.function-call.python"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.python"
+                },
+                "3": {
+                    "name": "string.quoted.single.python"
+                },
+                "4": {
+                    "name": "punctuation.definition.string.begin.python"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.end.python"
+                },
+                "6": {
+                    "name": "punctuation.separator.arguments.python"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-ruby"
+                },
+                {
+                    "include": "#function-arguments"
+                }
+            ]
+        },
+        "strings-inline-ruby": {
+            "patterns": [
+                {
+                    "name": "string.quoted.multi.python",
+                    "contentName": "meta.embedded.inline.ruby",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.ruby"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.ruby",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.ruby"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-sl": {
+            "begin": "(language)\\s*(=)\\s*((['\"])sl(\\4))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1" : {
+                    "name": "variable.parameter.function-call.python"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.python"
+                },
+                "3": {
+                    "name": "string.quoted.single.python"
+                },
+                "4": {
+                    "name": "punctuation.definition.string.begin.python"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.end.python"
+                },
+                "6": {
+                    "name": "punctuation.separator.arguments.python"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-sl"
+                },
+                {
+                    "include": "#function-arguments"
+                }
+            ]
+        },
+        "strings-inline-sl": {
+            "patterns": [
+                {
+                    "name": "string.quoted.multi.python",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

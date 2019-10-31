@@ -1,43 +1,59 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
-import java.util.Objects;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Objects of this class represent the capture group boundaries traversed in a single
@@ -57,10 +73,13 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public class GroupBoundaries implements JsonConvertible {
 
     private static final GroupBoundaries EMPTY_INSTANCE = new GroupBoundaries(new CompilationFinalBitSet(0), new CompilationFinalBitSet(0));
+    private static final byte[] EMPTY_ARRAY = new byte[0];
 
     private final CompilationFinalBitSet updateIndices;
     private final CompilationFinalBitSet clearIndices;
     private final int cachedHash;
+    @CompilationFinal(dimensions = 1) private byte[] updateArray;
+    @CompilationFinal(dimensions = 1) private byte[] clearArray;
 
     GroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
         this.updateIndices = updateIndices;
@@ -74,14 +93,19 @@ public class GroupBoundaries implements JsonConvertible {
         return EMPTY_INSTANCE;
     }
 
+    public boolean isEmpty() {
+        assert !(updateIndices.isEmpty() && clearIndices.isEmpty()) || this == EMPTY_INSTANCE;
+        return this == EMPTY_INSTANCE;
+    }
+
     /**
      * Creates a byte array suitable to be part of the {@code indexUpdates} parameter passed to
-     * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
+     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
-     * 
+     *
      * @param targetArray the index of the row to be targeted.
      *
-     * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
+     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
      *      byte[][], byte)
      */
     public byte[] updatesToPartialTransitionArray(int targetArray) {
@@ -90,12 +114,12 @@ public class GroupBoundaries implements JsonConvertible {
 
     /**
      * Creates a byte array suitable to be part of the {@code indexClears} parameter passed to
-     * {@link DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
+     * {@link DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
-     * 
+     *
      * @param targetArray the index of the row to be targeted.
      *
-     * @see DFACaptureGroupPartialTransitionNode#create(DFAGenerator, byte[], byte[], byte[][],
+     * @see DFACaptureGroupPartialTransition#create(DFAGenerator, byte[], byte[], byte[][],
      *      byte[][], byte)
      */
     public byte[] clearsToPartialTransitionArray(int targetArray) {
@@ -106,12 +130,32 @@ public class GroupBoundaries implements JsonConvertible {
         assert !indices.isEmpty() : "should not be called on empty sets";
         final byte[] indexUpdate = new byte[indices.numberOfSetBits() + 1];
         indexUpdate[0] = (byte) targetArray;
-        int i = 1;
+        writeIndicesToArray(indices, indexUpdate, 1);
+        return indexUpdate;
+    }
+
+    private static void writeIndicesToArray(CompilationFinalBitSet indices, final byte[] array, int offset) {
+        int i = offset;
         for (int j : indices) {
             assert j < 256;
-            indexUpdate[i++] = (byte) j;
+            array[i++] = (byte) j;
         }
-        return indexUpdate;
+    }
+
+    public void materializeArrays() {
+        if (this != EMPTY_INSTANCE && updateArray == null) {
+            updateArray = indicesToArray(updateIndices);
+            clearArray = indicesToArray(clearIndices);
+        }
+    }
+
+    private static byte[] indicesToArray(CompilationFinalBitSet indices) {
+        if (indices.isEmpty()) {
+            return EMPTY_ARRAY;
+        }
+        final byte[] array = new byte[indices.numberOfSetBits()];
+        writeIndicesToArray(indices, array, 0);
+        return array;
     }
 
     /**
@@ -121,6 +165,23 @@ public class GroupBoundaries implements JsonConvertible {
      */
     public CompilationFinalBitSet getUpdateIndices() {
         return updateIndices;
+    }
+
+    /**
+     * Directly returns the {@link CompilationFinalBitSet} used to store the indices of all capture
+     * group boundaries that should be cleared when traversed. <br>
+     * CAUTION: Do not alter the returned object!
+     */
+    public CompilationFinalBitSet getClearIndices() {
+        return clearIndices;
+    }
+
+    public byte[] getUpdateIndicesArray() {
+        return updateArray;
+    }
+
+    public byte[] getClearIndicesArray() {
+        return clearArray;
     }
 
     public boolean hasIndexUpdates() {
@@ -167,6 +228,18 @@ public class GroupBoundaries implements JsonConvertible {
     public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+    }
+
+    public void apply(int[] array, int offset, int index) {
+        if (this == EMPTY_INSTANCE) {
+            return;
+        }
+        for (byte i : clearArray) {
+            array[offset + Byte.toUnsignedInt(i)] = -1;
+        }
+        for (byte i : updateArray) {
+            array[offset + Byte.toUnsignedInt(i)] = index;
         }
     }
 

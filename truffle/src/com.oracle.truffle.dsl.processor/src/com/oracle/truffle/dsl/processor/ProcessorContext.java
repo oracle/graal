@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,9 +53,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Types;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -71,18 +68,17 @@ public class ProcessorContext {
 
     private final ProcessCallback callback;
     private final Log log;
-    private final TruffleTypes truffleTypes;
+    private TruffleTypes types;
 
     public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
         this.callback = callback;
         boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false"));
         this.log = new Log(environment, emitWarnings);
-        this.truffleTypes = new TruffleTypes(this);
     }
 
-    public TruffleTypes getTruffleTypes() {
-        return truffleTypes;
+    public TruffleTypes getTypes() {
+        return types;
     }
 
     public Log getLog() {
@@ -115,6 +111,22 @@ public class ProcessorContext {
         return (DeclaredType) ElementUtils.getType(environment, element);
     }
 
+    public DeclaredType getDeclaredTypeOptional(String element) {
+        TypeElement type = ElementUtils.getTypeElement(environment, element);
+        if (type == null) {
+            return null;
+        }
+        return (DeclaredType) type.asType();
+    }
+
+    public DeclaredType getDeclaredType(String element) {
+        TypeElement type = ElementUtils.getTypeElement(environment, element);
+        if (type == null) {
+            throw new IllegalArgumentException("Processor requested type " + element + " but was not on the classpath.");
+        }
+        return (DeclaredType) type.asType();
+    }
+
     public boolean isType(TypeMirror type, Class<?> clazz) {
         return ElementUtils.typeEquals(type, getType(clazz));
     }
@@ -126,6 +138,10 @@ public class ProcessorContext {
     public TypeElement getTypeElement(Class<?> element) {
         DeclaredType type = getDeclaredType(element);
         return (TypeElement) type.asElement();
+    }
+
+    public TypeElement getTypeElement(DeclaredType element) {
+        return (TypeElement) element.asElement();
     }
 
     public interface ProcessCallback {
@@ -152,13 +168,13 @@ public class ProcessorContext {
         } else if (type.getKind().isPrimitive()) {
             return type;
         }
-        Types types = getEnvironment().getTypeUtils();
+        Types typesUtils = getEnvironment().getTypeUtils();
 
         switch (type.getKind()) {
             case ARRAY:
-                return types.getArrayType(reloadType(((ArrayType) type).getComponentType()));
+                return typesUtils.getArrayType(reloadType(((ArrayType) type).getComponentType()));
             case WILDCARD:
-                return types.getWildcardType(((WildcardType) type).getExtendsBound(), ((WildcardType) type).getSuperBound());
+                return typesUtils.getWildcardType(((WildcardType) type).getExtendsBound(), ((WildcardType) type).getSuperBound());
             case DECLARED:
                 return reloadTypeElement((TypeElement) (((DeclaredType) type).asElement()));
         }
@@ -167,8 +183,30 @@ public class ProcessorContext {
 
     private static final ThreadLocal<ProcessorContext> instance = new ThreadLocal<>();
 
-    public static void setThreadLocalInstance(ProcessorContext context) {
+    public static ProcessorContext enter(ProcessingEnvironment environment, ProcessCallback callback) {
+        ProcessorContext context = new ProcessorContext(environment, callback);
+        setThreadLocalInstance(context);
+        return context;
+    }
+
+    public static ProcessorContext enter(ProcessingEnvironment environment) {
+        return enter(environment, null);
+    }
+
+    public static void leave() {
+        instance.set(null);
+    }
+
+    private static void setThreadLocalInstance(ProcessorContext context) {
         instance.set(context);
+        if (context != null && context.types == null) {
+            try {
+                context.types = new TruffleTypes();
+            } catch (IllegalArgumentException e) {
+                TruffleProcessor.handleThrowable(null, e, null);
+                throw e;
+            }
+        }
     }
 
     public static ProcessorContext getInstance() {
@@ -176,7 +214,7 @@ public class ProcessorContext {
     }
 
     public List<TypeMirror> getFrameTypes() {
-        return Arrays.asList(getType(VirtualFrame.class), getType(MaterializedFrame.class), getType(Frame.class));
+        return Arrays.asList(types.VirtualFrame, types.MaterializedFrame, types.Frame);
     }
 
     private final Map<Class<?>, Map<?, ?>> caches = new HashMap<>();

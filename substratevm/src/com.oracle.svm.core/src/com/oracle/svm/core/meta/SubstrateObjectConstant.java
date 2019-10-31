@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,14 @@
  */
 package com.oracle.svm.core.meta;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
-public final class SubstrateObjectConstant implements JavaConstant, CompressibleConstant, VMConstant {
-
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private static final AtomicReferenceFieldUpdater<SubstrateObjectConstant, Object> ROOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SubstrateObjectConstant.class, Object.class, "root");
-
+public abstract class SubstrateObjectConstant implements JavaConstant, CompressibleConstant, VMConstant {
     public static JavaConstant forObject(Object object) {
         return forObject(object, false);
     }
@@ -51,7 +40,7 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
         if (object == null) {
             return compressed ? CompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_POINTER;
         }
-        return new SubstrateObjectConstant(object, compressed);
+        return new DirectSubstrateObjectConstant(object, compressed);
     }
 
     public static JavaConstant forBoxedValue(JavaKind kind, Object value) {
@@ -65,12 +54,12 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
         if (JavaConstant.isNull(constant)) {
             return null;
         }
-        return ((SubstrateObjectConstant) constant).object;
+        return ((DirectSubstrateObjectConstant) constant).getObject();
     }
 
     public static <T> T asObject(Class<T> type, JavaConstant constant) {
         if (constant.isNonNull()) {
-            Object object = ((SubstrateObjectConstant) constant).object;
+            Object object = ((DirectSubstrateObjectConstant) constant).getObject();
             if (type.isInstance(object)) {
                 return type.cast(object);
             }
@@ -79,8 +68,8 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
     }
 
     public static Object asObject(ResolvedJavaType type, JavaConstant constant) {
-        if (constant.isNonNull() && constant instanceof SubstrateObjectConstant) {
-            Object object = ((SubstrateObjectConstant) constant).object;
+        if (constant.isNonNull() && constant instanceof DirectSubstrateObjectConstant) {
+            Object object = ((DirectSubstrateObjectConstant) constant).getObject();
             if (type.isInstance(constant)) {
                 return object;
             }
@@ -92,67 +81,15 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
         return constant instanceof CompressibleConstant && ((CompressibleConstant) constant).isCompressed();
     }
 
-    /** The raw object wrapped by this constant. */
-    private final Object object;
-    private final boolean compressed;
+    protected final boolean compressed;
 
-    /**
-     * An object specifying the origin of this constant. This value is used to distinguish between
-     * various constants of the same type. Only objects coming from static final fields and
-     * from @Fold annotations processing have a root. The static final field originated objects use
-     * the field itself as a root while the @Fold originated objects use the folded method as a
-     * root. The subtree of a root object shares the same root information as the root object, i.e.,
-     * the root information is transiently passed to the statically reachable objects. Other
-     * constants, embedded in the code, might not have a root. The root is only used at image build
-     * time.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private volatile Object root;
-
-    // As object hsp const
-    private SubstrateObjectConstant(Object object, boolean compressed) {
-        this.object = object;
+    protected SubstrateObjectConstant(boolean compressed) {
         this.compressed = compressed;
-        assert object != null;
-        if (SubstrateUtil.isInLibgraal()) {
-            throw new InternalError();
-        }
-    }
-
-    public Object getObject() {
-        return object;
     }
 
     @Override
     public boolean isCompressed() {
         return compressed;
-    }
-
-    @Override
-    public JavaConstant compress() {
-        assert !compressed;
-        return new SubstrateObjectConstant(object, true);
-    }
-
-    @Override
-    public JavaConstant uncompress() {
-        assert compressed;
-        return new SubstrateObjectConstant(object, false);
-    }
-
-    public boolean setRoot(Object newRoot) {
-        if (root == null && newRoot != null) {
-            /*
-             * It is possible that the same constant is reached on paths from different roots. We
-             * can only register one, we choose the first one.
-             */
-            return ROOT_UPDATER.compareAndSet(this, null, newRoot);
-        }
-        return false;
-    }
-
-    public Object getRoot() {
-        return root;
     }
 
     @Override
@@ -196,40 +133,40 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
     }
 
     @Override
-    public int hashCode() {
-        return System.identityHashCode(object);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o instanceof SubstrateObjectConstant) {
-            SubstrateObjectConstant other = (SubstrateObjectConstant) o;
-            if (object == other.object && compressed == other.compressed) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public String toValueString() {
-        Object obj = KnownIntrinsics.convertUnknownValue(object, Object.class);
-        if (obj instanceof String) {
-            return (String) obj;
-        }
-        return obj.getClass().getName();
-    }
-
-    @Override
     public JavaKind getJavaKind() {
         return JavaKind.Object;
     }
 
     @Override
+    public final boolean equals(Object obj) {
+        if (obj != this && obj instanceof SubstrateObjectConstant) {
+            SubstrateObjectConstant other = (SubstrateObjectConstant) obj;
+            return isCompressed() == other.isCompressed() && ObjectConstantEquality.get().test(this, other);
+        }
+        return obj == this;
+    }
+
+    @Override
+    public final int hashCode() {
+        return getIdentityHashCode();
+    }
+
+    protected abstract int getIdentityHashCode();
+
+    @Override
     public String toString() {
         return getJavaKind().getJavaName(); // + "[" + toValueString() + "]" + object;
     }
+
+    public abstract ResolvedJavaType getType(MetaAccessProvider provider);
+
+    @Override
+    public abstract SubstrateObjectConstant compress();
+
+    @Override
+    public abstract SubstrateObjectConstant uncompress();
+
+    public abstract boolean setRoot(Object newRoot);
+
+    public abstract Object getRoot();
 }

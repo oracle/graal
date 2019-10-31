@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,7 +77,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
     @Override
     protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        sourceInfo.createSource(languageInstance.getContextReference().get().getEnv());
+        sourceInfo.createSource(getCurrentContext().getEnv());
         Source source = request.getSource();
         CharSequence characters = source.getCharacters();
         int varStartPos = source.getLength() - 1;

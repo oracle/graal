@@ -24,27 +24,55 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.ComparableWord;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.Process;
+import com.oracle.svm.core.windows.headers.SynchAPI;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 public final class WindowsVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected ComparableWord getCurrentOSThreadId() {
+    protected OSThreadHandle getCurrentOSThreadHandle() {
+        WinBase.HANDLE pseudoThreadHandle = Process.GetCurrentThread();
+        WinBase.HANDLE pseudoProcessHandle = Process.GetCurrentProcess();
+
+        // convert the thread pseudo handle to a real handle using DuplicateHandle
+        WinBase.LPHANDLE pointerToResult = StackValue.get(WinBase.LPHANDLE.class);
+        int status = WinBase.DuplicateHandle(pseudoProcessHandle, pseudoThreadHandle, pseudoProcessHandle, pointerToResult, Process.SYNCHRONIZE(), false, 0);
+        VMError.guarantee(status != 0, "Duplicating thread handle failed.");
+
+        // no need to cleanup anything as we only used pseudo-handles and stack values
+        return (OSThreadHandle) pointerToResult.read();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    protected OSThreadId getCurrentOSThreadId() {
         return WordFactory.unsigned(Process.GetCurrentThreadId());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Override
+    protected void joinNoTransition(OSThreadHandle osThreadHandle) {
+        WinBase.HANDLE handle = (WinBase.HANDLE) osThreadHandle;
+        int status = SynchAPI.WaitForSingleObjectNoTransition(handle, SynchAPI.INFINITE());
+        VMError.guarantee(status == SynchAPI.WAIT_OBJECT_0(), "Joining thread failed.");
+        status = WinBase.CloseHandle(handle);
+        VMError.guarantee(status != 0, "Closing the thread handle failed.");
     }
 
     /**

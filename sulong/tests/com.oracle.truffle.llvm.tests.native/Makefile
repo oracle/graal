@@ -31,7 +31,11 @@ QUIETLY$(MX_VERBOSE)  = @
 
 .PHONY: default
 
+ifdef CLANG_CC
+CLANG=$(CLANG_CC)
+else
 CLANG?=clang
+endif
 
 SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 
