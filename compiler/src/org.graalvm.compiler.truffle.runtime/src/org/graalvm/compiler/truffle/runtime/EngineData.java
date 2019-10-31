@@ -52,6 +52,8 @@ import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilationDetails;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
 
 import java.util.function.Function;
 
@@ -106,6 +108,8 @@ public final class EngineData {
     public final boolean performanceWarningsAreFatal;
     public final String compileOnly;
 
+    public final boolean callTargetStatistics;
+
     EngineData(OptionValues options) {
         this.engineOptions = options;
         // splitting options
@@ -143,6 +147,9 @@ public final class EngineData {
         this.backgroundCompilation = getValue(options, BackgroundCompilation);
         this.compilationExceptionsAreThrown = getValue(options, CompilationExceptionsAreThrown);
         this.performanceWarningsAreFatal = getValue(options, PerformanceWarningsAreFatal);
+
+        this.callTargetStatistics = TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
+                        TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails);
 
         // the reporter requires options to be initialized
         this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
