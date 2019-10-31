@@ -44,10 +44,6 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
         this.method = method;
     }
 
-    EspressoMethodNode(EspressoMethodNode original) {
-        this.method = original.method;
-    }
-
     public final Method getMethod() {
         return method;
     }

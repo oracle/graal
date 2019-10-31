@@ -101,14 +101,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public int readBCI(FrameInstance frameInstance) {
-        assert methodNode instanceof BytecodeNode;
-        return ((BytecodeNode) methodNode).readBCI(frameInstance);
+        return ((BytecodeNode) getMethodNode()).readBCI(frameInstance);
     }
 
     static final class Synchronized extends EspressoRootNode {
 
-        Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode childNode) {
-            super(frameDescriptor, childNode);
+        Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+            super(frameDescriptor, methodNode);
         }
 
         @Override
@@ -139,8 +138,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     static final class Default extends EspressoRootNode {
 
-        Default(FrameDescriptor frameDescriptor, EspressoMethodNode childNode) {
-            super(frameDescriptor, childNode);
+        Default(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+            super(frameDescriptor, methodNode);
         }
 
         @Override
