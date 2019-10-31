@@ -95,14 +95,15 @@ class CPUTracerCLI extends ProfilerCLI {
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
     public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
-        switch (env.getOptions().get(OUTPUT)) {
-            case HISTOGRAM:
-                printTracerHistogram(out, tracer);
-                break;
-            case JSON:
-                printTracerJson(out, tracer);
-                break;
+        try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
+            switch (env.getOptions().get(OUTPUT)) {
+                case HISTOGRAM:
+                    printTracerHistogram(out, tracer);
+                    break;
+                case JSON:
+                    printTracerJson(out, tracer);
+                    break;
+            }
         }
     }
 
