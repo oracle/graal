@@ -24,22 +24,18 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMOptions.KeepLLVMBitcodeFiles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -105,11 +101,12 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private Map<String, Integer> textSymbolOffsets = new HashMap<>();
     private Map<Integer, String> offsetToSymbolMap = new TreeMap<>();
 
-    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
+    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
 
         try {
-            basePath = Files.createTempDirectory("native-image-llvm");
+            basePath = tempDir.resolve("llvm");
+            Files.createDirectory(basePath);
             if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 stackMapDump = new FileWriter(LLVMOptions.DumpLLVMStackMap.getValue());
             } else {
@@ -628,25 +625,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String bitcodeFileName = getLinkedPath().toString();
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-        Path movedBitcodeFile;
-        try {
-            Path bitcodeFile = Paths.get(bitcodeFileName);
-            Path parent = Paths.get(relocatableFileName).getParent();
-            assert parent != null;
-            movedBitcodeFile = parent.resolve(bitcodeFile.getFileName());
-            Files.copy(bitcodeFile, movedBitcodeFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new GraalError("Error copying " + bitcodeFileName + ": " + e);
-        }
-        if (!KeepLLVMBitcodeFiles.getValue()) {
-            File[] files = basePath.toFile().listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    file.delete();
-                }
-            }
-            basePath.toFile().delete();
-        }
-        return new String[]{relocatableFileName, movedBitcodeFile.toString()};
+        return new String[]{relocatableFileName, bitcodeFileName};
     }
 }
