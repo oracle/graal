@@ -258,6 +258,9 @@ class NativeImageVM(GraalVm):
                     exit_code = super(NativeImageVM, self).run_java(
                         hotspot_args, out=hs_stdout.write, err=hs_stderr.write, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
                     mx.log("Hotspot run finished with exit code " + str(exit_code) + ".")
+                    with open(os.path.join(config.config_dir, 'reflect-config.json'), 'r') as reflect_config:
+                        mx.log("The content of reflect-config.json is: ")
+                        mx.log(reflect_config.read())
 
             base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             base_image_build_args += ['--no-fallback']
