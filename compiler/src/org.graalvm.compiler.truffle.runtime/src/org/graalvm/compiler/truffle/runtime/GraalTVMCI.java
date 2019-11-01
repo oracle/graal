@@ -75,7 +75,7 @@ final class GraalTVMCI extends TVMCI {
      */
     @Override
     protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        ((OptimizedCallTarget) target).getCompilationProfile().initializeArgumentTypes(argumentTypes);
+        ((OptimizedCallTarget) target).initializeArgumentTypes(argumentTypes);
     }
 
     @Override
