@@ -168,6 +168,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        ComponentInstaller.initCommands();
         delegateFeedback(capture);
     }
 
