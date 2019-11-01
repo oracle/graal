@@ -1261,7 +1261,7 @@ def maven_plugin_test(args):
     pom_from_template(proj_dir, svm_version)
     # Build native image with native-image-maven-plugin
     env = os.environ.copy()
-    maven_opts = env['MAVEN_OPTS'].split()
+    maven_opts = env.get('MAVEN_OPTS', '').split()
     if svm_java8():
         # Workaround Java 8 issue https://bugs.openjdk.java.net/browse/JDK-8145260
         maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
