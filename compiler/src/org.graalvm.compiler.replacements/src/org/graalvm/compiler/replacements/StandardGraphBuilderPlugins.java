@@ -33,6 +33,7 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -1107,14 +1108,21 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset) {
+            LocationIdentity locationIdentity = ANY_LOCATION;
+            // Opaque mode does not directly impose any ordering constraints with respect to other
+            // variables beyond Plain mode. Granularity here can be further strengthened to a
+            // precise location.
+            if (accessKind == AccessKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+                locationIdentity = OFF_HEAP_LOCATION;
+            }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.preReadBarriers));
+                b.add(new MembarNode(accessKind.preReadBarriers, locationIdentity));
             }
             createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.postReadBarriers));
+                b.add(new MembarNode(accessKind.postReadBarriers, locationIdentity));
             }
             return true;
         }
@@ -1144,15 +1152,22 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
+            LocationIdentity locationIdentity = ANY_LOCATION;
+            // Opaque mode does not directly impose any ordering constraints with respect to other
+            // variables beyond Plain mode. Granularity here can be further strengthened to a
+            // precise location.
+            if (accessKind == AccessKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+                locationIdentity = OFF_HEAP_LOCATION;
+            }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.preWriteBarriers));
+                b.add(new MembarNode(accessKind.preWriteBarriers, locationIdentity));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.postWriteBarriers));
+                b.add(new MembarNode(accessKind.postWriteBarriers, locationIdentity));
             }
             return true;
         }
