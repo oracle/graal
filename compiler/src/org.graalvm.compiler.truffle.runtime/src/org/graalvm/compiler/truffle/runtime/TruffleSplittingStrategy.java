@@ -45,7 +45,7 @@ final class TruffleSplittingStrategy {
     private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
     static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
-        final EngineData engineData = currentTarget.engineData;
+        final EngineData engineData = currentTarget.engine;
         if (engineData.traceSplittingSummary) {
             if (currentTarget.getCompilationProfile().getCallCount() == 0) {
                 engineData.reporter.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
@@ -154,7 +154,7 @@ final class TruffleSplittingStrategy {
 
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
-        final EngineData engineData = callTarget.engineData;
+        final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
             final int newLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
             engineData.splitLimit = Math.min(newLimit, engineData.splittingMaxNumberOfSplitNodes);
@@ -170,7 +170,7 @@ final class TruffleSplittingStrategy {
         for (OptimizedDirectCallNode node : callNodes) {
             final OptimizedCallTarget clonedCallTarget = node.getClonedCallTarget();
             if (waste.add(clonedCallTarget)) {
-                final EngineData engineData = clonedCallTarget.engineData;
+                final EngineData engineData = clonedCallTarget.engine;
                 engineData.reporter.wastedTargetCount++;
                 engineData.reporter.wastedNodeCount += clonedCallTarget.getUninitializedNodeCount();
                 calculateSplitWasteImpl(clonedCallTarget);

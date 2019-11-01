@@ -143,7 +143,7 @@ final class GraalTVMCI extends TVMCI {
         if (callTarget == null) {
             return;
         }
-        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engineData);
+        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engine);
         callTarget.polymorphicSpecialize(source);
     }
 

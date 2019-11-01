@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,7 +52,7 @@ public final class OptimizedCompilationProfile {
     private final int lastTierCompilationCallAndLoopThreshold;
     private final boolean multiTierEnabled;
     private final long timestamp;
-    private final OptionValues options;
+    private final EngineData engineData;
 
     /**
      * The values below must only be written under lock, or in the constructor, because they are
@@ -83,20 +81,20 @@ public final class OptimizedCompilationProfile {
     private volatile boolean compilationFailed;
     @CompilationFinal private boolean callProfiled;
 
-    OptimizedCompilationProfile(OptionValues options) {
-        this.options = options;
-        boolean compileImmediately = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompileImmediately);
-        int callThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MinInvokeThreshold);
-        int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
+    OptimizedCompilationProfile(EngineData engineData) {
+        this.engineData = engineData;
+        boolean compileImmediately = engineData.compileImmediately;
+        int callThreshold = engineData.minInvokeThreshold;
+        int callAndLoopThreshold = engineData.compilationThreshold;
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.multiTierEnabled = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MultiTier);
+        this.multiTierEnabled = engineData.multiTier;
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
         if (multiTierEnabled) {
-            int firstTierCallThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierMinInvokeThreshold);
-            int firstTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierCompilationThreshold);
+            int firstTierCallThreshold = engineData.firstTierMinInvokeThreshold;
+            int firstTierCallAndLoopThreshold = engineData.firstTierCompilationThreshold;
             this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
             this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
         }
@@ -216,7 +214,7 @@ public final class OptimizedCompilationProfile {
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReturnTypeSpeculation)) {
+            if (engineData.returnTypeSpeculation) {
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             }
@@ -297,13 +295,13 @@ public final class OptimizedCompilationProfile {
 
     void reportInvalidated() {
         invalidationCount++;
-        int reprofile = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.InvalidationReprofileCount);
+        int reprofile = engineData.invalidationReprofileCount;
         ensureProfiling(reprofile, reprofile);
     }
 
     void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
-        int replaceBackoff = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReplaceReprofileCount);
+        int replaceBackoff = engineData.replaceReprofileCount;
         ensureProfiling(1, replaceBackoff);
     }
 
@@ -337,7 +335,7 @@ public final class OptimizedCompilationProfile {
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (args.length <= MAX_PROFILED_ARGUMENTS && PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ArgumentTypeSpeculation)) {
+        if (args.length <= MAX_PROFILED_ARGUMENTS && engineData.argumentTypeSpeculation) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);
@@ -438,10 +436,6 @@ public final class OptimizedCompilationProfile {
 
     public long getTimestamp() {
         return timestamp;
-    }
-
-    public static OptimizedCompilationProfile create(OptionValues options) {
-        return new OptimizedCompilationProfile(options);
     }
 
     private static OptimizedAssumption createValidAssumption(String name) {

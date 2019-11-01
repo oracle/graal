@@ -592,10 +592,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (!callTarget.getOptionValue(PolyglotCompilerOptions.Compilation)) {
+        if (!callTarget.engine.compilation) {
             return false;
         }
-        String includesExcludes = callTarget.getOptionValue(PolyglotCompilerOptions.CompileOnly);
+        String includesExcludes = callTarget.engine.compileOnly;
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
                 parseCompileOnly(includesExcludes);

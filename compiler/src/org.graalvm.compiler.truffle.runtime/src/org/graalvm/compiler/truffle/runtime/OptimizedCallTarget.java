@@ -82,7 +82,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
-    final EngineData engineData;
+    public final EngineData engine;
 
     /** Information about when and how the call target should get compiled. */
     @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
@@ -140,7 +140,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         final GraalTVMCI tvmci = runtime().getTvmci();
-        this.engineData = GraalTVMCI.getEngineData(rootNode);
+        this.engine = GraalTVMCI.getEngineData(rootNode);
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
         this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
         tvmci.setCallTarget(rootNode, this);
@@ -395,7 +395,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final OptionValues getOptionValues() {
-        return engineData.engineOptions;
+        return engine.engineOptions;
     }
 
     public <T> T getOptionValue(OptionKey<T> key) {
@@ -403,7 +403,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private OptimizedCompilationProfile createCompilationProfile() {
-        return OptimizedCompilationProfile.create(getOptionValues());
+        return new OptimizedCompilationProfile(engine);
     }
 
     /**
@@ -455,9 +455,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final boolean maybeWaitForTask(CancellableCompileTask task) {
-        boolean allowBackgroundCompilation = !getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal) &&
-                        !getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown);
-        boolean mayBeAsynchronous = allowBackgroundCompilation && getOptionValue(PolyglotCompilerOptions.BackgroundCompilation);
+        boolean allowBackgroundCompilation = !engine.performanceWarningsAreFatal &&
+                        !engine.compilationExceptionsAreThrown;
+        boolean mayBeAsynchronous = allowBackgroundCompilation && engine.backgroundCompilation;
         runtime().finishCompilation(this, task, mayBeAsynchronous);
         // not async compile and compilation successful
         return !mayBeAsynchronous && isValid();
@@ -876,7 +876,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     void polymorphicSpecialize(Node source) {
         List<Node> toDump = null;
-        if (engineData.splittingDumpDecisions) {
+        if (engine.splittingDumpDecisions) {
             toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);
         }
@@ -886,7 +886,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
         final OptimizedDirectCallNode onlyCaller = getSingleCallNode();
-        if (depth > engineData.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
+        if (depth > engine.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
             logEarlyReturn(depth, callSitesKnown);
             return needsSplit;
         }
@@ -894,7 +894,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             final RootNode callerRootNode = onlyCaller.getRootNode();
             if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
                 final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                if (engineData.splittingDumpDecisions) {
+                if (engine.splittingDumpDecisions) {
                     pullOutParentChain(onlyCaller, toDump);
                 }
                 logPolymorphicEvent(depth, "One caller! Analysing parent.");
@@ -914,7 +914,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
-        if (engineData.splittingTraceEvents) {
+        if (engine.splittingTraceEvents) {
             logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
         }
     }
@@ -924,7 +924,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logPolymorphicEvent(int depth, String message, Object arg) {
-        if (engineData.splittingTraceEvents) {
+        if (engine.splittingTraceEvents) {
             final String indent = new String(new char[depth]).replace("\0", "  ");
             final String argString = (arg == null) ? "" : " " + arg;
             log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
@@ -932,7 +932,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void maybeDump(List<Node> toDump) {
-        if (engineData.splittingDumpDecisions) {
+        if (engine.splittingDumpDecisions) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
             OptimizedDirectCallNode callNode = getSingleCallNode();
             if (callNode != null) {
