@@ -1,6 +1,6 @@
 # GraalVM
 
-[![Join the chat at https://gitter.im/graalvm/home](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/home?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the GraalVM Slack chat](https://img.shields.io/badge/slack-join%20chat-E01563.svg)](https://join.slack.com/t/graalvm/shared_invite/enQtNzk0NTc5MzUyNzg5LTAwY2YyODQ4MzJjMGJjZGQzMWY2ZDA3NWI3YzEzNDRlNGQ1MTZkYzkzM2JkYjIxMTY2NGQzNjUxOGQzZGExZmU)
 
 GraalVM is a universal virtual machine for running applications written in JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure, Kotlin, and LLVM-based languages such as C and C++.
 
