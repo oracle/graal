@@ -88,37 +88,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
-    /**
-     * The engine data associated with this call target. Used to cache option lookups gather engine
-     * specific statistics.
-     */
-    public final EngineData engine;
 
     /** Information about when and how the call target should get compiled. */
     @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
-
-    /** Source target if this target was duplicated. */
-    private final OptimizedCallTarget sourceCallTarget;
-
-    /** Only set for a source CallTarget with a clonable RootNode. */
-    private volatile RootNode uninitializedRootNode;
-
-    /**
-     * Traversing the AST to cache non trivial nodes is expensive so we don't want to repeat it only
-     * if the AST changes.
-     */
-    private volatile int cachedNonTrivialNodeCount = -1;
-
-    /**
-     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
-     */
-    private volatile SpeculationLog speculationLog;
-
-    /**
-     * Number of known direct call sites of this call target. Used in splitting and inlinig
-     * heuristics.
-     */
-    private volatile int callSitesKnown;
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
@@ -136,6 +108,25 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private volatile CancellableCompileTask compilationTask;
 
+    private volatile boolean needsSplit;
+
+    /**
+     * The engine data associated with this call target. Used to cache option lookups gather engine
+     * specific statistics.
+     */
+    public final EngineData engine;
+
+    /** Only set for a source CallTarget with a clonable RootNode. */
+    private volatile RootNode uninitializedRootNode;
+
+    /**
+     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
+     */
+    private volatile SpeculationLog speculationLog;
+
+    /** Source target if this target was duplicated. */
+    private final OptimizedCallTarget sourceCallTarget;
+
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewrite in this call target is performed. This
@@ -143,11 +134,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private volatile Assumption nodeRewritingAssumption;
 
+    /**
+     * Traversing the AST to cache non trivial nodes is expensive so we don't want to repeat it only
+     * if the AST changes.
+     */
+    private volatile int cachedNonTrivialNodeCount = -1;
+
+    /**
+     * Number of known direct call sites of this call target. Used in splitting and inlinig
+     * heuristics.
+     */
+    private volatile int callSitesKnown;
+
     private volatile String nameCache;
     private final int uninitializedNodeCount;
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED_SINGLE_CALL;
-    private volatile boolean needsSplit;
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
