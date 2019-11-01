@@ -79,6 +79,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
     static final String CALL_INLINED_METHOD_NAME = "call";
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    SpeculationLog.class, "speculationLog");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    Assumption.class, "nodeRewritingAssumption");
+    private static final WeakReference<OptimizedDirectCallNode> UNINITIALIZED_SINGLE_CALL = new WeakReference<>(null);
+    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -96,9 +102,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
-
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
-                    SpeculationLog.class, "speculationLog");
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
@@ -122,28 +125,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * ensures that all compiled methods that inline this call target are properly invalidated.
      */
     private volatile Assumption nodeRewritingAssumption;
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
-                    Assumption.class, "nodeRewritingAssumption");
     private volatile OptimizedDirectCallNode callSiteForSplit;
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
-    private static final WeakReference<OptimizedDirectCallNode> UNINITIALIZED = new WeakReference<>(null);
-    private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED;
+    private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED_SINGLE_CALL;
     private boolean needsSplit;
-    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
 
-    public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
+    protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        final GraalTVMCI tvmci = runtime().getTvmci();
         this.engine = GraalTVMCI.getEngineData(rootNode);
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
+        final GraalTVMCI tvmci = runtime().getTvmci();
         this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
         tvmci.setCallTarget(rootNode, this);
-// getCompilationProfile();
     }
 
     /**
@@ -814,7 +812,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
             // we only remember at most one call site
-            if (nodeRef == UNINITIALIZED) {
+            if (nodeRef == UNINITIALIZED_SINGLE_CALL) {
                 singleCallNode = new WeakReference<>(directCallNode);
             } else if (nodeRef.get() == directCallNode) {
                 // nothing to do same call site
@@ -832,12 +830,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
             // we only remember at most one call site
-            if (nodeRef == UNINITIALIZED) {
+            if (nodeRef == UNINITIALIZED_SINGLE_CALL) {
                 // nothing to do
                 return;
             } else if (nodeRef.get() == directCallNode) {
                 // reset if its the only call site
-                singleCallNode = UNINITIALIZED;
+                singleCallNode = UNINITIALIZED_SINGLE_CALL;
             } else {
                 singleCallNode = null;
             }
