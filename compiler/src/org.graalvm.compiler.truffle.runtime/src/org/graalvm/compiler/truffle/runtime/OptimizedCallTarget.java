@@ -147,7 +147,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private final int uninitializedNodeCount;
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED_SINGLE_CALL;
-    private boolean needsSplit;
+    private volatile boolean needsSplit;
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
