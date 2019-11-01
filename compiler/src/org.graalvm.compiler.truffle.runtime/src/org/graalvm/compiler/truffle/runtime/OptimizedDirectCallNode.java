@@ -166,10 +166,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
             OptimizedCallTarget currentTarget = getCallTarget();
 
             OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
-            splitTarget.setCallSiteForSplit(this);
-
             currentTarget.removeDirectCallNode(this);
             splitTarget.addDirectCallNode(this);
+            assert splitTarget.getCallSiteForSplit() == this;
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted

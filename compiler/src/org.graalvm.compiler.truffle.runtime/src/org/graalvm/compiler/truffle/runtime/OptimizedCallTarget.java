@@ -88,6 +88,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
+    /**
+     * The engine data associated with this call target. Used to cache option lookups gather engine
+     * specific statistics.
+     */
     public final EngineData engine;
 
     /** Information about when and how the call target should get compiled. */
@@ -99,8 +103,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /** Only set for a source CallTarget with a clonable RootNode. */
     private volatile RootNode uninitializedRootNode;
 
+    /**
+     * Traversing the AST to cache non trivial nodes is expensive so we don't want to repeat it only
+     * if the AST changes.
+     */
     private volatile int cachedNonTrivialNodeCount = -1;
+
+    /**
+     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
+     */
     private volatile SpeculationLog speculationLog;
+
+    /**
+     * Number of known direct call sites of this call target. Used in splitting and inlinig
+     * heuristics.
+     */
     private volatile int callSitesKnown;
 
     /**
@@ -125,7 +142,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * ensures that all compiled methods that inline this call target are properly invalidated.
      */
     private volatile Assumption nodeRewritingAssumption;
-    private volatile OptimizedDirectCallNode callSiteForSplit;
+
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
@@ -745,15 +762,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return DefaultCompilerOptions.INSTANCE;
     }
 
-    public void setCallSiteForSplit(OptimizedDirectCallNode callSiteForSplit) {
-        if (sourceCallTarget == null) {
-            throw new IllegalStateException("Attempting to set a split call site on a target that is not a split!");
-        }
-        this.callSiteForSplit = callSiteForSplit;
+    public final boolean isSplit() {
+        return sourceCallTarget != null;
     }
 
     public OptimizedDirectCallNode getCallSiteForSplit() {
-        return callSiteForSplit;
+        if (isSplit()) {
+            OptimizedDirectCallNode callNode = getSingleCallNode();
+            assert callNode != null;
+            return callNode;
+        } else {
+            return null;
+        }
     }
 
     int getUninitializedNodeCount() {
