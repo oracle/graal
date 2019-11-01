@@ -637,5 +637,15 @@ public class UpgradeProcess implements AutoCloseable {
         public String optValue(String option) {
             return input.optValue(option);
         }
+
+        @Override
+        public String getParameter(String key, boolean cmdLine) {
+            return input.getParameter(key, cmdLine);
+        }
+
+        @Override
+        public Map<String, String> parameters(boolean cmdLine) {
+            return input.parameters(cmdLine);
+        }
     }
 }

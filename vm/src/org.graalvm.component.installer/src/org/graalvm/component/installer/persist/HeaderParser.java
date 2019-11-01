@@ -517,7 +517,7 @@ public class HeaderParser {
 
         if (!BundleConstants.GRAALVM_CAPABILITY.equals(namespace)) {
             // unsupported capability
-            throw new DependencyException(namespace, null, null, feedback.l10n("ERROR_UnknownCapability"));
+            throw new MetadataException(BundleConstants.BUNDLE_REQUIRED, feedback.l10n("ERROR_UnknownCapability"));
         }
         parseParameters();
 
