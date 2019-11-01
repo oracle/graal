@@ -22,29 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.configure.trace;
 
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.phases.common.LazyValue;
 
-import com.oracle.svm.configure.trace.AccessAdvisor;
-import com.oracle.svm.configure.trace.LazyValueUtils;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-
-class AbstractAccessVerifier {
-    protected final AccessAdvisor accessAdvisor;
-
-    AbstractAccessVerifier(AccessAdvisor advisor) {
-        this.accessAdvisor = advisor;
+public class LazyValueUtils {
+    public static <T> LazyValue<T> lazyValue(T value) {
+        return new LazyValue<>(() -> value);
     }
 
-    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnore(lazyClassNameOrNull(env, callerClass));
-    }
-
-    protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
-        return LazyValueUtils.lazyGet(() -> getClassNameOrNull(env, clazz));
+    public static <T> LazyValue<T> lazyGet(Supplier<T> supplier) {
+        return new LazyValue<>(supplier);
     }
 }

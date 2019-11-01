@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.configure.trace;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.config.ConfigurationMemberKind;
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -87,7 +87,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnore(new LazyValue<>(() -> callerClass))) {
+        if (advisor.shouldIgnore(lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;

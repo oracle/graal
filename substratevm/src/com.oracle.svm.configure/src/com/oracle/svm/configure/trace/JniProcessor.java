@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.trace;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
+
 import java.util.List;
 import java.util.Map;
 
@@ -62,7 +64,7 @@ class JniProcessor extends AbstractProcessor {
         String declaringClass = (String) entry.get("declaring_class");
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
-        LazyValue<String> callerClassLazyValue = new LazyValue<>(() -> callerClass);
+        LazyValue<String> callerClassLazyValue = lazyValue(callerClass);
         if (advisor.shouldIgnore(callerClassLazyValue)) {
             return;
         }
@@ -84,7 +86,7 @@ class JniProcessor extends AbstractProcessor {
                     name = "L" + name + ";";
                 }
                 String qualifiedJavaName = MetaUtil.internalNameToJava(name, true, false);
-                if (!advisor.shouldIgnoreJniClassLookup(new LazyValue<>(() -> qualifiedJavaName), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniClassLookup(lazyValue(qualifiedJavaName), callerClassLazyValue)) {
                     config.getOrCreateType(qualifiedJavaName);
                 }
                 break;
@@ -94,7 +96,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                if (!advisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> clazz), new LazyValue<>(() -> name), new LazyValue<>(() -> signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 }
                 break;
@@ -110,7 +112,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 1); // exception message, ignore
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
-                if (!advisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> clazz), new LazyValue<>(() -> name), new LazyValue<>(() -> signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 }
                 break;

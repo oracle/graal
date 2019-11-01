@@ -77,10 +77,9 @@ public class AccessAdvisor {
                 return true;
             }
         }
-        // Ignore libjvmcicompiler internal JNI calls
-        // 1. Lookup of jdk.vm.ci.services.Services.getJVMCIClassLoader
-        // 2. Lookup of
-        // org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints methods
+        // Ignore libjvmcicompiler internal JNI calls:
+        // * jdk.vm.ci.services.Services.getJVMCIClassLoader
+        // * org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(queriedClass.get()) && "getJVMCIClassLoader".equals(name.get()) &&
                         "()Ljava/lang/ClassLoader;".equals(signature.get())) {
             return true;
@@ -103,8 +102,7 @@ public class AccessAdvisor {
         if (shouldIgnore(callerClass)) {
             return true;
         }
-        // Ignore libjvmcicompiler internal JNI calls
-        // 1. Lookup of jdk.vm.ci.services.Services
+        // Ignore libjvmcicompiler internal JNI calls: jdk.vm.ci.services.Services
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(name.get())) {
             return true;
         }

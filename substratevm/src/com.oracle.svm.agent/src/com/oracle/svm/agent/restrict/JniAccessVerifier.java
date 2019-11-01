@@ -26,14 +26,14 @@ package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.getClassNameOr;
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
 import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
 import static com.oracle.svm.agent.Support.jvmtiEnv;
 import static com.oracle.svm.agent.Support.jvmtiFunctions;
 import static com.oracle.svm.agent.Support.toCString;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyGet;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 
-import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -92,8 +92,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     public boolean verifyGetMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer cname, CCharPointer csignature, JNIMethodId result, JNIObjectHandle callerClass) {
         assert result.isNonNull();
         String name = fromCString(cname);
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> getClassNameOrNull(env, clazz)), new LazyValue<>(() -> name), new LazyValue<>(() -> fromCString(csignature)),
-                        new LazyValue<>(() -> getClassNameOrNull(env, callerClass)))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyGet(() -> fromCString(csignature)), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
@@ -136,8 +135,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     public boolean verifyThrowNew(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass) {
         String name = ConfigurationMethod.CONSTRUCTOR_NAME;
         String signature = "(Ljava/lang/String;)V";
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(new LazyValue<>(() -> getClassNameOrNull(env, clazz)), new LazyValue<>(() -> name), new LazyValue<>(() -> signature),
-                        new LazyValue<>(() -> getClassNameOrNull(env, callerClass)))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(lazyClassNameOrNull(env, clazz), lazyValue(name), lazyValue(signature), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         JNIMethodId result;
@@ -190,7 +188,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
-        if (accessAdvisor.shouldIgnoreJniNewObjectArray(new LazyValue<>(() -> getClassNameOrNull(env, arrayClass)))) {
+        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;
