@@ -104,7 +104,7 @@ public final class ModuleSupport {
         Optional<Module> value = ModuleLayer.boot().findModule(name);
         if (value.isEmpty()) {
             if (!optional) {
-                throw new NoSuchElementException(name);
+                throw new NoSuchElementException("No module in boot layer named " + name + ". Available modules: " + ModuleLayer.boot());
             }
             return;
         }
