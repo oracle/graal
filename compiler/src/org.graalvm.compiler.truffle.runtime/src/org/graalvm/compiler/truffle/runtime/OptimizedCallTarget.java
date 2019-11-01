@@ -171,7 +171,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    public Assumption getNodeRewritingAssumption() {
+    public final Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
             assumption = initializeNodeRewritingAssumption();
@@ -227,15 +227,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.compilationProfile = createCompilationProfile();
     }
 
-    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
+    protected final List<OptimizedAssumption> getProfiledTypesAssumptions() {
         return getCompilationProfile().getProfiledTypesAssumptions();
     }
 
-    protected Class<?>[] getProfiledArgumentTypes() {
+    protected final Class<?>[] getProfiledArgumentTypes() {
         return getCompilationProfile().getProfiledArgumentTypes();
     }
 
-    protected Class<?> getProfiledReturnType() {
+    protected final Class<?> getProfiledReturnType() {
         return getCompilationProfile().getProfiledReturnType();
     }
 
@@ -318,6 +318,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    /*
+     * Overridden by SVM.
+     */
     protected Object doInvoke(Object[] args) {
         return callBoundary(args);
     }
@@ -410,7 +413,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return engine.engineOptions;
     }
 
-    public <T> T getOptionValue(OptionKey<T> key) {
+    public final <T> T getOptionValue(OptionKey<T> key) {
         return PolyglotCompilerOptions.getValue(getOptionValues(), key);
     }
 
@@ -510,7 +513,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * @param reason a textual description of the reason why the machine code was invalidated. May
      *            be {@code null}.
      */
-    public void invalidate(Object source, CharSequence reason) {
+    public final void invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
         if (isValid()) {
             invalidateCode();
@@ -519,7 +522,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         runtime().cancelInstalledTask(this, source, reason);
     }
 
-    OptimizedCallTarget cloneUninitialized() {
+    final OptimizedCallTarget cloneUninitialized() {
         assert sourceCallTarget == null;
         if (compilationProfile == null) {
             initialize();
@@ -547,12 +550,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return speculationLog;
     }
 
-    void setSpeculationLog(SpeculationLog speculationLog) {
+    final void setSpeculationLog(SpeculationLog speculationLog) {
         this.speculationLog = speculationLog;
     }
 
     @Override
-    public JavaConstant asJavaConstant() {
+    public final JavaConstant asJavaConstant() {
         return GraalTruffleRuntime.getRuntime().forObject(this);
     }
 
@@ -562,12 +565,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public void cancelInstalledTask() {
+    public final void cancelInstalledTask() {
         runtime().cancelInstalledTask(this, null, "got inlined. callsite count: " + getKnownCallSiteCount());
     }
 
     @Override
-    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+    public final boolean isSameOrSplit(CompilableTruffleAST ast) {
         if (!(ast instanceof OptimizedCallTarget)) {
             return false;
         }
@@ -576,12 +579,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         (this.sourceCallTarget != null && other.sourceCallTarget != null && this.sourceCallTarget == other.sourceCallTarget);
     }
 
-    boolean cancelInstalledTask(Node source, CharSequence reason) {
+    final boolean cancelInstalledTask(Node source, CharSequence reason) {
         return runtime().cancelInstalledTask(this, source, reason);
     }
 
     @Override
-    public void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
+    public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
         if (bailout && !permanentBailout) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
@@ -622,7 +625,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         CompilerAsserts.neverPartOfCompilation();
         String result = nameCache;
         if (result == null) {
@@ -633,7 +636,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         CompilerAsserts.neverPartOfCompilation();
         String superString = rootNode.toString();
         if (isValid()) {
@@ -650,7 +653,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
-    static Object[] castArrayFixedLength(Object[] args, int length) {
+    static final Object[] castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -679,7 +682,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         invalidate(newNode, reason);
         /* Notify compiled method that have inlined this call target that the tree changed. */
@@ -689,7 +692,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    public void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
+    public final void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
         if (inlingDecision != null) {
             inlingDecision.accept(this, visitor);
         } else {
@@ -697,12 +700,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    public Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
+    public final Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
         Iterator<Node> iterator = nodeIterator(inliningDecision);
         return () -> iterator;
     }
 
-    public Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
+    public final Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
         Iterator<Node> iterator;
         if (inliningDecision != null) {
             iterator = inliningDecision.makeNodeIterator(this);
@@ -721,7 +724,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public int getCallCount() {
+    public final int getCallCount() {
         OptimizedCompilationProfile profile = compilationProfile;
         return profile == null ? 0 : profile.getCallCount(this);
     }
@@ -732,7 +735,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return visitor.nodeCount;
     }
 
-    public Map<String, Object> getDebugProperties(TruffleInlining inlining) {
+    public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
         properties.putAll(getCompilationProfile().getDebugProperties(this));
@@ -740,7 +743,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public TruffleCallNode[] getCallNodes() {
+    public final TruffleCallNode[] getCallNodes() {
         final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
         getRootNode().accept(new NodeVisitor() {
             @Override
@@ -754,7 +757,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return callNodes.toArray(new TruffleCallNode[0]);
     }
 
-    public CompilerOptions getCompilerOptions() {
+    public final CompilerOptions getCompilerOptions() {
         final CompilerOptions options = rootNode.getCompilerOptions();
         if (options != null) {
             return options;
@@ -766,7 +769,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return sourceCallTarget != null;
     }
 
-    public OptimizedDirectCallNode getCallSiteForSplit() {
+    public final OptimizedDirectCallNode getCallSiteForSplit() {
         if (isSplit()) {
             OptimizedDirectCallNode callNode = getSingleCallNode();
             assert callNode != null;
@@ -776,7 +779,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    int getUninitializedNodeCount() {
+    final int getUninitializedNodeCount() {
         assert uninitializedNodeCount >= 0;
         return uninitializedNodeCount;
     }
@@ -803,7 +806,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return System.identityHashCode(this);
     }
 
-    CancellableCompileTask getCompilationTask() {
+    final CancellableCompileTask getCompilationTask() {
         return compilationTask;
     }
 
@@ -813,7 +816,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * It may only ever be called by the thread that performed the compilation, and after the
      * compilation is completely done (either successfully or not successfully).
      */
-    public void resetCompilationTask() {
+    public final void resetCompilationTask() {
         /*
          * We synchronize because this is called from the compilation threads so we want to make
          * sure we have finished setting the compilationTask in #compile. Otherwise
@@ -827,7 +830,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    synchronized void addDirectCallNode(OptimizedDirectCallNode directCallNode) {
+    final synchronized void addDirectCallNode(OptimizedDirectCallNode directCallNode) {
         Objects.requireNonNull(directCallNode);
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
@@ -845,7 +848,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    synchronized void removeDirectCallNode(OptimizedDirectCallNode directCallNode) {
+    final synchronized void removeDirectCallNode(OptimizedDirectCallNode directCallNode) {
         Objects.requireNonNull(directCallNode);
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
@@ -863,7 +866,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         callSitesKnown--;
     }
 
-    public boolean isSingleCaller() {
+    public final boolean isSingleCaller() {
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
             return nodeRef.get() != null;
@@ -871,7 +874,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    public OptimizedDirectCallNode getSingleCallNode() {
+    public final OptimizedDirectCallNode getSingleCallNode() {
         WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
         if (nodeRef != null) {
             return nodeRef.get();
@@ -879,11 +882,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return null;
     }
 
-    boolean isNeedsSplit() {
+    final boolean isNeedsSplit() {
         return needsSplit;
     }
 
-    void polymorphicSpecialize(Node source) {
+    final void polymorphicSpecialize(Node source) {
         List<Node> toDump = null;
         if (engine.splittingDumpDecisions) {
             toDump = new ArrayList<>();
