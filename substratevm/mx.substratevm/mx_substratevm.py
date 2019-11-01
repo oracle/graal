@@ -1267,6 +1267,8 @@ def maven_plugin_test(args):
         maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
     else:
         # On Java 9+ without native-image executable the plugin needs access to jdk.internal.module
+        maven_opts.append('-XX:+UnlockExperimentalVMOptions')
+        maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
     mx.run_maven(['package'], cwd=proj_dir, env=env)
