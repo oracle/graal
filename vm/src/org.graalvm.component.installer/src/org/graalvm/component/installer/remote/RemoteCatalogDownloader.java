@@ -29,6 +29,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -54,6 +55,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     private String overrideCatalogSpec;
     private String defaultCatalogSpec;
     private boolean catalogURLParsed;
+    private boolean remoteSourcesAllowed = true;
 
     public RemoteCatalogDownloader(CommandInput in, Feedback out, String overrideCatalogSpec) {
         this.input = in;
@@ -68,7 +70,16 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     public void addLocalChannelSource(SoftwareChannelSource src) {
+        src.setParameter("reportErrors", Boolean.FALSE.toString());
         channelSources.add(src);
+    }
+
+    public void setRemoteSourcesAllowed(boolean remoteSourcesAllowed) {
+        this.remoteSourcesAllowed = remoteSourcesAllowed;
+    }
+
+    public boolean isRemoteSourcesAllowed() {
+        return remoteSourcesAllowed;
     }
 
     // for testing only
@@ -109,13 +120,15 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         if (catalogURLParsed) {
             return channelSources;
         }
-        List<SoftwareChannelSource> sources;
-        if (overrideCatalogSpec != null) {
-            sources = parseChannelSources(overrideCatalogSpec);
-        } else {
-            sources = readChannelSources();
-            if (sources.isEmpty()) {
-                sources = parseChannelSources(defaultCatalogSpec);
+        List<SoftwareChannelSource> sources = Collections.emptyList();
+        if (remoteSourcesAllowed) {
+            if (overrideCatalogSpec != null) {
+                sources = parseChannelSources(overrideCatalogSpec);
+            } else {
+                sources = readChannelSources();
+                if (sources.isEmpty()) {
+                    sources = parseChannelSources(defaultCatalogSpec);
+                }
             }
         }
         channelSources.addAll(0, sources);
@@ -144,6 +157,14 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
             return k1.compareToIgnoreCase(k2);
         }
     };
+
+    private static Map<String, String> lowercaseMap(Map<String, String> map) {
+        Map<String, String> res = new HashMap<>();
+        for (String s : map.keySet()) {
+            res.put(s.toLowerCase(Locale.ENGLISH), map.get(s));
+        }
+        return res;
+    }
 
     List<SoftwareChannelSource> readChannelSources(String pref, Map<String, String> graalCaps) {
         String prefix = pref + CommonConstants.CAP_CATALOG_PREFIX;
@@ -181,14 +202,16 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
 
     List<SoftwareChannelSource> readChannelSources() {
         List<SoftwareChannelSource> res;
-
-        res = readChannelSources(CommonConstants.ENV_VARIABLE_PREFIX, System.getenv());
+        Map<String, String> lcEnv = lowercaseMap(System.getenv());
+        res = readChannelSources(CommonConstants.ENV_VARIABLE_PREFIX, lcEnv);
         if (res != null && !res.isEmpty()) {
             return res;
         }
-
-        return readChannelSources("", input.getLocalRegistry().getGraalCapabilities()); // NOI18N
-
+        if (remoteSourcesAllowed) {
+            return readChannelSources("", input.getLocalRegistry().getGraalCapabilities()); // NOI18N
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     private MergeStorage mergeChannels() {
