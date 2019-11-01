@@ -143,7 +143,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private volatile Assumption nodeRewritingAssumption;
 
-    @CompilationFinal private volatile String nameCache;
+    private volatile String nameCache;
     private final int uninitializedNodeCount;
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = UNINITIALIZED_SINGLE_CALL;
