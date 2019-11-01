@@ -42,17 +42,10 @@ public final class OptimizedCompilationProfile {
     private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
     private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
 
-    /**
-     * Number of times an installed code for this tree was seen invalidated.
-     */
-    private int callCount;
-    private int callAndLoopCount;
+    private int callThreshold;
+    private int callAndLoopThreshold;
 
-    private final int lastTierCompilationCallThreshold;
     private final long timestamp;
-
-    private final int compilationCallThreshold;
-    private final int compilationCallAndLoopThreshold;
 
     /*
      * Updating profiling information and its Assumption objects is done without synchronization and
@@ -75,9 +68,8 @@ public final class OptimizedCompilationProfile {
     @CompilationFinal private boolean callProfiled;
 
     OptimizedCompilationProfile(EngineData engine) {
-        this.compilationCallThreshold = engine.firstTierCallThreshold;
-        this.compilationCallAndLoopThreshold = engine.firstTierCallAndLoopThreshold;
-        this.lastTierCompilationCallThreshold = engine.lastTierCallThreshold;
+        this.callThreshold = engine.firstTierCallThreshold;
+        this.callAndLoopThreshold = engine.firstTierCallAndLoopThreshold;
 
         if (engine.callTargetStatistics) {
             this.timestamp = System.nanoTime();
@@ -88,8 +80,7 @@ public final class OptimizedCompilationProfile {
 
     @Override
     public String toString() {
-        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", callCount, compilationCallThreshold, callAndLoopCount,
-                        compilationCallAndLoopThreshold);
+        return String.format("CompilationProfile(callThreshold=%d, callAndLoopThreshold=%d)", callThreshold, callAndLoopThreshold);
     }
 
     void initializeArgumentTypes(Class<?>[] argumentTypes) {
@@ -271,7 +262,7 @@ public final class OptimizedCompilationProfile {
     }
 
     void reportLoopCount(int count) {
-        callAndLoopCount += count;
+        callAndLoopThreshold -= count;
     }
 
     void reportCompilationIgnored() {
@@ -279,28 +270,30 @@ public final class OptimizedCompilationProfile {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static boolean firstTierCompile(OptimizedCallTarget callTarget) {
+    private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
         return callTarget.compile(true);
     }
 
     boolean firstTierCall(OptimizedCallTarget callTarget) {
-        // The increment and the check must be inlined into the compilation unit.
-        int totalCallCount = ++callCount;
-        if (totalCallCount >= lastTierCompilationCallThreshold && !callTarget.isCompiling() && !compilationFailed) {
-            return firstTierCompile(callTarget);
+        int totalCallCount = --callThreshold;
+        // this is compiled so should fold nicely.
+        totalCallCount -= callTarget.engine.firstTierCallThreshold;
+        totalCallCount += callTarget.engine.lastTierCallThreshold;
+        if (totalCallCount < 0 && !callTarget.isCompiling() && !compilationFailed) {
+            return lastTierCompile(callTarget);
         }
         return false;
     }
 
     @SuppressWarnings("try")
     boolean interpreterCall(OptimizedCallTarget callTarget) {
-        int intCallCount = ++callCount;
-        int intAndLoopCallCount = ++callAndLoopCount;
+        int intCallCount = --callThreshold;
+        int intAndLoopCallCount = --callAndLoopThreshold;
         // Check if call target is hot enough to compile, but took not too long to get hot.
-        int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
-        if (callThreshold == 0 || (intCallCount >= callThreshold //
-                        && intAndLoopCallCount >= compilationCallAndLoopThreshold //
-                        && !compilationFailed && !callTarget.isCompiling())) {
+        if (intCallCount <= 0 //
+                        && intAndLoopCallCount <= 0 //
+                        && !compilationFailed //
+                        && !callTarget.isCompiling()) {
             return callTarget.compile(!callTarget.engine.multiTier);
         }
         return false;
@@ -363,27 +356,19 @@ public final class OptimizedCompilationProfile {
 
     public Map<String, Object> getDebugProperties(OptimizedCallTarget target) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), target.engine.firstTierCallThreshold);
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), target.engine.firstTierCallAndLoopThreshold);
+        String callsThreshold = String.format("%7d/%5d", getCallCount(target), target.engine.firstTierCallThreshold);
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(target), target.engine.firstTierCallAndLoopThreshold);
         properties.put("Calls/Thres", callsThreshold);
         properties.put("CallsAndLoop/Thres", loopsThreshold);
         return properties;
     }
 
-    public int getCallAndLoopCount() {
-        return callAndLoopCount;
+    public int getCallAndLoopCount(OptimizedCallTarget target) {
+        return -(callAndLoopThreshold - target.engine.firstTierCallAndLoopThreshold);
     }
 
-    public int getCallCount() {
-        return callCount;
-    }
-
-    public int getCompilationCallAndLoopThreshold() {
-        return compilationCallAndLoopThreshold;
-    }
-
-    public int getCompilationCallThreshold() {
-        return compilationCallThreshold;
+    public int getCallCount(OptimizedCallTarget target) {
+        return -(callThreshold - target.engine.firstTierCallThreshold);
     }
 
     public long getTimestamp() {

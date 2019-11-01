@@ -708,7 +708,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @Override
     public int getCallCount() {
         OptimizedCompilationProfile profile = compilationProfile;
-        return profile == null ? 0 : profile.getCallCount();
+        return profile == null ? 0 : profile.getCallCount(this);
     }
 
     public static int calculateNonTrivialNodes(Node node) {
@@ -877,7 +877,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
         final OptimizedDirectCallNode onlyCaller = getSingleCallNode();
-        if (depth > engine.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
+        if (depth > engine.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || getCallCount() == 1) {
             logEarlyReturn(depth, callSitesKnown);
             return needsSplit;
         }
@@ -906,7 +906,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
         if (engine.splittingTraceEvents) {
-            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
+            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
         }
     }
 

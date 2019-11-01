@@ -47,7 +47,7 @@ final class TruffleSplittingStrategy {
     static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
         final EngineData engineData = currentTarget.engine;
         if (engineData.traceSplittingSummary) {
-            if (currentTarget.getCompilationProfile().getCallCount() == 0) {
+            if (currentTarget.getCallCount() == 0) {
                 engineData.reporter.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
             }
         }
