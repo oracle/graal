@@ -61,4 +61,12 @@ public final class SourceCoverage {
     public RootCoverage[] getRoots() {
         return roots;
     }
+
+    public String getName() {
+      if (source.getPath() == null) {
+        return source.getName();
+      } else {
+        return source.getPath();
+      }
+    }
 }
