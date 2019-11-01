@@ -246,7 +246,6 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             // saveArgumentToGlobalState compilation is delayed by the invalidation
             assertNotCompiled(toInterpreterOnString);
             assertNotDeoptimized(toInterpreterOnString);
-            Assert.assertEquals("saveArgumentToGlobalState was not invalidated!", 1, toInterpreterOnString.getCompilationProfile().getInvalidationCount());
         } finally {
             context.leave();
             context.close();

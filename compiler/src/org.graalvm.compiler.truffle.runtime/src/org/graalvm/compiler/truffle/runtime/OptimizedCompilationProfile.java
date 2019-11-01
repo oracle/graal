@@ -45,7 +45,6 @@ public final class OptimizedCompilationProfile {
     /**
      * Number of times an installed code for this tree was seen invalidated.
      */
-    private int invalidationCount;
     private int callCount;
     private int callAndLoopCount;
 
@@ -290,7 +289,6 @@ public final class OptimizedCompilationProfile {
     }
 
     void reportInvalidated(OptimizedCallTarget target) {
-        invalidationCount++;
         int reprofile = target.engine.invalidationReprofileCount;
         ensureProfiling(reprofile, reprofile);
     }
@@ -403,15 +401,9 @@ public final class OptimizedCompilationProfile {
         Map<String, Object> properties = new LinkedHashMap<>();
         String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
         String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
-        String invalidations = String.format("%5d", invalidationCount);
         properties.put("Calls/Thres", callsThreshold);
         properties.put("CallsAndLoop/Thres", loopsThreshold);
-        properties.put("Inval#", invalidations);
         return properties;
-    }
-
-    public int getInvalidationCount() {
-        return invalidationCount;
     }
 
     public int getCallAndLoopCount() {
