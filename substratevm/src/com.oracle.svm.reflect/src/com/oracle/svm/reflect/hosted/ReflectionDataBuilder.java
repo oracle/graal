@@ -144,7 +144,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                                             : allowUnsafeAccess ? EnumSet.of(FieldFlag.UNSAFE_ACCESSIBLE)
                                                             : NO_FIELD_FLAGS;
             reflectionFields.compute(field, (key, existingFlags) -> {
-                if (writable && (existingFlags == null || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
+                boolean unregistered = existingFlags == null;
+                if (unregistered) {
+                    modified = true;
+                }
+                if (writable && (unregistered || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
                     UserError.guarantee(!analyzedFinalFields.contains(field),
                                     "A field that was already processed by the analysis cannot be re-registered as writable: " + field);
                 }
