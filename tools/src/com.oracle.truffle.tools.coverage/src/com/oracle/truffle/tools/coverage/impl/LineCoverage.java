@@ -47,6 +47,9 @@ final class LineCoverage {
     }
 
     private static Map<Integer, LineState> makeLines(SourceCoverage coverage, boolean strictLines) {
+        if (!coverage.getSource().hasCharacters()) {
+            return Collections.emptyMap();
+        }
         final int lineCount = coverage.getSource().getLineCount();
         final HashMap<Integer, List<SectionCoverage>> lineContent = new HashMap<>(lineCount);
         for (RootCoverage rootCoverage : coverage.getRoots()) {

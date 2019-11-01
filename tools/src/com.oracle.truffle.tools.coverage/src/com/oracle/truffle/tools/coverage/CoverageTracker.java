@@ -192,7 +192,9 @@ public final class CoverageTracker implements AutoCloseable {
             final RootNode rootNode = node.getRootNode();
             final Map<SourceSection, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
             final RootData rootData = perRootData.get(rootNode.getSourceSection());
-            rootData.loadedStatements.add(section);
+            if (rootData != null) {
+                rootData.loadedStatements.add(section);
+            }
         }
     }
 
@@ -227,7 +229,9 @@ public final class CoverageTracker implements AutoCloseable {
                 continue;
             }
             if (coverageNode.isStatement) {
-                rootData.coveredStatements.put(section, count);
+                if (rootData != null) {
+                    rootData.coveredStatements.put(section, count);
+                }
                 continue;
             }
             throw new IllegalStateException("Found a node without adequate tag.");
