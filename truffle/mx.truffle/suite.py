@@ -47,10 +47,10 @@ suite = {
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
-    "name" : "Truffle and Graal developers",
-    "email" : "graal-dev@openjdk.java.net",
-    "organization" : "Graal",
-    "organizationUrl" : "https://github.com/oracle/graal",
+    "name" : "GraalVM Development",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
+    "organizationUrl" : "http://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/oracle/graal/tree/master/truffle",

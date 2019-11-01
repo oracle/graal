@@ -47,10 +47,10 @@ suite = {
   "url" : "https://github.com/oracle/graal",
   "groupId" : "org.graalvm.sdk",
   "developer" : {
-    "name" : "Graal developers",
-    "email" : "graal-dev@openjdk.java.net",
-    "organization" : "Graal",
-    "organizationUrl" : "https://github.com/oracle/graal",
+    "name" : "GraalVM Development",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
+    "organizationUrl" : "http://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/oracle/graal",
