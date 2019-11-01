@@ -123,7 +123,7 @@ _env_tests = []
 def gate_body(args, tasks):
     with mx_gate.Task('Sdk: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
-            for dist_name, _, _, suite, env_file in mx_sdk_vm._vm_configs:
+            for dist_name, _, components, suite, env_file in mx_sdk_vm._vm_configs:
                 if env_file is not False:
                     _env_file = env_file or dist_name
                     graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=_graalvm_base_name, dist_name=dist_name, jdk_version=_src_jdk_version).upper().replace('-', '_')
@@ -133,7 +133,18 @@ def gate_body(args, tasks):
                     if retcode != 0:
                         mx.abort("Unexpected return code '{}' for 'graalvm-dist-name' for env file '{}' in suite '{}'. Output: \n{}".format(retcode, _env_file, suite.name, '\n'.join(out.lines)))
                     if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
-                        mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
+                        out2 = mx.LinesOutputCapture()
+                        retcode2 = mx.run_mx(['--no-warning', '--env', _env_file, 'graalvm-components'], suite, out=out2, err=out2, env={}, nonZeroIsFatal=False)
+                        got_components = '<error>' if retcode2 or len(out2.lines) != 1 else out2.lines[0]
+                        mx.abort("""\
+Unexpected GraalVM dist name for env file '{}' in suite '{}'.
+Expected dist name: '{}'
+Actual dist name: '{}'.
+Expected component list:
+{}
+Actual component list:
+{}
+Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines), sorted(components), got_components))
 
 
 mx_gate.add_gate_runner(_suite, gate_body)
@@ -670,41 +681,43 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
 
+def _components_set(stage1):
+    components = registered_graalvm_components(stage1)
+    components_set = set([c.short_name for c in components])
+    if has_svm_polyglot_lib():
+        components_set.add('libpoly')
+        with_lib_polyglot = True
+    else:
+        with_lib_polyglot = False
+    if _with_polyglot_launcher_project():
+        with_polyglot_launcher = True
+        components_set.add('poly')
+        if not stage1 and _force_bash_launchers(get_polyglot_launcher_project().native_image_config):
+            components_set.add('bpolyglot')
+    else:
+        with_polyglot_launcher = False
+    if stage1:
+        components_set.add('stage1')
+    else:
+        for component in components:
+            for launcher_config in _get_launcher_configs(component):
+                if _force_bash_launchers(launcher_config):
+                    components_set.add('b' + remove_exe_suffix(basename(launcher_config.destination)))
+            for library_config in _get_library_configs(component):
+                if _skip_libraries(library_config):
+                    components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
+    if mx.get_opts().no_licenses:
+        components_set.add('nolic')
+    return components_set, with_lib_polyglot, with_polyglot_launcher
+
+
 _graal_vm_configs_cache = {}
 
 
 def _get_graalvm_configuration(base_name, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
-        components = registered_graalvm_components(stage1)
-        components_set = set([c.short_name for c in components])
-
-        if has_svm_polyglot_lib():
-            components_set.add('libpoly')
-            with_lib_polyglot = True
-        else:
-            with_lib_polyglot = False
-
-        if _with_polyglot_launcher_project():
-            with_polyglot_launcher = True
-            components_set.add('poly')
-            if not stage1 and _force_bash_launchers(get_polyglot_launcher_project().native_image_config):
-                components_set.add('bpolyglot')
-        else:
-            with_polyglot_launcher = False
-
-        if stage1:
-            components_set.add('stage1')
-        else:
-            for component in components:
-                for launcher_config in _get_launcher_configs(component):
-                    if _force_bash_launchers(launcher_config):
-                        components_set.add('b' + remove_exe_suffix(basename(launcher_config.destination)))
-                for library_config in _get_library_configs(component):
-                    if _skip_libraries(library_config):
-                        components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
-        if mx.get_opts().no_licenses:
-            components_set.add('nolic')
+        components_set, with_lib_polyglot, with_polyglot_launcher = _components_set(stage1)
 
         # Use custom distribution name and base dir for registered vm configurations
         vm_dist_name = None
@@ -1872,7 +1885,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         self.main_comp_dir_name = component.dir_name
 
-        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['_java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
+        name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
         self.base_dir_name = graalvm.string_substitutions.substitute(component.standalone_dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
@@ -2316,6 +2329,15 @@ def standalone_home(comp_dir_name):
     return join(_standalone_dist.output, _standalone_dist.base_dir_name)
 
 
+def log_graalvm_components(args):
+    """print the name of the GraalVM distribution"""
+    parser = ArgumentParser(prog='mx graalvm-components', description='Print the list of GraalVM components')
+    parser.add_argument('--stage1', action='store_true', help='print the list of components for the stage1 distribution')
+    args = parser.parse_args(args)
+    components, _, _ = _components_set(args.stage1)
+    mx.log(sorted(components))
+
+
 def log_graalvm_dist_name(args):
     """print the name of the GraalVM distribution"""
     parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
@@ -2634,6 +2656,7 @@ def mx_post_parse_cmd_line(args):
 
 
 mx.update_commands(_suite, {
+    'graalvm-components': [log_graalvm_components, ''],
     'graalvm-dist-name': [log_graalvm_dist_name, ''],
     'graalvm-version': [log_graalvm_version, ''],
     'graalvm-home': [log_graalvm_home, ''],
