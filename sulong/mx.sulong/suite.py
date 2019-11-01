@@ -491,7 +491,7 @@ suite = {
       "variants" : ["O1", "O0", "O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CFLAGS" : "<clangImplicitArgs> -g",
+        "SUITE_CFLAGS" : "-g",
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
