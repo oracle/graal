@@ -1014,6 +1014,8 @@ public class NativeImage {
         }
 
         imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
+        // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
 
