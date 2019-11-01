@@ -24,7 +24,20 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.options.OptionValues;
+
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Mode;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Splitting;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.getValue;
 
 import java.util.function.Function;
 
@@ -44,12 +57,34 @@ final class EngineData {
     int splitLimit;
     int splitCount;
     final OptionValues engineOptions;
-    final RuntimeOptionsCache options;
     final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
 
-    private EngineData(OptionValues engineOptions) {
-        this.engineOptions = engineOptions;
-        this.options = new RuntimeOptionsCache(engineOptions);
+    // splitting options
+    final boolean splitting;
+    final boolean splittingAllowForcedSplits;
+    final boolean splittingDumpDecisions;
+    final boolean splittingTraceEvents;
+    final boolean traceSplittingSummary;
+    final int splittingMaxCalleeSize;
+    final int splittingMaxPropagationDepth;
+    final double splittingGrowthLimit;
+    final int splittingMaxNumberOfSplitNodes;
+
+    EngineData(OptionValues options) {
+        this.engineOptions = options;
+        // splitting options
+        this.splitting = getValue(options, Splitting) &&
+                        getValue(options, Mode) != EngineModeEnum.LATENCY;
+        this.splittingAllowForcedSplits = getValue(options, SplittingAllowForcedSplits);
+        this.splittingDumpDecisions = getValue(options, SplittingDumpDecisions);
+        this.splittingMaxCalleeSize = getValue(options, SplittingMaxCalleeSize);
+        this.splittingMaxPropagationDepth = getValue(options, SplittingMaxPropagationDepth);
+        this.splittingTraceEvents = getValue(options, SplittingTraceEvents);
+        this.traceSplittingSummary = getValue(options, TraceSplittingSummary);
+        this.splittingGrowthLimit = getValue(options, SplittingGrowthLimit);
+        this.splittingMaxNumberOfSplitNodes = getValue(options, SplittingMaxNumberOfSplitNodes);
+
+        // the reporter requires options to be initialized
         this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
     }
 
