@@ -44,7 +44,6 @@ import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
@@ -56,7 +55,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 
-import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -256,12 +254,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Collection<Engine> findActiveEngines() {
         return PolyglotEngineImpl.findActiveEngines();
-    }
-
-    @Override
-    public Path findHome() {
-        final HomeFinder homeFinder = HomeFinder.getInstance();
-        return homeFinder == null ? null : homeFinder.getHomeFolder();
     }
 
     @Override

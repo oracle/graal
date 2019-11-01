@@ -62,7 +62,7 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 public final class GraalVMLocator extends TruffleLocator
                 implements Callable<ClassLoader> {
 
-    private static final boolean LOCATOR_TRACE = Boolean.valueOf(System.getProperty("truffle.class.path.trace", "false"));
+    private static final boolean LOCATOR_TRACE = Boolean.parseBoolean(System.getProperty("truffle.class.path.trace", "false"));
 
     private static URLClassLoader loader;
 
@@ -73,17 +73,12 @@ public final class GraalVMLocator extends TruffleLocator
         Path homePath = homeFinder.getHomeFolder();
         if (homePath != null) {
             String home = homePath.toString();
-            if (System.getProperty("graalvm.home") == null) {
-                // automatically set graalvm.home
-                System.setProperty("graalvm.home", home);
-            }
             if (System.getProperty("org.graalvm.home") == null) {
-                // automatically set graalvm.home
+                // automatically set org.graalvm.home
                 System.setProperty("org.graalvm.home", home);
             }
         }
         String version = homeFinder.getVersion();
-        System.setProperty("graalvm.version", version);
         System.setProperty("org.graalvm.version", version);
         for (Map.Entry<String, Path> languageHome : homeFinder.getLanguageHomes().entrySet()) {
             setLanguageHomeProperty(languageHome.getKey(), languageHome.getValue());
