@@ -5,7 +5,7 @@ A Java bytecode interpreter at its core, turned Just-In-Time (JIT) compiler by l
 It highlights the sublime potential of the GraalVM as a platform for implementing high-performance languages and runtimes.
 
 ## Status
-Espresso is still an early prototype, but it already passes **>98%** of the JCK 8 runtime suite.  
+Espresso is still an early prototype, but it already passes **>99.9%** of the JCK 8b runtime suite.  
 It can run some non-trivial applications:
   - Eclipse Neon (4.6)
   - Minecraft 1.2
