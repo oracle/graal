@@ -2,14 +2,20 @@
 	"name": "graalvm-r",
 	"displayName": "GraalVM R",
 	"description": "Support for GraalVM R",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"license": "SEE LICENSE IN LICENSE.txt",
-	"publisher": "OracleLabs",
+	"publisher": "oracle-labs-graalvm",
+	"author": {
+		"name": "Oracle Labs"
+	},
 	"icon": "images/graalvm-r-logo.png",
 	"homepage": "https://github.com/oracle/graal/blob/master/vscode/graalvm-r/README.md",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/oracle/graal.git"
+	},
+	"bugs": {
+		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
 		"vscode": "^1.32.0"
@@ -107,7 +113,7 @@
 		"webpack-cli": "^3.3.6"
 	},
 	"extensionDependencies": [
-		"OracleLabs.graalvm",
+		"oracle-labs-graalvm.graalvm",
 		"Ikuyadeu.r"
 	]
 }
