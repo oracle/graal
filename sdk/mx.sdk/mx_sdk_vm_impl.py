@@ -574,6 +574,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in graalvm_dists], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
+                _provided_executable = mx_subst.results_substitutions.substitute(_provided_executable)
                 if _component.short_name == 'vvm':
                     _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
@@ -1539,7 +1540,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
         _custom_launcher = self.subject.native_image_config.custom_bash_launcher
         if _custom_launcher:
-            return join(self.subject.suite.dir, _custom_launcher + "." + ext)
+            return join(self.subject.component.suite.dir, _custom_launcher + "." + ext)
         return join(_suite.mxDir, 'vm', 'launcher_template.' + ext)
 
     def native_image_needs_build(self, out_file):
@@ -1571,7 +1572,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return self.subject.native_image_config.main_class
 
         def _get_extra_jvm_args():
-            return ' '.join(self.subject.native_image_config.extra_jvm_args)
+            return mx.list_to_cmd_line(self.subject.native_image_config.extra_jvm_args)
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
