@@ -42,7 +42,7 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
-    @CompilationFinal(dimensions = 1) private long[] numericLiterals;
+    @CompilationFinal(dimensions = 1) private long[] longConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
 
     public WasmCodeEntry(int functionIndex, byte[] data) {
@@ -53,7 +53,7 @@ public class WasmCodeEntry {
         this.localTypes = null;
         this.byteConstants = null;
         this.intConstants = null;
-        this.numericLiterals = null;
+        this.longConstants = null;
     }
 
     public byte[] data() {
@@ -124,24 +124,24 @@ public class WasmCodeEntry {
         this.intConstants = intConstants;
     }
 
-    public long numericLiteral(int index) {
-        return numericLiterals[index];
+    public long longConstant(int index) {
+        return longConstants[index];
     }
 
-    public int numericLiteralAsInt(int index) {
-        return (int) numericLiterals[index];
+    public int longConstantAsInt(int index) {
+        return (int) longConstants[index];
     }
 
-    public float numericLiteralAsFloat(int index) {
-        return Float.intBitsToFloat(numericLiteralAsInt(index));
+    public float longConstantAsFloat(int index) {
+        return Float.intBitsToFloat(longConstantAsInt(index));
     }
 
-    public double numericLiteralAsDouble(int index) {
-        return Double.longBitsToDouble(numericLiterals[index]);
+    public double longConstantAsDouble(int index) {
+        return Double.longBitsToDouble(longConstants[index]);
     }
 
-    public void setNumericLiterals(long[] numericLiterals) {
-        this.numericLiterals = numericLiterals;
+    public void setLongConstants(long[] longConstants) {
+        this.longConstants = longConstants;
     }
 
     public int[] branchTable(int index) {

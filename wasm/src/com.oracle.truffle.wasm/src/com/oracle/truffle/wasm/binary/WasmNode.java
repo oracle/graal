@@ -33,7 +33,7 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
+import com.oracle.truffle.wasm.binary.constants.TargetOffset;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
     // TODO: We should not cache the module in the nodes, only the symbol table.
@@ -59,19 +59,19 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     /**
      * The number of literals in the numeric literals table used by this node.
      */
-    @CompilationFinal private int numericLiteralLength;
+    @CompilationFinal private int longConstantLength;
 
     /**
      * The number of branch tables used by this node.
      */
     @CompilationFinal private int branchTableLength;
 
-    public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength, int numericLiteralLength) {
+    public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength, int longConstantLength) {
         this.wasmModule = wasmModule;
         this.codeEntry = codeEntry;
         this.byteLength = byteLength;
         this.byteConstantLength = byteConstantLength;
-        this.numericLiteralLength = numericLiteralLength;
+        this.longConstantLength = longConstantLength;
     }
 
     /**
@@ -79,10 +79,10 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      *
      * @param frame The frame to use for execution.
      * @return The return value of this method indicates whether a branch is to be executed, in case of nested blocks.
-     * A return value of -1 means no branch, whereas a return value n greater than or equal to 0 means that
+     * An offset with value -1 means no branch, whereas a return value n greater than or equal to 0 means that
      * the execution engine has to branch n levels up the block execution stack.
      */
-    public abstract int execute(WasmContext context, VirtualFrame frame);
+    public abstract TargetOffset execute(WasmContext context, VirtualFrame frame);
 
     public abstract byte returnTypeId();
 
@@ -132,12 +132,12 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         this.intConstantLength = intConstantLength;
     }
 
-    public int numericLiteralLength() {
-        return numericLiteralLength;
+    public int longConstantLength() {
+        return longConstantLength;
     }
 
-    public void setNumericLiteralLength(int numericLiteralLength) {
-        this.numericLiteralLength = numericLiteralLength;
+    public void setLongConstantLength(int longConstantLength) {
+        this.longConstantLength = longConstantLength;
     }
 
     public int branchTableLength() {

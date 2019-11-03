@@ -218,6 +218,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
+import com.oracle.truffle.wasm.binary.constants.TargetOffset;
 import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
@@ -234,14 +235,14 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialStackPointer;
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
-    @CompilationFinal private final int initialNumericLiteralOffset;
+    @CompilationFinal private final int initialLongConstantOffset;
     @CompilationFinal private final int initialBranchTableOffset;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children WasmNode[] nestedControlTable;
     @Children Node[] callNodeTable;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                         int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset, int initialBranchTableOffset) {
+                         int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset) {
         super(wasmModule, codeEntry, -1, -1, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
@@ -249,7 +250,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.initialStackPointer = initialStackPointer;
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
-        this.initialNumericLiteralOffset = initialNumericLiteralOffset;
+        this.initialLongConstantOffset = initialLongConstantOffset;
         this.initialBranchTableOffset = initialBranchTableOffset;
         this.nestedControlTable = null;
         this.callNodeTable = null;
@@ -263,12 +264,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    public int execute(WasmContext context, VirtualFrame frame) {
+    public TargetOffset execute(WasmContext context, VirtualFrame frame) {
         int nestedControlOffset = 0;
         int callNodeOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
-        int numericLiteralOffset = initialNumericLiteralOffset;
+        int longConstantOffset = initialLongConstantOffset;
         int branchTableOffset = initialBranchTableOffset;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
@@ -290,10 +291,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     // The unwind counter indicates how many levels up we need to branch from within the block.
                     logger.finest("block ENTER");
-                    int unwindCounter = block.execute(context, frame);
-                    logger.finest(() -> String.format("block EXIT, target = %d", unwindCounter));
-                    if (unwindCounter > 0) {
-                        return unwindCounter - 1;
+                    TargetOffset unwindCounter = block.execute(context, frame);
+                    logger.finest(() -> String.format("block EXIT, target = %d", unwindCounter.value));
+                    if (unwindCounter.greaterThanZero()) {
+                        return unwindCounter.decrement();
                     }
 
                     nestedControlOffset++;
@@ -301,7 +302,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer += block.returnTypeLength();
                     byteConstantOffset += block.byteConstantLength();
                     intConstantOffset += block.intConstantLength();
-                    numericLiteralOffset += block.numericLiteralLength();
+                    longConstantOffset += block.longConstantLength();
                     branchTableOffset += block.branchTableLength();
                     break;
                 }
@@ -317,19 +318,19 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // - A value larger than 0 indicates that we need to branch to a level "shallower" than the current
                     //   loop block (break out of the loop and even further).
                     logger.finest("loop ENTER");
-                    int unwindCounter = loopNode.execute(context, frame);
-                    logger.finest(() -> String.format("loop EXIT, target = %d", unwindCounter));
-                    assert unwindCounter != 0;
-                    if (unwindCounter > 0) {
-                        return unwindCounter - 1;
+                    TargetOffset unwindCounter = loopNode.execute(context, frame);
+                    logger.finest(() -> String.format("loop EXIT, target = %d", unwindCounter.value));
+                    if (unwindCounter.greaterThanZero()) {
+                        return unwindCounter.decrement();
                     }
+                    assert unwindCounter.isMinusOne();
 
                     nestedControlOffset++;
                     offset += loopNode.byteLength();
                     stackPointer += loopNode.returnTypeLength();
                     byteConstantOffset += loopNode.byteConstantLength();
                     intConstantOffset += loopNode.intConstantLength();
-                    numericLiteralOffset += loopNode.numericLiteralLength();
+                    longConstantOffset += loopNode.longConstantLength();
                     branchTableOffset += loopNode.branchTableLength();
                     break;
                 }
@@ -337,17 +338,17 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     WasmNode ifNode = nestedControlTable[nestedControlOffset];
                     stackPointer--;
                     logger.finest("if ENTER");
-                    int unwindCounter = ifNode.execute(context, frame);
-                    logger.finest(() -> String.format("if EXIT, target = %d", unwindCounter));
-                    if (unwindCounter > 0) {
-                        return unwindCounter - 1;
+                    TargetOffset unwindCounter = ifNode.execute(context, frame);
+                    logger.finest(() -> String.format("if EXIT, target = %d", unwindCounter.value));
+                    if (unwindCounter.greaterThanZero()) {
+                        return unwindCounter.decrement();
                     }
                     nestedControlOffset++;
                     offset += ifNode.byteLength();
                     stackPointer += ifNode.returnTypeLength();
                     byteConstantOffset += ifNode.byteConstantLength();
                     intConstantOffset += ifNode.intConstantLength();
-                    numericLiteralOffset += ifNode.numericLiteralLength();
+                    longConstantOffset += ifNode.longConstantLength();
                     branchTableOffset += ifNode.branchTableLength();
                     break;
                 }
@@ -356,15 +357,16 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case END:
                     break;
                 case BR: {
-                    int unwindCounter = codeEntry().numericLiteralAsInt(numericLiteralOffset);
+                    int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
+                    TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                     // Reset the stack pointer to the target block stack pointer.
                     int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
                     int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
-                    // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
+                    // Technically, we should increment the intConstantOffset and longConstantOffset at this point,
                     // but since we are returning, it does not really matter.
 
-                    logger.finest(() -> String.format("br, target = %d", unwindCounter));
+                    logger.finest(() -> String.format("br, target = %d", unwindCounterValue));
 
                     // Populate the stack with the return values of the current block (the one we are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
@@ -374,22 +376,23 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case BR_IF: {
                     stackPointer--;
                     if (popCondition(frame, stackPointer)) {
-                        int unwindCounter = codeEntry().numericLiteralAsInt(numericLiteralOffset);
+                        int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
+                        TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                         // Reset the stack pointer to the target block stack pointer.
                         int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
                         int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
-                        // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
+                        // Technically, we should increment the intConstantOffset and longConstantOffset at this point,
                         // but since we are returning, it does not really matter.
 
-                        logger.finest(() -> String.format("br_if, target = %d", unwindCounter));
+                        logger.finest(() -> String.format("br_if, target = %d", unwindCounterValue));
 
                         // Populate the stack with the return values of the current block (the one we are escaping from).
                         unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
                         return unwindCounter;
                     }
-                    numericLiteralOffset++;
+                    longConstantOffset++;
                     intConstantOffset += 2;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -405,26 +408,27 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // but since we are returning, it does not really matter.
 
                     int returnTypeLength = table[0];
-                    int target = table[1 + 2 * index];
+                    int targetOffsetValue = table[1 + 2 * index];
                     int continuationStackPointer = table[1 + 2 * index + 1];
-                    logger.finest(() -> String.format("br_table, target = %d", target));
+                    logger.finest(() -> String.format("br_table, target = %d", targetOffsetValue));
 
                     // Populate the stack with the return values of the current block (the one we are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
 
-                    return target;
+                    return TargetOffset.createOrCached(targetOffsetValue);
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e. causes the execution
                     // to resume after the instruction that invoked the current frame.
+                    int unwindCounterValue = codeEntry().longConstantAsInt(longConstantOffset);
                     int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
                     unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
                     logger.finest("return");
-                    return Integer.MAX_VALUE;
+                    return TargetOffset.createOrCached(unwindCounterValue);
                 }
                 case CALL: {
-                    int functionIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int functionIndex = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -493,8 +497,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     final WasmFunction function = (WasmFunction) table[elementIndex];
 
                     // Extract the function type index.
-                    int expectedFunctionTypeIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int expectedFunctionTypeIndex = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -572,8 +576,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_GET: {
-                    int index = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int index = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -611,8 +615,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_SET: {
-                    int index = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int index = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -650,8 +654,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOCAL_TEE: {
-                    int index = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int index = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -697,8 +701,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case GLOBAL_GET: {
-                    int index = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int index = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -747,8 +751,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case GLOBAL_SET: {
-                    int index = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int index = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -817,8 +821,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += memAlignConstantLength;
 
-                    int memOffset = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int memOffset = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += memOffsetConstantLength;
@@ -935,8 +939,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += memAlignConstantLength;
 
-                    int memOffset = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int memOffset = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += memOffsetConstantLength;
@@ -1068,8 +1072,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case I32_CONST: {
-                    int value = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int value = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -1079,8 +1083,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case I64_CONST: {
-                    long value = codeEntry().numericLiteral(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    long value = codeEntry().longConstant(longConstantOffset);
+                    longConstantOffset++;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
@@ -1810,8 +1814,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case F32_CONST: {
-                    int value = codeEntry().numericLiteralAsInt(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    int value = codeEntry().longConstantAsInt(longConstantOffset);
+                    longConstantOffset++;
                     offset += 4;
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
@@ -1959,8 +1963,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case F64_CONST: {
-                    long value = codeEntry().numericLiteral(numericLiteralOffset);
-                    numericLiteralOffset++;
+                    long value = codeEntry().longConstant(longConstantOffset);
+                    longConstantOffset++;
                     offset += 8;
                     push(frame, stackPointer, value);
                     stackPointer++;
@@ -2248,7 +2252,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Assert.fail(format("Unknown opcode: 0x%02X", opcode));
             }
         }
-        return -1;
+        return TargetOffset.MINUS_ONE;
     }
 
     private boolean popCondition(VirtualFrame frame, int stackPointer) {
@@ -2308,7 +2312,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    public int executeRepeatingWithStatus(VirtualFrame frame) {
+    public Object executeRepeatingWithValue(VirtualFrame frame) {
         return execute(contextReference().get(), frame);
     }
 

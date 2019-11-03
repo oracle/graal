@@ -39,9 +39,9 @@ public class ExecutionState {
     private int maxStackSize;
     private ByteArrayList byteConstants;
     private IntArrayList intConstants;
+    private LongArrayList longConstants;
     private IntArrayList stackStates;
     private IntArrayList continuationReturnLength;
-    private LongArrayList numericLiterals;
     private IntArrayArrayList branchTables;
 
     public ExecutionState() {
@@ -49,9 +49,9 @@ public class ExecutionState {
         this.maxStackSize = 0;
         this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
+        this.longConstants = new LongArrayList();
         this.stackStates = new IntArrayList();
         this.continuationReturnLength = new IntArrayList();
-        this.numericLiterals = new LongArrayList();
         this.branchTables = new IntArrayArrayList();
     }
 
@@ -91,6 +91,10 @@ public class ExecutionState {
 
     public void popStackState() {
         stackStates.popBack();
+    }
+
+    public int stackStateCount() {
+        return stackStates.size();
     }
 
     public int getStackState(int level) {
@@ -137,16 +141,16 @@ public class ExecutionState {
         return intConstants.toArray();
     }
 
-    public void saveNumericLiteral(long literal) {
-        numericLiterals.add(literal);
+    public void useLongConstant(long literal) {
+        longConstants.add(literal);
     }
 
-    public int numericLiteralOffset() {
-        return numericLiterals.size();
+    public int longConstantOffset() {
+        return longConstants.size();
     }
 
-    public long[] numericLiterals() {
-        return numericLiterals.toArray();
+    public long[] longConstants() {
+        return longConstants.toArray();
     }
 
     public void saveBranchTable(int[] branchTable) {
