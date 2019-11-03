@@ -7,12 +7,16 @@ public class TargetOffset {
         this.value = value;
     }
 
-    public boolean greaterThanZero() {
+    public boolean isGreaterThanZero() {
         return value > 0;
     }
 
     public boolean isMinusOne() {
         return value == -1;
+    }
+
+    public boolean isZero() {
+        return value == 0;
     }
 
     public TargetOffset decrement() {
