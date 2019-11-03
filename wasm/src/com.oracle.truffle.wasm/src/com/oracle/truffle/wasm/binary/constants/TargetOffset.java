@@ -21,8 +21,8 @@ public class TargetOffset {
     }
 
     public static TargetOffset createOrCached(int value) {
-        // The cache index starts with value -1, so we need a -1 offset.
-        final int resultCacheIndex = value - 1;
+        // The cache index starts with value -1, so we need a +1 offset.
+        final int resultCacheIndex = value + 1;
         if (resultCacheIndex < CACHE.length) {
             return CACHE[resultCacheIndex];
         }
