@@ -241,6 +241,7 @@ public class RequestedJDWPEvents {
                     case METHOD_EXIT_WITH_RETURN_VALUE:
                         break;
                     case BREAKPOINT:
+                    case EXCEPTION:
                         eventListener.removeBreakpointRequest(requestFilter.getRequestId());
                         break;
                     case CLASS_PREPARE:
@@ -255,8 +256,6 @@ public class RequestedJDWPEvents {
                     case CLASS_UNLOAD:
                         eventListener.addClassUnloadRequestId(packet.id);
                         break;
-                    case EXCEPTION:
-                        eventListener.removeBreakpointRequest(requestFilter.getRequestId());
                     default:
                         System.out.println("unhandled event clear kind " + eventKind);
                         break;
