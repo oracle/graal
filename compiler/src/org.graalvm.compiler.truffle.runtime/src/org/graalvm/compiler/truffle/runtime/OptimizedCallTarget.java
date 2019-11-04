@@ -275,7 +275,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopThreshold = engine.firstTierCallAndLoopThreshold;
     }
 
-    protected final List<OptimizedAssumption> getProfiledTypesAssumptions() {
+    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
         List<OptimizedAssumption> result = new ArrayList<>();
         if (getProfiledArgumentTypes() != null) {
             result.add(profiledArgumentTypesAssumption);
