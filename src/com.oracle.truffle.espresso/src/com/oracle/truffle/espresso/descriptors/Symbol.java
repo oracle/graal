@@ -320,7 +320,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> ClassLoader = StaticSymbols.putType(java.lang.ClassLoader.class);
         public static final Symbol<Type> sun_misc_Launcher_ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
-        public static final Symbol<Type> Null = StaticSymbols.putType("Null");
+        public static final Symbol<Type> Null = StaticSymbols.putType("LNull;");
 
         // Primitive types. Use JavaKind.getType()?
         public static final Symbol<Type> _boolean = StaticSymbols.putType(boolean.class);
