@@ -58,7 +58,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     public static boolean isMethodHandleIntrinsic(Method m, Meta meta) {
         if (m.getDeclaringKlass() == meta.MethodHandle) {
             PolySigIntrinsics id = getId(m);
-            return (id != PolySigIntrinsics.None && id != PolySigIntrinsics.InvokeGeneric);
+            return (id != PolySigIntrinsics.None);
         }
         return false;
     }

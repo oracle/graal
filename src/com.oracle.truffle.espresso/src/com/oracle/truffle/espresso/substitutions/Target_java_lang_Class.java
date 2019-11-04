@@ -335,7 +335,7 @@ public final class Target_java_lang_Class {
                                 /* declaringKlass */ m.getDeclaringKlass().mirror(),
                                 /* parameterTypes */ parameterTypes,
                                 /* checkedExceptions */ checkedExceptions,
-                                /* modifiers */ m.getModifiers(),
+                                /* modifiers */ m.getMethodModifiers(),
                                 /* slot */ i, // TODO(peterssen): Fill method slot.
                                 /* signature */ genericSignature,
 
@@ -448,7 +448,7 @@ public final class Target_java_lang_Class {
                                 /* parameterTypes */ parameterTypes,
                                 /* returnType */ m.resolveReturnKlass().mirror(),
                                 /* checkedExceptions */ checkedExceptions,
-                                /* modifiers */ m.getModifiers(),
+                                /* modifiers */ m.getMethodModifiers(),
                                 /* slot */ i, // TODO(peterssen): Fill method slot.
                                 /* signature */ genericSignature,
 
