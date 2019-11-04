@@ -42,7 +42,7 @@ public class Lock extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        logger.finest("Lock EXECUTE");
+        trace("Lock EXECUTE");
         return null;
     }
 

@@ -90,7 +90,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
          */
         initializeLocals(frame);
 
-        logger.finest(() -> this + " EXECUTE");
+        trace("%s EXECUTE", this);
 
         body.execute(context, frame);
 
@@ -134,25 +134,25 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             switch (kind) {
                 case Int: {
                     int argument = (int) args[i];
-                    logger.finest(() -> String.format("argument: 0x%08X (%d) [i32]", argument, argument));
+                    trace("argument: 0x%08X (%d) [i32]", argument, argument);
                     frame.setInt(slot, argument);
                     break;
                 }
                 case Long: {
                     long argument = (long) args[i];
-                    logger.finest(() -> String.format("argument: 0x%016X (%d) [i64]", argument, argument));
+                    trace("argument: 0x%016X (%d) [i64]", argument, argument);
                     frame.setLong(slot, argument);
                     break;
                 }
                 case Float: {
                     float argument = (float) args[i];
-                    logger.finest(() -> String.format("argument: %f [f32]", argument));
+                    trace("argument: %f [f32]", argument);
                     frame.setFloat(slot, argument);
                     break;
                 }
                 case Double: {
                     double argument = (double) args[i];
-                    logger.finest(() -> String.format("argument: %f [f64]", argument));
+                    trace("argument: %f [f64]", argument);
                     frame.setDouble(slot, argument);
                     break;
                 }

@@ -46,14 +46,14 @@ public class SetErrNo extends WasmPredefinedRootNode {
         Object[] args = frame.getArguments();
         assert args.length == 1;
         for (Object arg : args) {
-            logger.finest(() -> "argument: " + arg);
+            trace("argument: %s", arg);
         }
 
         WasmContext context = contextReference().get();
 
         int value = (int) args[0];
 
-        logger.finest("SetErrNo EXECUTE");
+        trace("SetErrNo EXECUTE");
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
         memory.store_i32(3120, value);

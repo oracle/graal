@@ -45,14 +45,14 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
         Object[] args = frame.getArguments();
         assert args.length == 3;
         for (Object arg : args) {
-            logger.finest(() -> "argument: " + arg);
+            trace("argument: %s", arg);
         }
 
         int dest = (int) args[0];
         int src = (int) args[1];
         int num = (int) args[2];
 
-        logger.finest("EmscriptenMemcpyBig EXECUTE");
+        trace("EmscriptenMemcpyBig EXECUTE");
 
         memory.copy(src, dest, num);
 

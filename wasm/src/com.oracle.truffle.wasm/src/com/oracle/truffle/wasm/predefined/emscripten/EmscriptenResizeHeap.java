@@ -41,7 +41,7 @@ public class EmscriptenResizeHeap extends AbortNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        logger.finest("EmscriptenResizeHeap EXECUTE");
+        trace("EmscriptenResizeHeap EXECUTE");
 
         // Heap resizing is not supported by default by emscripten
         // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).

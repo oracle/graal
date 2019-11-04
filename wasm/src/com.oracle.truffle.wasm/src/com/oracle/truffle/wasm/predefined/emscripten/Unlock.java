@@ -42,7 +42,7 @@ public class Unlock extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        logger.finest("Unlock EXECUTE");
+        trace("Unlock EXECUTE");
         return null;
     }
 

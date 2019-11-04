@@ -32,7 +32,7 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public interface WasmNodeInterface {
+public interface WasmNodeInterface extends WasmTracing {
     WasmCodeEntry codeEntry();
 
     /* LOCALS operations */
@@ -122,4 +122,5 @@ public interface WasmNodeInterface {
     default double popAsDouble(VirtualFrame frame, int slot) {
         return Double.longBitsToDouble(pop(frame, slot));
     }
+
 }

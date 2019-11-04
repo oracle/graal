@@ -31,8 +31,10 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.wasm.binary.constants.Debug;
 import com.oracle.truffle.wasm.binary.constants.TargetOffset;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
