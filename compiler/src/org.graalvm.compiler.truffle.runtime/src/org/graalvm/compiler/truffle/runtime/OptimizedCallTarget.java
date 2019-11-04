@@ -94,7 +94,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private final RootNode rootNode;
 
     /** Whether this call target was cloned, compiled or called. */
-    protected volatile boolean initialized;
+    @CompilationFinal protected volatile boolean initialized;
 
     /**
      * The call threshold is counted down for each real call until it reaches zero and triggers a
@@ -371,6 +371,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
+        ensureInitialized();
         try {
             return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
@@ -381,11 +382,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlinedAgnostic(Object... arguments) {
+        ensureInitialized();
         return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlinedForced(Node location, Object... arguments) {
+        ensureInitialized();
         try {
             return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
@@ -492,6 +495,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void ensureInitialized() {
         if (!initialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize();
         }
     }
