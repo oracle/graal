@@ -177,12 +177,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * We need to trigger initialization of the Truffle compiler when the first call target is
      * created. Truffle call boundary methods are installed when the truffle compiler is
      * initialized, as it requires the compiler to do so. Until then the call boundary methods are
-     * interpreted with the HotSpot interpreter (see
-     * {@link #setDontInlineCallBoundaryMethod(List)}). This is very slow and we want to avoid doing
-     * this as soon as possible. It can also be a real issue when compilation is turned off
-     * completely and no call targets would ever be compiled. Without ensureInitialized the stubs
-     * (see {@link HotSpotTruffleCompiler#installTruffleCallBoundaryMethods}) would never be
-     * installed in that case and we would use the HotSpot interpreter indefinitely.
+     * interpreted with the HotSpot interpreter (see {@link #setDontInlineCallBoundaryMethod(List)}
+     * ). This is very slow and we want to avoid doing this as soon as possible. It can also be a
+     * real issue when compilation is turned off completely and no call targets would ever be
+     * compiled. Without ensureInitialized the stubs (see
+     * {@link HotSpotTruffleCompiler#installTruffleCallBoundaryMethods}) would never be installed in
+     * that case and we would use the HotSpot interpreter indefinitely.
      */
     private void ensureInitialized(OptimizedCallTarget firstCallTarget) {
         if (truffleCompilerInitialized) {
