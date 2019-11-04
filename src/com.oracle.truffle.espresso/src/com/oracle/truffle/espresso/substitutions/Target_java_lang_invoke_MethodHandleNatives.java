@@ -30,8 +30,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.firstStaticSigPoly;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.lastSigPoly;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.FIRST_STATIC_SIG_POLY;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.LAST_SIG_POLY;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
@@ -432,7 +432,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static boolean isStaticSigPoly(int id) {
-        return (id >= firstStaticSigPoly) && (id <= lastSigPoly);
+        return (id >= FIRST_STATIC_SIG_POLY) && (id <= LAST_SIG_POLY);
     }
 
     private static boolean isIntrinsicPolySig(MethodHandleIntrinsics.PolySigIntrinsics id) {
