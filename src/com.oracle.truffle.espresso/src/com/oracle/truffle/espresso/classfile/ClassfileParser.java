@@ -30,6 +30,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INNER_CLASS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -507,7 +508,20 @@ public final class ClassfileParser {
                         methodAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
                     } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
                         assert runtimeVisibleAnnotations == null;
-                        methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                        // Check if java.lang.invoke.LambdaForm.Compiled is present here.
+                        byte[] data = stream.readByteArray(attributeSize);
+                        ClassfileStream subStream = new ClassfileStream(data, this.classfile);
+                        int count = subStream.readU2();
+                        for (int j = 0; j < count; j++) {
+                            int typeIndex = parseAnnotation(subStream);
+                            Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                            constant.validateType(false);
+                            Symbol<Type> annotType = constant.value();
+                            if (Type.LambdaForm$Compiled.equals(annotType)) {
+                                methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                            }
+                        }
+                        methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
                     } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
                         if (runtimeVisibleTypeAnnotations != null) {
                             throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
@@ -555,6 +569,52 @@ public final class ClassfileParser {
         }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
+    }
+
+    private static int parseAnnotation(ClassfileStream subStream) {
+        int typeIndex = subStream.readU2();
+        int numElementValuePairs = subStream.readU2();
+        for (int k = 0; k < numElementValuePairs; k++) {
+            /* elementNameIndex */ subStream.readU2();
+            skipElementValue(subStream);
+        }
+        return typeIndex;
+    }
+
+    private static void skipElementValue(ClassfileStream subStream) {
+        char tag = (char) subStream.readU1();
+        switch (tag) {
+            case 'B':
+            case 'C':
+            case 'D':
+            case 'F':
+            case 'I':
+            case 'J':
+            case 'S':
+            case 'Z':
+            case 's':
+                /* constValueIndex */ subStream.readU2();
+                break;
+            case 'e':
+                /* typeNameIndex */ subStream.readU2();
+                /* constNameIndex */ subStream.readU2();
+                break;
+            case 'c':
+                /* classInfoIndex */ subStream.readU2();
+                break;
+            case '@':
+                /* ignore */ parseAnnotation(subStream);
+                break;
+            case '[':
+                int numValues = subStream.readU2();
+                for (int i = 0; i < numValues; i++) {
+                    skipElementValue(subStream);
+                }
+                break;
+            default:
+                throw classFormatError("Invalid annotation tag: " + tag);
+        }
+
     }
 
     private Attribute[] parseClassAttributes() {
