@@ -384,7 +384,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     private static int getMethodFlags(Method target, int refKind) {
-        int res = target.getModifiers();
+        int res = target.getMethodModifiers();
         if (refKind == REF_invokeInterface) {
             res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
         } else if (refKind == REF_invokeVirtual) {
