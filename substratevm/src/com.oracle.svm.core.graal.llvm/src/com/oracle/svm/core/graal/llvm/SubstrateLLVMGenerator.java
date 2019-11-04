@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -255,8 +256,17 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private LLVMValueRef getSpecialRegisterArgument(int index, ResolvedJavaMethod targetMethod) {
         LLVMValueRef specialRegisterArg;
         if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
-            assert (isEntryPoint || canModifySpecialRegisters);
-            specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
+            if (isEntryPoint || canModifySpecialRegisters) {
+                specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
+            } else {
+                /*
+                 * This means that an entry point method is called directly from Java code. We only
+                 * accept this in the case of a method that doesn't do anything Java-related, and
+                 * therefore doesn't need the actual value of its special registers.
+                 */
+                assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
+                specialRegisterArg = builder.constantNull(builder.rawPointerType());
+            }
         } else if (isEntryPoint || canModifySpecialRegisters) {
             specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(index), builder.longType());
         } else {
