@@ -1,5 +1,8 @@
 package com.oracle.truffle.wasm.binary.constants;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public class TargetOffset {
     public final int value;
 
@@ -35,7 +38,7 @@ public class TargetOffset {
 
     public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
 
-    private static final TargetOffset[] CACHE = new TargetOffset[] {
+    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE = new TargetOffset[] {
                     MINUS_ONE,
                     new TargetOffset(0),
                     new TargetOffset(1),
