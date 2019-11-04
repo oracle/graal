@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.benchmark;
 
+import java.lang.reflect.InvocationTargetException;
+
 import org.graalvm.polyglot.Context;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.CompilerControl;
@@ -91,8 +93,8 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
             for (int i = 0; i < ROOT_CLASSES.length; i++) {
                 Class<?> rootClass = ROOT_CLASSES[i];
                 try {
-                    rootNodes[i] = (AbstractRootNode) rootClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException e) {
+                    rootNodes[i] = (AbstractRootNode) rootClass.getConstructor().newInstance();
+                } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
                     throw new AssertionError(e);
                 }
                 callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i]);
