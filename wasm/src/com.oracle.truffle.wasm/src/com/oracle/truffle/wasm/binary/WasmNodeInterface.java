@@ -96,11 +96,11 @@ public interface WasmNodeInterface {
     }
 
     default void pushFloat(VirtualFrame frame, int slot, float value) {
-        pushInt(frame, slot, Float.floatToIntBits(value));
+        pushInt(frame, slot, Float.floatToRawIntBits(value));
     }
 
     default void pushDouble(VirtualFrame frame, int slot, double value) {
-        push(frame, slot, Double.doubleToLongBits(value));
+        push(frame, slot, Double.doubleToRawLongBits(value));
     }
 
     default long pop(VirtualFrame frame, int slot) {
