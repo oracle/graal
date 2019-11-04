@@ -2313,15 +2313,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    public Object executeRepeatingWithValue(VirtualFrame frame) {
+    public ShouldContinue executeRepeatingWithValue(VirtualFrame frame) {
         final TargetOffset offset = execute(contextReference().get(), frame);
-        if (offset.isZero()) {
-            // This is necessary, since the zero offset has a special meaning
-            // of jumping back to the loop header.
-            return CONTINUE_LOOP_STATUS;
-        } else {
-            return offset;
-        }
+        return offset;
     }
 
     @Override

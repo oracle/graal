@@ -164,7 +164,7 @@ public class OSRCancelTest {
         }
 
         @Override
-        public Object executeRepeatingWithValue(VirtualFrame frame) {
+        public ShouldContinue executeRepeatingWithValue(VirtualFrame frame) {
             if (executeRepeating(frame)) {
                 return RepeatingNode.CONTINUE_LOOP_STATUS;
             } else {

@@ -308,8 +308,8 @@ public class LoopNodeTest {
             }
 
             @Override
-            public Object executeRepeatingWithValue(VirtualFrame frame) {
-                final Object result = bodyNode.execute(frame);
+            public ShouldContinue executeRepeatingWithValue(VirtualFrame frame) {
+                final ShouldContinue result = (ShouldContinue) bodyNode.execute(frame);
                 if (result == CONTINUE_LOOP_STATUS) {
                     continues++;
                 }

@@ -57,11 +57,28 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface RepeatingNode extends NodeInterface {
 
     /**
+     * An interface that must be implemented on values returned
+     * from a loop body.
+     *
+     * It decides whether the loop iteration should be continued or not.
+     */
+    interface ShouldContinue {
+        boolean shouldContinue();
+    }
+
+    /**
      * A value indicating that the loop should be repeated.
+     *
+     * This value implements the {@see ShouldContinue} interface.
      *
      * @since 19.3
      */
-    Object CONTINUE_LOOP_STATUS = new Object() {
+    ShouldContinue CONTINUE_LOOP_STATUS = new ShouldContinue() {
+        @Override
+        public boolean shouldContinue() {
+            return true;
+        }
+
         @Override
         public String toString() {
             return "CONTINUE_LOOP_STATUS";
@@ -75,7 +92,12 @@ public interface RepeatingNode extends NodeInterface {
      *
      * @since 19.3
      */
-    Object BREAK_LOOP_STATUS = new Object() {
+    ShouldContinue BREAK_LOOP_STATUS = new ShouldContinue() {
+        @Override
+        public boolean shouldContinue() {
+            return false;
+        }
+
         @Override
         public String toString() {
             return "BREAK_LOOP_STATUS";
@@ -103,7 +125,7 @@ public interface RepeatingNode extends NodeInterface {
      *         the loop and any other (language-specific) value if it must not.
      * @since 19.3
      */
-    default Object executeRepeatingWithValue(VirtualFrame frame) {
+    default ShouldContinue executeRepeatingWithValue(VirtualFrame frame) {
         if (executeRepeating(frame)) {
             return CONTINUE_LOOP_STATUS;
         } else {
