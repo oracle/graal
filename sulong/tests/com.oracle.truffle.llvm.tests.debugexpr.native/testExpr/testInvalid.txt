@@ -34,7 +34,7 @@ BREAK 55 CONTINUE "main"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"
 	"/a" "member at / is not available"
-	"a>>>b" "member at >> is not available"
+	"a>>>b" "Debug Expression error in a>>>b"
 	END
 
 BREAK 60 CONTINUE "main"
@@ -43,5 +43,5 @@ BREAK 60 CONTINUE "main"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"
 	"/a" "member at / is not available"
-	"a>>>b" "member at >> is not available"
+	"a>>>b" "Debug Expression error in a>>>b"
 	END

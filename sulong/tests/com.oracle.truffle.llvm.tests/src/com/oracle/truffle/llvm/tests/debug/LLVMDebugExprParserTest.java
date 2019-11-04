@@ -232,17 +232,18 @@ public final class LLVMDebugExprParserTest {
                         // OK since expected exception has been thrown
                     }
                 } else {
+                    String actual = frame.eval(kv.getKey()).as(String.class);
+                    String noNewLineActual = actual.replace("\n", "");
                     if (allowFailure) {
-                        System.out.println("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result. However, failure is allowed.");
-                        return;
-                    } else {
-                        String actual = frame.eval(kv.getKey()).as(String.class);
-                        String noNewLineActual = actual.replace("\n", "");
-                        assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), noNewLineActual);
+                        if (noNewLineActual.contains(kv.getValue())) {
+                            System.out.println("Evaluation of expression \"" + kv.getKey() + " produced correct failure error.");
+                            return;
+                        }
+                    }
+                    assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), noNewLineActual);
                     }
                 }
             }
-        }
 
         boolean isDone() {
             return info.getLastStop() == bpr.getLine();
