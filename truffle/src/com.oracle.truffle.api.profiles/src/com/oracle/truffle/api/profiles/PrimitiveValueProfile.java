@@ -362,7 +362,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
 
     static final class Disabled extends PrimitiveValueProfile {
 
-        static final PrimitiveValueProfile INSTANCE = new Disabled();
+        static final PrimitiveValueProfile INSTANCE = new PrimitiveValueProfile.Disabled();
 
         @Override
         public <T> T profile(T value) {
