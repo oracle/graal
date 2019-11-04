@@ -670,108 +670,37 @@ public abstract class DebugValue {
 
     }
 
-    static final class ObjectPropertyValue extends AbstractDebugValue {
+    abstract static class AbstractDebugCachedValue extends AbstractDebugValue {
 
-        private final Object object;
-        private final String member;
-        private final DebugScope scope;
+        private volatile Object cachedValue;
 
-        ObjectPropertyValue(DebuggerSession session, LanguageInfo preferredLanguage, DebugScope scope, Object array, String member) {
+        AbstractDebugCachedValue(DebuggerSession session, LanguageInfo preferredLanguage) {
             super(session, preferredLanguage);
-            this.object = array;
-            this.member = member;
-            this.scope = scope;
         }
 
         @Override
-        Object get() {
-            checkValid();
-            try {
-                return INTEROP.readMember(object, member);
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
+        final Object get() {
+            Object value = cachedValue;
+            if (value == null) {
+                synchronized (this) {
+                    value = cachedValue;
+                    if (value == null) {
+                        value = readValue();
+                        cachedValue = value;
+                    }
+                }
             }
+            return value;
         }
 
-        @Override
-        public String getName() {
-            return String.valueOf(member);
-        }
+        abstract Object readValue();
 
-        @Override
-        public boolean isReadable() {
-            checkValid();
-            return INTEROP.isMemberReadable(object, member);
-        }
-
-        @Override
-        public boolean isWritable() {
-            checkValid();
-            return INTEROP.isMemberWritable(object, member);
-        }
-
-        @Override
-        public boolean hasReadSideEffects() {
-            checkValid();
-            return INTEROP.hasMemberReadSideEffects(object, member);
-        }
-
-        @Override
-        public boolean hasWriteSideEffects() {
-            checkValid();
-            return INTEROP.hasMemberWriteSideEffects(object, member);
-        }
-
-        @Override
-        public boolean isInternal() {
-            checkValid();
-            return INTEROP.isMemberInternal(object, member);
-        }
-
-        @Override
-        public DebugScope getScope() {
-            checkValid();
-            return scope;
-        }
-
-        @Override
-        public void set(DebugValue value) {
-            checkValid();
-            try {
-                INTEROP.writeMember(object, member, value.get());
-            } catch (ThreadDeath td) {
-                throw td;
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-        }
-
-        @Override
-        public void set(Object primitiveValue) {
-            checkValid();
-            checkPrimitive(primitiveValue);
-            try {
-                INTEROP.writeMember(object, member, primitiveValue);
-            } catch (Throwable ex) {
-                throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
-            }
-        }
-
-        @Override
-        DebugValue createAsInLanguage(LanguageInfo language) {
-            return new ObjectPropertyValue(session, language, scope, object, member);
-        }
-
-        private void checkValid() {
-            if (scope != null) {
-                scope.verifyValidState();
-            }
+        final void resetCachedValue() {
+            this.cachedValue = null;
         }
     }
 
-    static final class ObjectMemberValue extends AbstractDebugValue {
+    static final class ObjectMemberValue extends AbstractDebugCachedValue {
 
         private final Object object;
         private final String member;
@@ -785,7 +714,7 @@ public abstract class DebugValue {
         }
 
         @Override
-        Object get() {
+        Object readValue() {
             checkValid();
             try {
                 return INTEROP.readMember(object, member);
@@ -841,7 +770,9 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             checkValid();
             try {
-                INTEROP.writeMember(object, member, value.get());
+                Object newValue = value.get();
+                INTEROP.writeMember(object, member, newValue);
+                resetCachedValue();
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -855,6 +786,7 @@ public abstract class DebugValue {
             checkPrimitive(primitiveValue);
             try {
                 INTEROP.writeMember(object, member, primitiveValue);
+                resetCachedValue();
             } catch (Throwable ex) {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
@@ -872,7 +804,7 @@ public abstract class DebugValue {
         }
     }
 
-    static final class ArrayElementValue extends AbstractDebugValue {
+    static final class ArrayElementValue extends AbstractDebugCachedValue {
 
         private final Object array;
         private final long index;
@@ -886,7 +818,7 @@ public abstract class DebugValue {
         }
 
         @Override
-        Object get() {
+        Object readValue() {
             checkValid();
             try {
                 return INTEROP.readArrayElement(array, index);
@@ -942,7 +874,9 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             checkValid();
             try {
-                INTEROP.writeArrayElement(array, index, value.get());
+                Object newValue = value.get();
+                INTEROP.writeArrayElement(array, index, newValue);
+                resetCachedValue();
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -956,6 +890,7 @@ public abstract class DebugValue {
             checkPrimitive(primitiveValue);
             try {
                 INTEROP.writeArrayElement(array, index, primitiveValue);
+                resetCachedValue();
             } catch (Throwable ex) {
                 throw new DebugException(getSession(), ex, resolveLanguage(), null, true, null);
             }
