@@ -27,11 +27,8 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
-  ${solaris-sparcv9} ${oraclejdk8} ${toolsGateLite} ${toolsWeekly} {
+  ${solaris-sparcv9} ${oraclejdk8Only} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-solaris-lite-8"
-  }
-  ${solaris-sparcv9} ${oraclejdk11} ${toolsGateLite} ${toolsWeekly} {
-    name: "gate-tools-solaris-lite-oraclejdk-11"
   }
   ${darwin-amd64} ${oraclejdk8} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-8"

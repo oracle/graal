@@ -1296,7 +1296,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def build(self):
         with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
-        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source)
+        vendor_info = {'vendor-version' : graalvm_vendor_version(get_final_graalvm_distribution())}
+        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
 
@@ -2493,7 +2494,6 @@ def log_graalvm_vm_name(args):
     _ = parser.parse_args(args)
     mx.log(graalvm_vm_name(get_final_graalvm_distribution(), _src_jdk))
 
-
 def graalvm_vm_name(graalvm_dist, jdk):
     """
     :type jdk_home: str
@@ -2502,10 +2502,16 @@ def graalvm_vm_name(graalvm_dist, jdk):
     out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit )Server VM', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
-    vm_name += '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
-    vm_name += ' {}'.format(graalvm_version())
-    return vm_name
+    return vm_name + graalvm_vendor_version(graalvm_dist)
 
+def graalvm_vendor_version(graalvm_dist):
+    """
+    :type jdk_home: str
+    :rtype str:
+    """
+    vendor_version = '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
+    vendor_version += ' {}'.format(graalvm_version())
+    return vendor_version
 
 mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built.')
 mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build.')

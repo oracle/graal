@@ -11,6 +11,5 @@ builds += [
 
   # Solaris SPARC
   # Disabled on release branch: not a product
-# ${gateBootstrap}           ${oraclejdk8}     ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
-# ${gateBootstrap}           ${labsjdk-ee-11}  ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-labsjdk-ee-11-solaris-sparcv9",  timelimit: "1:00:00"} ${graalWeekly}
+# ${gateBootstrap}           ${oraclejdk8Only} ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
 ]
