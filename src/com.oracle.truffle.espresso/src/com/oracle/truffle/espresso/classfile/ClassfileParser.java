@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.classFormatError;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
@@ -519,6 +520,8 @@ public final class ClassfileParser {
                             Symbol<Type> annotType = constant.value();
                             if (Type.LambdaForm$Compiled.equals(annotType)) {
                                 methodFlags |= ACC_LAMBDA_FORM_COMPILED;
+                            } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
+                                methodFlags |= ACC_CALLER_SENSITIVE;
                             }
                         }
                         methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
