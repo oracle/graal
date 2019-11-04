@@ -29,6 +29,8 @@
 #include <windows.h>
 #include <errno.h>
 
+#include <jni.h>
+
 #define JNIEXPORT __declspec(dllexport)
 #define JNIIMPORT __declspec(dllimport)
 
@@ -159,6 +161,9 @@ JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
+JNIEXPORT void JVM_BeforeHalt() {
+}
+
 JNIEXPORT void JVM_Halt(int retcode) {
     _exit(retcode);
 }
@@ -217,3 +222,34 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
+#ifdef JNI_VERSION_9
+JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+    fprintf(stderr, "JVM_AddModuleExports called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
+}
+
+JNIEXPORT void JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+    fprintf(stderr, "JVM_AddReadsModule called\n");
+}
+
+JNIEXPORT void JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                 jstring location, const char* const* packages, jsize num_packages) {
+    fprintf(stderr, "JVM_DefineModule called\n");
+}
+
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
+}
+#endif
