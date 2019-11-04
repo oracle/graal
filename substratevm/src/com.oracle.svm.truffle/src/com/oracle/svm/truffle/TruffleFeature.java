@@ -59,7 +59,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.annotate.Delete;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -78,12 +77,12 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedCompilationProfile;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -92,6 +91,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -780,7 +780,23 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
      * start with a fresh profile at run time.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    OptimizedCompilationProfile compilationProfile;
+    int callThreshold;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    int callAndLoopThreshold;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    boolean compilationFailed;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    long initializedTimestamp;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<?>[] profiledArgumentTypes;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    OptimizedAssumption profiledArgumentTypesAssumption;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<?> profiledReturnType;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    OptimizedAssumption profiledReturnTypeAssumption;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<? extends Throwable> profiledExceptionType;
 }
 
 // Checkstyle: stop

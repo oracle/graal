@@ -99,12 +99,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * The call threshold is counted down for each real call until it reaches zero and triggers a
      * {@link #compile(boolean) compilation}. It is decremented for each real call to the call
-     * target.
+     * target. Reset by TruffleFeature after boot image generation.
      */
     private int callThreshold;
     /**
      * The call and loop threshold is counted down for each real call and reported loop count until
-     * it reaches zero and triggers a {@link #compile(boolean) compilation}.
+     * it reaches zero and triggers a {@link #compile(boolean) compilation}. Reset by TruffleFeature
+     * after boot image generation.
      */
     private int callAndLoopThreshold;
 
@@ -117,7 +118,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * installed *after* installing profile information, but the assumption is invalidated *before*
      * invalidating profile information. This ensures that the compiler sees an invalidated
      * assumption in case a race happens. Note that OptimizedAssumption.invalidate() performs
-     * synchronization and is therefore a memory barrier.
+     * synchronization and is therefore a memory barrier. Reset by TruffleFeature after boot image
+     * generation.
      */
     @CompilationFinal(dimensions = 1) private Class<?>[] profiledArgumentTypes;
     @CompilationFinal private OptimizedAssumption profiledArgumentTypesAssumption;
@@ -125,6 +127,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private OptimizedAssumption profiledReturnTypeAssumption;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
+    /**
+     * Set if compilation failed or was ignored. Reset by TruffleFeature after boot image
+     * generation.
+     */
     private volatile boolean compilationFailed;
     /**
      * Whether the call profile was preinitialized with a fixed set of type classes. In such a case
@@ -133,6 +139,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     @CompilationFinal private boolean callProfiled;
 
+    /**
+     * Timestamp when the call target was initialized e.g. used the first time. Reset by
+     * TruffleFeature after boot image generation.
+     */
     private volatile long initializedTimestamp;
 
     /**
