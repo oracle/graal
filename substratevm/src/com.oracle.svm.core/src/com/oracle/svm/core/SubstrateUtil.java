@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -51,6 +52,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -704,6 +706,14 @@ public class SubstrateUtil {
 
     private static String stripPackage(String qualifiedClassName) {
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean isNeverInline(ResolvedJavaMethod method) {
+        String[] neverInline = SubstrateOptions.NeverInline.getValue();
+
+        return GuardedAnnotationAccess.isAnnotationPresent(method, NeverInline.class) ||
+                        (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.matches(MethodFilter.parse(re), method)));
     }
 
     /**

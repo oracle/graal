@@ -90,6 +90,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -467,7 +468,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            if (original.getAnnotation(NeverInline.class) != null) {
+            if (SubstrateUtil.isNeverInline(original)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -541,7 +542,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
-        } else if (implementationMethod.getAnnotation(NeverInline.class) != null) {
+        } else if (SubstrateUtil.isNeverInline(implementationMethod)) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
             return false;
         } else if (implementationMethod.getAnnotation(Uninterruptible.class) != null) {

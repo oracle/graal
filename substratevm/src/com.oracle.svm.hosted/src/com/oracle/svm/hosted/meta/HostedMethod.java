@@ -42,8 +42,8 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.util.VMError;
@@ -71,7 +71,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
-
+    private final boolean hasNeverInlineDirective;
     protected int vtableIndex = -1;
 
     /**
@@ -119,6 +119,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             }
         }
         localVariableTable = newLocalVariableTable;
+        hasNeverInlineDirective = SubstrateUtil.isNeverInline(wrapped);
     }
 
     @Override
@@ -374,7 +375,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public boolean hasNeverInlineDirective() {
-        return getAnnotation(NeverInline.class) != null;
+        return hasNeverInlineDirective;
     }
 
     @Override

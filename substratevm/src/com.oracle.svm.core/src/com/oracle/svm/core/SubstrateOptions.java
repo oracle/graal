@@ -269,6 +269,9 @@ public class SubstrateOptions {
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
+    @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
+    public static final HostedOptionKey<String[]> NeverInline = new HostedOptionKey<>(null);
+
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
 
