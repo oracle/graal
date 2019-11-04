@@ -177,7 +177,7 @@ public class VMEventListenerImpl implements VMEventListener {
     public void breakpointHIt(BreakpointInfo info, Object currentThread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        stream.writeByte(SuspendStrategy.EVENT_THREAD);
+        stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.BREAKPOINT);
@@ -197,7 +197,7 @@ public class VMEventListenerImpl implements VMEventListener {
     public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        stream.writeByte(SuspendStrategy.EVENT_THREAD);
+        stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.EXCEPTION);

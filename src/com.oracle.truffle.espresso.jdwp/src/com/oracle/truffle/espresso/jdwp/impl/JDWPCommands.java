@@ -30,6 +30,6 @@ public interface JDWPCommands {
     void stepOver(Object thread, int requestId);
     void stepInto(Object thread, int requestId);
     void stepOut(Object thread, int requestId);
-    Callable<Void> createLineBreakpointCommand(byte suspendPolicy, BreakpointInfo info);
+    Callable<Void> createLineBreakpointCommand(BreakpointInfo info);
     Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
 }

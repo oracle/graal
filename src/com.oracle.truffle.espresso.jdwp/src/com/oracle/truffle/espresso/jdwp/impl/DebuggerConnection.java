@@ -92,7 +92,7 @@ public class DebuggerConnection implements JDWPCommands {
     }
 
     @Override
-    public Callable<Void> createLineBreakpointCommand(byte suspendPolicy, BreakpointInfo info) {
+    public Callable<Void> createLineBreakpointCommand(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
             public Void call() throws Exception {

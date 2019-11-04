@@ -298,11 +298,14 @@ public class JDWPDebuggerController {
             SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
             suspendedInfos.put(currentThread, suspendedInfo);
 
+            byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
+
             boolean hit = false;
             for (Breakpoint bp : event.getBreakpoints()) {
                 //System.out.println("BP at suspension point: " + bp.getLocationDescription());
 
                 BreakpointInfo info = breakpointInfos.get(bp);
+                suspendPolicy = info.getSuspendPolicy();
 
                 if (info.isLineBreakpoint()) {
                     // check if breakpoint request limited to a specific thread
@@ -350,7 +353,7 @@ public class JDWPDebuggerController {
             }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(callFrames[0], currentThread, hit);
+            suspend(callFrames[0], currentThread, hit, suspendPolicy);
         }
 
         private boolean matchLocation(Pattern[] positivePatterns, JDWPCallFrame callFrame) {
@@ -497,7 +500,33 @@ public class JDWPDebuggerController {
             return null;
         }
 
-        private void suspend(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended) {
+        private void suspend(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended, byte suspendPolicy) {
+
+            switch(suspendPolicy) {
+                case SuspendStrategy.NONE:
+                    break;
+                case SuspendStrategy.EVENT_THREAD:
+                    suspendEventThread(currentFrame, thread, alreadySuspended);
+                    break;
+                case SuspendStrategy.ALL:
+                    Thread suspendThread = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // suspend other threads
+                            for (Object activeThread : getContext().getAllGuestThreads()) {
+                                if (activeThread != thread) {
+                                    JDWPDebuggerController.this.suspend(activeThread);
+                                }
+                            }
+                        }
+                    });
+                    suspendThread.start();
+                    suspendEventThread(currentFrame, thread, alreadySuspended);
+                    break;
+            }
+        }
+
+        private void suspendEventThread(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended) {
             Object lock = getSuspendLock(thread);
             try {
                 if (!alreadySuspended) {

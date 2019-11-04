@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.LineBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
@@ -90,13 +91,17 @@ public class RequestedJDWPEvents {
                 reply = toReply(packet);
                 break;
             case BREAKPOINT:
-                eventListener.addBreakpointRequest(filter.getRequestId(), filter.getBreakpointInfo());
-                futures.add(callback.createLineBreakpointCommand(suspendPolicy, filter.getBreakpointInfo()));
+                BreakpointInfo info = filter.getBreakpointInfo();
+                info.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), info);
+                futures.add(callback.createLineBreakpointCommand(info));
                 reply = toReply(packet);
                 break;
             case EXCEPTION:
-                eventListener.addBreakpointRequest(filter.getRequestId(), filter.getBreakpointInfo());
-                futures.add(callback.createExceptionBreakpoint(filter.getBreakpointInfo()));
+                info = filter.getBreakpointInfo();
+                info.addSuspendPolicy(suspendPolicy);
+                eventListener.addBreakpointRequest(filter.getRequestId(), info);
+                futures.add(callback.createExceptionBreakpoint(info));
                 reply = toReply(packet);
                 break;
             case CLASS_PREPARE:

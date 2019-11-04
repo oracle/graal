@@ -8,6 +8,7 @@ public class AbstractBreakpointInfo implements BreakpointInfo {
 
     private final RequestFilter filter;
     private Breakpoint breakpoint;
+    private byte suspendPolicy;
 
     public AbstractBreakpointInfo(RequestFilter filter) {
         this.filter = filter;
@@ -31,6 +32,16 @@ public class AbstractBreakpointInfo implements BreakpointInfo {
     @Override
     public int getRequestId() {
         return filter.getRequestId();
+    }
+
+    @Override
+    public void addSuspendPolicy(byte suspendPolicy) {
+        this.suspendPolicy = suspendPolicy;
+    }
+
+    @Override
+    public byte getSuspendPolicy() {
+        return suspendPolicy;
     }
 
     @Override
