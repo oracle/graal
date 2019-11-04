@@ -595,7 +595,6 @@ class JDWP {
                 if (method == null) {
                     return new JDWPResult(reply);
                 }
-                //System.out.println("asked for lines for: " + refType.getName().toString() + "." + method.getName());
 
                 LineNumberTableRef table = method.getLineNumberTable();
 
@@ -839,7 +838,6 @@ class JDWP {
                 for (int i = 0; i < arguments; i++) {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input, context);
-                    // TODO(Gregersen) - convert to guest objects and locate real objects by IDs
                 }
                 int options = input.readInt(); // TODO(Gregersen) - handle invocation options
 
@@ -851,17 +849,21 @@ class JDWP {
                 }
 
                 try {
-                    Object value = method.invokeMethod(callee, args);
+                    Object value = context.toGuest(method.invokeMethod(callee, args));
+
                     if (value != null) {
                         byte tag = context.getTag(value);
                         writeValue(tag, value, reply, true, context);
+
                     } else { // return value is null
                         reply.writeByte(TagConstants.OBJECT);
                         reply.writeLong(0);
                     }
-                } catch (ClassCastException ex) {
-                    throw new RuntimeException("Not implemented yet!");
+                    // no exception, so zero object ID
+                    reply.writeByte(TagConstants.OBJECT);
+                    reply.writeLong(0);
                 } catch (Throwable t) {
+                    reply.writeByte(TagConstants.OBJECT);
                     reply.writeLong(0);
                     reply.writeByte(TagConstants.OBJECT);
                     reply.writeLong(context.getIds().getIdAsLong(t));
@@ -1061,7 +1063,6 @@ class JDWP {
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
-                //System.out.println("suspended thread? " + ThreadSuspension.isSuspended(thread) + " with status: " + threadStatus);
                 reply.writeInt(ThreadSuspension.getSuspensionCount(thread) > 0 ? 1 : 0);
                 return new JDWPResult(reply, null);
             }
@@ -1572,7 +1573,7 @@ class JDWP {
         }
         switch (tag) {
             case BOOLEAN:
-                boolean theValue = (long) value > 0 ? true : false;
+                boolean theValue = (boolean) value;
                 reply.writeBoolean(theValue);
                 break;
             case TagConstants.BYTE:

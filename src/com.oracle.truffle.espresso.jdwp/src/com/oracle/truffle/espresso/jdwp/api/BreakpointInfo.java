@@ -1,86 +1,32 @@
-/*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 
-/**
- * Class holding information about a breakpoint that cannot be obtained from
- * the Truffle Breakpoint instance.
- */
-public class BreakpointInfo {
+public interface BreakpointInfo {
 
-    private final RequestFilter filter;
-    private final byte typeTag;
-    private final long classId;
-    private final long methodId;
-    private final long bci;
+    void setBreakpoint(Breakpoint bp);
 
-    private Breakpoint breakpoint;
+    Breakpoint getBreakpoint();
 
-    public BreakpointInfo(RequestFilter filter, byte tag, long classId, long methodId, long bci) {
-        this.filter = filter;
-        this.typeTag = tag;
-        this.classId = classId;
-        this.methodId = methodId;
-        this.bci = bci;
-    }
+    int getRequestId();
 
-    public int getRequestId() {
-        return filter.getRequestId();
-    }
+    KlassRef getKlass();
 
-    public Object getThread() {
-        return filter.getThread();
-    }
+    boolean isCaught() ;
 
-    public long getClassId() {
-        return classId;
-    }
+    boolean isUnCaught();
 
-    public long getMethodId() {
-        return methodId;
-    }
+    Object getThread();
 
-    public byte getTypeTag() {
-        return typeTag;
-    }
+    long getClassId();
 
-    public long getBci() {
-        return bci;
-    }
+    long getMethodId();
 
-    @Override
-    public String toString() {
-        return "typeTag: " + typeTag + ", classId: " + classId + ", methodId: " + methodId + ", bci: " + bci;
-    }
+    byte getTypeTag();
 
-    public void setBreakpoint(Breakpoint bp) {
-        this.breakpoint = bp;
-    }
+    long getBci();
 
-    public Breakpoint getBreakpoint() {
-        return breakpoint;
-    }
+    boolean isLineBreakpoint();
+
+    boolean isExceptionBreakpoint();
 }

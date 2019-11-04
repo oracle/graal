@@ -256,4 +256,10 @@ public interface JDWPContext {
      * @return true if the object is a valid class loader, false otherwise
      */
     boolean isValidClassLoader(Object object);
+
+    Object toGuest(Object object);
+
+    // temporarily needed until we get better exception-type based filtering in the Debug API
+    Object getGuestException(Throwable exception);
+
 }

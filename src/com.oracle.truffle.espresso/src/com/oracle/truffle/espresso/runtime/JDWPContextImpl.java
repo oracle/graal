@@ -2,7 +2,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
@@ -21,7 +20,6 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -294,5 +292,22 @@ public final class JDWPContextImpl implements JDWPContext {
     public void setArrayValue(Object array, int index, Object value) {
         StaticObject arrayRef = (StaticObject) array;
         arrayRef.putObject((StaticObject) value, index, context.getMeta());
+    }
+
+    @Override
+    public Object toGuest(Object object) {
+        // be sure that current thread has set context
+        return context.getMeta().toGuestBoxed(object);
+    }
+
+    @Override
+    public Object getGuestException(Throwable exception) {
+        if (exception instanceof EspressoException) {
+            EspressoException ex = (EspressoException) exception;
+            return ex.getExceptionObject();
+        }
+        else {
+            throw new RuntimeException("unknown exception type: " + exception.getClass());
+        }
     }
 }

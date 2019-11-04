@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -132,13 +133,20 @@ public class JDWPDebuggerController {
         try {
             Breakpoint bp = Breakpoint.newBuilder(location.getSource()).lineIs(location.getLineNumber()).build();
             bp.setEnabled(true);
-            mapBrekpoint(bp, command.getInfo());
+            mapBrekpoint(bp, command.getBreakpointInfo());
             debuggerSession.install(bp);
             //System.out.println("Breakpoint submitted at " + bp.getLocationDescription());
         } catch (NoSuchSourceLineException ex) {
             // perhaps the debugger's view on the source is out of sync, in which case
             // the bytecode and source does not match.
         }
+    }
+
+    public void submitExceptionBreakpoint(DebuggerCommand command) {
+        Breakpoint bp = Breakpoint.newExceptionBuilder(command.getBreakpointInfo().isCaught(), command.getBreakpointInfo().isUnCaught()).build();
+        bp.setEnabled(true);
+        mapBrekpoint(bp, command.getBreakpointInfo());
+        debuggerSession.install(bp);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -287,22 +295,57 @@ public class JDWPDebuggerController {
 
                 BreakpointInfo info = breakpointInfos.get(bp);
 
-                // check if breakpoint request limited to a specific thread
-                Object thread = info.getThread();
-                if (thread == null || thread == currentThread) {
-                    if (!hit) {
+                if (info.isLineBreakpoint()) {
+                    // check if breakpoint request limited to a specific thread
+                    Object thread = info.getThread();
+                    if (thread == null || thread == currentThread) {
+                        if (!hit) {
+                            hit = true;
+                            // First hit, so we can increase the thread suspension.
+                            // Register the thread as suspended before sending the breakpoint hit event.
+                            // The debugger will verify thread status as part of registering if a breakpoint is hit
+                            ThreadSuspension.suspendThread(currentThread);
+                            VMEventListeners.getDefault().breakpointHit(info, currentThread);
+                        }
+                    }
+                } else if (info.isExceptionBreakpoint()) {
+                    // get the specific exception type if any
+                    KlassRef klass = info.getKlass();
+                    Throwable exception = getRawException(event.getException());
+                    Object guestException = getContext().getGuestException(exception);
+
+                    // TODO(Gregersen) - rewrite this when we have improved filtering in Debug API
+                    if (klass == null) {
+                        // OK, suspend on all exception types
                         hit = true;
-                        // First hit, so we can increase the thread suspension.
-                        // Register the thread as suspended before sending the breakpoint hit event.
-                        // The debugger will verify thread status as part of registering if a breakpoint is hit
                         ThreadSuspension.suspendThread(currentThread);
-                        VMEventListeners.getDefault().breakpointHit(info, currentThread);
+                        VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
+                    } else {
+                        if (klass.getTypeAsString().equals(guestException.toString())) {
+                            hit = true;
+                            ThreadSuspension.suspendThread(currentThread);
+                            VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
+                        } else {
+                            suspendedInfos.put(currentThread, null);
+                            return;
+                        }
                     }
                 }
             }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
             suspend(callFrames[0], currentThread, hit);
+        }
+
+        private Throwable getRawException(DebugException exception) {
+            try {
+                Method method = DebugException.class.getDeclaredMethod("getRawException");
+                method.setAccessible(true);
+                return (Throwable) method.invoke(exception);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return exception;
+            }
         }
 
         private boolean checkExclusionFilters(SuspendedEvent event, Object thread) {

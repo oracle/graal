@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.api.LineBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;
@@ -98,6 +99,13 @@ public class DebuggerConnection implements JDWPCommands {
         queue.add(debuggerCommand);
     }
 
+    @Override
+    public void createExceptionBreakpoint(BreakpointInfo info) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);
+        debuggerCommand.setBreakpointInfo(info);
+        queue.add(debuggerCommand);
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
@@ -113,6 +121,7 @@ public class DebuggerConnection implements JDWPCommands {
                         case STEP_OVER: controller.stepOver(thread); break;
                         case STEP_OUT: controller.stepOut(thread); break;
                         case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand); break;
+                        case SUBMIT_EXCEPTION_BREAKPOINT: controller.submitExceptionBreakpoint(debuggerCommand); break;
                     }
                 }
             }
@@ -144,7 +153,6 @@ public class DebuggerConnection implements JDWPCommands {
 
         @Override
         public void run() {
-
             long time = -1;
             long limit = 0;
 

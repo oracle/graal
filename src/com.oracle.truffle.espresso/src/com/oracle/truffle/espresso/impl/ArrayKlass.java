@@ -201,4 +201,9 @@ public final class ArrayKlass extends Klass {
             return false;
         }
     }
+
+    @Override
+    public String getNameAsString() {
+        return componentType.getNameAsString();
+    }
 }

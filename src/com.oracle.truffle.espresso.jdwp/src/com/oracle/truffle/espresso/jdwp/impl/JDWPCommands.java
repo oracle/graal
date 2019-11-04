@@ -29,4 +29,5 @@ public interface JDWPCommands {
     void stepInto(Object thread, int requestId);
     void stepOut(Object thread, int requestId);
     void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
+    void createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
 }

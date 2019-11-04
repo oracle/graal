@@ -118,4 +118,10 @@ public class VMEventListeners {
             listener.stepCompleted(commandRequestId, currentFrame);
         }
     }
+
+    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame) {
+        if (listener != null) {
+            listener.exceptionThrown(info, currentThread, exception, callFrame);
+        }
+    }
 }
