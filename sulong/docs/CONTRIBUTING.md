@@ -23,7 +23,7 @@ your changes do not break tests and conform with the coding conventions.
 
 - You should only address one feature or change per PR request.
 - You do not need to explain self-explanatory changes such as updates of
-the Graal version.
+the GraalVM version.
 - For other changes describe at least why (1) the change or feature is
 needed, (2) how the change or feature is implemented, and optionally (3)
 what further implications the change has. You can either use the PR
