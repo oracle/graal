@@ -46,7 +46,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
@@ -60,6 +59,7 @@ import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandl
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.code.ReferenceAdjuster;
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -137,7 +137,7 @@ public class RuntimeCodeInstaller {
             int constantsSize = compilation.getDataSection().getSectionSize();
             codeSize = compilation.getTargetCodeSize();
             int tmpConstantsOffset = NumUtil.roundUp(codeSize, compilation.getDataSection().getSectionAlignment());
-            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
                 // round up for readonly code cache, s.t. the data section can remain writeable
                 tmpConstantsOffset = (int) NumUtil.roundUp(tmpConstantsOffset, CommittedMemoryProvider.get().getGranularity().rawValue());
             }
@@ -183,7 +183,7 @@ public class RuntimeCodeInstaller {
                 // Add space for the target addresses
                 // (which are referenced from the jump instructions)
                 tmpConstantsOffset = NumUtil.roundUp(tmpConstantsOffset + directTargets.size() * 8, compilation.getDataSection().getSectionAlignment());
-                if (!SubstrateOptions.RWXCodeCache.getValue()) {
+                if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
                     // round up for readonly code cache, s.t. the data section can remain writeable
                     tmpConstantsOffset = (int) NumUtil.roundUp(tmpConstantsOffset, CommittedMemoryProvider.get().getGranularity().rawValue());
                 }
@@ -196,7 +196,7 @@ public class RuntimeCodeInstaller {
             }
             constantsOffset = tmpConstantsOffset;
 
-            if (!SubstrateOptions.RWXCodeCache.getValue()) {
+            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
                 // make the data section NX
                 makeDataSectionNX(code.add(constantsOffset), constantsSize);
             }
@@ -269,7 +269,7 @@ public class RuntimeCodeInstaller {
         }
 
         // remove write access from code
-        if (!SubstrateOptions.RWXCodeCache.getValue()) {
+        if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
             makeCodeMemoryReadOnly(code, codeSize);
         }
 
