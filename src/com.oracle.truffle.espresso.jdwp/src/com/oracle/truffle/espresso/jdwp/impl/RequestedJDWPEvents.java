@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class RequestedJDWPEvents {
 
@@ -70,7 +71,7 @@ public class RequestedJDWPEvents {
 
     public JDWPResult registerEvent(Packet packet, JDWPCommands callback, JDWPContext context) {
         PacketStream reply = null;
-        ArrayList<Callable> futures = new ArrayList<>();
+        ArrayList<Callable<Void>> futures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
 
         byte eventKind = input.readByte();
@@ -80,18 +81,29 @@ public class RequestedJDWPEvents {
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
-            Callable future = handleModKind(filter, input, modKind, suspendPolicy, callback, context);
-            if (future != null) {
-                futures.add(future);
-            }
+            handleModKind(filter, input, modKind, callback, context);
         }
 
         switch (eventKind) {
             case SINGLE_STEP:
             case METHOD_EXIT_WITH_RETURN_VALUE:
+                reply = toReply(packet);
+                break;
             case BREAKPOINT:
-            case CLASS_PREPARE:
+                eventListener.addBreakpointRequest(filter.getRequestId(), filter.getBreakpointInfo());
+                futures.add(callback.createLineBreakpointCommand(suspendPolicy, filter.getBreakpointInfo()));
+                reply = toReply(packet);
+                break;
             case EXCEPTION:
+                eventListener.addBreakpointRequest(filter.getRequestId(), filter.getBreakpointInfo());
+                futures.add(callback.createExceptionBreakpoint(filter.getBreakpointInfo()));
+                reply = toReply(packet);
+                break;
+            case CLASS_PREPARE:
+                Callable<Void> callable = eventListener.addClassPrepareRequest(new ClassPrepareRequest(filter));
+                if (callable != null) {
+                    futures.add(callable);
+                }
                 reply = toReply(packet);
                 break;
             case THREAD_START:
@@ -123,7 +135,7 @@ public class RequestedJDWPEvents {
         return reply;
     }
 
-    private Callable handleModKind(RequestFilter filter, PacketStream input, byte modKind, byte suspendPolicy, JDWPCommands callback, JDWPContext context) {
+    private void handleModKind(RequestFilter filter, PacketStream input, byte modKind, JDWPCommands callback, JDWPContext context) {
         switch (modKind) {
             case 1:
                 int count = input.readInt();
@@ -141,34 +153,38 @@ public class RequestedJDWPEvents {
                 long refTypeId = input.readLong();
                 filter.addRefTypeLimit((KlassRef) ids.fromId((int) refTypeId));
                 break;
-            case 5: // class prepare positive pattern
+            case 5: // class positive pattern
                 String classPattern = input.readString();
-                ClassPrepareRequest classPrepareRequest = new ClassPrepareRequest(Pattern.compile(classPattern), filter);
-                return eventListener.addClassPrepareRequest(classPrepareRequest);
+                try {
+                    Pattern pattern = Pattern.compile(classPattern);
+                    filter.addPositivePattern(pattern);
+                } catch (PatternSyntaxException ex) {
+                    // wrong input pattern, silently ignore this breakpoint request then
+                }
+                break;
             case 6:
-                String classExcludePattern = input.readString();
-                filter.addExcludePattern(classExcludePattern);
+                classPattern = input.readString();
+                try {
+                    Pattern pattern = Pattern.compile(classPattern);
+                    filter.addExcludePattern(pattern);
+                } catch (PatternSyntaxException ex) {
+                    // wrong input pattern, silently ignore this breakpoint request then
+                }
                 break;
             case 7: // location-specific
                 byte typeTag = input.readByte();
                 long classId = input.readLong();
                 long methodId = input.readLong();
                 long bci = input.readLong();
-                LineBreakpointInfo info = new LineBreakpointInfo(filter, typeTag, classId, methodId, bci);
 
                 KlassRef klass = (KlassRef) ids.fromId((int) classId);
                 String slashName = klass.getTypeAsString();
                 MethodRef method = (MethodRef) ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
-                eventListener.addBreakpointRequest(filter.getRequestId(), info);
 
-                return new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        callback.createLineBreakpointCommand(slashName, line, suspendPolicy, info);
-                        return null;
-                    }
-                };
+                LineBreakpointInfo info = new LineBreakpointInfo(filter, typeTag, classId, methodId, bci, slashName, line);
+                filter.addBreakpointInfo(info);
+                break;
             case 8:
                 refTypeId = input.readLong();
                 klass = null;
@@ -178,16 +194,9 @@ public class RequestedJDWPEvents {
 
                 boolean caught = input.readBoolean();
                 boolean unCaught = input.readBoolean();
-
                 ExceptionBreakpointInfo exceptionBreakpointInfo = new ExceptionBreakpointInfo(filter, klass, caught, unCaught);
-                eventListener.addBreakpointRequest(filter.getRequestId(), exceptionBreakpointInfo);
-                return new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        callback.createExceptionBreakpoint(exceptionBreakpointInfo);
-                        return null;
-                    }
-                };
+                filter.addBreakpointInfo(exceptionBreakpointInfo);
+                break;
             case 9:
                 System.err.println("unhandled modKind 9");
                 break;
@@ -220,7 +229,6 @@ public class RequestedJDWPEvents {
             default:
                 break;
         }
-        return null;
     }
 
     public JDWPResult clearRequest(Packet packet) {

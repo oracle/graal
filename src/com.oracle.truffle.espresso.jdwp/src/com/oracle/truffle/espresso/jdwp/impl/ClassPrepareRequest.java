@@ -26,16 +26,17 @@ import java.util.regex.Pattern;
 
 public class ClassPrepareRequest {
 
-    private final Pattern pattern;
     private final RequestFilter filter;
 
-    ClassPrepareRequest(Pattern pattern, RequestFilter filter) {
-        this.pattern = pattern;
+    ClassPrepareRequest(RequestFilter filter) {
         this.filter = filter;
     }
 
-    public Pattern getPattern() {
-        return pattern;
+    public Pattern[] getPatterns() {
+        if (filter.getIncludePatterns() == null) {
+            return new Pattern[] {Pattern.compile("")};
+        }
+        return filter.getIncludePatterns();
     }
 
     public int getRequestId() {

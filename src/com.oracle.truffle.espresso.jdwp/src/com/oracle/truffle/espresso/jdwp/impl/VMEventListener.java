@@ -38,7 +38,7 @@ public interface VMEventListener {
     void addThreadStartedRequestId(int id);
     void addThreadDiedRequestId(int id);
 
-    Callable addClassPrepareRequest(ClassPrepareRequest request);
+    Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
     void removeClassPrepareRequest(int requestId);
 
     void addBreakpointRequest(int requestId, BreakpointInfo info);

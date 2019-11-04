@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class JDWPDebuggerController {
 
@@ -325,27 +326,41 @@ public class JDWPDebuggerController {
                     // TODO(Gregersen) - rewrite this when /browse/GR-19337 is done
                     // Currently, the Truffle Debug API doesn't filter on type, so we end up here having to check
                     // also, the ignore count set on the breakpoint will not work properly due to this.
-                    if (klass == null) {
-                        // OK, suspend on all exception types
-                        hit = true;
+                    if (klass == null || klass.getTypeAsString().equals(guestException.toString())) {
+                        // check filters if we should not suspend
+                        Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
+                        // verify include patterns
+                        if (positivePatterns == null || matchLocation(positivePatterns, callFrames[0])) {
+                            // verify exclude patterns
+                            Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
+                            if (negativePatterns == null || !matchLocation(negativePatterns, callFrames[0])) {
+                                hit = true;
+                            }
+                        }
+                    }
+                    if (hit) {
                         ThreadSuspension.suspendThread(currentThread);
                         VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
                     } else {
-                        if (klass.getTypeAsString().equals(guestException.toString())) {
-                            hit = true;
-                            ThreadSuspension.suspendThread(currentThread);
-                            VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
-                        } else {
-                            // no match, so don't suspend here
-                            suspendedInfos.put(currentThread, null);
-                            return;
-                        }
+                        // don't suspend here
+                        suspendedInfos.put(currentThread, null);
+                        return;
                     }
                 }
             }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
             suspend(callFrames[0], currentThread, hit);
+        }
+
+        private boolean matchLocation(Pattern[] positivePatterns, JDWPCallFrame callFrame) {
+            KlassRef klass = (KlassRef) getContext().getIds().fromId((int) callFrame.getClassId());
+
+            for (Pattern positivePattern : positivePatterns) {
+                if (positivePattern.pattern().matches(klass.getNameAsString().replace('/', '.')))
+                    return true;
+            }
+            return false;
         }
 
         private Throwable getRawException(DebugException exception) {

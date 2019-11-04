@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.LineBreakpointInfo;
 
 import java.util.regex.Pattern;
 
@@ -30,17 +32,18 @@ public class RequestFilter {
 
     private final int requestId;
     private final byte eventKind;
-    private Pattern[] classExcludePatterns;
+    private Pattern[] classExcludePatterns = new Pattern[0];
     private KlassRef[] klassRefPatterns;
     private int nextIndex;
     private boolean stepping;
     private int count = 0;
     private Object thread;
+    private Pattern[] positivePatterns = new Pattern[0];
+    private BreakpointInfo breakpointInfo;
 
     public RequestFilter(int requestId, byte eventKind, int modifiers) {
         this.requestId = requestId;
         this.eventKind = eventKind;
-        this.classExcludePatterns = new Pattern[modifiers];
         this.klassRefPatterns = new KlassRef[modifiers];
     }
 
@@ -52,9 +55,11 @@ public class RequestFilter {
         return eventKind;
     }
 
-    public void addExcludePattern(String classExcludePattern) {
-        classExcludePatterns[nextIndex] = Pattern.compile(classExcludePattern);
-        nextIndex++;
+    public void addExcludePattern(Pattern pattern) {
+        Pattern[] temp = new Pattern[classExcludePatterns.length + 1];
+        System.arraycopy(classExcludePatterns, 0, temp, 0, classExcludePatterns.length);
+        temp[classExcludePatterns.length] = pattern;
+        classExcludePatterns = temp;
     }
 
     public void setStepping(boolean stepping) {
@@ -95,5 +100,28 @@ public class RequestFilter {
 
     public Object getThread() {
         return thread;
+    }
+
+    public void addPositivePattern(Pattern pattern) {
+        Pattern[] temp = new Pattern[positivePatterns.length + 1];
+        System.arraycopy(positivePatterns, 0, temp, 0, positivePatterns.length);
+        temp[positivePatterns.length] = pattern;
+        positivePatterns = temp;
+    }
+
+    public Pattern[] getIncludePatterns() {
+        return positivePatterns;
+    }
+
+    public void addBreakpointInfo(BreakpointInfo info) {
+        this.breakpointInfo = info;
+    }
+
+    public BreakpointInfo getBreakpointInfo() {
+        return breakpointInfo;
+    }
+
+    public Pattern[] getExcludePatterns() {
+        return classExcludePatterns;
     }
 }

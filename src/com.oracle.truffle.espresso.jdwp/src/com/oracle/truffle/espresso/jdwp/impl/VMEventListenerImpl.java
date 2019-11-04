@@ -34,6 +34,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class VMEventListenerImpl implements VMEventListener {
 
@@ -52,38 +53,46 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public Callable addClassPrepareRequest(ClassPrepareRequest request) {
+    public Callable<Void> addClassPrepareRequest(ClassPrepareRequest request) {
         classPrepareRequests.put(request.getRequestId(), request);
         // check if the class has been already prepared and send the event
+        if (request.getPatterns() == null) {
+            return null;
+        }
 
         // optimize for fully qualified class name pattern
-        String pattern = request.getPattern().pattern();
-        KlassRef[] klasses = context.findLoadedClass(pattern.replace('.', '/'));
-        if (klasses.length > 0) {
-            for (KlassRef klass : klasses) {
-                // great, we can simply send a class prepare event for the class
-                return getPreparedCallable(request, klass);
-            }
-        } else {
-            KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
-            for (KlassRef klass : allLoadedClasses) {
-                for (ClassPrepareRequest cpr : getAllClassPrepareRequests()) {
-                    String dotName = klass.getNameAsString().replace('/', '.');
-                    Matcher matcher = cpr.getPattern().matcher(dotName);
+        Pattern[] patterns = request.getPatterns();
 
-                    if (matcher.matches()) {
-                        return getPreparedCallable(request, klass);
+        for (Pattern patt : patterns) {
+            String pattern = patt.pattern();
+            KlassRef[] klasses = context.findLoadedClass(pattern.replace('.', '/'));
+            if (klasses.length > 0) {
+                for (KlassRef klass : klasses) {
+                    // great, we can simply send a class prepare event for the class
+                    return getPreparedCallable(request, klass);
+                }
+            } else {
+                KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
+                for (KlassRef klass : allLoadedClasses) {
+                    for (ClassPrepareRequest cpr : getAllClassPrepareRequests()) {
+                        String dotName = klass.getNameAsString().replace('/', '.');
+                        Matcher matcher = patt.matcher(dotName);
+
+                        if (matcher.matches()) {
+                            return getPreparedCallable(request, klass);
+                        }
                     }
                 }
             }
+
         }
         return null;
     }
 
-    private Callable getPreparedCallable(ClassPrepareRequest request, KlassRef klass) {
-        return new Callable() {
+    private Callable<Void> getPreparedCallable(ClassPrepareRequest request, KlassRef klass) {
+        return new Callable<Void>() {
             @Override
-            public Object call() throws Exception {
+            public Void call() throws Exception {
                 Object thread = klass.getPrepareThread();
                 if (request.getThread() == null || request.getThread() == thread) {
                     classPrepared(klass, thread);
@@ -121,10 +130,13 @@ public class VMEventListenerImpl implements VMEventListener {
         ArrayList<ClassPrepareRequest> toSend = new ArrayList<>();
 
         for (ClassPrepareRequest cpr : allClassPrepareRequests) {
-            Matcher matcher = cpr.getPattern().matcher(dotName);
+            Pattern[] patterns = cpr.getPatterns();
+            for (Pattern pattern : patterns) {
+                Matcher matcher = pattern.matcher(dotName);
 
-            if (matcher.matches()) {
-                toSend.add(cpr);
+                if (matcher.matches()) {
+                    toSend.add(cpr);
+                }
             }
         }
 

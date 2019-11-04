@@ -92,18 +92,31 @@ public class DebuggerConnection implements JDWPCommands {
     }
 
     @Override
-    public void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT, null);
-        debuggerCommand.setSourceLocation(new SourceLocation(slashClassName, line, context));
-        debuggerCommand.setBreakpointInfo(info);
-        queue.add(debuggerCommand);
+    public Callable<Void> createLineBreakpointCommand(byte suspendPolicy, BreakpointInfo info) {
+        return new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                LineBreakpointInfo lineInfo = (LineBreakpointInfo) info;
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_BREAKPOINT, null);
+                debuggerCommand.setSourceLocation(new SourceLocation(lineInfo.getSlashName(), (int) lineInfo.getLine(), context));
+                debuggerCommand.setBreakpointInfo(info);
+                queue.add(debuggerCommand);
+                return null;
+            }
+        };
     }
 
     @Override
-    public void createExceptionBreakpoint(BreakpointInfo info) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);
-        debuggerCommand.setBreakpointInfo(info);
-        queue.add(debuggerCommand);
+    public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
+        return new Callable<Void>() {
+            @Override
+            public Void call() throws Exception {
+                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_EXCEPTION_BREAKPOINT, null);
+                debuggerCommand.setBreakpointInfo(info);
+                queue.add(debuggerCommand);
+                return null;
+            }
+        };
     }
 
     private class CommandProcessorThread implements Runnable {
@@ -466,8 +479,10 @@ public class DebuggerConnection implements JDWPCommands {
 
             if (result != null && result.getFutures() != null) {
                 try {
-                    for (Callable future : result.getFutures()) {
-                        future.call();
+                    for (Callable<Void> future : result.getFutures()) {
+                        if (future != null) {
+                            future.call();
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();

@@ -28,13 +28,13 @@ import java.util.concurrent.Callable;
 public class JDWPResult {
 
     private final PacketStream reply;
-    private final List<Callable> futures;
+    private final List<Callable<Void>> futures;
 
     JDWPResult(PacketStream reply) {
         this(reply, null);
     }
 
-    JDWPResult(PacketStream reply, List<Callable> futures) {
+    JDWPResult(PacketStream reply, List<Callable<Void>> futures) {
         this.reply = reply;
         this.futures = futures;
     }
@@ -43,7 +43,7 @@ public class JDWPResult {
         return reply;
     }
 
-    public List<Callable> getFutures() {
+    public List<Callable<Void>> getFutures() {
         return futures;
     }
 }

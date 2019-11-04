@@ -24,10 +24,12 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 
+import java.util.concurrent.Callable;
+
 public interface JDWPCommands {
     void stepOver(Object thread, int requestId);
     void stepInto(Object thread, int requestId);
     void stepOut(Object thread, int requestId);
-    void createLineBreakpointCommand(String slashClassName, int line, byte suspendPolicy, BreakpointInfo info);
-    void createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
+    Callable<Void> createLineBreakpointCommand(byte suspendPolicy, BreakpointInfo info);
+    Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
 }
