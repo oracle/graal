@@ -900,22 +900,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     priority=1,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=suite,
-    name='SubstrateVM LLVM',
-    short_name='svml',
-    dir_name='svm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['SubstrateVM'],
-    builder_jar_distributions=[
-        'substratevm:SVM_LLVM',
-        'compiler:GRAAL_LLVM',
-        'compiler:LLVM_WRAPPER_SHADOWED',
-        'compiler:JAVACPP_SHADOWED',
-        'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
-    ],
-))
+if not mx.is_windows():
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=suite,
+        name='SubstrateVM LLVM',
+        short_name='svml',
+        dir_name='svm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['SubstrateVM'],
+        builder_jar_distributions=[
+            'substratevm:SVM_LLVM',
+            'compiler:GRAAL_LLVM',
+            'compiler:LLVM_WRAPPER_SHADOWED',
+            'compiler:JAVACPP_SHADOWED',
+            'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+        ],
+    ))
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
