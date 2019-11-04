@@ -6,11 +6,11 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public class AbstractBreakpointInfo implements BreakpointInfo {
 
-    private final int requestId;
+    private final RequestFilter filter;
     private Breakpoint breakpoint;
 
-    public AbstractBreakpointInfo(int requestId) {
-        this.requestId = requestId;
+    public AbstractBreakpointInfo(RequestFilter filter) {
+        this.filter = filter;
     }
 
     @Override
@@ -24,8 +24,13 @@ public class AbstractBreakpointInfo implements BreakpointInfo {
     }
 
     @Override
+    public RequestFilter getFilter() {
+        return filter;
+    }
+
+    @Override
     public int getRequestId() {
-        return requestId;
+        return filter.getRequestId();
     }
 
     @Override

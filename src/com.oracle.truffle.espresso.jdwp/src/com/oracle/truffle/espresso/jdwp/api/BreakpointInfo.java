@@ -1,8 +1,11 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 
 public interface BreakpointInfo {
+
+    RequestFilter getFilter();
 
     void setBreakpoint(Breakpoint bp);
 

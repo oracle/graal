@@ -34,7 +34,7 @@ public class RequestFilter {
     private KlassRef[] klassRefPatterns;
     private int nextIndex;
     private boolean stepping;
-    private int eventLimit = Integer.MAX_VALUE;
+    private int count = 0;
     private Object thread;
 
     public RequestFilter(int requestId, byte eventKind, int modifiers) {
@@ -81,8 +81,12 @@ public class RequestFilter {
         return false;
     }
 
-    public void addEventLimit(int count) {
-        this.eventLimit = count;
+    public void addEventCount(int count) {
+        this.count = count;
+    }
+
+    public int getIgnoreCount() {
+        return count;
     }
 
     public void addThread(Object thread) {
