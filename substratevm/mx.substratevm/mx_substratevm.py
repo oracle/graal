@@ -1288,7 +1288,7 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    mx.run_maven(['package'], cwd=proj_dir, env=env)
+    mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 
