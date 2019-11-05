@@ -43,8 +43,12 @@ set unique=%temp%\%~nx0
 set gu_post_delete_list=%unique%.delete
 set gu_post_copy_contents=%unique%.copy
 
-del /f /q %gu_post_delete_list% >nul
-del /f /q %gu_post_copy_contents% >nul
+if exist %gu_post_delete_list% (
+  del /f /q %gu_post_delete_list% >nul
+)
+if exist %gu_post_copy_contents% (
+  del /f /q %gu_post_copy_contents% >nul
+)
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
