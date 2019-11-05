@@ -29,6 +29,10 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -142,6 +146,55 @@ public class DirectoryCatalogProviderTest extends CommandTestBase {
         Set<String> ids = prov.listComponentIDs();
         assertEquals(2, ids.size());
         assertTrue(fb.errs.isEmpty());
+    }
+
+    @Test
+    public void testDifferentRequirementsFiltered() throws Exception {
+        Path testData = dataFile("dir1");
+        DirectoryCatalogProvider prov = new DirectoryCatalogProvider(testData, this);
+        Set<String> ids = prov.listComponentIDs();
+        assertEquals(2, ids.size());
+        // typo is there...
+        Collection<ComponentInfo> infos = prov.loadComponentMetadata("org.graavm.ruby");
+        assertEquals(2, infos.size());
+
+        CatalogContents contents = new CatalogContents(this, prov, getLocalRegistry());
+        Version.Match m = getLocalRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+
+        // check that the JDK11 component gets removed
+        Collection<ComponentInfo> catInfos = contents.loadComponents("org.graavm.ruby", m, false);
+        assertEquals(1, catInfos.size());
+
+        ComponentInfo ci = catInfos.iterator().next();
+        assertEquals(testData.resolve("ruby.jar").toUri().toURL(), ci.getRemoteURL());
+    }
+
+    @Test
+    public void testSpecificJavaPresent() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "11");
+        Path testData = dataFile("dir1");
+        DirectoryCatalogProvider prov = new DirectoryCatalogProvider(testData, this);
+        Set<String> ids = prov.listComponentIDs();
+        assertEquals(2, ids.size());
+        // typo is there...
+        Collection<ComponentInfo> infos = prov.loadComponentMetadata("org.graavm.ruby");
+        assertEquals(2, infos.size());
+
+        CatalogContents contents = new CatalogContents(this, prov, getLocalRegistry());
+        Version.Match m = getLocalRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+
+        // both Ruby should pass: ruby.jar has no jdk restriction
+        Collection<ComponentInfo> catInfos = contents.loadComponents("org.graavm.ruby", m, false);
+        assertEquals(2, catInfos.size());
+
+        Set<URL> urls = new HashSet<>(Arrays.asList(
+                        testData.resolve("ruby.jar").toUri().toURL(),
+                        testData.resolve("ruby-11.jar").toUri().toURL()));
+        Iterator<ComponentInfo> itC = catInfos.iterator();
+        ComponentInfo ci = itC.next();
+        assertTrue(urls.remove(ci.getRemoteURL()));
+        ci = itC.next();
+        assertTrue(urls.remove(ci.getRemoteURL()));
     }
 
     /**

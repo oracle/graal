@@ -238,8 +238,9 @@ public class ComponentInstaller {
 
         finddGraalHome();
         e.setGraalHome(graalHomePath);
-        e.setLocalRegistry(new ComponentRegistry(e, new DirectoryStorage(
-                        e, storagePath, graalHomePath)));
+        DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
+        storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
+        e.setLocalRegistry(new ComponentRegistry(e, storage));
         FileOperations fops = FileOperations.createPlatformInstance(e, e.getGraalHomePath());
         e.setFileOperations(fops);
 

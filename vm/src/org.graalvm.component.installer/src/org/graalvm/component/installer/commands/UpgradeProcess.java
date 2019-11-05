@@ -318,6 +318,7 @@ public class UpgradeProcess implements AutoCloseable {
                         feedback.withBundle(ComponentInstaller.class),
                         home.resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE)),
                         home);
+        dst.setJavaVersion(input.getLocalRegistry().getJavaVersion());
         return new ComponentRegistry(feedback, dst);
     }
 
