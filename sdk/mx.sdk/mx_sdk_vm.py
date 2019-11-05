@@ -112,20 +112,20 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_bash_launcher=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
-        :param str custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
+        :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
-        self.custom_bash_launcher = custom_bash_launcher
+        self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
 
         self.relative_home_paths = {}
