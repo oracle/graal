@@ -56,6 +56,28 @@ import java.util.regex.Pattern;
 
 public class JDWPDebuggerController {
 
+    private static final Debug debugLevel = Debug.NONE;
+
+    public enum Debug {
+        NONE,
+        THREAD,
+        PACKET,
+        ALL
+    }
+
+    public static boolean isDebug(Debug debug) {
+        switch (debug) {
+            case THREAD:
+                return debugLevel == Debug.THREAD || debugLevel == Debug.ALL;
+            case PACKET:
+                return debugLevel == Debug.PACKET || debugLevel == Debug.ALL;
+            case ALL:
+                return debugLevel == Debug.ALL;
+        }
+        return false;
+    }
+
+
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
     private JDWPOptions options;
@@ -189,6 +211,9 @@ public class JDWPDebuggerController {
     }
 
     public void resume(Object thread) {
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("Called resume thread: " + thread + " with suspension count: " + ThreadSuspension.getSuspensionCount(thread));
+        }
         ThreadSuspension.resumeThread(thread);
         int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
 
@@ -196,12 +221,18 @@ public class JDWPDebuggerController {
             // only resume when suspension count reaches 0
             Object lock = getSuspendLock(thread);
             synchronized (lock) {
+                if (isDebug(Debug.THREAD)) {
+                    System.out.println("Waiking up thread: " + thread);
+                }
                 lock.notifyAll();
             }
         }
     }
 
     public void resumeAll(boolean sessionClosed) {
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("Called resumeAll:");
+        }
         // first clear the suspension counts on all threads
         ThreadSuspension.resumeAll();
 
@@ -210,6 +241,9 @@ public class JDWPDebuggerController {
             if (!sessionClosed) {
                 // TODO(Gregersen) - call method directly when it becomes available
                 try {
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("calling underlying resume method for thread: " + thread);
+                    }
                     resumeMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
                     // also clear the suspension info for this thread
                     suspendedInfos.put(thread, null);
@@ -221,17 +255,27 @@ public class JDWPDebuggerController {
     }
 
     public boolean suspend(Object thread) {
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("suspend called for thread: " + thread);
+        }
         try {
             // TODO(Gregersen) - call method directly when it becomes available
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("calling underlying suspend method for thread: " + thread);
+            }
             suspendMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
 
             // wait up to below timeout for the thread to become suspended before
             // returning, thus sending a reply packet
-            long timeout = System.currentTimeMillis() + 5000;
+            long timeout = System.currentTimeMillis() + 2000;
             while (suspendedInfos.get(thread) == null && System.currentTimeMillis() < timeout) {
                 Thread.sleep(10);
             }
-            return suspendedInfos.get(thread) != null;
+            boolean suspended = suspendedInfos.get(thread) != null;
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("suspend success: " + suspended);
+            }
+            return suspended;
         } catch (Exception e) {
             System.err.println("not able to suspend thread: " + thread);
             return false;
@@ -239,6 +283,9 @@ public class JDWPDebuggerController {
     }
 
     public void suspendAll() {
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("Called suspendAll");
+        }
         for (Object thread : getContext().getAllGuestThreads()) {
             suspend(thread);
         }
@@ -284,12 +331,15 @@ public class JDWPDebuggerController {
             }
 
             Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
-
-            //System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("Suspended at: " + event.getSourceSection().toString() + " in thread: " + currentThread);
+            }
 
             if (commandRequestIds.get(currentThread) != null) {
                 if (checkExclusionFilters(event, currentThread)) {
-                    //System.out.println("not suspending here: " + event.getSourceSection());
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("not suspending here: " + event.getSourceSection());
+                    }
                     return;
                 }
             }
@@ -343,6 +393,9 @@ public class JDWPDebuggerController {
                     }
                     if (hit) {
                         ThreadSuspension.suspendThread(currentThread);
+                        if (isDebug(Debug.THREAD)) {
+                            System.out.println("Breakpoint hit in thread: " + currentThread + ", suspend count increased to: " + ThreadSuspension.getSuspensionCount(currentThread));
+                        }
                         VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
                     } else {
                         // don't suspend here
@@ -501,20 +554,31 @@ public class JDWPDebuggerController {
         }
 
         private void suspend(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended, byte suspendPolicy) {
-
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("suspending from callback in thread: " + thread);
+            }
             switch(suspendPolicy) {
                 case SuspendStrategy.NONE:
                     break;
                 case SuspendStrategy.EVENT_THREAD:
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("Suspend EVENT_THREAD");
+                    }
                     suspendEventThread(currentFrame, thread, alreadySuspended);
                     break;
                 case SuspendStrategy.ALL:
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("Suspend ALL");
+                    }
                     Thread suspendThread = new Thread(new Runnable() {
                         @Override
                         public void run() {
                             // suspend other threads
                             for (Object activeThread : getContext().getAllGuestThreads()) {
                                 if (activeThread != thread) {
+                                    if (isDebug(Debug.THREAD)) {
+                                        System.out.println("Request thread suspend for other thread: " + activeThread);
+                                    }
                                     JDWPDebuggerController.this.suspend(activeThread);
                                 }
                             }
@@ -533,6 +597,9 @@ public class JDWPDebuggerController {
                     ThreadSuspension.suspendThread(thread);
                 }
 
+                if (isDebug(Debug.THREAD)) {
+                    System.out.println("Suspending event thread: " + thread + " with new suspension count: " + ThreadSuspension.getSuspensionCount(thread));
+                }
                 // if during stepping, send a step completed event back to the debugger
                 Integer id = commandRequestIds.get(thread);
                 if (id != null) {
@@ -542,7 +609,13 @@ public class JDWPDebuggerController {
                 commandRequestIds.put(thread, null);
 
                 synchronized (lock) {
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("lock.wait() for thread: " + thread);
+                    }
                     lock.wait();
+                    if (isDebug(Debug.THREAD)) {
+                        System.out.println("lock wakeup fro thread: " + thread);
+                    }
                 }
             } catch (InterruptedException e) {
 

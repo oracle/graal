@@ -128,6 +128,10 @@ class JDWP {
             public static final int ID = 8;
 
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("Suspend all packet");
+                }
+
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
                 return new JDWPResult(reply);
@@ -138,6 +142,9 @@ class JDWP {
             public static final int ID = 9;
 
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("Resume all packet");
+                }
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
                 return new JDWPResult(reply);
@@ -996,6 +1003,9 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("suspend thread packet for thread: " + thread);
+                }
                 if (!controller.suspend(thread)) {
                     reply.errorCode(JDWPErrorCodes.INVALID_THREAD);
                     return new JDWPResult(reply);
@@ -1018,6 +1028,9 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("resume thread packet for thread: " + thread);
+                }
                 controller.resume(thread);
                 return new JDWPResult(reply);
             }
