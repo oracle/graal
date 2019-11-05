@@ -167,13 +167,16 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation", "fileSystemName", "volumeName", "volumeSerialNumber", "flags"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "freeBytesAvailable", "totalNumberOfBytes", "totalNumberOfFreeBytes"));
+        if (JavaVersionUtil.JAVA_SPEC >= 10) {
+            JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
+        }
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$Account"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$Account", "domain", "name", "use"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation", "aceCount"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus", "error", "bytesTransferred", "completionKey"));
-        if (JavaVersionUtil.JAVA_SPEC < 11) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult"));
             JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult", "bytesTransferred", "context"));
         }
