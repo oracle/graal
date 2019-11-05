@@ -71,6 +71,9 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     protected List<String> textParams = new ArrayList<>();
     protected Map<String, String> options = new HashMap<>();
 
+    protected Map<String, String> propParameters = new HashMap<>();
+    protected Map<String, String> envParameters = new HashMap<>();
+
     ComponentParam param;
     RemoteComponentParam rparam;
     URL url;
@@ -280,4 +283,15 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
             return (a, b) -> new CatalogContents(this, catalogStorage, getLocalRegistry());
         }
     }
+
+    @Override
+    public String getParameter(String key, boolean cmdLine) {
+        return (cmdLine ? propParameters : envParameters).get(key);
+    }
+
+    @Override
+    public Map<String, String> parameters(boolean cmdLine) {
+        return (cmdLine ? propParameters : envParameters);
+    }
+
 }

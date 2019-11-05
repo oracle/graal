@@ -190,6 +190,15 @@ public interface Commands {
     String OPTION_VERSION = "V";
     String LONG_OPTION_VERSION = "use-version";
 
+    /**
+     * Uninstall other components depending on the uninstalled ones.
+     */
     String OPTION_UNINSTALL_DEPENDENT = "D";
     String LONG_OPTION_UNINSTALL_DEPENDENT = "remove-deps";
+
+    /**
+     * Attempt to resolve dependencies against local directories.
+     */
+    String OPTION_LOCAL_DEPENDENCIES = "D";
+    String LONG_OPTION_LOCAL_DEPENDENCIES = "local-deps";
 }
