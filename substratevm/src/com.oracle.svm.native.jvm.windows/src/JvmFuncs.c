@@ -31,13 +31,7 @@
 
 #include <jni.h>
 
-#define JNIEXPORT __declspec(dllexport)
-#define JNIIMPORT __declspec(dllimport)
-
 #define BitsPerByte 8
-
-typedef __int64 jlong;
-typedef long jint;
 
 static int _processor_count = 0;
 static jlong _performance_frequency = 0L;
@@ -92,7 +86,7 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
     DWORD_PTR lpProcessAffinityMask = 0;
     DWORD_PTR lpSystemAffinityMask = 0;
     if (_processor_count <= sizeof(UINT_PTR) * BitsPerByte &&
-        GetProcessAffinityMask(GetCurrentProcess(), &lpProcessAffinityMask, &lpSystemAffinityMask)) { 
+        GetProcessAffinityMask(GetCurrentProcess(), &lpProcessAffinityMask, &lpSystemAffinityMask)) {
         int bitcount = 0;
         // Nof active processors is number of bits in process affinity mask
         while (lpProcessAffinityMask != 0) {
@@ -102,7 +96,7 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
         return bitcount;
     } else {
         return _processor_count;
-    }            
+    }
 }
 
 HANDLE interrupt_event = NULL;
@@ -116,7 +110,7 @@ JNIEXPORT HANDLE JVM_GetThreadInterruptEvent() {
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() { 
+JNIEXPORT int JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
@@ -186,11 +180,11 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
         if (buf[n - 1] == '\n') n--;
         if (buf[n - 1] == '\r') n--;
         if (buf[n - 1] == '.') n--;
-        buf[n] = '\0'; 
-      } 
+        buf[n] = '\0';
+      }
       return n;
-    } 
-  
+    }
+
     if (errno != 0) {
       /* C runtime error that has no corresponding DOS error code */
       const char* s = strerror(errno);
@@ -199,10 +193,10 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
       strncpy(buf, s, n);
       buf[n] = '\0';
       return n;
-    } 
+    }
 
   return 0;
-} 
+}
 
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
