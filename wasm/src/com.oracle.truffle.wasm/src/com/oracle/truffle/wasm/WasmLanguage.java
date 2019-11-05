@@ -51,7 +51,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        final WasmContext context = getContextReference().get();
+        final WasmContext context = getCurrentContext();
         final String moduleName = request.getSource().getName();
         final byte[] data = request.getSource().getBytes().toByteArray();
         final WasmModule module = new WasmModule(moduleName, data);

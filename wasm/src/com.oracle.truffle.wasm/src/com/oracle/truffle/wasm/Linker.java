@@ -74,7 +74,7 @@ public class Linker {
     }
 
     private void linkFunctions(WasmModule module) {
-        final WasmContext context = language.getContextReference().get();
+        final WasmContext context = WasmLanguage.getCurrentContext();
         for (WasmFunction function : module.symbolTable().importedFunctions()) {
             final WasmModule importedModule = context.modules().get(function.importedModuleName());
             if (importedModule == null) {
@@ -118,7 +118,7 @@ public class Linker {
 
     int importGlobal(WasmModule module, int index, String importedModuleName, String importedGlobalName, int valueType, int mutability) {
         GlobalResolution resolution = UNRESOLVED_IMPORT;
-        final WasmContext context = language.getContextReference().get();
+        final WasmContext context = WasmLanguage.getCurrentContext();
         final WasmModule importedModule = context.modules().get(importedModuleName);
         int address = -1;
 
