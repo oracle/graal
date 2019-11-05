@@ -1006,10 +1006,7 @@ class JDWP {
                 if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
                     System.out.println("suspend thread packet for thread: " + thread);
                 }
-                if (!controller.suspend(thread)) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_THREAD);
-                    return new JDWPResult(reply);
-                }
+                controller.suspend(thread);
                 return new JDWPResult(reply);
             }
         }
@@ -1031,7 +1028,7 @@ class JDWP {
                 if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
                     System.out.println("resume thread packet for thread: " + thread);
                 }
-                controller.resume(thread);
+                controller.resume(thread, false);
                 return new JDWPResult(reply);
             }
         }
