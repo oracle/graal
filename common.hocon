@@ -204,6 +204,16 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
   timelimit: "45:00"
 }
 
+windows-devkit-jdk11: {
+  packages : {
+    "devkit:VS2017-15.5.5+1" : "==0"
+  }
+}
+
+svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
+  timelimit: "45:00"
+}
+
 svm-common-sulong: {
   packages: {
     llvm: "==6.0.1"
