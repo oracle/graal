@@ -37,6 +37,7 @@ public class CommonConstants {
     public static final String CAP_OS_ARCH = "os_arch";
     public static final String CAP_OS_NAME = "os_name";
     public static final String CAP_EDITION = "edition";
+    public static final String CAP_JAVA_VERSION = "java_version";
 
     public static final String EDITION_CE = "ce";
 
@@ -76,6 +77,8 @@ public class CommonConstants {
      * System property to specify catalog URL.
      */
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N
+
+    public static final String SYSPROP_JAVA_VERSION = "java.specification.version"; // NOI18N
 
     public static final String ENV_VARIABLE_PREFIX = "GRAAVLM_"; // NOI18N
 

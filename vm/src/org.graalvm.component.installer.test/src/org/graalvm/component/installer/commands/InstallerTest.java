@@ -436,12 +436,33 @@ public class InstallerTest extends TestBase {
     }
 
     /**
+     * Checks that components with explicit java requirement fail on non-matching graalvm.
+     */
+    @Test
+    public void testValidateRequirementsDifferentJava() throws Exception {
+        setupComponentInstall("truffleruby2-11.jar");
+
+        exception.expect(DependencyException.class);
+        exception.expectMessage("VERIFY_Dependency_Failed");
+        installer.validateRequirements();
+    }
+
+    /**
+     * Checks that components with explicit java requirement succeeds on the correct GraalVM.
+     */
+    @Test
+    public void testValidateRequirementsJavaMatches() throws Exception {
+        setupComponentInstall("truffleruby2-11.jar");
+        storage.graalInfo.put(CommonConstants.CAP_JAVA_VERSION, "11");
+        installer.validateRequirements();
+    }
+
+    /**
      * Checks that the component is installed despite the requirements.
      */
     @Test
     public void testSetIgnoreRequirements() throws Exception {
-
-        setupComponentInstall("truffleruby2.jar");
+        setupComponentInstall("truffleruby2-11.jar");
         // simulate different version of Graal installation
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.30");
 

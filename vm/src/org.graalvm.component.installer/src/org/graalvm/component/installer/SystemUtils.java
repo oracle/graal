@@ -394,13 +394,29 @@ public class SystemUtils {
         return s.substring(0, q);
     }
 
+    public static int getJavaMajorVersion(CommandInput cmd) {
+        String v = cmd.getParameter(CommonConstants.SYSPROP_JAVA_VERSION, true); // NOI18N
+        if (v != null) {
+            return interpretMajorVersion(v);
+        } else {
+            return getJavaMajorVersion();
+        }
+    }
+
     public static int getJavaMajorVersion() {
-        String v = System.getProperty("java.specification.version"); // NOI18N
+        String v = System.getProperty(CommonConstants.SYSPROP_JAVA_VERSION); // NOI18N
+        return interpretMajorVersion(v);
+    }
+
+    private static int interpretMajorVersion(String v) {
+        String s;
         if (v.startsWith("1.")) { // NOI18N
-            v = v.substring(2);
+            s = v.substring(2);
+        } else {
+            s = v;
         }
         try {
-            return Integer.parseInt(v);
+            return Integer.parseInt(s);
         } catch (NumberFormatException ex) {
             return 0;
         }

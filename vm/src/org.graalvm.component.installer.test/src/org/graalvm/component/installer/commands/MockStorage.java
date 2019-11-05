@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import static org.graalvm.component.installer.CommonConstants.CAP_JAVA_VERSION;
 import org.graalvm.component.installer.FailedOperationException;
 
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -54,6 +55,7 @@ public class MockStorage implements ManagementStorage {
         DEFAULT_GRAAL_INFO.put(CAP_GRAALVM_VERSION, "0.32");
         DEFAULT_GRAAL_INFO.put(CAP_OS_ARCH, "amd64");
         DEFAULT_GRAAL_INFO.put(CAP_OS_NAME, "linux");
+        DEFAULT_GRAAL_INFO.put(CAP_JAVA_VERSION, "8");
     }
 
     public Map<String, Map<String, Date>> acceptedLicenses = new HashMap<>();
