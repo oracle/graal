@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -44,16 +43,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMGlobal implements LLVMSymbol {
 
-    private final LLVMContext context;
     private final LLVMSourceSymbol sourceSymbol;
     private final boolean readOnly;
-
-    /**
-     * Globals currently store the value they are bound to directly in here. If Sulong moves to a
-     * model that supports sharing ASTs between contexts, this needs to be adapted to an indirect
-     * lookup via the context.
-     */
-    private final AssumedValue<Object> target = new AssumedValue<>("llvm global", null);
 
     @CompilationFinal private String name;
     @CompilationFinal private PointerType type;
@@ -61,12 +52,11 @@ public final class LLVMGlobal implements LLVMSymbol {
     @CompilationFinal private boolean interopTypeCached;
     @CompilationFinal private LLVMInteropType interopType;
 
-    public static LLVMGlobal create(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
-        return new LLVMGlobal(context, name, type, sourceSymbol, readOnly);
+    public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
+        return new LLVMGlobal(name, type, sourceSymbol, readOnly);
     }
 
-    private LLVMGlobal(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
-        this.context = context;
+    private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
         this.name = name;
         this.type = type;
         this.sourceSymbol = sourceSymbol;
@@ -92,7 +82,7 @@ public final class LLVMGlobal implements LLVMSymbol {
         return library;
     }
 
-    public LLVMInteropType getInteropType() {
+    public LLVMInteropType getInteropType(LLVMContext context) {
         if (!interopTypeCached) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMSourceType sourceType = sourceSymbol != null ? sourceSymbol.getType() : null;
@@ -130,20 +120,6 @@ public final class LLVMGlobal implements LLVMSymbol {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Found multiple definitions of global " + getName() + ".");
         }
-    }
-
-    public Object getTarget() {
-        assert target.get() != null;
-        return target.get();
-    }
-
-    public boolean isInitialized() {
-        return target.get() != null;
-    }
-
-    public void setTarget(Object target) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.target.set(target);
     }
 
     public boolean isReadOnly() {

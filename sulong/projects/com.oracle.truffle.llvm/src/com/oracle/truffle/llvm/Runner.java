@@ -44,13 +44,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,12 +58,17 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.RunnerFactory.CheckGlobalNodeGen;
+import com.oracle.truffle.llvm.RunnerFactory.InitGlobalNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -90,6 +95,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
@@ -111,7 +117,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -278,6 +286,46 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), parserResults, initializationOrder);
     }
 
+    abstract static class InitGlobalNode extends LLVMNode {
+
+        abstract void execute(LLVMGlobal descriptor, LLVMPointer value);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "descriptor == cachedDescriptor")
+        void doCached(LLVMGlobal descriptor, LLVMPointer value,
+                        @Cached("descriptor") LLVMGlobal cachedDescriptor,
+                        @Cached("create(cachedDescriptor)") LLVMWriteGlobalVariableStorageNode write) {
+            write.execute(value);
+        }
+
+        @Specialization(replaces = "doCached")
+        @TruffleBoundary
+        void doFallback(LLVMGlobal descriptor, LLVMPointer value,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+            context.getGlobalStorage().define(descriptor, value);
+        }
+    }
+
+    abstract static class CheckGlobalNode extends LLVMNode {
+
+        abstract boolean execute(LLVMGlobal descriptor);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "descriptor == cachedDescriptor")
+        boolean doCached(LLVMGlobal descriptor,
+                        @Cached("descriptor") LLVMGlobal cachedDescriptor,
+                        @Cached("create(cachedDescriptor)") LLVMCheckGlobalVariableStorageNode check) {
+            return check.execute();
+        }
+
+        @Specialization(replaces = "doCached")
+        @TruffleBoundary
+        boolean doFallback(LLVMGlobal descriptor,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+            return context.getGlobalStorage().containsKey(descriptor);
+        }
+    }
+
     private abstract static class AllocGlobalNode extends LLVMNode {
 
         static final AllocGlobalNode[] EMPTY = {};
@@ -359,8 +407,10 @@ final class Runner {
 
         @Child LLVMAllocateNode allocRoSection;
         @Child LLVMAllocateNode allocRwSection;
+        @Child CheckGlobalNode checkGlobals;
 
         @Children final AllocGlobalNode[] allocGlobals;
+        @Children final InitGlobalNode[] initGlobals;
 
         final LLVMScope fileScope;
         private NodeFactory nodeFactory;
@@ -368,6 +418,8 @@ final class Runner {
         InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
+            this.fileScope = res.getRuntime().getFileScope();
+            this.checkGlobals = CheckGlobalNodeGen.create();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -390,7 +442,11 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
-            this.fileScope = res.getRuntime().getFileScope();
+
+            this.initGlobals = new InitGlobalNode[this.allocGlobals.length];
+            for (int i = 0; i < this.initGlobals.length; i++) {
+                this.initGlobals[i] = InitGlobalNodeGen.create();
+            }
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {
@@ -417,13 +473,15 @@ final class Runner {
 
         @ExplodeLoop
         private void allocGlobals(LLVMContext ctx, LLVMPointer roBase, LLVMPointer rwBase) {
-            for (AllocGlobalNode allocGlobal : allocGlobals) {
+            for (int i = 0; i < allocGlobals.length; i++) {
+                AllocGlobalNode allocGlobal = allocGlobals[i];
+                InitGlobalNode initGlobal = initGlobals[i];
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
-                if (!descriptor.isInitialized()) {
+                if (!checkGlobals.execute(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
-                    descriptor.setTarget(ref);
+                    initGlobal.execute(descriptor, ref);
                     ctx.registerGlobalReverseMap(descriptor, ref);
                 }
             }
@@ -730,7 +788,7 @@ final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
@@ -746,11 +804,12 @@ final class Runner {
     }
 
     private static void bindGlobal(LLVMContext ctx, LLVMGlobal global, NFIContextExtension nfiContextExtension) {
+        CompilerAsserts.neverPartOfCompilation();
         if (nfiContextExtension != null) {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                global.setTarget(LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
+                ctx.getGlobalStorage().define(global, LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 
