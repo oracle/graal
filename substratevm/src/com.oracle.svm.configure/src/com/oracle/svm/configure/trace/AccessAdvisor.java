@@ -109,14 +109,18 @@ public class AccessAdvisor {
         return false;
     }
 
-    public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> callerClass) {
+    public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> arrayClass, LazyValue<String> callerClass) {
         if (!ignoreInternalAccesses) {
             return false;
         }
         if (shouldIgnore(callerClass)) {
             return true;
         }
-        if (launchPhase > 0) { // command-line argument arrays
+        if (callerClass.get() == null && "[Ljava.lang.String;".equals(arrayClass.get())) {
+            /*
+             * For command-line argument arrays created before the Java main method is called. We
+             * cannot detect this only via launchPhase on Java 8.
+             */
             return true;
         }
         return false;

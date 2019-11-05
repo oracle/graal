@@ -188,7 +188,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
-        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniNewObjectArray(lazyClassNameOrNull(env, arrayClass), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;

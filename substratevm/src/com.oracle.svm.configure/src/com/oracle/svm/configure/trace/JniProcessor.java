@@ -136,7 +136,7 @@ class JniProcessor extends AbstractProcessor {
             }
             case "NewObjectArray": {
                 expectSize(args, 0);
-                if (!advisor.shouldIgnoreJniNewObjectArray(callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniNewObjectArray(lazyValue(clazz), callerClassLazyValue)) {
                     String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, false);
                     config.getOrCreateType(arrayQualifiedJavaName);
                 }
