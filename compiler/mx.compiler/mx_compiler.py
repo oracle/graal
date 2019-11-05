@@ -143,7 +143,7 @@ class SafeDirectoryUpdater(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
-            shutil.rmtree(self.workspace)
+            mx.rmtree(self.workspace)
             raise
 
         # Try delete the target directory if it existed prior to creating
@@ -166,7 +166,7 @@ class SafeDirectoryUpdater(object):
                 # Silently assume another process won the race to create self.target
                 pass
 
-        shutil.rmtree(self.workspace)
+        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """

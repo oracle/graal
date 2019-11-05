@@ -395,6 +395,7 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "deliverable" : "jvm",
+            "use_jdk_headers" : True,
             "os_arch" : {
                 "windows": {
                     "amd64" : {

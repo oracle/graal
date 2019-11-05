@@ -60,8 +60,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             }
         }
         if (isWindows()) {
-            rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl",
-                            "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
+            rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                rerunClassInit(a, "java.net.PlainSocketImpl");
+            } else {
+                rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl");
+            }
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
@@ -99,8 +103,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net.PlainDatagramSocketImpl", "init"));
         }
         if (isWindows()) {
+            String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
             a.registerReachabilityHandler(registerInitInetAddressIDs,
-                            method(a, "java.net.DualStackPlainSocketImpl", "initIDs"),
+                            method(a, "java.net." + plainSocketImpl, "initIDs"),
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
         }
 
@@ -130,9 +135,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
             a.registerReachabilityHandler(registerNetworkInterfaceInit,
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
-
+            String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
-                            method(a, "java.net.DualStackPlainSocketImpl", "initIDs"));
+                            method(a, "java.net." + plainSocketImpl, "initIDs"));
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
