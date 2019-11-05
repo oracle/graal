@@ -14,7 +14,7 @@ import * as sax from "sax";
 import { getGraalVMVersion } from './graalVMInstall';
 
 const URL_SEARCH: string = 'https://search.maven.org/solrsearch/select';
-const GID: string = 'com.oracle.substratevm';
+const GID: string = 'org.graalvm.nativeimage';
 const AID: string = 'native-image-maven-plugin';
 const YES: string = 'Yes';
 const NO: string = 'No';

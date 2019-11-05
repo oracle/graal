@@ -1228,7 +1228,21 @@ def maven_plugin_install(args):
             deploy_args += [parsed.repository_id]
             if parsed.url:
                 deploy_args += [parsed.url]
-        mx.maven_deploy(deploy_args)
+        suites = set()
+
+        def collect_imports(s):
+            if s.name not in suites:
+                suites.add(s.name)
+                s.visit_imports(visitor)
+
+        def visitor(_, suite_import):
+            collect_imports(mx.suite(suite_import.name))
+
+        collect_imports(suite)
+        new_env = os.environ.copy()
+        if 'DYNAMIC_IMPORTS' in new_env:
+            del new_env['DYNAMIC_IMPORTS']
+        mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
 
     deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)
 
@@ -1237,7 +1251,7 @@ def maven_plugin_install(args):
         'Use the following plugin snippet to enable native-image building for your maven project:',
         '',
         '<plugin>',
-        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <groupId>org.graalvm.nativeimage</groupId>',
         '    <artifactId>native-image-maven-plugin</artifactId>',
         '    <version>' + svm_version + '</version>',
         '    <executions>',

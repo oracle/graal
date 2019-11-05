@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.243.0",
+  "mxversion" : "5.244.0",
   "name" : "sdk",
   "version" : "20.0.0",
   "release" : False,
@@ -47,10 +47,10 @@ suite = {
   "url" : "https://github.com/oracle/graal",
   "groupId" : "org.graalvm.sdk",
   "developer" : {
-    "name" : "Graal developers",
-    "email" : "graal-dev@openjdk.java.net",
-    "organization" : "Graal",
-    "organizationUrl" : "https://github.com/oracle/graal",
+    "name" : "GraalVM Development",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
+    "organizationUrl" : "http://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/oracle/graal",
