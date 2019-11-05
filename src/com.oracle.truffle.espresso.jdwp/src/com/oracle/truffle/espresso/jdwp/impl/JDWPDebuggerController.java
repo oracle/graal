@@ -56,7 +56,7 @@ import java.util.regex.Pattern;
 
 public class JDWPDebuggerController {
 
-    private static final Debug debugLevel = Debug.THREAD;
+    private static final Debug debugLevel = Debug.NONE;
 
     public enum Debug {
         NONE,
@@ -86,6 +86,7 @@ public class JDWPDebuggerController {
     private Map<Object, Object> suspendLocks = new HashMap<>();
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
+
     private Ids ids;
     private Method suspendMethod;
     private Method resumeMethod;
@@ -226,7 +227,6 @@ public class JDWPDebuggerController {
             // only resume when suspension count reaches 0
 
             if (!isStepping(thread)) {
-
                 if (!sessionClosed) {
                     // TODO(Gregersen) - call method directly when it becomes available
                     try {
@@ -296,15 +296,21 @@ public class JDWPDebuggerController {
 
             // wait up to below timeout for the thread to become suspended before
             // returning, thus sending a reply packet
+            Thread.State threadState = getContext().getGuest2HostThread(thread).getState();
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("State: " + threadState);
+            }
             long timeout = System.currentTimeMillis() + 2000;
             while (ThreadSuspension.getSuspensionCount(thread) == 0 && System.currentTimeMillis() < timeout) {
                 Thread.sleep(10);
             }
-            boolean suspended = ThreadSuspension.getSuspensionCount(thread) != 0;
+
             if (isDebug(Debug.THREAD)) {
+                boolean suspended = ThreadSuspension.getSuspensionCount(thread) != 0;
                 System.out.println("suspend success: " + suspended);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("not able to suspend thread: " + getThreadName(thread));
         }
     }
