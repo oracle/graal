@@ -41,6 +41,15 @@ common_vm_windows: ${common_vm} ${windows} {
   }
 }
 
+common_vm_windows-jdk11: ${common_vm} ${windows} ${windows-devkit-jdk11} {
+  downloads : {
+    MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
+  }
+  environment : {
+    PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
+  }
+}
+
 # SULONG
 sulong_linux: {
   packages: {
@@ -143,6 +152,10 @@ vm_windows: ${common_vm_windows} {
   capabilities: [windows, amd64]
 }
 
+vm_windows-jdk11: ${common_vm_windows-jdk11} {
+  capabilities: [windows, amd64]
+}
+
 gate_vm_linux: ${vm_linux} {
   targets: [gate]
 }
@@ -180,6 +193,10 @@ deploy_daily_vm_darwin: ${vm_darwin} {
 }
 
 deploy_daily_vm_windows: ${vm_windows} {
+  targets: [deploy, daily]
+}
+
+deploy_daily_vm_windows-jdk11: ${vm_windows-jdk11} {
   targets: [deploy, daily]
 }
 
@@ -334,7 +351,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-windows-java8-amd64
   }
-  ${vm_java_11} ${svm-common-windows} ${deploy_daily_vm_windows} {
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
