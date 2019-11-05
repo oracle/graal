@@ -85,7 +85,7 @@ public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
                         @Cached("cachedShape.getProperty(descriptor).getLocation()") Location loc) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
-                synchronized (object) {
+                synchronized (loc) {
                     loc.set(object, value);
                 }
             } catch (IncompatibleLocationException | FinalLocationException e) {
