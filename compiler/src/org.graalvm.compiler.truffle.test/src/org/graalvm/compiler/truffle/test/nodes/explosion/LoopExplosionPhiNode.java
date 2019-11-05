@@ -22,7 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test.nodes;
+package org.graalvm.compiler.truffle.test.nodes.explosion;
+
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

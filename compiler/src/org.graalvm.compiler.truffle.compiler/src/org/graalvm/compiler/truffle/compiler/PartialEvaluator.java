@@ -539,6 +539,8 @@ public abstract class PartialEvaluator {
                     return LoopExplosionKind.FULL_UNROLL;
                 case MERGE_EXPLODE:
                     return LoopExplosionKind.MERGE_EXPLODE;
+                case FULL_UNROL_UNTIL_RETURN:
+                    return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
                 default:
                     throw new IllegalStateException("Unsupported TruffleCompilerRuntime.LoopExplosionKind: " + String.valueOf(explosionKind));
             }
