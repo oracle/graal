@@ -367,7 +367,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     int offset = reference.getDataInfo().getOffset();
 
                     String symbolName = (String) dataPatch.note;
-                    if (objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
+                    if (reference.getDataInfo().getData().symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
                         objectFile.createDefinedSymbol(symbolName, dataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {

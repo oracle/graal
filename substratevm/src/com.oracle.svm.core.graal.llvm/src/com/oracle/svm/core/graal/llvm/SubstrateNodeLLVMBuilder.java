@@ -77,7 +77,7 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     public void emitCGlobalDataLoadAddress(CGlobalDataLoadAddressNode node) {
         CGlobalDataInfo dataInfo = node.getDataInfo();
 
-        String symbolName = (dataInfo.isSymbolReference()) ? dataInfo.getData().symbolName : "global_" + builder.getFunctionName() + "#" + nextCGlobalId++;
+        String symbolName = (dataInfo.getData().symbolName != null) ? dataInfo.getData().symbolName : "global_" + builder.getFunctionName() + "#" + nextCGlobalId++;
         ((SubstrateLLVMGenerationResult) gen.getLLVMResult()).recordCGlobal(new CGlobalDataReference(dataInfo), symbolName);
 
         setResult(node, builder.buildPtrToInt(builder.getExternalSymbol(symbolName), builder.longType()));

@@ -38,21 +38,32 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateLLVMGenerationResult extends LLVMGenerationResult {
-    private Map<CGlobalDataReference, String> cGlobals = new HashMap<>();
+    private Map<String, CGlobalDataReference> cGlobals = new HashMap<>();
 
     public SubstrateLLVMGenerationResult(ResolvedJavaMethod method) {
         super(method);
     }
 
     public void recordCGlobal(CGlobalDataReference reference, String symbolName) {
-        cGlobals.put(reference, symbolName);
+        if (cGlobals.containsKey(symbolName)) {
+            /*
+             * This global was defined both as a symbol name and a defined value. We only register
+             * the defined value as it contains all the necessary information.
+             */
+            assert reference.getDataInfo().isSymbolReference() != cGlobals.get(symbolName).getDataInfo().isSymbolReference();
+            if (!reference.getDataInfo().isSymbolReference()) {
+                cGlobals.put(symbolName, reference);
+            }
+        } else {
+            cGlobals.put(symbolName, reference);
+        }
     }
 
     @Override
     public void populate(CompilationResult compilationResult, StructuredGraph graph) {
         super.populate(compilationResult, graph);
 
-        cGlobals.forEach((reference, symbolName) -> compilationResult.recordDataPatchWithNote(0, reference, symbolName));
+        cGlobals.forEach((symbolName, reference) -> compilationResult.recordDataPatchWithNote(0, reference, symbolName));
         SubstrateDataBuilder dataBuilder = new SubstrateDataBuilder();
         getConstants().forEach((constant, symbolName) -> {
             DataSectionReference reference = compilationResult.getDataSection().insertData(dataBuilder.createDataItem(constant));
