@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.wasm.predefined.testutil;
 
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.WasmContext;
+import com.oracle.truffle.wasm.WasmLanguage;
+import com.oracle.truffle.wasm.WasmModule;
 import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
 public class TestutilModule extends PredefinedModule {

@@ -32,7 +32,7 @@ package com.oracle.truffle.wasm.test.util.sexpr.nodes;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.wasm.binary.Assert;
+import com.oracle.truffle.wasm.Assert;
 
 public class SExprListNode extends SExprNode {
     private List<SExprNode> nodes;

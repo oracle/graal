@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
-import static com.oracle.truffle.wasm.binary.ReferenceTypes.FUNCREF;
-import static com.oracle.truffle.wasm.binary.ValueTypes.F64_TYPE;
-import static com.oracle.truffle.wasm.binary.ValueTypes.I32_TYPE;
+import static com.oracle.truffle.wasm.ReferenceTypes.FUNCREF;
+import static com.oracle.truffle.wasm.ValueTypes.F64_TYPE;
+import static com.oracle.truffle.wasm.ValueTypes.I32_TYPE;
 
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
-import com.oracle.truffle.wasm.binary.memory.WasmMemory;
+import com.oracle.truffle.wasm.WasmContext;
+import com.oracle.truffle.wasm.WasmLanguage;
+import com.oracle.truffle.wasm.WasmModule;
+import com.oracle.truffle.wasm.constants.GlobalModifier;
+import com.oracle.truffle.wasm.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
 public class EmscriptenModule extends PredefinedModule {
