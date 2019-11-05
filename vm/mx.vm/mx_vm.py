@@ -141,7 +141,7 @@ class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
                 if not os.path.lexists(dest):
                     return True, '{} does not exist'.format(dest)
                 link_file = mx.TimeStampFile(dest, False)
-                if link_file.isOlderThan(newestInput):
+                if newestInput and link_file.isOlderThan(newestInput):
                     return True, '{} is older than {}'.format(dest, newestInput)
                 if src != os.readlink(dest):
                     return True, '{} points to the wrong file'.format(dest)
