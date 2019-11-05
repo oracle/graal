@@ -52,6 +52,7 @@ import mx_testsuites
 
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+from mx_testsuites import GeneratedTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
@@ -1019,6 +1020,9 @@ COPYRIGHT_HEADER_BSD = """\
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
+
+def llirtestgen(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],

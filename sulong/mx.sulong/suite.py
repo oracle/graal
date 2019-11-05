@@ -397,6 +397,34 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.llvm.tests.llirtestgen" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.llirtestgen.generated" : {
+      "class": "GeneratedTestSuite",
+      "subDir" : "tests",
+      "native" : True,
+      "vpath" : True,
+      "variants" : ["O0"],
+      "buildDependencies" : [
+        "LLIR_TEST_GEN",
+      ],
+      "buildEnv" : {
+        "LDFLAGS": "-lm",
+        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+      },
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.llvm.tests.pipe.native" : {
       "subDir" : "tests",
       "native" : True,
@@ -1068,6 +1096,16 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "LLIR_TEST_GEN" : {
+      "relpath" : True,
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+
     "SULONG_TEST_SUITES" : {
       "native" : True,
       "relpath" : True,
@@ -1078,6 +1116,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",

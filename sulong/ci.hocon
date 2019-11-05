@@ -29,6 +29,7 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
 sulong-gateTest-default-tools {
     environment: {
         CLANG_LLVM_AS: "llvm-as"
+        CLANG_LLVM_DIS: "llvm-dis"
         CLANG_LLVM_OPT: "opt"
     }
 }
