@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-mx --dynamicimports /compiler build $@

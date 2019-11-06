@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-WAT_TO_WASM=$(which wat2wasm)
-
-mx --dy /compiler --jdk jvmci unittest -Dgraal.Dump= -Dgraal.PrintGraph=Network -Dwasmtest.watToWasmExecutable=$WAT_TO_WASM -Dwasmtest.testSourcePath="src/com.oracle.truffle.wasm.test/src/tests" $@
