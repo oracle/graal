@@ -63,40 +63,15 @@ public class TargetOffset {
     public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
     public static final TargetOffset ZERO = new TargetOffset(0);
 
-    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE = new TargetOffset[]{
-                    MINUS_ONE,
-                    ZERO,
-                    new TargetOffset(1),
-                    new TargetOffset(2),
-                    new TargetOffset(3),
-                    new TargetOffset(4),
-                    new TargetOffset(5),
-                    new TargetOffset(6),
-                    new TargetOffset(7),
-                    new TargetOffset(8),
-                    new TargetOffset(9),
-                    new TargetOffset(10),
-                    new TargetOffset(11),
-                    new TargetOffset(12),
-                    new TargetOffset(13),
-                    new TargetOffset(14),
-                    new TargetOffset(15),
-                    new TargetOffset(16),
-                    new TargetOffset(17),
-                    new TargetOffset(18),
-                    new TargetOffset(19),
-                    new TargetOffset(20),
-                    new TargetOffset(21),
-                    new TargetOffset(22),
-                    new TargetOffset(23),
-                    new TargetOffset(24),
-                    new TargetOffset(25),
-                    new TargetOffset(26),
-                    new TargetOffset(27),
-                    new TargetOffset(28),
-                    new TargetOffset(29),
-                    new TargetOffset(30),
-                    new TargetOffset(31),
-                    new TargetOffset(32)
-    };
+    private static final int CACHE_SIZE = 34;
+    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE;
+
+    static {
+        CACHE = new TargetOffset[CACHE_SIZE];
+        CACHE[0] = MINUS_ONE;
+        CACHE[1] = ZERO;
+        for (int i = 2; i < CACHE_SIZE; i++) {
+            CACHE[i] = new TargetOffset(i - 1);
+        }
+    }
 }
