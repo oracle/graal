@@ -56,7 +56,7 @@ import java.util.regex.Pattern;
 
 public class JDWPDebuggerController {
 
-    private static final Debug debugLevel = Debug.NONE;
+    private static final Debug debugLevel = Debug.THREAD;
 
     public enum Debug {
         NONE,
@@ -252,6 +252,7 @@ public class JDWPDebuggerController {
                     System.out.println("Waiking up thread: " + getThreadName(thread));
                 }
                 lock.notifyAll();
+                ThreadSuspension.removeHardSuspendedThread(thread);
             }
         } else {
             if (isDebug(Debug.THREAD)) {
@@ -288,27 +289,25 @@ public class JDWPDebuggerController {
         }
 
         try {
-            // TODO(Gregersen) - call method directly when it becomes available
             if (isDebug(Debug.THREAD)) {
                 System.out.println("calling underlying suspend method for thread: " + getThreadName(thread));
-            }
-            suspendMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
-
-            // wait up to below timeout for the thread to become suspended before
-            // returning, thus sending a reply packet
-            Thread.State threadState = getContext().getGuest2HostThread(thread).getState();
-            if (isDebug(Debug.THREAD)) {
+                Thread.State threadState = getContext().getGuest2HostThread(thread).getState();
                 System.out.println("State: " + threadState);
             }
-            long timeout = System.currentTimeMillis() + 2000;
-            while (ThreadSuspension.getSuspensionCount(thread) == 0 && System.currentTimeMillis() < timeout) {
-                Thread.sleep(10);
-            }
+
+            // TODO(Gregersen) - call method directly when it becomes available
+            suspendMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
 
             if (isDebug(Debug.THREAD)) {
                 boolean suspended = ThreadSuspension.getSuspensionCount(thread) != 0;
                 System.out.println("suspend success: " + suspended);
             }
+
+            // quite often the Debug API will not call back the onSuspend method in time,
+            // even if the thread is executing. If the thread is blocked or waiting we still need
+            // to suspend it, thus we manage this with a hard suspend mechanism
+            ThreadSuspension.addHardSuspendedThread(thread);
+            suspendedInfos.put(thread, SuspendedInfo.UNKNOWN);
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("not able to suspend thread: " + getThreadName(thread));
@@ -645,6 +644,10 @@ public class JDWPDebuggerController {
                     if (isDebug(Debug.THREAD)) {
                         System.out.println("lock.wait() for thread: " + getThreadName(thread));
                     }
+                    // no reason to hold a hard suspension status, since now
+                    // we have the actual suspension status and suspended information
+                    ThreadSuspension.removeHardSuspendedThread(thread);
+
                     lock.wait();
                     if (isDebug(Debug.THREAD)) {
                         System.out.println("lock wakeup for thread: " + getThreadName(thread));

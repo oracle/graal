@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class ThreadSuspension {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
@@ -31,6 +34,8 @@ public class ThreadSuspension {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static int[] suspensionCount = new int[0];
+
+    private static Set<Object> hardSuspendedThreads = new HashSet<>();
 
     public static void suspendThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {
@@ -55,6 +60,7 @@ public class ThreadSuspension {
     }
 
     public static void resumeThread(Object thread) {
+        removeHardSuspendedThread(thread);
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 if (suspensionCount[i] > 0) {
@@ -66,6 +72,14 @@ public class ThreadSuspension {
     }
 
     public static int getSuspensionCount(Object thread) {
+        // check if thread has been hard suspended
+        if (hardSuspendedThreads.contains(thread)) {
+            // suspended through a hard suspension, which means that thread is
+            // still running until the callback from the Debug API is fired
+            // or it's blocked or waiting
+            return 1;
+        }
+
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 return suspensionCount[i];
@@ -73,5 +87,17 @@ public class ThreadSuspension {
         }
         // this should never be reached
         return 0;
+    }
+
+    public static void addHardSuspendedThread(Object thread) {
+        hardSuspendedThreads.add(thread);
+    }
+
+    public static void removeHardSuspendedThread(Object thread) {
+        hardSuspendedThreads.remove(thread);
+    }
+
+    public static void clearHardSuspend() {
+        hardSuspendedThreads.clear();
     }
 }

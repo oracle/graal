@@ -968,6 +968,8 @@ class JDWP {
     static class ThreadReference {
         public static final int ID = 11;
 
+        private static final long SUSPEND_TIMEOUT = 200;
+
         static class NAME {
             public static final int ID = 1;
 
@@ -1141,9 +1143,14 @@ class JDWP {
                 int length = input.readInt();
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
+
                 if (suspendedInfo == null) {
                     reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
                     return new JDWPResult(reply);
+                }
+
+                if (suspendedInfo == SuspendedInfo.UNKNOWN) {
+                    suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                 }
 
                 JDWPCallFrame[] frames = suspendedInfo.getStackFrames();
@@ -1179,12 +1186,17 @@ class JDWP {
                 }
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
-                if (suspendedInfo != null) {
-                    reply.writeInt(suspendedInfo.getStackFrames().length);
-                } else {
+
+                if (suspendedInfo == null) {
                     reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
                     return new JDWPResult(reply);
                 }
+
+                if (suspendedInfo == SuspendedInfo.UNKNOWN) {
+                    suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
+                }
+
+                reply.writeInt(suspendedInfo.getStackFrames().length);
                 return new JDWPResult(reply);
             }
         }
@@ -1207,6 +1219,35 @@ class JDWP {
                 reply.writeInt(suspensionCount);
                 return new JDWPResult(reply);
             }
+        }
+
+        private static SuspendedInfo awaitSuspendedInfo(JDWPDebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
+            // OK, we hard suspended this thread, but it hasn't yet actually suspended
+            // in a code location known to Truffle
+            // let's check if the thread is RUNNING and give it a moment to reach
+            // the suspended state
+            SuspendedInfo result = suspendedInfo;
+            Thread hostThread = controller.getContext().getGuest2HostThread(thread);
+            if (hostThread.getState() == Thread.State.RUNNABLE) {
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
+                }
+                long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
+                while (result == SuspendedInfo.UNKNOWN && System.currentTimeMillis() < timeout) {
+                    try {
+                        Thread.sleep(10);
+                        result = controller.getSuspendedInfo(thread);
+                    } catch (InterruptedException e) {
+                        // ignore this here
+                    }
+                }
+            }
+            if (result == SuspendedInfo.UNKNOWN) {
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("Still no suspended info for thread " + controller.getContext().getThreadName(thread));
+                }
+            }
+            return result;
         }
     }
 
