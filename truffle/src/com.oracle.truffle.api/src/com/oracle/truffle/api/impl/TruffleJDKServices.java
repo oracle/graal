@@ -111,4 +111,12 @@ public final class TruffleJDKServices {
         throw shouldNotReachHere();
     }
 
+    /**
+     * Returns <code>true</code> if the class is not part of the truffle framework.
+     *
+     * @param clazz the class to check.
+     */
+    public static boolean isNonTruffleClass(Class<?> clazz) {
+        throw shouldNotReachHere();
+    }
 }

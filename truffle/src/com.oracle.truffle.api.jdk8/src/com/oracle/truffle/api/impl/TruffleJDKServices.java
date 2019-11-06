@@ -131,4 +131,9 @@ public class TruffleJDKServices {
         assert currentModule == null;
         return true;
     }
+
+    public static boolean isNonTruffleClass(Class<?> clazz) {
+        // classes on the boot loader should not be cleared
+        return clazz.getClassLoader() != null;
+    }
 }
