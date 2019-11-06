@@ -8,7 +8,7 @@ or be embedded into other programs.
 GraalWasm is currently in EXPERIMENTAL state.
 We are working hard towards making GraalWasm more stable and more efficient,
 as well as to implement various WebAssembly extensions.
-Open-source contributions are welcome!
+Feedback, bug reports, and open-source contributions are welcome!
 
 
 ## Building GraalWasm
@@ -32,6 +32,7 @@ which contains the GraalWasm implementation.
 
 ## Running the tests
 
+The `build` command will also create the `wasm-tests.jar`, which contains the main test cases.
 After building GraalWasm, the tests can be run as follows:
 
 1. Download the binary of the [WebAssembly binary toolkit](https://github.com/WebAssembly/wabt).
@@ -68,19 +69,6 @@ Finished running: BranchBlockSuite
 ```
 
 
-## Running WebAssembly programs using a launcher
-
-We are working on adding a launcher for GraalWasm, which will allow running binary WebAssembly programs
-directly from the command line.
-Stay tuned!
-
-
-## Embedding GraalWasm inside other programs
-
-
-## Running the benchmarks
-
-
 ## Building the additional tests and benchmarks
 
 The GraalWasm repository includes a set of additional tests and benchmarks
@@ -96,5 +84,110 @@ To build these additional tests and benchmarks, you need to:
 
 ```
 $ mx --dy /truffle,/compiler build --all
+```
+
+This will build several additional JARs in `mxbuild/dists/jdk<version>`:
+`wasm-testcases.jar` and `wasm-benchmarkcases.jar`.
+These JAR files contain `.wasm` files that correspond to the tests and the benchmarks
+whose source code is in C.
+
+You can run the additional tests as follows:
+
+```
+mx --dy /truffle,/compiler --jdk jvmci unittest \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+  -Dwasmtest.testFilter="^.*\$" \
+  CSuite
+```
+
+This will result in the following output:
+
+```
+--------------------------------------------------------------------------------
+Running: CSuite (1 tests)
+--------------------------------------------------------------------------------
+Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@368239c8
+😍                 
+Finished running: CSuite
+🍀 1/1 Wasm tests passed.
+```
+
+
+## Running the benchmarks
+
+The GraalWasm project includes a custom JMH-based benchmark suite,
+which is capable of running WebAssembly benchmark programs.
+The benchmark programs consist of several special functions,
+most notably `benchmarkRun`, which runs the body of the benchmark.
+The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` Mx project.
+
+After building the additional benchmarks, as described in the last section,
+they can be executed as follows:
+
+```
+mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
+  -Dwasmbench.benchmarkName=<-benchmark-name-> -- \
+  CBenchmarkSuite
+```
+
+In the previous command, replace `<-benchmark-name->` with the particular benchmark name,
+for example, `loop-posterize`.
+This runs the JMH wrapper for the test, and produces an output similar to the following:
+
+```
+# Warmup: 10 iterations, 10 s each
+# Measurement: 10 iterations, 10 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+# Benchmark: com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run
+
+# Run progress: 0.00% complete, ETA 00:03:20
+# Fork: 1 of 1
+# Warmup Iteration   1: 0.123 ops/s
+# Warmup Iteration   2: 0.298 ops/s
+# Warmup Iteration   3: 0.707 ops/s
+...
+Iteration   9: 0.723 ops/s
+Iteration  10: 0.736 ops/s
+
+
+Result "com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run":
+  0.725 ±(99.9%) 0.012 ops/s [Average]
+  (min, avg, max) = (0.711, 0.725, 0.736), stdev = 0.008
+  CI (99.9%): [0.714, 0.737] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:03:47
+```
+
+
+## Running WebAssembly programs using a launcher
+
+We are working on adding a launcher for GraalWasm, which will allow running binary WebAssembly programs
+directly from the command line.
+Stay tuned!
+
+
+## Embedding GraalWasm inside other programs
+
+GraalWasm can be accessed programmatically with the
+[Polyglot API](https://www.graalvm.org/docs/reference-manual/polyglot/),
+
+Here is a simple example of how to run a WebAssembly program using GraalWasm
+from a Java application:
+
+```
+import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.io.ByteSequence;
+
+byte[] binary = readBytes("example.wasm"); // You need to load the .wasm contents into a byte array.
+Context.Builder contextBuilder = Context.newBuilder("wasm");
+Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "example");
+Source source = sourceBuilder.build();
+Context context = contextBuilder.build();
+
+Value mainFunction = context.getBindings("wasm").getMember("_main");
+mainFunction.execute();
 ```
 
