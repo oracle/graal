@@ -453,7 +453,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return result;
     }
 
-    private boolean firstTierCall() {
+    /*
+     * This should be private but can't be. GR-19397
+     */
+    public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = (--callThreshold) - engine.firstTierCallThreshold + engine.lastTierCallThreshold;
         if (firstTierCallThreshold <= 0 && !isCompiling() && !compilationFailed) {
@@ -494,7 +497,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    private void ensureInitialized() {
+    /*
+     * This should be private but can't be due to SVM bug.
+     */
+    public final void ensureInitialized() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize();
@@ -872,7 +878,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /*
      * Call profiling related code.
      */
-    private void profileIndirectCall() {
+    /*
+     * This should be private but can't be. GR-19397
+     */
+    public final void profileIndirectCall() {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
@@ -882,8 +891,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    /*
+     * This should be private but can't be. GR-19397
+     */
     @ExplodeLoop
-    private void profileDirectCall(Object[] args) {
+    public final void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (typesAssumption == null) {
             if (CompilerDirectives.inInterpreter()) {
@@ -951,7 +963,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return value;
     }
 
-    private Object[] injectArgumentProfile(Object[] originalArguments) {
+    /*
+     * This should be private but can't be. GR-19397
+     */
+    public final Object[] injectArgumentProfile(Object[] originalArguments) {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
