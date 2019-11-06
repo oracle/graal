@@ -32,4 +32,7 @@ package com.oracle.truffle.wasm.constants;
 public final class LimitsPrefix {
     public static final int NO_MAX = 0x00;
     public static final int WITH_MAX = 0x01;
+
+    private LimitsPrefix() {
+    }
 }

@@ -31,4 +31,7 @@ package com.oracle.truffle.wasm.constants;
 
 public final class CallIndirect {
     public static final int ZERO_TABLE = 0x00;
+
+    private CallIndirect() {
+}
 }

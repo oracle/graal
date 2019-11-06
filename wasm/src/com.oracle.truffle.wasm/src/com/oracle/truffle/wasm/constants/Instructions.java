@@ -225,6 +225,9 @@ public final class Instructions {
 
     private static String[] decodingTable = new String[256];
 
+    private Instructions() {
+    }
+
     static {
         try {
             for (Field f : Instructions.class.getDeclaredFields()) {

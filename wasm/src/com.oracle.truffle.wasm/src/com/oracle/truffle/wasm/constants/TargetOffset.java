@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 public class TargetOffset {
     public final int value;
 
-    public TargetOffset(int value) {
+    private TargetOffset(int value) {
         this.value = value;
     }
 

@@ -42,4 +42,7 @@ public final class Section {
     public static final int ELEMENT = 0x09;
     public static final int CODE = 0x0A;
     public static final int DATA = 0x0B;
+
+    private Section() {
+    }
 }

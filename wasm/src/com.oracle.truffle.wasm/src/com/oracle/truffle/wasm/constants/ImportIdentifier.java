@@ -34,4 +34,7 @@ public class ImportIdentifier {
     public static final int TABLE = 0x01;
     public static final int MEMORY = 0x02;
     public static final int GLOBAL = 0x03;
+
+    private ImportIdentifier() {
+    }
 }
