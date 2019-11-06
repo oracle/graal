@@ -48,9 +48,8 @@ public final class WasmIfNode extends WasmNode {
 
     private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
-    public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer, int byteConstantLength,
-                    int longConstantLength) {
-        super(wasmModule, codeEntry, byteLength, byteConstantLength, longConstantLength);
+    public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer) {
+        super(wasmModule, codeEntry, byteLength);
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
         this.trueBranch = trueBranch;
@@ -75,12 +74,22 @@ public final class WasmIfNode extends WasmNode {
     }
 
     @Override
-    public int intConstantLength() {
+    int byteConstantLength() {
+        return trueBranch.byteConstantLength() + falseBranch.byteConstantLength();
+    }
+
+    @Override
+    int intConstantLength() {
         return trueBranch.intConstantLength() + falseBranch.intConstantLength();
     }
 
     @Override
-    public int branchTableLength() {
+    int longConstantLength() {
+        return trueBranch.longConstantLength() + falseBranch.longConstantLength();
+    }
+
+    @Override
+    int branchTableLength() {
         return trueBranch.branchTableLength() + falseBranch.branchTableLength();
     }
 }

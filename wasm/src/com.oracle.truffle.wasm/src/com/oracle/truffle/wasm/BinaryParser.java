@@ -1122,8 +1122,6 @@ public class BinaryParser extends BinaryStreamParser {
     private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
         int initialStackPointer = state.stackSize();
-        int initialByteConstantOffset = state.byteConstantOffset();
-        int initialNumericLiteralOffset = state.longConstantOffset();
 
         // Pop the condition value from the stack.
         state.pop();
@@ -1170,8 +1168,7 @@ public class BinaryParser extends BinaryStreamParser {
             falseBranchBlock = new WasmEmptyNode(module, codeEntry, 0);
         }
 
-        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer,
-                        state.byteConstantOffset() - initialByteConstantOffset, state.longConstantOffset() - initialNumericLiteralOffset);
+        return new WasmIfNode(module, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, initialStackPointer);
     }
 
     private void readElementSection() {

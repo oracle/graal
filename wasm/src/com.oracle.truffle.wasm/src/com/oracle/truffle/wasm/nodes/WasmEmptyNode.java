@@ -41,7 +41,7 @@ import com.oracle.truffle.wasm.constants.TargetOffset;
 public final class WasmEmptyNode extends WasmNode {
 
     public WasmEmptyNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength) {
-        super(wasmModule, codeEntry, byteLength, 0, 0);
+        super(wasmModule, codeEntry, byteLength);
     }
 
     @Override
@@ -53,6 +53,26 @@ public final class WasmEmptyNode extends WasmNode {
     @Override
     public byte returnTypeId() {
         return VOID_TYPE;
+    }
+
+    @Override
+    int byteConstantLength() {
+        return 0;
+    }
+
+    @Override
+    int intConstantLength() {
+        return 0;
+    }
+
+    @Override
+    int longConstantLength() {
+        return 0;
+    }
+
+    @Override
+    int branchTableLength() {
+        return 0;
     }
 
 }
