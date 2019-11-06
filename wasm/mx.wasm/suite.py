@@ -257,6 +257,7 @@ suite = {
         "truffle:TRUFFLE_TCK",
         "WASM",
       ],
+      "maven" : False,
     },
 
     "WASM_BENCHMARKCASES" : {
@@ -268,6 +269,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "defaultBuild" : False,
+      "maven" : False,
     },
   }
 }
