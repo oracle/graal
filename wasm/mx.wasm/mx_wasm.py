@@ -227,15 +227,19 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             while True:
                 # Extract heap assignments.
                 line = f.readline()
+                if not line:
+                    break
                 match = re.match(r"HEAP32\[(.*) >> 2\] = (.*);\n", line)
                 if match:
                     address = match.group(1)
                     value = match.group(2)
                     stores.append((address, value))
-                if not line or re.match(r"\s*env\[.*", line):
+                if re.match(r"\s*env\[.*", line):
                     break
 
             while True:
+                if not line:
+                    break
                 match = re.match(r"\s*env\[\"(.*)\"\] = (.*);\n", line)
                 if match:
                     name = match.group(1)
@@ -243,8 +247,6 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     if name != "memory":
                         numeric_value = int(value)
                         globals[name] = numeric_value
-                if not line:
-                    break
                 line = f.readline()
 
         init_info = ""
