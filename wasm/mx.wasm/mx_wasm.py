@@ -60,15 +60,6 @@ benchmark_methods = [
     "_main",
 ]
 
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
-
 def remove_extension(filename):
     if filename.endswith(".c"):
         return filename[:-2]
@@ -79,13 +70,12 @@ def remove_extension(filename):
 
 class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
-        self.suite = suite
-        self.name = name
         self.subDir = subDir
         mx.ArchivableProject.__init__(self, suite, name, deps, workingSets, theLicense, **args)
 
     def getSourceDir(self):
-        return os.path.join(self.dir, "src", self.name, self.subDir, "src")
+        src_dir = os.path.join(self.dir, "src", self.name, self.subDir, "src")
+        return src_dir
 
     def getOutputDir(self):
         return os.path.join(self.get_output_base(), self.name)
@@ -159,7 +149,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
-            mkdir_p(os.path.join(output_dir, subdir))
+            mx.ensure_dir_exists(os.path.join(output_dir, subdir))
 
             basename = remove_extension(filename)
             source_path = os.path.join(root, filename)
