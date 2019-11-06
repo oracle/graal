@@ -136,6 +136,11 @@ final class EngineAccessor extends Accessor {
     }
 
     @Override
+    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
+        super.reloadEngineOptions(runtimeData, optionValues);
+    }
+
+    @Override
     protected CastUnsafe getCastUnsafe() {
         return super.getCastUnsafe();
     }

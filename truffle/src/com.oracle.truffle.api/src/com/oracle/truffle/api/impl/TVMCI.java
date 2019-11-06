@@ -336,4 +336,8 @@ public abstract class TVMCI {
 
     protected abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
 
+    @SuppressWarnings("unused")
+    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
+    }
+
 }

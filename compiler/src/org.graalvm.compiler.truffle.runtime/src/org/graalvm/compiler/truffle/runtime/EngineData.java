@@ -58,6 +58,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * Class used to store data used by the compiler in the Engine. Enables "global" compiler state per
  * engine.
@@ -73,43 +75,52 @@ public final class EngineData {
 
     int splitLimit;
     int splitCount;
-    final OptionValues engineOptions;
+    @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
 
+    /*
+     * Important while visible, options must not be modified except in loadOptions.
+     */
     // splitting options
-    public final boolean splitting;
-    public final boolean splittingAllowForcedSplits;
-    public final boolean splittingDumpDecisions;
-    public final boolean splittingTraceEvents;
-    public final boolean traceSplittingSummary;
-    public final int splittingMaxCalleeSize;
-    public final int splittingMaxPropagationDepth;
-    public final double splittingGrowthLimit;
-    public final int splittingMaxNumberOfSplitNodes;
+    @CompilationFinal public boolean splitting;
+    @CompilationFinal public boolean splittingAllowForcedSplits;
+    @CompilationFinal public boolean splittingDumpDecisions;
+    @CompilationFinal public boolean splittingTraceEvents;
+    @CompilationFinal public boolean traceSplittingSummary;
+    @CompilationFinal public int splittingMaxCalleeSize;
+    @CompilationFinal public int splittingMaxPropagationDepth;
+    @CompilationFinal public double splittingGrowthLimit;
+    @CompilationFinal public int splittingMaxNumberOfSplitNodes;
 
     // compilation options
-    public final boolean compilation;
-    public final boolean compileImmediately;
-    public final boolean multiTier;
-    public final boolean returnTypeSpeculation;
-    public final boolean argumentTypeSpeculation;
-    public final boolean traceCompilation;
-    public final boolean traceCompilationDetails;
-    public final boolean backgroundCompilation;
-    public final boolean compilationExceptionsAreThrown;
-    public final boolean performanceWarningsAreFatal;
-    public final String compileOnly;
-
-    public final boolean callTargetStatistics;
+    @CompilationFinal public boolean compilation;
+    @CompilationFinal public boolean compileImmediately;
+    @CompilationFinal public boolean multiTier;
+    @CompilationFinal public boolean returnTypeSpeculation;
+    @CompilationFinal public boolean argumentTypeSpeculation;
+    @CompilationFinal public boolean traceCompilation;
+    @CompilationFinal public boolean traceCompilationDetails;
+    @CompilationFinal public boolean backgroundCompilation;
+    @CompilationFinal public boolean compilationExceptionsAreThrown;
+    @CompilationFinal public boolean performanceWarningsAreFatal;
+    @CompilationFinal public String compileOnly;
+    @CompilationFinal public boolean callTargetStatistics;
 
     // computed fields.
-    public final int firstTierCallThreshold;
-    public final int firstTierCallAndLoopThreshold;
-    public final int lastTierCallThreshold;
+    @CompilationFinal public int firstTierCallThreshold;
+    @CompilationFinal public int firstTierCallAndLoopThreshold;
+    @CompilationFinal public int lastTierCallThreshold;
 
     EngineData(OptionValues options) {
-        this.engineOptions = options;
         // splitting options
+        loadOptions(options);
+
+        // the reporter requires options to be initialized
+        this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
+    }
+
+    void loadOptions(OptionValues options) {
+        this.engineOptions = options;
         this.splitting = getValue(options, Splitting) &&
                         getValue(options, Mode) != EngineModeEnum.LATENCY;
         this.splittingAllowForcedSplits = getValue(options, SplittingAllowForcedSplits);
@@ -139,9 +150,6 @@ public final class EngineData {
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
         this.callTargetStatistics = TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
                         TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails);
-
-        // the reporter requires options to be initialized
-        this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
     }
 
     private int computeFirstTierCallThreshold(OptionValues options) {

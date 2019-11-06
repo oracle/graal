@@ -123,6 +123,10 @@ public abstract class Accessor {
         return SUPPORT.createBlockNode(elements, executor);
     }
 
+    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
+        SUPPORT.reloadEngineOptions(runtimeData, optionValues);
+    }
+
     public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);

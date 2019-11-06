@@ -391,6 +391,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
 
+        if (this.runtimeData != null) {
+            EngineAccessor.ACCESSOR.reloadEngineOptions(this.runtimeData, this.engineOptionValues);
+        }
+
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
         }
