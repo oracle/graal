@@ -471,13 +471,33 @@ suite = {
       },
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.libraries.mock" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:polyglot-mock>",
+      ],
+      "buildDependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "buildEnv" : {
+        "LIBPOLYGLOT_MOCK" : "<lib:polyglot-mock>",
+        "CLANG" : "<toolchainGetToolPath:native,CC>",
+        "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
+        "OS" : "<os>",
+      },
+      "license" : "BSD-new",
+    },
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
       "results" : [
         "bin/<lib:sulong>",
-        "bin/<lib:polyglot-mock>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
@@ -970,12 +990,14 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
@@ -984,6 +1006,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
@@ -997,6 +1020,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           {
             "source_type": "extracted-dependency",
             "dependency": "LLVM_ORG",
@@ -1011,6 +1035,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
