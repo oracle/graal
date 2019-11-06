@@ -181,32 +181,6 @@ public final class ObjectKlass extends Klass {
         assert verifyTables();
     }
 
-    /**
-     * This constructor can only be used to create the NullKlass used e.g. by JDWP
-     * @param context
-     */
-    protected ObjectKlass(EspressoContext context) {
-        super(context, Symbol.Name.Null, Symbol.Type.Null, null, null);
-        this.linkedKlass = null;
-        this.hostKlass = null;
-        this.enclosingMethod = null;
-        this.pool = null;
-        this.leftoverHoles = null;
-        this.computedModifiers = 0;
-        this.fieldTable = null;
-        this.primitiveFieldTotalByteCount = 0;
-        this.primitiveStaticFieldTotalByteCount = 0;
-        this.staticFieldTable = null;
-        this.objectFields = 0;
-        this.staticObjectFields = 0;
-        this.innerClasses = null;
-        this.runtimeVisibleAnnotations = null;
-        this.itable = null;
-        this.iKlassTable = null;
-        this.itableLength = 0;
-        this.vtable = null;
-    }
-
     private boolean verifyTables() {
         if (vtable != null) {
             for (int i = 0; i < vtable.length; i++) {

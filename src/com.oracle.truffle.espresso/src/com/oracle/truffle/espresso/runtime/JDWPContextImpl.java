@@ -2,13 +2,13 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.NullKlass;
 import com.oracle.truffle.espresso.jdwp.impl.ClassObjectId;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.impl.TagConstants;
@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public final class JDWPContextImpl implements JDWPContext {
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
+    public static final NullKlass NULL_KLASS = new NullKlass();
 
     private final EspressoContext context;
     private final JDWPVirtualMachine vm;
@@ -65,7 +66,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public KlassRef getNullKlass() {
-        return Klass.NULL_KLASS;
+        return NULL_KLASS;
     }
 
     @Override
