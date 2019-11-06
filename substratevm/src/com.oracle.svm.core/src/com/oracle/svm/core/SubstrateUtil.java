@@ -708,14 +708,6 @@ public class SubstrateUtil {
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean isNeverInline(ResolvedJavaMethod method) {
-        String[] neverInline = SubstrateOptions.NeverInline.getValue();
-
-        return GuardedAnnotationAccess.isAnnotationPresent(method, NeverInline.class) ||
-                        (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.matches(MethodFilter.parse(re), method)));
-    }
-
     /**
      * Mangle the given method name according to our image's (default) mangling convention. A rough
      * requirement is that symbol names are valid symbol name tokens for the assembler. (This is
@@ -758,5 +750,19 @@ public class SubstrateUtil {
          */
         //@formatter:on
         return mangled;
+    }
+
+    /*
+     * This function loads JavaFunction through MethodFilter and this is not allowed in NativeImage.
+     * We put this functionality in a separate class.
+     */
+    public static class NativeImageLoadingShield {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public static boolean isNeverInline(ResolvedJavaMethod method) {
+            String[] neverInline = SubstrateOptions.NeverInline.getValue();
+
+            return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
+                            (neverInline != null && Arrays.stream(neverInline).anyMatch(re -> MethodFilter.matches(MethodFilter.parse(re), method)));
+        }
     }
 }

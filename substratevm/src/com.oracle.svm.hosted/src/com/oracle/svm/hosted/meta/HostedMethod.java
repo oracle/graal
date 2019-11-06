@@ -119,7 +119,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             }
         }
         localVariableTable = newLocalVariableTable;
-        hasNeverInlineDirective = SubstrateUtil.isNeverInline(wrapped);
+        hasNeverInlineDirective = SubstrateUtil.NativeImageLoadingShield.isNeverInline(wrapped);
     }
 
     @Override

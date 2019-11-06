@@ -99,7 +99,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);
-        neverInline = SubstrateUtil.isNeverInline(original);
+        neverInline = SubstrateUtil.NativeImageLoadingShield.isNeverInline(original);
 
         /*
          * AnalysisMethods of snippets are stored in a hash map of SubstrateReplacements. The
