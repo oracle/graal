@@ -27,7 +27,6 @@ package com.oracle.svm.jni.access;
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Modifier;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -43,6 +42,8 @@ import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Information on a method that can be looked up and called via JNI.
@@ -131,6 +132,15 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
             arrayNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayNonvirtualCallWrapperMethod)));
             valistNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistNonvirtualCallWrapperMethod)));
         }
-        setHidingSubclasses(access.getMetaAccess(), sub -> Stream.of(sub.getDeclaredMethods()).anyMatch(descriptor::matchesIgnoreReturnType));
+        setHidingSubclasses(access.getMetaAccess(), this::anyMatchIgnoreReturnType);
+    }
+
+    private boolean anyMatchIgnoreReturnType(ResolvedJavaType sub) {
+        for (ResolvedJavaMethod method : sub.getDeclaredMethods()) {
+            if (descriptor.matchesIgnoreReturnType(method)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
