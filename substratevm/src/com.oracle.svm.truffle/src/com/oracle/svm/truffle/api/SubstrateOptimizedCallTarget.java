@@ -131,9 +131,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public Object doInvoke(Object[] args) {
-        if (inInlinedCode()) {
-            return callBoundary(args);
-        }
         /*
          * We have to be very careful that the calling code is uninterruptible, i.e., has no
          * safepoint between the read of the compiled code address and the indirect call to this
