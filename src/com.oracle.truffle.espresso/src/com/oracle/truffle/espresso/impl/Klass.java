@@ -40,6 +40,7 @@ import java.util.function.IntFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
@@ -73,6 +74,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     };
 
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
+    public static final Klass NULL_KLASS = new ObjectKlass(EspressoLanguage.getCurrentContext());
 
     static final DebugCounter methodLookupCount = DebugCounter.create("methodLookupCount");
     static final DebugCounter fieldLookupCount = DebugCounter.create("fieldLookupCount");
