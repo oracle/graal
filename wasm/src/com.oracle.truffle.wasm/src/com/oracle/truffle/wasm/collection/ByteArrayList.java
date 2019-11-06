@@ -31,7 +31,7 @@ package com.oracle.truffle.wasm.collection;
 
 import java.util.Arrays;
 
-public class ByteArrayList {
+public final class ByteArrayList {
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private byte[] array;
