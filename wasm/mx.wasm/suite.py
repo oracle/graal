@@ -231,7 +231,6 @@ suite = {
     },
 
     "WASM_TESTCASES" : {
-      "platformDependent" : True,
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
         "com.oracle.truffle.wasm.testcases",
