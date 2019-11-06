@@ -109,7 +109,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal private volatile int initState = LOADED;
 
     @CompilationFinal //
-    boolean needsRecursiveInit = false;
+    boolean hasDeclaredDefaultMethods = false;
 
     @CompilationFinal private int computedModifiers = -1;
 
@@ -267,9 +267,9 @@ public final class ObjectKlass extends Klass {
                         getSuperKlass().initialize();
                     }
                     for (ObjectKlass interf : getSuperInterfaces()) {
-                        if (interf.needsRecursiveInit) {
-                            interf.recursiveInitialize();
-                        }
+                        // Initialize all super interfaces, direct and indirect, with default
+                        // methods.
+                        interf.recursiveInitialize();
                     }
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
@@ -372,7 +372,7 @@ public final class ObjectKlass extends Klass {
 
     private void recursiveInitialize() {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
-            if (needsRecursiveInit) {
+            if (hasDeclaredDefaultMethods()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 verify();
                 actualInit();
@@ -868,5 +868,13 @@ public final class ObjectKlass extends Klass {
         }
         // Remember to strip ACC_SUPER bit
         return modifiers & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
+    }
+
+    /**
+     * Returns true if the interface has declared (not inherited) default methods, false otherwise.
+     */
+    private boolean hasDeclaredDefaultMethods() {
+        assert !hasDeclaredDefaultMethods || isInterface();
+        return hasDeclaredDefaultMethods;
     }
 }
