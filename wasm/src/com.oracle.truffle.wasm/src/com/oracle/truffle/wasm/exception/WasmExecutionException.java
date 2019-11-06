@@ -34,8 +34,8 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Thrown when a WebAssembly program ends up in an unexpected exceptional state.
- * This error likely indicates an internal engine issue.
+ * Thrown when a WebAssembly program ends up in an unexpected exceptional state. This error likely
+ * indicates an internal engine issue.
  */
 public class WasmExecutionException extends RuntimeException implements TruffleException {
 

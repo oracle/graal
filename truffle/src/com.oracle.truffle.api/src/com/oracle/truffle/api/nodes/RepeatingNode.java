@@ -57,8 +57,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface RepeatingNode extends NodeInterface {
 
     /**
-     * An interface that must be implemented on values returned
-     * from a loop body.
+     * An interface that must be implemented on values returned from a loop body.
      *
      * It decides whether the loop iteration should be continued or not.
      */

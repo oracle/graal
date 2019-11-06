@@ -34,32 +34,30 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 /**
  * Constants that denote the resolution state of the global variable.
  *
- * The resolution state tracks the state of the global variables that were either imported,
- * or initialized with another imported global variable.
+ * The resolution state tracks the state of the global variables that were either imported, or
+ * initialized with another imported global variable.
  */
 public enum GlobalResolution {
     /**
-     * The global variable was declared inside the module.
-     * It can be used in the running program.
+     * The global variable was declared inside the module. It can be used in the running program.
      */
     DECLARED(true, false),
 
     /**
-     * The global variable was imported from another module, and resolved.
-     * It can be used in the running program.
+     * The global variable was imported from another module, and resolved. It can be used in the
+     * running program.
      */
     IMPORTED(true, true),
 
     /**
-     * The global variable was declared with an initializer
-     * that points to an imported global variable.
-     * It cannot be used until becoming resolved.
+     * The global variable was declared with an initializer that points to an imported global
+     * variable. It cannot be used until becoming resolved.
      */
     UNRESOLVED_GET(false, false),
 
     /**
-     * The global variable was imported, but not yet resolved.
-     * It cannot be used until becoming resolved.
+     * The global variable was imported, but not yet resolved. It cannot be used until becoming
+     * resolved.
      */
     UNRESOLVED_IMPORT(false, true);
 

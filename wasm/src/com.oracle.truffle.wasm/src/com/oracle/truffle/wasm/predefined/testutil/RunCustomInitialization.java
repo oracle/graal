@@ -41,10 +41,10 @@ import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 import java.util.function.Consumer;
 
 /**
- * Initialize the module using the initialization object provided by the test suite.
- * The initialization will set certain globals and memory locations to specific values.
- * This is done because certain language backends emit non-WebAssembly code that is used
- * to initialize parts of the memory.
+ * Initialize the module using the initialization object provided by the test suite. The
+ * initialization will set certain globals and memory locations to specific values. This is done
+ * because certain language backends emit non-WebAssembly code that is used to initialize parts of
+ * the memory.
  */
 public class RunCustomInitialization extends WasmPredefinedRootNode {
     public RunCustomInitialization(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {

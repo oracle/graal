@@ -45,7 +45,8 @@ import com.oracle.truffle.wasm.utils.WasmInitialization;
 import com.oracle.truffle.wasm.utils.WasmResource;
 import org.graalvm.polyglot.Value;
 
-/** Instances of this class are used for WebAssembly test/benchmark cases.
+/**
+ * Instances of this class are used for WebAssembly test/benchmark cases.
  */
 public abstract class WasmCase {
     private final String name;
@@ -116,7 +117,8 @@ public abstract class WasmCase {
             return collectedCases;
         }
 
-        // Open the wasm_test_index file of the bundle. The wasm_test_index file contains the available cases for that bundle.
+        // Open the wasm_test_index file of the bundle. The wasm_test_index file contains the
+        // available cases for that bundle.
         InputStream index = WasmCase.class.getResourceAsStream(String.format("/%s/%s/wasm_test_index", type, resource));
         BufferedReader indexReader = new BufferedReader(new InputStreamReader(index));
 

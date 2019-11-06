@@ -157,7 +157,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
                 validateResult(testCase.data().resultValidator(), result, capturedStdout);
             } catch (PolyglotException e) {
-                // We cannot label the tests with polyglot errors, because they might be return values.
+                // We cannot label the tests with polyglot errors, because they might be return
+                // values.
                 throw e;
             } catch (Throwable t) {
                 final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
@@ -216,13 +217,15 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             runInContext(testCase, context, source, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned off.
-            // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            // We need to run the test at least twice like this, since the first run will lead to
+            // de-opts due to empty profiles.
             int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
             context = getSyncCompiledNoInline(contextBuilder);
             runInContext(testCase, context, source, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in synchronous compiled mode, with inlining turned on.
-            // We need to run the test at least twice like this, since the first run will lead to de-opts due to empty profiles.
+            // We need to run the test at least twice like this, since the first run will lead to
+            // de-opts due to empty profiles.
             int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
             context = getSyncCompiledWithInline(contextBuilder);
             runInContext(testCase, context, source, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
@@ -252,7 +255,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         }
     }
 
-    private static void validateThrown(String expectedErrorMessage, PolyglotException e) throws PolyglotException{
+    private static void validateThrown(String expectedErrorMessage, PolyglotException e) throws PolyglotException {
         if (expectedErrorMessage != null) {
             if (!expectedErrorMessage.equals(e.getMessage())) {
                 throw e;

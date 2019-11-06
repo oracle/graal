@@ -56,4 +56,3 @@ public class WasmEmptyNode extends WasmNode {
     }
 
 }
-

@@ -56,7 +56,8 @@ public class WasmFunction implements TruffleObject {
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.codeEntry = null;
-        // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove this.
+        // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove
+        // this.
         this.name = String.valueOf(index);
         this.typeIndex = typeIndex;
         this.callTarget = null;
@@ -85,7 +86,7 @@ public class WasmFunction implements TruffleObject {
     public RootCallTarget resolveCallTarget() {
         if (callTarget == null) {
             // TODO: If this is an imported function, the call target might not yet be resolved.
-            //  Check this, and wait until the call target gets resolved.
+            // Check this, and wait until the call target gets resolved.
             throw new RuntimeException("Call target was not resolved.");
         }
         return callTarget;

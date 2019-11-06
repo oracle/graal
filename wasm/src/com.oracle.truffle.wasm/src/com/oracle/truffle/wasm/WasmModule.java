@@ -49,9 +49,9 @@ import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 // TODO: We should make this class more Truffle-compliant.
-//  In particular, one thing that's missing:
-//   - access exported tables and read them
-//   - access exported memories and modify them
+// In particular, one thing that's missing:
+// - access exported tables and read them
+// - access exported memories and modify them
 public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;

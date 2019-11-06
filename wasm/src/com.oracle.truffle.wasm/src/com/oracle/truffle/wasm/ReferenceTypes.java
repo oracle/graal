@@ -35,7 +35,7 @@ public class ReferenceTypes {
     public static final byte FUNCREF = 0x70;
 
     public static String asString(int valueType) {
-        switch(valueType) {
+        switch (valueType) {
             case FUNCREF:
                 return "funcref";
             default:

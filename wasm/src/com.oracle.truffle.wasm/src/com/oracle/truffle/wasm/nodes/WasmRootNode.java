@@ -80,14 +80,15 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
         /*
          * WebAssembly structure dictates that a function's arguments are provided to the function
-         * as local variables, followed by any additional local variables that the function declares.
-         * A VirtualFrame contains a special array for the arguments, so we need to move them to the locals.
+         * as local variables, followed by any additional local variables that the function
+         * declares. A VirtualFrame contains a special array for the arguments, so we need to move
+         * them to the locals.
          */
         argumentsToLocals(frame);
 
         /*
-         * WebAssembly rules dictate that a function's locals must be initialized to zero before function invocation.
-         * For more information, check the specification:
+         * WebAssembly rules dictate that a function's locals must be initialized to zero before
+         * function invocation. For more information, check the specification:
          * https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
          */
         initializeLocals(frame);

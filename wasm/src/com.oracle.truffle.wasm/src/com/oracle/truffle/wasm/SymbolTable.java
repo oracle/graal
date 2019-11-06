@@ -57,8 +57,8 @@ public class SymbolTable {
     /**
      * Encodes the arguments and return types of each function type.
      *
-     * Given a function type index, the {@link #offsets} array indicates where the encoding
-     * for that function type begins in this array.
+     * Given a function type index, the {@link #offsets} array indicates where the encoding for that
+     * function type begins in this array.
      *
      * For a function type starting at index i, the encoding is the following
      *
@@ -69,9 +69,7 @@ public class SymbolTable {
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * </code>
      *
-     * where
-     *   na: the number of arguments
-     *   nr: the number of return values
+     * where na: the number of arguments nr: the number of return values
      *
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
@@ -103,35 +101,28 @@ public class SymbolTable {
     @CompilationFinal private int startFunctionIndex;
 
     /**
-     * This array is monotonically populated from the left.
-     * An index i denotes the i-th global in this module.
-     * The value at the index i denotes the address of the global
-     * in the memory space for all the globals from all the modules
-     * (see {@link Globals}).
+     * This array is monotonically populated from the left. An index i denotes the i-th global in
+     * this module. The value at the index i denotes the address of the global in the memory space
+     * for all the globals from all the modules (see {@link Globals}).
      *
-     * This separation of global indices is done because the index spaces
-     * of the globals are module-specific, and the globals can be imported
-     * across modules.
-     * Thus, the address-space of the globals is not the same as the
-     * module-specific index-space.
+     * This separation of global indices is done because the index spaces of the globals are
+     * module-specific, and the globals can be imported across modules. Thus, the address-space of
+     * the globals is not the same as the module-specific index-space.
      */
     @CompilationFinal(dimensions = 1) int[] globalAddresses;
 
     /**
-     * A global type is the value type of the global, followed by its mutability.
-     * This is encoded as two bytes -- the lowest (0th) byte is the value type,
-     * the 1st byte is the mutability of the global variable,
-     * and the 2nd byte is the global's resolution status
-     * (see {@link GlobalModifier}, {@link GlobalResolution} and {@link ValueTypes}).
+     * A global type is the value type of the global, followed by its mutability. This is encoded as
+     * two bytes -- the lowest (0th) byte is the value type, the 1st byte is the mutability of the
+     * global variable, and the 2nd byte is the global's resolution status (see
+     * {@link GlobalModifier}, {@link GlobalResolution} and {@link ValueTypes}).
      */
     @CompilationFinal(dimensions = 1) int[] globalTypes;
 
     /**
-     * Tracks all the globals that have not yet been resolved,
-     * and will be resolved once the modules are fully linked.
-     * The lower 4 bytes are the index of the unresolved global,
-     * whereas the higher 4 bytes are the index of the global
-     * whose value this global should be initialized with
+     * Tracks all the globals that have not yet been resolved, and will be resolved once the modules
+     * are fully linked. The lower 4 bytes are the index of the unresolved global, whereas the
+     * higher 4 bytes are the index of the global whose value this global should be initialized with
      * (assuming that this global was declared with a {@code GLOBAL_GET} expression).
      */
     @CompilationFinal private final LongArrayList unresolvedGlobals;
@@ -154,8 +145,8 @@ public class SymbolTable {
     /**
      * The index of the table from the context-specific table space, which this module is using.
      *
-     * In the current WebAssembly specification, a module can use at most one table.
-     * The value {@link SymbolTable#UNINITIALIZED_TABLE_BIT} denotes that this module uses no table.
+     * In the current WebAssembly specification, a module can use at most one table. The value
+     * {@link SymbolTable#UNINITIALIZED_TABLE_BIT} denotes that this module uses no table.
      */
     @CompilationFinal private int tableIndex;
 
@@ -172,8 +163,8 @@ public class SymbolTable {
     /**
      * Memory that this module is using.
      *
-     * In the current WebAssembly specification, a module can use at most one memory.
-     * The value {@code null} denotes that this module uses no memory.
+     * In the current WebAssembly specification, a module can use at most one memory. The value
+     * {@code null} denotes that this module uses no memory.
      */
     @CompilationFinal private WasmMemory memory;
 
@@ -225,11 +216,11 @@ public class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #typeData} array has enough space to store {@code index}.
-     * If there is no enough space, then a reallocation of the array takes place, doubling its capacity.
+     * Ensure that the {@link #typeData} array has enough space to store {@code index}. If there is
+     * no enough space, then a reallocation of the array takes place, doubling its capacity.
      *
-     * No synchronisation is required for this method, as it is only called during parsing,
-     * which is carried out by a single thread.
+     * No synchronisation is required for this method, as it is only called during parsing, which is
+     * carried out by a single thread.
      */
     private void ensureTypeDataCapacity(int index) {
         if (typeData.length <= index) {
@@ -239,11 +230,11 @@ public class SymbolTable {
     }
 
     /**
-     * Ensure that the {@link #offsets} array has enough space to store {@code index}.
-     * If there is no enough space, then a reallocation of the array takes place, doubling its capacity.
+     * Ensure that the {@link #offsets} array has enough space to store {@code index}. If there is
+     * no enough space, then a reallocation of the array takes place, doubling its capacity.
      *
-     * No synchronisation is required for this method, as it is only called during parsing,
-     * which is carried out by a single thread.
+     * No synchronisation is required for this method, as it is only called during parsing, which is
+     * carried out by a single thread.
      */
     private void ensureOffsetsCapacity(int index) {
         if (offsets.length <= index) {
@@ -410,7 +401,8 @@ public class SymbolTable {
     }
 
     /**
-     * Allocates a global index in the symbol table, for a global variable that was already allocated.
+     * Allocates a global index in the symbol table, for a global variable that was already
+     * allocated.
      */
     private void allocateGlobal(int index, int valueType, int mutability, GlobalResolution resolution, int address) {
         assert (valueType & 0xff) == valueType;
@@ -471,8 +463,7 @@ public class SymbolTable {
     }
 
     /**
-     * Tracks an unresolved imported global.
-     * The global must have been previously allocated.
+     * Tracks an unresolved imported global. The global must have been previously allocated.
      */
     public void trackUnresolvedGlobal(int globalIndex) {
         assertGlobalAllocated(globalIndex);
@@ -480,8 +471,8 @@ public class SymbolTable {
     }
 
     /**
-     * Tracks an unresolved declared global, which depends on an unresolved imported global.
-     * The global must have been previously allocated.
+     * Tracks an unresolved declared global, which depends on an unresolved imported global. The
+     * global must have been previously allocated.
      */
     void trackUnresolvedGlobal(int globalIndex, int dependentGlobal) {
         assertGlobalAllocated(globalIndex);

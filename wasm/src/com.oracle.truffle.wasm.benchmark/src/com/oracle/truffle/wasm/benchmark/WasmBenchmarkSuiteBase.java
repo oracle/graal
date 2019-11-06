@@ -131,7 +131,8 @@ public abstract class WasmBenchmarkSuiteBase {
             // Note: we deliberately not reset the context here.
             // It would be slow, and the invariant we expect from the benchmarks
             // is that they can handle VM-state side-effects.
-            // We may support benchmark-specific teardown actions in the future (at the invocation level).
+            // We may support benchmark-specific teardown actions in the future (at the invocation
+            // level).
         }
 
         @Setup(Level.Invocation)

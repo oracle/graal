@@ -36,7 +36,7 @@ public class TargetOffset implements RepeatingNode.ShouldContinue {
 
     @CompilationFinal public static final TargetOffset ZERO = new TargetOffset(0);
 
-    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE = new TargetOffset[] {
+    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE = new TargetOffset[]{
                     MINUS_ONE,
                     ZERO,
                     new TargetOffset(1),

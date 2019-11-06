@@ -44,7 +44,8 @@ public class TestutilModule extends PredefinedModule {
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        // Note: the types are not important here, since these methods are not accessed by Wasm code.
+        // Note: the types are not important here, since these methods are not accessed by Wasm
+        // code.
         WasmModule module = new WasmModule(name, null);
         defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, null, null));
         defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, null, null));

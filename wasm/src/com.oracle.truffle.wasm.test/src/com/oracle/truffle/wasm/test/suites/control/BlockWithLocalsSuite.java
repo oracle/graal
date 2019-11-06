@@ -36,7 +36,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.wasm.test.WasmSuiteBase;
 
-
 public class BlockWithLocalsSuite extends WasmSuiteBase {
     @Override
     protected String testResource() {

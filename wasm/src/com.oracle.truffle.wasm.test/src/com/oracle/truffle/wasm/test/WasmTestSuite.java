@@ -49,19 +49,19 @@ import com.oracle.truffle.wasm.test.suites.webassembly.MultipleFunctionsSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-        Integer32Suite.class,
-        Integer64Suite.class,
-        Float32Suite.class,
-        Float64Suite.class,
-        SimpleBlockSuite.class,
-        BlockWithLocalsSuite.class,
-        BranchBlockSuite.class,
-        LoopBlockSuite.class,
-        IfThenElseSuite.class,
-        MemorySuite.class,
-        IssueSuite.class,
-        MultipleFunctionsSuite.class,
-        EmscriptenSuite.class,
+                Integer32Suite.class,
+                Integer64Suite.class,
+                Float32Suite.class,
+                Float64Suite.class,
+                SimpleBlockSuite.class,
+                BlockWithLocalsSuite.class,
+                BranchBlockSuite.class,
+                LoopBlockSuite.class,
+                IfThenElseSuite.class,
+                MemorySuite.class,
+                IssueSuite.class,
+                MultipleFunctionsSuite.class,
+                EmscriptenSuite.class,
 })
 public class WasmTestSuite {
     @Test

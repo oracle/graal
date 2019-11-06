@@ -44,8 +44,8 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     @CompilationFinal private final WasmCodeEntry codeEntry;
 
     /**
-     * The length (in bytes) of the control structure in the instructions stream,
-     * without the initial opcode and the block return type.
+     * The length (in bytes) of the control structure in the instructions stream, without the
+     * initial opcode and the block return type.
      */
     @CompilationFinal private int byteLength;
 
@@ -81,9 +81,10 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      * Execute the current node within the given frame and return the branch target.
      *
      * @param frame The frame to use for execution.
-     * @return The return value of this method indicates whether a branch is to be executed, in case of nested blocks.
-     * An offset with value -1 means no branch, whereas a return value n greater than or equal to 0 means that
-     * the execution engine has to branch n levels up the block execution stack.
+     * @return The return value of this method indicates whether a branch is to be executed, in case
+     *         of nested blocks. An offset with value -1 means no branch, whereas a return value n
+     *         greater than or equal to 0 means that the execution engine has to branch n levels up
+     *         the block execution stack.
      */
     public abstract TargetOffset execute(WasmContext context, VirtualFrame frame);
 
@@ -107,6 +108,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     public WasmCodeEntry codeEntry() {
         return codeEntry;
     }
+
     public WasmModule module() {
         return wasmModule;
     }

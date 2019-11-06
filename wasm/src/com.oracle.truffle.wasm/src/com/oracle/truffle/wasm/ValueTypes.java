@@ -40,7 +40,7 @@ public class ValueTypes {
     public static final byte F64_TYPE = 0x7C;
 
     public static String asString(int valueType) {
-        switch(valueType) {
+        switch (valueType) {
             case I32_TYPE:
                 return "i32";
             case I64_TYPE:

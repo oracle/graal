@@ -39,8 +39,8 @@ import com.oracle.truffle.wasm.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
 /**
- * Resets the memory and the globals of the modules in the context to the values specified
- * in the module's binary.
+ * Resets the memory and the globals of the modules in the context to the values specified in the
+ * module's binary.
  */
 public class ResetContextNode extends WasmPredefinedRootNode {
     public ResetContextNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {

@@ -30,11 +30,11 @@
 package com.oracle.truffle.wasm;
 
 public class ImportDescriptor {
-        public final String moduleName;
-        public final String memberName;
+    public final String moduleName;
+    public final String memberName;
 
-        public ImportDescriptor(String moduleName, String memberName) {
-            this.moduleName = moduleName;
-            this.memberName = memberName;
-        }
+    public ImportDescriptor(String moduleName, String memberName) {
+        this.moduleName = moduleName;
+        this.memberName = memberName;
     }
+}

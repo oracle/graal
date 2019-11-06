@@ -79,7 +79,7 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
             long last = lastGlobals.loadAsLong(address);
             if (first != last) {
                 throw new WasmExecutionException(this, "Mismatch in global at " + address + ". " +
-                        "Reference " + first + ", actual " + last);
+                                "Reference " + first + ", actual " + last);
             }
         }
     }
@@ -92,7 +92,7 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
         }
         if (firstMemory.byteSize() != lastMemory.byteSize()) {
             throw new WasmExecutionException(this, "Mismatch in memory lengths: " + firstMemory.byteSize() + " vs " +
-                    lastMemory.byteSize());
+                            lastMemory.byteSize());
         }
         for (int ptr = 0; ptr < firstMemory.byteSize(); ptr++) {
             byte first = (byte) firstMemory.load_i32_8s(ptr);
@@ -100,8 +100,8 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
             if (first != last) {
                 long from = (ptr - 100) / 8 * 8;
                 throw new WasmExecutionException(this, "Memory mismatch.\n" +
-                        "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
-                        "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");
+                                "-- Reference --\n" + firstMemory.hexView(from, 200) + "\n" +
+                                "-- Actual --\n" + firstMemory.hexView(from, 200) + "\n");
             }
         }
     }
