@@ -462,7 +462,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("opt");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("opt").toString());
 
             if (LLVMOptions.BitcodeOptimizations.getValue()) {
                 cmd.add("-disable-inlining");
@@ -501,7 +501,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llc").toString());
             cmd.add("-relocation-model=pic");
             cmd.add("--trap-unreachable");
             cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
@@ -532,7 +532,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmLink(DebugContext debug, String outputPath, List<String> inputPaths) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("llvm-link");
+            cmd.add(LLVMUtils.getLLVMBinDir().resolve("llvm-link").toString());
             cmd.add("-v");
             cmd.add("-o");
             cmd.add(outputPath);

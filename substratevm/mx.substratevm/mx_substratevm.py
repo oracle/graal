@@ -551,6 +551,17 @@ def javac_image_command(javac_path):
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
     unittest_args = unittest_args
     build_args = build_args or []
+
+    javaProperties = {}
+    for dist in suite.dists:
+        if isinstance(dist, mx.ClasspathDependency):
+            for cpEntry in mx.classpath_entries(dist):
+                if hasattr(cpEntry, "getJavaProperties"):
+                    for key, value in cpEntry.getJavaProperties().items():
+                        javaProperties[key] = value
+    for key, value in javaProperties.items():
+        build_args.append("-D" + key + "=" + value)
+
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
@@ -872,6 +883,16 @@ def _helloworld(native_image, javac_command, path, args):
         fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println(System.getenv("' + envkey + '")); } }')
         fp.flush()
     mx.run(javac_command + [hello_file])
+
+    javaProperties = {}
+    for dist in suite.dists:
+        if isinstance(dist, mx.ClasspathDependency):
+            for cpEntry in mx.classpath_entries(dist):
+                if hasattr(cpEntry, "getJavaProperties"):
+                    for key, value in cpEntry.getJavaProperties().items():
+                        javaProperties[key] = value
+    for key, value in javaProperties.items():
+        args.append("-D" + key + "=" + value)
 
     native_image(["-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
@@ -1315,6 +1336,17 @@ def native_image_on_jvm(args, **kwargs):
         executable = join(vm_link, 'bin', 'native-image')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
+
+    javaProperties = {}
+    for dist in suite.dists:
+        if isinstance(dist, mx.ClasspathDependency):
+            for cpEntry in mx.classpath_entries(dist):
+                if hasattr(cpEntry, "getJavaProperties"):
+                    for key, value in cpEntry.getJavaProperties().items():
+                        javaProperties[key] = value
+    for key, value in javaProperties.items():
+        args.append("-D" + key + "=" + value)
+
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 
 

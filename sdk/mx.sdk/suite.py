@@ -283,6 +283,7 @@ suite = {
         "exports" : [
           "org.graalvm.collections",
           "org.graalvm.home",
+          "org.graalvm.home.impl",
           "org.graalvm.nativeimage.hosted",
           "org.graalvm.nativeimage.c.function",
           "org.graalvm.nativeimage.c.struct",
