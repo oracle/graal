@@ -30,26 +30,33 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
 
     @Specialization
+    @TruffleBoundary
     protected Object doIntrinsic(LLVMNativePointer handle,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        context.releaseHandle(memory, handle);
+                    @CachedLanguage LLVMLanguage language) {
+        long address = handle.asNative();
+        if (language.getCapability(LLVMMemory.class).isDerefHandleMemory(address)) {
+            context.getDerefHandleContainer().free(address);
+        } else {
+            context.getHandleContainer().free(address);
+        }
         return null;
     }
 

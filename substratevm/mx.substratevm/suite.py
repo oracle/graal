@@ -5,11 +5,12 @@ suite = {
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
-    "developer" : {
-        "name" : "SubstrateVM developers",
-        "email" : "graal-dev@openjdk.java.net",
-        "organization" : "Graal",
-        "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    "groupId" : "org.graalvm.nativeimage",
+    "developer": {
+        "name": "GraalVM Development",
+        "email": "graalvm-dev@oss.oracle.com",
+        "organization": "Oracle Corporation",
+        "organizationUrl": "http://www.graalvm.org/",
     },
     "scm" : {
         "url" : "https://github.com/oracle/graal",
@@ -394,6 +395,7 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "deliverable" : "jvm",
+            "use_jdk_headers" : True,
             "os_arch" : {
                 "windows": {
                     "amd64" : {
@@ -995,8 +997,21 @@ suite = {
             "native" : True,
             "platformDependent" : True,
             "description" : "Native Image support distribution for the GraalVM",
-            "layout" : {
-                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+            "os_arch" : {
+                "windows": {
+                    "<others>" : {
+                        "layout" : {
+                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "layout" : {
+                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+                        },
+                    },
+                },
             },
         },
 

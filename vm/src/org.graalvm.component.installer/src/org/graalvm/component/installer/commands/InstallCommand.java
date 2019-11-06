@@ -84,6 +84,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_FAIL_EXISTING, "");
         OPTIONS.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
         OPTIONS.put(Commands.OPTION_NO_VERIFY_JARS, "");
+        OPTIONS.put(Commands.OPTION_LOCAL_DEPENDENCIES, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
@@ -95,6 +96,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_FAIL_EXISTING, Commands.OPTION_FAIL_EXISTING);
         OPTIONS.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
         OPTIONS.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
+        OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
 
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
@@ -162,6 +164,10 @@ public class InstallCommand implements InstallerCommand {
         if (!input.hasParameter()) {
             feedback.output("INSTALL_ParametersMissing");
             return 1;
+        }
+        if (input.optValue(Commands.OPTION_LOCAL_DEPENDENCIES) != null &&
+                        input.optValue(Commands.OPTION_FILES) == null) {
+            feedback.error("INSTALL_WarnLocalDependencies", null);
         }
         try {
             executeStep(this::prepareInstallation, false);

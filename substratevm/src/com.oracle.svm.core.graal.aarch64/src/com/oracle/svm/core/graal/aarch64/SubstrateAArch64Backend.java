@@ -36,6 +36,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
@@ -874,8 +875,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
-        crb.buildLabelOffsets(lir);
-        crb.emit(lir);
+        try {
+            crb.buildLabelOffsets(lir);
+            crb.emit(lir);
+        } catch (BranchTargetOutOfBoundsException e) {
+            // A branch estimation was wrong, now retry with conservative label ranges, this
+            // should always work
+            crb.setConservativeLabelRanges();
+            crb.resetForEmittingCode();
+            lir.resetLabels();
+            crb.emit(lir);
+        }
     }
 
     @Override

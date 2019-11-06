@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -358,8 +359,8 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 Object foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
-                    foreign = LLVMLanguage.getContext().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
-
+                    long address = LLVMNativePointer.cast(pointer).asNative();
+                    foreign = getHandleValue(address);
                 } else if (LLVMManagedPointer.isInstance(pointer)) {
                     foreign = LLVMManagedPointer.cast(pointer).getObject();
                 }
@@ -371,6 +372,23 @@ abstract class LLDBConstant implements LLVMDebugValue {
             return super.asInteropValue();
         }
 
+        private static Object getHandleValue(long address) {
+            LLVMContext context = LLVMLanguage.getContext();
+            if (context.getHandleContainer().isHandle(address)) {
+                LLVMManagedPointer value = context.getHandleContainer().getValue(address);
+                if (value != null) {
+                    return value.getObject();
+                }
+            }
+            if (context.getDerefHandleContainer().isHandle(address)) {
+                LLVMManagedPointer value = context.getDerefHandleContainer().getValue(address);
+                if (value != null) {
+                    return value.getObject();
+                }
+            }
+            return null;
+        }
+
         @Override
         @TruffleBoundary
         public boolean isInteropValue() {
@@ -378,7 +396,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 return false;
 
             } else if (LLVMNativePointer.isInstance(pointer)) {
-                return LLVMLanguage.getContext().isHandle(LLVMNativePointer.cast(pointer));
+                return getHandleValue(LLVMNativePointer.cast(pointer).asNative()) != null;
 
             } else if (LLVMManagedPointer.isInstance(pointer)) {
                 final Object target = LLVMManagedPointer.cast(pointer).getObject();

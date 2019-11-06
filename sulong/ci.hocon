@@ -29,6 +29,7 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
 sulong-gateTest-default-tools {
     environment: {
         CLANG_LLVM_AS: "llvm-as"
+        CLANG_LLVM_DIS: "llvm-dis"
         CLANG_LLVM_OPT: "opt"
     }
 }
@@ -129,7 +130,7 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   ]
 }
 
-sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-notifications} {
+sulong-coverage-linux: ${sulong-gateTestLLVMorg-linux} ${requireGCC} ${sulong-weekly-notifications} {
     run: [
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacocout, html]
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", --exclude-generated]

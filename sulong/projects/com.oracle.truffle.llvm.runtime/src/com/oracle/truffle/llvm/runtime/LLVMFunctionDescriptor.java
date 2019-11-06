@@ -272,14 +272,22 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             // we already did the initial function resolution after parsing but further native
             // libraries could have been loaded in the meantime
             LLVMContext context = descriptor.getContext();
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            assert !intrinsicProvider.isIntrinsified(descriptor.getName());
-            if (nfiContextExtension != null) {
-                NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
-                if (nativeFunction != null) {
-                    descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+            synchronized (context) {
+                // synchronize on the context: only one thread is allowed to resolve symbols
+                if (descriptor.getFunction() != this) {
+                    // another thread was faster, nothing to do
                     return;
+                }
+
+                NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+                assert !intrinsicProvider.isIntrinsified(descriptor.getName());
+                if (nfiContextExtension != null) {
+                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
+                    if (nativeFunction != null) {
+                        descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+                        return;
+                    }
                 }
             }
             throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
