@@ -267,9 +267,9 @@ public final class ObjectKlass extends Klass {
                         getSuperKlass().initialize();
                     }
                     for (ObjectKlass interf : getSuperInterfaces()) {
-                        if (interf.needsRecursiveInit) {
-                            interf.recursiveInitialize();
-                        }
+                        // Initialize all super interfaces, direct and indirect, with default
+                        // methods.
+                        interf.recursiveInitialize();
                     }
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
