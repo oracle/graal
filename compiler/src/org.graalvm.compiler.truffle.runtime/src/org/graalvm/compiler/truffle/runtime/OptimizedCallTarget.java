@@ -165,8 +165,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile boolean needsSplit;
 
     /**
-     * The engine data associated with this call target. Used to cache option lookups gather engine
-     * specific statistics.
+     * The engine data associated with this call target. Used to cache option lookups and to gather
+     * engine specific statistics.
      */
     public final EngineData engine;
 
