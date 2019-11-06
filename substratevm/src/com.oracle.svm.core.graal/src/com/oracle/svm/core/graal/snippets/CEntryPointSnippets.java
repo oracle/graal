@@ -328,7 +328,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (thread.isNull()) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
                 StackOverflowCheck.singleton().initialize(thread);
-                VMThreads.singleton().attachThread(thread);
+                int error = VMThreads.singleton().attachThread(thread);
+                if (error != CEntryPointErrors.NO_ERROR) {
+                    VMThreads.singleton().freeIsolateThread(thread);
+                    return error;
+                }
                 // Store thread and isolate in thread-local variables.
                 VMThreads.IsolateTL.set(thread, isolate);
             }

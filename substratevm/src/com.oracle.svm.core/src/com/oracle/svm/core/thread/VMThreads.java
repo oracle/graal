@@ -37,6 +37,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
@@ -136,12 +137,12 @@ public abstract class VMThreads {
 
     /** Is threading being torn down? */
     @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
-    public static boolean isTearingDown() {
+    static boolean isTearingDown() {
         return initializationState.get() >= STATE_TEARING_DOWN;
     }
 
     /** Note that threading is being torn down. */
-    protected static void setTearingDown() {
+    static void setTearingDown() {
         initializationState.set(STATE_TEARING_DOWN);
     }
 
@@ -235,7 +236,7 @@ public abstract class VMThreads {
      * must be the first method called in every thread.
      */
     @Uninterruptible(reason = "Reason: Thread register not yet set up.")
-    public void attachThread(IsolateThread thread) {
+    public int attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
         OSThreadIdTL.set(thread, getCurrentOSThreadId());
         OSThreadHandleTL.set(thread, getCurrentOSThreadHandle());
@@ -258,6 +259,7 @@ public abstract class VMThreads {
         } finally {
             VMThreads.THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
         }
+        return CEntryPointErrors.NO_ERROR;
     }
 
     /**
