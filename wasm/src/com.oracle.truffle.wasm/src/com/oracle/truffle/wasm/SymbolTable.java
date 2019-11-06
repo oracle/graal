@@ -178,7 +178,7 @@ public class SymbolTable {
      */
     @CompilationFinal private String exportedMemory;
 
-    public SymbolTable(WasmModule module) {
+    SymbolTable(WasmModule module) {
         this.module = module;
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.offsets = new int[INITIAL_OFFSET_SIZE];
@@ -243,7 +243,7 @@ public class SymbolTable {
         }
     }
 
-    public int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
+    int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
         ensureOffsetsCapacity(offsetsSize);
         int typeIdx = offsetsSize++;
         offsets[typeIdx] = typeDataSize;
@@ -268,12 +268,12 @@ public class SymbolTable {
         return typeIdx;
     }
 
-    public void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
+    void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
         int idx = 2 + offsets[funcTypeIdx] + paramIdx;
         typeData[idx] = type;
     }
 
-    public void registerFunctionTypeReturnType(int funcTypeIdx, int returnIdx, byte type) {
+    void registerFunctionTypeReturnType(int funcTypeIdx, int returnIdx, byte type) {
         int idx = 2 + offsets[funcTypeIdx] + typeData[offsets[funcTypeIdx]] + returnIdx;
         typeData[idx] = type;
     }
@@ -293,7 +293,7 @@ public class SymbolTable {
         return function;
     }
 
-    public WasmFunction declareFunction(int typeIndex) {
+    WasmFunction declareFunction(int typeIndex) {
         final WasmFunction function = allocateFunction(typeIndex, null);
         return function;
     }
@@ -304,11 +304,11 @@ public class SymbolTable {
         return function;
     }
 
-    public void setStartFunction(int functionIndex) {
+    void setStartFunction(int functionIndex) {
         this.startFunctionIndex = functionIndex;
     }
 
-    public int numFunctions() {
+    int numFunctions() {
         return numFunctions;
     }
 
@@ -328,14 +328,14 @@ public class SymbolTable {
         return numArgs;
     }
 
-    public byte getFunctionTypeReturnType(int typeIndex) {
+    byte getFunctionTypeReturnType(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgTypes = typeData[typeOffset + 0];
         int numReturnTypes = typeData[typeOffset + 1];
         return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
     }
 
-    public int getFunctionTypeReturnTypeLength(int typeIndex) {
+    int getFunctionTypeReturnTypeLength(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numReturnTypes = typeData[typeOffset + 1];
         return numReturnTypes;
@@ -428,7 +428,7 @@ public class SymbolTable {
         allocateGlobal(index, valueType, mutability, resolution, address);
     }
 
-    public LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
+    LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
         return importedGlobals;
     }
 
