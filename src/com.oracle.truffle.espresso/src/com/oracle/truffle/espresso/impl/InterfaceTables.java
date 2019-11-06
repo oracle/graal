@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -135,6 +136,8 @@ class InterfaceTables {
      * @return the requested klass array
      */
     public static InterfaceCreationResult constructInterfaceItable(ObjectKlass thisInterfKlass, Method[] declared) {
+        assert thisInterfKlass.isInterface();
+        CompilerAsserts.neverPartOfCompilation();
         ArrayList<Method> tmpMethodTable = new ArrayList<>();
         for (Method method : declared) {
             if (!method.isStatic() && !method.isPrivate()) {
@@ -142,7 +145,7 @@ class InterfaceTables {
                 tmpMethodTable.add(method);
             }
             if (!method.isAbstract() && !method.isStatic()) {
-                thisInterfKlass.needsRecursiveInit = true;
+                thisInterfKlass.hasDeclaredDefaultMethods = true;
             }
         }
         Method[] methods = tmpMethodTable.toArray(Method.EMPTY_ARRAY);
