@@ -44,6 +44,8 @@ import com.oracle.truffle.wasm.WasmContext;
 import com.oracle.truffle.wasm.WasmLanguage;
 import com.oracle.truffle.wasm.WasmVoidResult;
 
+import static com.oracle.truffle.wasm.WasmTracing.trace;
+
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 

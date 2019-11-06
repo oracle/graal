@@ -32,154 +32,157 @@ package com.oracle.truffle.wasm;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.wasm.constants.Debug;
 
-public interface WasmTracing {
-    TruffleLogger logger = TruffleLogger.getLogger("wasm");
+public class WasmTracing {
+    private final static TruffleLogger logger = TruffleLogger.getLogger("wasm");
 
-    default void trace(String message) {
+    private WasmTracing() {
+    }
+
+    public static void trace(String message) {
         if (Debug.TRACING) {
             logger.finest(message);
         }
     }
 
-    default void trace(String message, int value) {
+    public static void trace(String message, int value) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, value));
         }
     }
 
-    default void trace(String message, long value) {
+    public static void trace(String message, long value) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, value));
         }
     }
 
-    default void trace(String message, float value) {
+    public static void trace(String message, float value) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, value));
         }
     }
 
-    default void trace(String message, double value) {
+    public static void trace(String message, double value) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, value));
         }
     }
 
-    default void trace(String message, Object value) {
+    public static void trace(String message, Object value) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, value));
         }
     }
 
-    default void trace(String message, int v0, int v1) {
+    public static void trace(String message, int v0, int v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, long v0, long v1) {
+    public static void trace(String message, long v0, long v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, float v0, float v1) {
+    public static void trace(String message, float v0, float v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, double v0, double v1) {
+    public static void trace(String message, double v0, double v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, int v0, float v1) {
+    public static void trace(String message, int v0, float v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, int v0, double v1) {
+    public static void trace(String message, int v0, double v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, Object v0, int v1) {
+    public static void trace(String message, Object v0, int v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, Object v0, Object v1) {
+    public static void trace(String message, Object v0, Object v1) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1));
         }
     }
 
-    default void trace(String message, int v0, int v1, int v2) {
+    public static void trace(String message, int v0, int v1, int v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, int v0, long v1, long v2) {
+    public static void trace(String message, int v0, long v1, long v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, long v0, long v1, long v2) {
+    public static void trace(String message, long v0, long v1, long v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, float v0, float v1, float v2) {
+    public static void trace(String message, float v0, float v1, float v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, long v0, int v1, float v2) {
+    public static void trace(String message, long v0, int v1, float v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, long v0, int v1, int v2) {
+    public static void trace(String message, long v0, int v1, int v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, double v0, double v1, double v2) {
+    public static void trace(String message, double v0, double v1, double v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, long v0, long v1, double v2) {
+    public static void trace(String message, long v0, long v1, double v2) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2));
         }
     }
 
-    default void trace(String message, int v0, int v1, int v2, int v3) {
+    public static void trace(String message, int v0, int v1, int v2, int v3) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2, v3));
         }
     }
 
-    default void trace(String message, int v0, long v1, long v2, long v3) {
+    public static void trace(String message, int v0, long v1, long v2, long v3) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2, v3));
         }
     }
 
-    default void trace(String message, long v0, long v1, long v2, long v3) {
+    public static void trace(String message, long v0, long v1, long v2, long v3) {
         if (Debug.TRACING) {
             logger.finest(String.format(message, v0, v1, v2, v3));
         }

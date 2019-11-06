@@ -34,6 +34,8 @@ import com.oracle.truffle.wasm.WasmCodeEntry;
 import com.oracle.truffle.wasm.WasmLanguage;
 import com.oracle.truffle.wasm.memory.WasmMemory;
 
+import static com.oracle.truffle.wasm.WasmTracing.*;
+
 public class AbortOnCannotGrowMemory extends AbortNode {
     public AbortOnCannotGrowMemory(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
         super(language, codeEntry, memory);

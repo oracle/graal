@@ -31,13 +31,12 @@ package com.oracle.truffle.wasm.memory;
 
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.wasm.WasmTracing;
-import com.oracle.truffle.wasm.exception.WasmException;
-import com.oracle.truffle.wasm.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.exception.WasmTrap;
 import sun.misc.Unsafe;
 
-public class UnsafeWasmMemory extends WasmMemory implements WasmTracing {
+import static com.oracle.truffle.wasm.WasmTracing.trace;
+
+public class UnsafeWasmMemory extends WasmMemory {
     private final Unsafe unsafe;
     private long startAddress;
     private long pageSize;
@@ -62,7 +61,7 @@ public class UnsafeWasmMemory extends WasmMemory implements WasmTracing {
     public void validateAddress(long address, int offset) {
         trace("validating memory address: 0x%016X (%d)", address, address);
         if (address < 0 || address + offset >= this.byteSize()) {
-            throw new WasmException("Requested memory address out-of-bounds");
+            throw new WasmTrap(null, "Requested memory address out-of-bounds");
         }
     }
 

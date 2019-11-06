@@ -32,9 +32,8 @@ package com.oracle.truffle.wasm.nodes;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.WasmCodeEntry;
-import com.oracle.truffle.wasm.WasmTracing;
 
-public interface WasmNodeInterface extends WasmTracing {
+public interface WasmNodeInterface {
     WasmCodeEntry codeEntry();
 
     /* LOCALS operations */

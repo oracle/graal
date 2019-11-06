@@ -38,6 +38,8 @@ import com.oracle.truffle.wasm.exception.WasmTrap;
 import com.oracle.truffle.wasm.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
+import static com.oracle.truffle.wasm.WasmTracing.trace;
+
 public class WasiFdWrite extends WasmPredefinedRootNode {
 
     public WasiFdWrite(WasmLanguage language, WasmMemory memory) {

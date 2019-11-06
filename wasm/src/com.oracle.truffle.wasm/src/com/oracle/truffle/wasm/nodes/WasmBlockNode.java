@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.nodes;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.wasm.Assert.format;
+import static com.oracle.truffle.wasm.WasmTracing.trace;
 import static com.oracle.truffle.wasm.constants.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.constants.Instructions.BR;
 import static com.oracle.truffle.wasm.constants.Instructions.BR_IF;

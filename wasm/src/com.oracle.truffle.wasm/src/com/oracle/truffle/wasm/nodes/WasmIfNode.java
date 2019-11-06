@@ -37,6 +37,8 @@ import com.oracle.truffle.wasm.WasmContext;
 import com.oracle.truffle.wasm.WasmModule;
 import com.oracle.truffle.wasm.constants.TargetOffset;
 
+import static com.oracle.truffle.wasm.WasmTracing.trace;
+
 public final class WasmIfNode extends WasmNode {
 
     @CompilationFinal private final byte returnTypeId;
