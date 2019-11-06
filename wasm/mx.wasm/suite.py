@@ -104,6 +104,7 @@ suite = {
 
     "com.oracle.truffle.wasm.testcases" : {
       "subDir" : "src",
+      "sourceDirs" : ["src"],
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
@@ -128,6 +129,7 @@ suite = {
 
     "com.oracle.truffle.wasm.benchcases" : {
       "subDir" : "src",
+      "sourceDirs" : ["src"],
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
