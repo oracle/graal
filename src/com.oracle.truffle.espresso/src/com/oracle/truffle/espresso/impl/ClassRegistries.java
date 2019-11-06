@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -42,14 +41,11 @@ public final class ClassRegistries {
     private final ConcurrentHashMap<StaticObject, ClassRegistry> registries;
     private final LoadingConstraints constraints;
     private final EspressoContext context;
-    private final HashSet<StaticObject> classLoaders;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
         this.registries = new ConcurrentHashMap<>();
         this.bootClassRegistry = new BootClassRegistry(context);
-        this.classLoaders = new HashSet<>();
-        classLoaders.add(StaticObject.NULL); // add the boot class loader
         this.constraints = new LoadingConstraints(context);
     }
 
@@ -85,12 +81,7 @@ public final class ClassRegistries {
     @TruffleBoundary
     public Klass[] findLoadedClassAny(Symbol<Type> type) {
         ArrayList<Klass> klasses = new ArrayList<>();
-        for (StaticObject classLoader : classLoaders) {
-            if (StaticObject.isNull(classLoader)) {
-                continue;
-            }
-            ClassRegistry registry = registries.get(classLoader);
-
+        for (ClassRegistry registry : registries.values()) {
             if (registry!= null && registry.classes != null && registry.classes.containsKey(type)) {
                 klasses.add(registry.classes.get(type));
             }
@@ -115,10 +106,6 @@ public final class ClassRegistries {
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-
-        if (!classLoaders.contains(classLoader)) {
-            classLoaders.add(classLoader);
-        }
 
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader);
@@ -153,9 +140,6 @@ public final class ClassRegistries {
                             }
                         });
 
-        if (!classLoaders.contains(classLoader)) {
-            classLoaders.add(classLoader);
-        }
         return registry.defineKlass(type, bytes);
     }
 
@@ -178,6 +162,6 @@ public final class ClassRegistries {
     }
 
     public boolean isClassLoader(StaticObject object) {
-        return classLoaders.contains(object);
+        return registries.keySet().contains(object);
     }
 }
