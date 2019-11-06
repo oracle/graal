@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
@@ -66,7 +67,9 @@ public class JNIRegistrationUtil {
     }
 
     protected static Class<?> clazz(FeatureAccess access, String className) {
-        return access.findClassByName(className);
+        Class<?> classByName = access.findClassByName(className);
+        VMError.guarantee(classByName != null, "class " + className + " not found");
+        return classByName;
     }
 
     protected static Method method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
