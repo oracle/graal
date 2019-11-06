@@ -1,9 +1,8 @@
 package com.oracle.truffle.wasm.constants;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.RepeatingNode;
 
-public class TargetOffset implements RepeatingNode.ShouldContinue {
+public class TargetOffset {
     @CompilationFinal public final int value;
 
     public TargetOffset(int value) {
@@ -72,17 +71,4 @@ public class TargetOffset implements RepeatingNode.ShouldContinue {
                     new TargetOffset(31),
                     new TargetOffset(32)
     };
-
-    @Override
-    public boolean shouldContinue() {
-        // This is a trick to avoid the load of the value field.
-        // In particular, we avoid:
-        //
-        // return this.value == 0;
-        //
-        // This helps the partial evaluator short-circuit the
-        // pattern with a diamond and a loop exit check,
-        // when br_if occurs in the loop body.
-        return this == ZERO;
-    }
 }

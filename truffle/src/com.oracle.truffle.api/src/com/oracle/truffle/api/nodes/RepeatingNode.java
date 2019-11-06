@@ -57,27 +57,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface RepeatingNode extends NodeInterface {
 
     /**
-     * An interface that must be implemented on values returned from a loop body.
-     *
-     * It decides whether the loop iteration should be continued or not.
-     */
-    interface ShouldContinue {
-        boolean shouldContinue();
-    }
-
-    /**
      * A value indicating that the loop should be repeated.
-     *
-     * This value implements the {@see ShouldContinue} interface.
      *
      * @since 19.3
      */
-    ShouldContinue CONTINUE_LOOP_STATUS = new ShouldContinue() {
-        @Override
-        public boolean shouldContinue() {
-            return true;
-        }
-
+    Object CONTINUE_LOOP_STATUS = new Object() {
         @Override
         public String toString() {
             return "CONTINUE_LOOP_STATUS";
@@ -91,12 +75,7 @@ public interface RepeatingNode extends NodeInterface {
      *
      * @since 19.3
      */
-    ShouldContinue BREAK_LOOP_STATUS = new ShouldContinue() {
-        @Override
-        public boolean shouldContinue() {
-            return false;
-        }
-
+    Object BREAK_LOOP_STATUS = new Object() {
         @Override
         public String toString() {
             return "BREAK_LOOP_STATUS";
@@ -124,11 +103,26 @@ public interface RepeatingNode extends NodeInterface {
      *         the loop and any other (language-specific) value if it must not.
      * @since 19.3
      */
-    default ShouldContinue executeRepeatingWithValue(VirtualFrame frame) {
+    default Object executeRepeatingWithValue(VirtualFrame frame) {
         if (executeRepeating(frame)) {
             return CONTINUE_LOOP_STATUS;
         } else {
             return BREAK_LOOP_STATUS;
         }
+    }
+
+    /**
+     * Checks if the value returned by this repeating node indicates that the loop should continue.
+     *
+     * By default, this method checks whether the value is equal to {@see CONTINUE_LOOP_STATUS},
+     * but it can be overridden in the implementations as required by the language semantics.
+     *
+     * @param value the value that was previously returned by {@code executeRepeatingWithValue}
+     * @return <code>true</code> if the loop should be continued for this value
+     *
+     * @since 19.4
+     */
+    default boolean shouldContinue(Object value) {
+        return value == CONTINUE_LOOP_STATUS;
     }
 }

@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.RepeatingNode.ShouldContinue;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -117,21 +116,21 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     public Object execute(VirtualFrame frame) {
         if (CompilerDirectives.inInterpreter()) {
             try {
-                RepeatingNode.ShouldContinue status = CONTINUE_LOOP_STATUS;
-                while (status.shouldContinue()) {
+                Object status;
+                do {
                     if (compiledOSRLoop == null) {
                         status = profilingLoop(frame);
                     } else {
                         status = compilingLoop(frame);
                     }
-                }
+                } while (repeatableNode.shouldContinue(status));
                 return status;
             } finally {
                 baseLoopCount = 0;
             }
         } else {
-            ShouldContinue status;
-            while ((status = repeatableNode.executeRepeatingWithValue(frame)).shouldContinue()) {
+            Object status;
+            while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame))) {
                 if (CompilerDirectives.inInterpreter()) {
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
@@ -141,11 +140,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
     }
 
-    private ShouldContinue profilingLoop(VirtualFrame frame) {
+    private Object profilingLoop(VirtualFrame frame) {
         int iterations = 0;
         try {
-            RepeatingNode.ShouldContinue status;
-            while ((status = repeatableNode.executeRepeatingWithValue(frame)).shouldContinue()) {
+            Object status;
+            while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame))) {
                 // the baseLoopCount might be updated from a child loop during an iteration.
                 if (++iterations + baseLoopCount > osrThreshold) {
                     compileLoop(frame);
@@ -186,10 +185,10 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         return compiledOSRLoop;
     }
 
-    private ShouldContinue compilingLoop(VirtualFrame frame) {
+    private Object compilingLoop(VirtualFrame frame) {
         int iterations = 0;
         try {
-            RepeatingNode.ShouldContinue status;
+            Object status;
             do {
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target == null) {
@@ -205,7 +204,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
                 iterations++;
 
-            } while ((status = repeatableNode.executeRepeatingWithValue(frame)).shouldContinue());
+            } while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame)));
             return status;
         } finally {
             baseLoopCount += iterations;
@@ -213,9 +212,9 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
     }
 
-    private RepeatingNode.ShouldContinue callOSR(OptimizedCallTarget target, VirtualFrame frame) {
-        RepeatingNode.ShouldContinue status = (ShouldContinue) target.callOSR(frame);
-        if (!status.shouldContinue()) {
+    private Object callOSR(OptimizedCallTarget target, VirtualFrame frame) {
+        Object status = target.callOSR(frame);
+        if (!repeatableNode.shouldContinue(status)) {
             return status;
         } else {
             if (!target.isValid()) {
@@ -411,8 +410,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         protected Object executeImpl(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
-            ShouldContinue status;
-            while ((status = loopNode.getRepeatingNode().executeRepeatingWithValue(parentFrame)).shouldContinue()) {
+            Object status;
+            while (loopNode.repeatableNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(parentFrame))) {
                 if (CompilerDirectives.inInterpreter()) {
                     return CONTINUE_LOOP_STATUS;
                 }
@@ -492,8 +491,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);
             try {
-                ShouldContinue status;
-                while ((status = loopNode.getRepeatingNode().executeRepeatingWithValue(loopFrame)).shouldContinue()) {
+                Object status;
+                while (loopNode.repeatableNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(loopFrame))) {
                     if (CompilerDirectives.inInterpreter()) {
                         return CONTINUE_LOOP_STATUS;
                     }
