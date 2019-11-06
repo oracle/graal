@@ -262,4 +262,4 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         return (True, None)
 
     def clean(self, forBuild=False):
-        pass
+        mx.rmtree(self.subject.output_dir(), ignore_errors=True)
