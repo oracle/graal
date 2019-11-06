@@ -171,8 +171,8 @@ Stay tuned!
 
 ## Embedding GraalWasm inside other programs
 
-GraalWasm can be accessed programmatically with the
-[Polyglot API](https://www.graalvm.org/docs/reference-manual/polyglot/),
+GraalWasm can be accessed programmatically with the Polyglot API,
+which allows embedding GraalWasm into user programs.
 
 Here is a simple example of how to run a WebAssembly program using GraalWasm
 from a Java application:
@@ -190,4 +190,7 @@ Context context = contextBuilder.build();
 Value mainFunction = context.getBindings("wasm").getMember("_main");
 mainFunction.execute();
 ```
+
+For more Polyglot-related examples, consult the documentation at the
+[GraalVM website](https://www.graalvm.org/docs/reference-manual/polyglot/).
 
