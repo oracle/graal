@@ -244,7 +244,7 @@ public class Verifier {
             if (!matches) {
                 String val = graalVal != null ? graalVal : feedback.l10n("VERIFY_CapabilityMissing");
                 addOrThrow(new DependencyException.Mismatch(
-                                GRAALVM_CAPABILITY,
+                                componentInfo.getId(),
                                 s, reqVal, graalVal,
                                 feedback.l10n("VERIFY_Dependency_Failed",
                                                 componentInfo.getName(), localRegistry.localizeCapabilityName(s), reqVal, val)));
