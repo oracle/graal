@@ -150,6 +150,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public boolean isInterface() {
+        // conflict between ModifiersProvider and KlassRef interfaces,
+        // so chose the default implementation in ModifiersProvider.
         return ModifiersProvider.super.isInterface();
     }
 
