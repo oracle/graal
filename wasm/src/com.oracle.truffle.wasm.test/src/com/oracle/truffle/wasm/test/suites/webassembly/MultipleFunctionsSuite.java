@@ -41,6 +41,7 @@ public class MultipleFunctionsSuite extends WasmSuiteBase {
         return "multiple-functions";
     }
 
+    @Override
     @Test
     public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.

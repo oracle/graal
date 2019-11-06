@@ -36,7 +36,7 @@ import com.oracle.truffle.wasm.WasmContext;
 import com.oracle.truffle.wasm.constants.TargetOffset;
 
 // TODO: Remove this, as it's just an unnecessary indirection, and space overhead.
-public class WasmLoopNode extends WasmNode {
+public final class WasmLoopNode extends WasmNode {
     @Child private LoopNode loopNode;
 
     public WasmLoopNode(WasmBlockNode block) {

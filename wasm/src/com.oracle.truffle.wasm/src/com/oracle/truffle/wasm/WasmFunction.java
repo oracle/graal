@@ -39,7 +39,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 public class WasmFunction implements TruffleObject {
 
     private final SymbolTable symbolTable;
-    private int index;
+    private final int index;
     private ImportDescriptor importDescriptor;
     private WasmCodeEntry codeEntry;
     private final String name;
@@ -67,8 +67,8 @@ public class WasmFunction implements TruffleObject {
         return symbolTable.functionTypeArgumentCount(typeIndex);
     }
 
-    public byte argumentTypeAt(int index) {
-        return symbolTable.getFunctionTypeArgumentTypeAt(typeIndex, index);
+    public byte argumentTypeAt(int argumentIndex) {
+        return symbolTable.getFunctionTypeArgumentTypeAt(typeIndex, argumentIndex);
     }
 
     public byte returnType() {

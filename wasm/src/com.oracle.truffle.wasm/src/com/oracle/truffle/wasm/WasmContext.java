@@ -29,25 +29,23 @@
  */
 package com.oracle.truffle.wasm;
 
-import static com.oracle.truffle.api.CompilerDirectives.*;
-import static com.oracle.truffle.api.TruffleLanguage.Env;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
-public class WasmContext {
-    private Env env;
-    private WasmLanguage language;
-    private @CompilationFinal Memories memories;
-    private @CompilationFinal Globals globals;
-    private @CompilationFinal Tables tables;
-    private @CompilationFinal Linker linker;
+public final class WasmContext {
+    private final Env env;
+    private final WasmLanguage language;
+    private final Memories memories;
+    private final Globals globals;
+    private final Tables tables;
+    private final Linker linker;
     private Map<String, WasmModule> modules;
 
     public static WasmContext getCurrent() {
@@ -62,7 +60,7 @@ public class WasmContext {
         this.memories = new Memories();
         this.modules = new HashMap<>();
         this.linker = new Linker(language);
-        initializePredefinedModules(env);
+        initializePredefinedModules();
     }
 
     public CallTarget parse(Source source) {
@@ -111,7 +109,7 @@ public class WasmContext {
         modules.put(module.name(), module);
     }
 
-    private void initializePredefinedModules(Env env) {
+    private void initializePredefinedModules() {
         final String extraModuleValue = WasmOptions.PredefinedModules.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;

@@ -74,7 +74,7 @@ public class Linker {
         }
     }
 
-    private void linkFunctions(WasmModule module) {
+    private static void linkFunctions(WasmModule module) {
         final WasmContext context = WasmLanguage.getCurrentContext();
         for (WasmFunction function : module.symbolTable().importedFunctions()) {
             final WasmModule importedModule = context.modules().get(function.importedModuleName());

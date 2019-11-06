@@ -105,27 +105,27 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     }
 
     @Override
-    public WasmCodeEntry codeEntry() {
+    public final WasmCodeEntry codeEntry() {
         return codeEntry;
     }
 
-    public WasmModule module() {
+    public final WasmModule module() {
         return wasmModule;
     }
 
-    public int byteLength() {
+    public final int byteLength() {
         return byteLength;
     }
 
-    public void setByteLength(int byteLength) {
+    public final void setByteLength(int byteLength) {
         this.byteLength = byteLength;
     }
 
-    public int byteConstantLength() {
+    public final int byteConstantLength() {
         return byteConstantLength;
     }
 
-    public void setByteConstantLength(int byteConstantLength) {
+    public final void setByteConstantLength(int byteConstantLength) {
         this.byteConstantLength = byteConstantLength;
     }
 
@@ -133,7 +133,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         return intConstantLength;
     }
 
-    public void setIntConstantLength(int intConstantLength) {
+    public final void setIntConstantLength(int intConstantLength) {
         this.intConstantLength = intConstantLength;
     }
 
@@ -141,7 +141,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         return longConstantLength;
     }
 
-    public void setLongConstantLength(int longConstantLength) {
+    public final void setLongConstantLength(int longConstantLength) {
         this.longConstantLength = longConstantLength;
     }
 
@@ -149,7 +149,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         return branchTableLength;
     }
 
-    public void setBranchTableLength(int branchTableLength) {
+    public final void setBranchTableLength(int branchTableLength) {
         this.branchTableLength = branchTableLength;
     }
 }
