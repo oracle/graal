@@ -44,11 +44,11 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     private Collection<Thread> activeThreads = new ArrayList<>();
 
     @Override
-    protected void onCreate(TruffleInstrument.Env env) {
+    protected void onCreate(TruffleInstrument.Env instrumentEnv) {
         assert controller == null;
-        this.env = env;
         controller = new JDWPController(this);
-        env.registerService(controller);
+        this.env = instrumentEnv;
+        this.env.registerService(controller);
     }
 
     public void reset() {
@@ -99,8 +99,8 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void init(JDWPContext context) {
-        this.context = context;
+    public void init(JDWPContext jdwpContext) {
+        this.context = jdwpContext;
         try {
             if (controller.shouldWaitForAttach()) {
                 doConnect();

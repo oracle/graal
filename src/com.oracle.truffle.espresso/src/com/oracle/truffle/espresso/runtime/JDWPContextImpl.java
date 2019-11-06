@@ -28,12 +28,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private final EspressoContext context;
     private final JDWPVirtualMachine vm;
-    private final Ids ids;
+    private final Ids<Object> ids;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.vm = new EspressoVirtualMachine();
-        this.ids = new Ids(StaticObject.NULL);
+        this.ids = new Ids<>(StaticObject.NULL);
     }
 
     public void jdwpInit() {
@@ -44,7 +44,7 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Ids getIds() {
+    public Ids<Object> getIds() {
         return ids;
     }
 

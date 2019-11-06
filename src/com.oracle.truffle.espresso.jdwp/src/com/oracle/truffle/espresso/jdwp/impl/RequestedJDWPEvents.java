@@ -62,7 +62,7 @@ public class RequestedJDWPEvents {
     public static final byte VM_DISCONNECTED = 100;
 
     private final VMEventListener eventListener;
-    private final Ids ids;
+    private final Ids<Object> ids;
 
     RequestedJDWPEvents(JDWPContext context, SocketConnection connection) {
         this.eventListener = new VMEventListenerImpl(connection, context);
@@ -133,7 +133,7 @@ public class RequestedJDWPEvents {
         return new JDWPResult(reply, futures);
     }
 
-    private PacketStream toReply(Packet packet) {
+    private static PacketStream toReply(Packet packet) {
         PacketStream reply;
         reply = new PacketStream().replyPacket().id(packet.id);
         reply.writeInt(packet.id);

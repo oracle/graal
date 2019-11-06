@@ -846,7 +846,7 @@ class JDWP {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input, context);
                 }
-                int options = input.readInt(); // TODO(Gregersen) - handle invocation options
+                /*int options = */ input.readInt(); // TODO(Gregersen) - handle invocation options
 
                 Object callee = context.getIds().fromId((int) objectId);
                 MethodRef method = verifyMethodRef(methodId, reply, context);
@@ -1625,7 +1625,7 @@ class JDWP {
             case TagConstants.FLOAT:
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
-                    reply.writeFloat((float) unboxed);
+                    reply.writeFloat(unboxed);
                 } else {
                     reply.writeFloat((float) value);
                 }
@@ -1636,7 +1636,7 @@ class JDWP {
             case TagConstants.DOUBLE:
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
-                    reply.writeDouble((double) unboxed);
+                    reply.writeDouble(unboxed);
                 } else {
                     reply.writeDouble((double) value);
                 }

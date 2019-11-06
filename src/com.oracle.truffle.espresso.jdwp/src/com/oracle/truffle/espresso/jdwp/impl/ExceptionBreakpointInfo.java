@@ -16,14 +16,17 @@ public class ExceptionBreakpointInfo extends AbstractBreakpointInfo {
         this.unCaught = unCaught;
     }
 
+    @Override
     public KlassRef getKlass() {
         return klass;
     }
 
+    @Override
     public boolean isCaught() {
         return caught;
     }
 
+    @Override
     public boolean isUnCaught() {
         return unCaught;
     }

@@ -87,7 +87,7 @@ public class JDWPDebuggerController {
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
 
-    private Ids ids;
+    private Ids<Object> ids;
     private Method suspendMethod;
     private Method resumeMethod;
 
@@ -98,8 +98,8 @@ public class JDWPDebuggerController {
         this.instrument = instrument;
     }
 
-    public void initialize(JDWPOptions options, JDWPContext context, boolean reconnect) {
-        this.options = options;
+    public void initialize(JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
+        this.options = jdwpOptions;
         if (!reconnect) {
             instrument.init(context);
         }

@@ -218,21 +218,4 @@ public class PacketStream {
         readPosition += len;
         return ret;
     }
-
-    private long readID(int size) {
-        switch (size) {
-            case 8:
-                return readLong();
-            case 4:
-                return (long)readInt();
-            case 2:
-                return (long)readShort();
-            default:
-                throw new UnsupportedOperationException("JDWP: ID size not supported: " + size);
-        }
-    }
-
-    public void dumpPacket() {
-        packet.dump(true);
-    }
 }

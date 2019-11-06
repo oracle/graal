@@ -48,22 +48,27 @@ public class LineBreakpointInfo extends AbstractBreakpointInfo {
         this.line = line;
     }
 
+    @Override
     public Object getThread() {
         return getFilter().getThread();
     }
 
+    @Override
     public long getClassId() {
         return classId;
     }
 
+    @Override
     public long getMethodId() {
         return methodId;
     }
 
+    @Override
     public byte getTypeTag() {
         return typeTag;
     }
 
+    @Override
     public long getBci() {
         return bci;
     }
