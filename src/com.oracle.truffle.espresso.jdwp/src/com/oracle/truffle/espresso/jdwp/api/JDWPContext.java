@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 
 /**
  * Interface that defines required methods for a guest language
@@ -257,9 +258,20 @@ public interface JDWPContext {
      */
     boolean isValidClassLoader(Object object);
 
+    /**
+     * Converts an arbitrary host object to the corresponding guest object
+     * @param object the host object to convert
+     * @return the guest object
+     */
     Object toGuest(Object object);
 
     // temporarily needed until we get better exception-type based filtering in the Debug API
     Object getGuestException(Throwable exception);
 
+    /**
+     * Get the stackframes for the given guest thread
+     * @param thread the guest thread
+     * @return an array of the call frames for the thread
+     */
+    JDWPCallFrame[] getStackTrace(Object thread);
 }

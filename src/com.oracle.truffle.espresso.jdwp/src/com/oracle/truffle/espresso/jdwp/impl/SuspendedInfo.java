@@ -25,8 +25,6 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 
 public class SuspendedInfo {
 
-    public static final SuspendedInfo UNKNOWN = new SuspendedInfo(null, new JDWPCallFrame[0], null);
-
     private SuspendedEvent event;
     private JDWPCallFrame[] stackFrames;
     private Object thread;

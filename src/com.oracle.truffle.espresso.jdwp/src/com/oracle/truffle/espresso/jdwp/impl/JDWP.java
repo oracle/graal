@@ -1149,11 +1149,12 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                if (suspendedInfo == SuspendedInfo.UNKNOWN) {
+                if (suspendedInfo instanceof UnknownSuspendedInfo) {
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                 }
 
                 JDWPCallFrame[] frames = suspendedInfo.getStackFrames();
+
                 if (length == -1) {
                     length = frames.length;
                 }
@@ -1192,7 +1193,7 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                if (suspendedInfo == SuspendedInfo.UNKNOWN) {
+                if (suspendedInfo instanceof UnknownSuspendedInfo) {
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                 }
 
@@ -1233,7 +1234,7 @@ class JDWP {
                     System.out.println("Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
                 }
                 long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
-                while (result == SuspendedInfo.UNKNOWN && System.currentTimeMillis() < timeout) {
+                while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
                     try {
                         Thread.sleep(10);
                         result = controller.getSuspendedInfo(thread);
@@ -1242,7 +1243,7 @@ class JDWP {
                     }
                 }
             }
-            if (result == SuspendedInfo.UNKNOWN) {
+            if (result instanceof UnknownSuspendedInfo) {
                 if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
                     System.out.println("Still no suspended info for thread " + controller.getContext().getThreadName(thread));
                 }

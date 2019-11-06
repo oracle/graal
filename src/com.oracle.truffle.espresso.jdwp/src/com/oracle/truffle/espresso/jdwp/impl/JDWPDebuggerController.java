@@ -307,7 +307,7 @@ public class JDWPDebuggerController {
             // even if the thread is executing. If the thread is blocked or waiting we still need
             // to suspend it, thus we manage this with a hard suspend mechanism
             ThreadSuspension.addHardSuspendedThread(thread);
-            suspendedInfos.put(thread, SuspendedInfo.UNKNOWN);
+            suspendedInfos.put(thread, new UnknownSuspendedInfo(thread, getContext()));
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("not able to suspend thread: " + getThreadName(thread));

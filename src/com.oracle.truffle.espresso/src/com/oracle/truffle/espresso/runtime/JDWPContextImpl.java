@@ -11,6 +11,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.NullKlass;
 import com.oracle.truffle.espresso.jdwp.impl.ClassObjectId;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.TagConstants;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -311,5 +312,12 @@ public final class JDWPContextImpl implements JDWPContext {
         else {
             throw new RuntimeException("unknown exception type: " + exception.getClass());
         }
+    }
+
+    @Override
+    public JDWPCallFrame[] getStackTrace(Object thread) {
+        // TODO(Gregersen) - implement this method when we can get stack frames
+        // for arbitrary threads.
+        return new JDWPCallFrame[0];
     }
 }
