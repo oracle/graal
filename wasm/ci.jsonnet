@@ -1,6 +1,6 @@
 {
   local base = {
-      local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b02', platformspecific: true},
+      local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b04', platformspecific: true},
 
       jdk8: {
         downloads+: {
@@ -29,10 +29,6 @@
         capabilities+: ['linux', 'amd64'],
       },
 
-      ol65: self.linux + {
-        capabilities+: ['ol65'],
-      },
-
       eclipse: {
         downloads+: {
           ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
@@ -53,6 +49,7 @@
 
   local gate_graalwasm = {
     setup+: [
+      ['cd', 'wasm'],
       ['mx', 'sversions'],
     ],
     run+: [
