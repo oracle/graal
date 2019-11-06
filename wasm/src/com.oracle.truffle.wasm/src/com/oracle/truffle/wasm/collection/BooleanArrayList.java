@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.collection;
 
-public class BooleanArrayList {
+public final class BooleanArrayList {
     private static final boolean[] EMPTY_BOOLEAN_ARRAY = new boolean[0];
 
     private boolean[] array;

@@ -53,6 +53,7 @@ public class WasmTrap extends RuntimeException implements TruffleException {
         return location;
     }
 
+    @SuppressWarnings("sync-override")
     @Override
     public final Throwable fillInStackTrace() {
         return this;

@@ -41,6 +41,7 @@ public class MemorySuite extends WasmSuiteBase {
         return "memory";
     }
 
+    @Override
     @Test
     public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.

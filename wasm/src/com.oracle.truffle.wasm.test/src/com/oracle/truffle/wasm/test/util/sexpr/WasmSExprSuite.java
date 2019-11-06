@@ -57,6 +57,7 @@ public abstract class WasmSExprSuite extends WasmTestBase {
         }
     }
 
+    @Override
     @Test
     public void test() throws IOException {
         Collection<Path> testCases = collectTestCases(testDirectory());

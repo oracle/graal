@@ -233,7 +233,7 @@ import com.oracle.truffle.wasm.memory.WasmMemoryException;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-public class WasmBlockNode extends WasmNode implements RepeatingNode {
+public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final byte continuationTypeId;
@@ -276,6 +276,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.callNodeTable = callNodeTable;
     }
 
+    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public TargetOffset execute(WasmContext context, VirtualFrame frame) {
         int nestedControlOffset = 0;

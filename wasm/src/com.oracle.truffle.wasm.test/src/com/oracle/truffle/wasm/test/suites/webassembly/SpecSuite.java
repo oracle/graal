@@ -104,7 +104,7 @@ public class SpecSuite extends WasmSExprSuite {
         }
     }
 
-    private SExprLiteralNode ensureLiteral(SExprNode node) {
+    private static SExprLiteralNode ensureLiteral(SExprNode node) {
         if (!(node instanceof SExprAtomNode)) {
             Assert.fail(String.format("Malformed module definition: expected %s, got %s", SExprAtomNode.class, node.getClass()));
         }

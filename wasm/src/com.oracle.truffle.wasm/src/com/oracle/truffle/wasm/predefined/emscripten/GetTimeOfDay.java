@@ -32,7 +32,6 @@ package com.oracle.truffle.wasm.predefined.emscripten;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.WasmCodeEntry;
-import com.oracle.truffle.wasm.WasmContext;
 import com.oracle.truffle.wasm.WasmLanguage;
 import com.oracle.truffle.wasm.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
@@ -49,8 +48,6 @@ public class GetTimeOfDay extends WasmPredefinedRootNode {
         for (Object arg : args) {
             trace("GetTimeOfDay argument: %s", arg);
         }
-
-        WasmContext context = contextReference().get();
 
         int ptr = (int) args[0];
 
@@ -69,7 +66,7 @@ public class GetTimeOfDay extends WasmPredefinedRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private long getCurrentTime() {
+    private static long getCurrentTime() {
         return System.currentTimeMillis();
     }
 }

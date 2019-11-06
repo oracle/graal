@@ -221,8 +221,8 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.constants.CallIndirect;
 import com.oracle.truffle.wasm.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.constants.GlobalModifier;
@@ -232,7 +232,6 @@ import com.oracle.truffle.wasm.constants.LimitsPrefix;
 import com.oracle.truffle.wasm.exception.WasmException;
 import com.oracle.truffle.wasm.exception.WasmLinkerException;
 import com.oracle.truffle.wasm.memory.WasmMemory;
-import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.nodes.WasmBlockNode;
 import com.oracle.truffle.wasm.nodes.WasmCallStubNode;
 import com.oracle.truffle.wasm.nodes.WasmEmptyNode;
@@ -571,7 +570,7 @@ public class BinaryParser extends BinaryStreamParser {
         codeEntry.setLocalTypes(allLocalTypes);
     }
 
-    private void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
+    private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
         if (returnTypeId == 0x40) {
             Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
         } else {
@@ -1360,8 +1359,8 @@ public class BinaryParser extends BinaryStreamParser {
                         int index = readGlobalIndex();
                         // TODO: Implement GLOBAL_GET case for data sections (and add tests).
                         throw new WasmException("GLOBAL_GET in data section not implemented.");
-                        // offset = module.globals().getAsInt(index);
-                        // break;
+                    // offset = module.globals().getAsInt(index);
+                    // break;
                     case END:
                         break;
                     default:

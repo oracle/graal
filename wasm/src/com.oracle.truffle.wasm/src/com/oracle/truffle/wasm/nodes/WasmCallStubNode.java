@@ -32,7 +32,7 @@ package com.oracle.truffle.wasm.nodes;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.WasmFunction;
 
-public class WasmCallStubNode extends Node {
+public final class WasmCallStubNode extends Node {
     private WasmFunction function;
 
     public WasmCallStubNode(WasmFunction function) {

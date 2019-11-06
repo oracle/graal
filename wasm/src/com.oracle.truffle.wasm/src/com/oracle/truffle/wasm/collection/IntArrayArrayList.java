@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.collection;
 
-public class IntArrayArrayList {
+public final class IntArrayArrayList {
     private static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
 
     private int[][] array;
