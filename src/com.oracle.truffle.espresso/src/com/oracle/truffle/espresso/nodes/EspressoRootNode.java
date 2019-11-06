@@ -70,6 +70,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getName();
     }
 
+    @Override
     public Object execute(VirtualFrame frame) {
         return methodNode.execute(frame);
     }

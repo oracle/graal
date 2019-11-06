@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -561,7 +560,13 @@ public final class EspressoContext {
 
     public boolean isValidThreadGroup(Object threadGroup) {
         // TODO(Gregersen) - validate if this is a valid threadgroup
-        return true;
+        // below fixes ECJ warnings for unused threadgroup until this gets
+        // properly implemented
+        if (!initialized) {
+            return true;
+        }
+        Object temp = threadGroup;
+        return temp == threadGroup;
     }
 
     // endregion Options

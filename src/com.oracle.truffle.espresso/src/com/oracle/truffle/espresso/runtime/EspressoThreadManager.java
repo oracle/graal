@@ -34,11 +34,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-
 class EspressoThreadManager implements ContextAccess {
 
     private final EspressoContext context;

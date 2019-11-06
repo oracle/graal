@@ -140,27 +140,27 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
         int currentBci = 0;
 
-        node = findKnownEspressoNode(node);
+        Node espressoNode = findKnownEspressoNode(node);
 
         Method method;
         Node scopeNode;
-        if (node instanceof QuickNode) {
-            QuickNode quick = (QuickNode) node;
+        if (espressoNode instanceof QuickNode) {
+            QuickNode quick = (QuickNode) espressoNode;
             currentBci = quick.getBCI();
             method = quick.getBytecodesNode().getMethod();
             scopeNode = quick.getBytecodesNode();
-        } else if (node instanceof EspressoStatementNode) {
-            EspressoStatementNode statementNode = (EspressoStatementNode) node;
+        } else if (espressoNode instanceof EspressoStatementNode) {
+            EspressoStatementNode statementNode = (EspressoStatementNode) espressoNode;
             currentBci = statementNode.getBci();
             method = statementNode.getBytecodesNode().getMethod();
             scopeNode = statementNode.getBytecodesNode();
-        } else if (node instanceof BytecodeNode) {
-            BytecodeNode bytecodeNode = (BytecodeNode) node;
+        } else if (espressoNode instanceof BytecodeNode) {
+            BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
             currentBci = 0; // start of the method
             method = bytecodeNode.getMethod();
             scopeNode = bytecodeNode;
         } else {
-            return super.findLocalScopes(context, node, frame);
+            return super.findLocalScopes(context, espressoNode, frame);
         }
         Klass klass = method.getDeclaringKlass();
         String scopeName = klass.getName().toString() + "." + method.getName().toString() + method.getRawSignature().toString();
@@ -168,12 +168,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         // construct the current scope with valid local variables information
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
 
-        Scope scope = Scope.newBuilder(scopeName, getVariables(liveLocals, frame)).node(scopeNode).build();
-        //new RuntimeException().printStackTrace();
+        Scope scope = Scope.newBuilder(scopeName, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
         return Collections.singletonList(scope);
     }
 
-    private Node findKnownEspressoNode(Node input) {
+    private static Node findKnownEspressoNode(Node input) {
         Node currentNode = input;
         boolean known = false;
         while (currentNode != null && !known) {
@@ -184,10 +183,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
         }
         return currentNode;
-    }
-
-    private Object getVariables(Local[] liveLocals, Frame frame) {
-        return EspressoScope.createVariables(liveLocals, frame);
     }
 
     @Override

@@ -231,8 +231,8 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public String getGenericSignatureAsString() {
-        Symbol<ModifiedUTF8> genericSignature = getGenericSignature();
-        return genericSignature.toString();
+        Symbol<ModifiedUTF8> signature = getGenericSignature();
+        return signature.toString();
     }
 
     @Override

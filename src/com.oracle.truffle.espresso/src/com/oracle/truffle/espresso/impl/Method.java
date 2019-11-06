@@ -803,17 +803,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public LineNumberTable getLineNumberTable() {
-        CodeAttribute codeAttribute = getCodeAttribute();
-        if (codeAttribute != null) {
-            return codeAttribute.getLineNumberTableAttribute();
+        CodeAttribute attribute = getCodeAttribute();
+        if (attribute != null) {
+            return attribute.getLineNumberTableAttribute();
         }
         return LineNumberTable.EMPTY;
     }
 
     public LocalVariableTable getLocalVariableTable() {
-        CodeAttribute codeAttribute = getCodeAttribute();
-        if (codeAttribute != null) {
-            return codeAttribute.getLocalvariableTable();
+        CodeAttribute attribute = getCodeAttribute();
+        if (attribute != null) {
+            return attribute.getLocalvariableTable();
         }
         return LocalVariableTable.EMPTY;
     }

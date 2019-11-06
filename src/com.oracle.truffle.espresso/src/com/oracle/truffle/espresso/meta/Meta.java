@@ -906,7 +906,7 @@ public final class Meta implements ContextAccess {
         return toGuestString(hostString.toString());
     }
 
-    public boolean isString(Object string) {
+    public static boolean isString(Object string) {
         if (string instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) string;
             return staticObject.isString();

@@ -15,6 +15,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.NullKlass;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
@@ -49,7 +50,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isString(Object string) {
-        return context.getMeta().isString(string);
+        return Meta.isString(string);
     }
 
     @Override
