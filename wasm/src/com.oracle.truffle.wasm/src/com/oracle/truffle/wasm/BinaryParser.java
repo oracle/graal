@@ -1088,13 +1088,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
             }
         } while (opcode != END && opcode != ELSE);
-        currentBlock.setNestedControlTable(nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]));
-        currentBlock.setCallNodeTable(callNodes.toArray(new Node[callNodes.size()]));
-        currentBlock.setByteLength(offset() - startOffset);
-        currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
-        currentBlock.setIntConstantLength(state.intConstantOffset() - startIntConstantOffset);
-        currentBlock.setLongConstantLength(state.longConstantOffset() - startLongConstantOffset);
-        currentBlock.setBranchTableLength(state.branchTableOffset() - startBranchTableOffset);
+        currentBlock.initialize(nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]),
+                        callNodes.toArray(new Node[callNodes.size()]),
+                        offset() - startOffset, state.byteConstantOffset() - startByteConstantOffset,
+                        state.intConstantOffset() - startIntConstantOffset, state.longConstantOffset() - startLongConstantOffset,
+                        state.branchTableOffset() - startBranchTableOffset);
         // TODO: Restore this check, when we fix the case where the block contains a return
         // instruction.
         // checkValidStateOnBlockExit(returnTypeId, state, startStackSize);

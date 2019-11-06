@@ -113,43 +113,31 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         return wasmModule;
     }
 
-    public final int byteLength() {
+    final void initialize(int byteLength, int byteConstantLength, int intConstantLength, int longConstantLength, int branchTableLength) {
+        this.byteLength = byteLength;
+        this.byteConstantLength = byteConstantLength;
+        this.intConstantLength = intConstantLength;
+        this.longConstantLength = longConstantLength;
+        this.branchTableLength = branchTableLength;
+    }
+
+    int byteLength() {
         return byteLength;
     }
 
-    public final void setByteLength(int byteLength) {
-        this.byteLength = byteLength;
-    }
-
-    public final int byteConstantLength() {
+    int byteConstantLength() {
         return byteConstantLength;
     }
 
-    public final void setByteConstantLength(int byteConstantLength) {
-        this.byteConstantLength = byteConstantLength;
-    }
-
-    public int intConstantLength() {
+    int intConstantLength() {
         return intConstantLength;
     }
 
-    public final void setIntConstantLength(int intConstantLength) {
-        this.intConstantLength = intConstantLength;
-    }
-
-    public int longConstantLength() {
+    int longConstantLength() {
         return longConstantLength;
     }
 
-    public final void setLongConstantLength(int longConstantLength) {
-        this.longConstantLength = longConstantLength;
-    }
-
-    public int branchTableLength() {
+    int branchTableLength() {
         return branchTableLength;
-    }
-
-    public final void setBranchTableLength(int branchTableLength) {
-        this.branchTableLength = branchTableLength;
     }
 }
