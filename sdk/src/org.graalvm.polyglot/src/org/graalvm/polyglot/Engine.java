@@ -303,6 +303,7 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
+        private boolean deprioritize = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
@@ -502,6 +503,17 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Run this engine with a lower priority than the host environment.
+         *
+         * @return the {@link Builder}
+         * @since 20.0.0
+         */
+        public Builder deprioritize(boolean depri) {
+            this.deprioritize = depri;
+            return this;
+        }
+
+        /**
          * Creates a new engine instance from the configuration provided in the builder. The same
          * engine builder can be used to create multiple engine instances.
          *
@@ -514,7 +526,7 @@ public final class Engine implements AutoCloseable {
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
                             false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler,
-                            null);
+                            null, deprioritize);
         }
 
     }
@@ -757,7 +769,7 @@ public final class Engine implements AutoCloseable {
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                         long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                         Object logHandlerOrStream,
-                        HostAccess conf) {
+                        HostAccess conf, boolean deprioritize) {
             throw noPolyglotImplementationFound();
         }
 

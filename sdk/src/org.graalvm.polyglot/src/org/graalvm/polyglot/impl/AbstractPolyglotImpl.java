@@ -238,7 +238,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream,
-                    HostAccess conf);
+                    HostAccess conf, boolean deprioritize);
 
     public abstract void preInitializeEngine();
 

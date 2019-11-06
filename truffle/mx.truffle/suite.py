@@ -163,6 +163,7 @@ suite = {
     "com.oracle.truffle.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "jniHeaders" : True,
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.interop",
@@ -172,6 +173,36 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.polyglot.native" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "ossupport",
+      "use_jdk_headers" : True,
+      "buildDependencies" : [
+        "com.oracle.truffle.polyglot",
+      ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64", "-pthread"],
+            "ldflags" : ["-m64", "-pthread"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+      },
     },
 
     "com.oracle.truffle.api.test" : {
@@ -812,14 +843,34 @@ suite = {
         "com.oracle.truffle.polyglot",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK"
+        "sdk:GRAAL_SDK",
+        "TRUFFLE_OSSUPPORT_NATIVE"
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
       "maven" : {
         # Deploy the modular jar specified by "moduleInfo.open"
         "moduleInfo" : "open",
+      },
+      "javaProperties" : {
+          "truffle.ossupport.library" : "<path:TRUFFLE_OSSUPPORT_NATIVE>/bin/<lib:ossupport>"
       }
+    },
+
+    "TRUFFLE_OSSUPPORT_NATIVE" : {
+      "native" : True,
+      "platformDependent" : True,
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+      ],
+      "layout" : {
+        "bin/" : "dependency:com.oracle.truffle.polyglot.native",
+      },
+      "include_dirs" : ["include"],
+      "description" : "Contains the native OS truffle support library.",
+      "maven": True,
     },
 
     "TRUFFLE_NFI" : {

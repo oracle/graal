@@ -60,11 +60,13 @@ final class PolyglotThreadInfo {
     volatile boolean cancelled;
     private volatile long lastEntered;
     private volatile long timeExecuted;
+    private boolean deprioritized;
 
     private static volatile ThreadMXBean threadBean;
 
     PolyglotThreadInfo(Thread thread) {
         this.thread = new WeakReference<>(thread);
+        this.deprioritized = false;
     }
 
     Thread getThread() {
@@ -81,6 +83,16 @@ final class PolyglotThreadInfo {
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
         }
+        if (engine.deprioritze && !deprioritized) {
+            int nativePriority = OSSupport.getNativeThreadPriority();
+            getThread().setPriority(Thread.MIN_PRIORITY);
+            int lowerNativePriority = OSSupport.getNativeThreadPriority();
+            if (lowerNativePriority <= nativePriority) {
+                throw new RuntimeException("Can't lower scheduling priority for polyglot engine: before " + String.valueOf(nativePriority) + " after: " + String.valueOf(lowerNativePriority));
+            }
+            deprioritized = true;
+        }
+
     }
 
     void resetTiming() {
@@ -135,6 +147,11 @@ final class PolyglotThreadInfo {
             this.lastEntered = 0;
             this.timeExecuted += getTime() - last;
         }
+        if (deprioritized && count == 0) {
+            getThread().setPriority(Thread.NORM_PRIORITY);
+            deprioritized = false;
+        }
+
     }
 
     boolean isLastActive() {
