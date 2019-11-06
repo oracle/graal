@@ -29,6 +29,7 @@
 from __future__ import print_function
 
 import os
+import time
 import re
 import tempfile
 from contextlib import contextmanager
@@ -415,7 +416,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         yield native_image_func
     finally:
         if exists(native_image_cmd) and has_server:
+            def timestr():
+                return time.strftime('%d %b %Y %H:%M:%S') + ' - '
+            mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
             _native_image(['--server-shutdown'])
+            mx.log(timestr() + 'Shutting down completed')
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature'
