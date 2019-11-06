@@ -33,6 +33,8 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.wasm.WasmTracing;
 import com.oracle.truffle.wasm.exception.WasmException;
+import com.oracle.truffle.wasm.exception.WasmExecutionException;
+import com.oracle.truffle.wasm.exception.WasmTrap;
 import sun.misc.Unsafe;
 
 public class UnsafeWasmMemory extends WasmMemory implements WasmTracing {
@@ -93,7 +95,7 @@ public class UnsafeWasmMemory extends WasmMemory implements WasmTracing {
     @Override
     public boolean grow(long extraPageSize) {
         if (extraPageSize < 0) {
-            throw new WasmException("Extra size cannot be negative.");
+            throw new WasmTrap(null, "Extra size cannot be negative.");
         }
         long targetSize = byteSize() + extraPageSize * PAGE_SIZE;
         if (maxPageSize >= 0 && targetSize > maxPageSize * PAGE_SIZE) {

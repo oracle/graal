@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.wasm.exception;
 
-public class BinaryReaderException extends RuntimeException {
+public class BinaryParserException extends RuntimeException {
 
     private static final long serialVersionUID = -84137683950579647L;
 
-    public BinaryReaderException(String message) {
+    public BinaryParserException(String message) {
         super(message);
     }
 }

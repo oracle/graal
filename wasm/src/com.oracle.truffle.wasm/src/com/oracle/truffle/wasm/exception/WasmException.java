@@ -32,7 +32,8 @@ package com.oracle.truffle.wasm.exception;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
- * Thrown on various errors that may occur in the WebAssembly engine.
+ * Thrown on various errors that may occur in the WebAssembly engine,
+ * but not during the execution of a WebAssembly program.
  */
 public class WasmException extends RuntimeException {
 

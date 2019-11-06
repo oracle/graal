@@ -30,16 +30,23 @@
 package com.oracle.truffle.wasm.exception;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown when it is not possible to link a WebAssembly module.
  */
-public class WasmLinkerException extends RuntimeException {
+public class WasmLinkerException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 8195809219857028793L;
 
     @TruffleBoundary
     public WasmLinkerException(String message) {
         super(message);
+    }
+
+    @Override
+    public Node getLocation() {
+        return null;
     }
 }
