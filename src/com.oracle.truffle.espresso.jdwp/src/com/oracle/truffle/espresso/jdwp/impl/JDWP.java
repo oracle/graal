@@ -820,10 +820,12 @@ class JDWP {
         static class INVOKE_METHOD {
             public static final int ID = 6;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
 
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                JDWPContext context = controller.getContext();
 
                 long objectId = input.readLong();
                 long threadId = input.readLong();
@@ -856,24 +858,41 @@ class JDWP {
                 }
 
                 try {
-                    Object value = context.toGuest(method.invokeMethod(callee, args));
+                    // we have to call the method in the correct thread, so post a
+                    // Callable to the controller and wait for the result to appear
+                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
 
-                    if (value != null) {
-                        byte tag = context.getTag(value);
-                        writeValue(tag, value, reply, true, context);
+                        @Override
+                        public Object call() throws Exception {
+                            return method.invokeMethod(callee, args);
+                        }
+                    });
 
-                    } else { // return value is null
+                    controller.postJobForThread(job);
+                    ThreadJob.JobResult result = job.getResult();
+
+                    if (result.getException() != null) {
+                        reply.writeByte(TagConstants.OBJECT);
+                        reply.writeLong(0);
+                        reply.writeByte(TagConstants.OBJECT);
+                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
+                    } else {
+                        Object value = context.toGuest(result.getResult());
+
+                        if (value != null) {
+                            byte tag = context.getTag(value);
+                            writeValue(tag, value, reply, true, context);
+
+                        } else { // return value is null
+                            reply.writeByte(TagConstants.OBJECT);
+                            reply.writeLong(0);
+                        }
+                        // no exception, so zero object ID
                         reply.writeByte(TagConstants.OBJECT);
                         reply.writeLong(0);
                     }
-                    // no exception, so zero object ID
-                    reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(0);
                 } catch (Throwable t) {
-                    reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(0);
-                    reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(context.getIds().getIdAsLong(t));
+                    t.printStackTrace();
                 }
                 return new JDWPResult(reply);
             }

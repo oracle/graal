@@ -86,6 +86,7 @@ public class JDWPDebuggerController {
     private Map<Object, Object> suspendLocks = new HashMap<>();
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
+    private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
 
     private Ids<Object> ids;
     private Method suspendMethod;
@@ -623,39 +624,69 @@ public class JDWPDebuggerController {
         }
 
         private void suspendEventThread(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended) {
-            Object lock = getSuspendLock(thread);
-            try {
-                if (!alreadySuspended) {
-                    ThreadSuspension.suspendThread(thread);
-                }
 
-                if (isDebug(Debug.THREAD)) {
-                    System.out.println("Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + ThreadSuspension.getSuspensionCount(thread));
-                }
-                // if during stepping, send a step completed event back to the debugger
-                Integer id = commandRequestIds.get(thread);
-                if (id != null) {
-                    VMEventListeners.getDefault().stepCompleted(id, currentFrame);
-                }
-                // reset
-                commandRequestIds.put(thread, null);
-
-                synchronized (lock) {
-                    if (isDebug(Debug.THREAD)) {
-                        System.out.println("lock.wait() for thread: " + getThreadName(thread));
-                    }
-                    // no reason to hold a hard suspension status, since now
-                    // we have the actual suspension status and suspended information
-                    ThreadSuspension.removeHardSuspendedThread(thread);
-
-                    lock.wait();
-                    if (isDebug(Debug.THREAD)) {
-                        System.out.println("lock wakeup for thread: " + getThreadName(thread));
-                    }
-                }
-            } catch (InterruptedException e) {
-
+            if (!alreadySuspended) {
+                ThreadSuspension.suspendThread(thread);
             }
+
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + ThreadSuspension.getSuspensionCount(thread));
+            }
+            // if during stepping, send a step completed event back to the debugger
+            Integer id = commandRequestIds.get(thread);
+            if (id != null) {
+                VMEventListeners.getDefault().stepCompleted(id, currentFrame);
+            }
+            // reset
+            commandRequestIds.put(thread, null);
+
+
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("lock.wait() for thread: " + getThreadName(thread));
+            }
+            // no reason to hold a hard suspension status, since now
+            // we have the actual suspension status and suspended information
+            ThreadSuspension.removeHardSuspendedThread(thread);
+
+            lockThread(thread);
+
+            if (isDebug(Debug.THREAD)) {
+                System.out.println("lock wakeup for thread: " + getThreadName(thread));
+            }
+
+        }
+    }
+
+    private void lockThread(Object thread) {
+        Object lock = getSuspendLock(thread);
+
+        synchronized (lock) {
+            try {
+                lock.wait();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("not able to suspend thread: " + getThreadName(thread), e);
+            }
+        }
+
+        if (threadJobs.containsKey(thread)) {
+            // a thread job was posted on this thread
+            // only wake up to perform the job a go back to sleep
+            ThreadJob job = threadJobs.remove(thread);
+            job.runJob();
+            lockThread(thread);
+            return;
+        }
+
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("lock wakeup for thread: " + getThreadName(thread));
+        }
+    }
+
+    public void postJobForThread(ThreadJob job) {
+        threadJobs.put(job.getThread(), job);
+        Object lock = getSuspendLock(job.getThread());
+        synchronized (lock) {
+            lock.notifyAll();
         }
     }
 }
