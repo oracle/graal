@@ -119,8 +119,7 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
                         @Cached("getLocationOrNull(cachedShape.getProperty(descriptor))") Location loc,
                         @Cached("cachedShape.defineProperty(descriptor, value, 0)") Shape newShape,
                         @Cached("newShape.getValidAssumption()") Assumption newLayoutAssumption,
-                        @Cached("getLocationO" +
-                                        "rNull(newShape.getProperty(descriptor))") Location newLoc) {
+                        @Cached("getLocationOrNull(newShape.getProperty(descriptor))") Location newLoc) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
                 newLoc.set(object, value, cachedShape, newShape);
