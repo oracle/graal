@@ -62,9 +62,9 @@ public class SaveContextNode extends WasmPredefinedRootNode {
     private ContextState saveModuleState() {
         final WasmContext context = contextReference().get();
         Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, only 0 or 1 memories can be saved.");
-        final WasmMemory memory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
+        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
         final Globals globals = context.globals().duplicate();
-        final ContextState state = new ContextState(memory, globals);
+        final ContextState state = new ContextState(currentMemory, globals);
 
         return state;
     }

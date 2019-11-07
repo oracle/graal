@@ -68,6 +68,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
 
     public abstract byte returnTypeId();
 
+    @SuppressWarnings("hiding")
     protected final void initialize(int byteLength) {
         this.byteLength = byteLength;
     }

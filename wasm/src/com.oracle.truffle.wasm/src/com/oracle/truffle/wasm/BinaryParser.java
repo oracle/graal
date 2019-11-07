@@ -570,6 +570,7 @@ public class BinaryParser extends BinaryStreamParser {
         codeEntry.setLocalTypes(allLocalTypes);
     }
 
+    @SuppressWarnings("unused")
     private static void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
         if (returnTypeId == 0x40) {
             Assert.assertIntEqual(state.stackSize(), initialStackSize, "Void function left values in the stack");
@@ -831,14 +832,14 @@ public class BinaryParser extends BinaryStreamParser {
                 case I64_LOAD16_U:
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
-                    readUnsignedInt32(bytesConsumed);  // align
                     // We don't store the `align` literal, as our implementation does not make use
-                    // of it,
-                    // but we need to store it's byte length, so that we can skip it during
-                    // execution.
+                    // of it, but we need to store it's byte length, so that we can skip it
+                    // during execution.
+                    readUnsignedInt32(bytesConsumed);
+                    // Set consume count for the bytes.
                     state.useByteConstant(bytesConsumed[0]);
-                    int offset = readUnsignedInt32(bytesConsumed);  // offset
-                    state.useLongConstant(offset);
+                    int loadOffset = readUnsignedInt32(bytesConsumed);
+                    state.useLongConstant(loadOffset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertIntGreater(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
                     state.pop();   // Base address.
@@ -856,12 +857,11 @@ public class BinaryParser extends BinaryStreamParser {
                 case I64_STORE_32: {
                     readUnsignedInt32(bytesConsumed);  // align
                     // We don't store the `align` literal, as our implementation does not make use
-                    // of it,
-                    // but we need to store it's byte length, so that we can skip it during
-                    // execution.
+                    // of it,but we need to store it's byte length, so that we can skip it
+                    // during the execution.
                     state.useByteConstant(bytesConsumed[0]);
-                    int offset = readUnsignedInt32(bytesConsumed);  // offset
-                    state.useLongConstant(offset);
+                    int storeOffset = readUnsignedInt32(bytesConsumed);
+                    state.useLongConstant(storeOffset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertIntGreater(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
                     state.pop();  // Value to store.
@@ -1154,9 +1154,8 @@ public class BinaryParser extends BinaryStreamParser {
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 // TODO: Hack to correctly set the stack pointer for abstract interpretation.
                 // If a block has branch instructions that target "shallower" blocks which return no
-                // value,
-                // then it can leave no values in the stack, which is invalid for our abstract
-                // interpretation.
+                // value, then it can leave no values in the stack, which is invalid for our
+                // abstract interpretation.
                 // Correct the stack pointer to the value it would have in case there were no branch
                 // instructions.
                 state.setStackPointer(initialStackPointer);
@@ -1187,11 +1186,11 @@ public class BinaryParser extends BinaryStreamParser {
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
             switch (instruction) {
                 case I32_CONST: {
-                    int offset = readSignedInt32();
+                    int elementOffset = readSignedInt32();
                     readEnd();
                     // Read the contents.
                     int[] contents = readElemContents();
-                    module.symbolTable().initializeTableWithFunctions(context, offset, contents);
+                    module.symbolTable().initializeTableWithFunctions(context, elementOffset, contents);
                     break;
                 }
                 case GLOBAL_GET: {
@@ -1247,7 +1246,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
-                    int memoryIndex = readMemoryIndex();
+                    readMemoryIndex();
                     // TODO: Store the export information somewhere (e.g. in the symbol table).
                     break;
                 }
@@ -1337,24 +1336,24 @@ public class BinaryParser extends BinaryStreamParser {
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
             // memory index is 0.
             Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported");
-            long offset = 0;
+            long dataOffset = 0;
             byte instruction;
             do {
                 instruction = read1();
 
-                // Data offset expression must be a constant expression with result type i32.
+                // Data dataOffset expression must be a constant expression with result type i32.
                 // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
                 // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
 
                 switch (instruction) {
                     case I32_CONST:
-                        offset = readSignedInt32();
+                        dataOffset = readSignedInt32();
                         break;
                     case GLOBAL_GET:
-                        int index = readGlobalIndex();
+                        readGlobalIndex();
                         // TODO: Implement GLOBAL_GET case for data sections (and add tests).
                         throw new WasmException("GLOBAL_GET in data section not implemented.");
-                    // offset = module.globals().getAsInt(index);
+                    // dataOffset = module.globals().getAsInt(index);
                     // break;
                     case END:
                         break;
@@ -1364,7 +1363,7 @@ public class BinaryParser extends BinaryStreamParser {
             } while (instruction != END);
             int byteLength = readVectorLength();
 
-            long baseAddress = offset;
+            long baseAddress = dataOffset;
             memory.validateAddress(baseAddress, byteLength);
 
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
@@ -1428,12 +1427,12 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32();
     }
 
-    private int readTypeIndex(byte[] bytesConsumed) {
-        return readUnsignedInt32(bytesConsumed);
+    private int readTypeIndex(byte[] bytesConsumedResult) {
+        return readUnsignedInt32(bytesConsumedResult);
     }
 
-    private int readFunctionIndex(byte[] bytesConsumed) {
-        return readUnsignedInt32(bytesConsumed);
+    private int readFunctionIndex(byte[] bytesConsumedResult) {
+        return readUnsignedInt32(bytesConsumedResult);
     }
 
     private int readTableIndex() {
@@ -1448,20 +1447,21 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32();
     }
 
+    @SuppressWarnings("unused")
     private int readLocalIndex() {
         return readUnsignedInt32();
     }
 
-    private int readLocalIndex(byte[] bytesConsumed) {
-        return readUnsignedInt32(bytesConsumed);
+    private int readLocalIndex(byte[] bytesConsumedResult) {
+        return readUnsignedInt32(bytesConsumedResult);
     }
 
     private int readLabelIndex() {
         return readUnsignedInt32();
     }
 
-    private int readLabelIndex(byte[] bytesConsumed) {
-        return readUnsignedInt32(bytesConsumed);
+    private int readLabelIndex(byte[] bytesConsumedResult) {
+        return readUnsignedInt32(bytesConsumedResult);
     }
 
     private byte readExportType() {

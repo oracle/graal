@@ -111,7 +111,7 @@ public abstract class WasmMemory implements TruffleObject {
 
     public abstract WasmMemory duplicate();
 
-    public long[] view(long address, int length) {
+    long[] view(long address, int length) {
         long[] chunk = new long[length / 8];
         for (long p = address; p < address + length; p += 8) {
             chunk[(int) (p - address) / 8] = load_i64(p);
@@ -119,7 +119,7 @@ public abstract class WasmMemory implements TruffleObject {
         return chunk;
     }
 
-    public String viewByte(long address) {
+    String viewByte(long address) {
         final int value = load_i32_8u(address);
         String result = Integer.toHexString(value);
         if (result.length() == 1) {
@@ -142,11 +142,11 @@ public abstract class WasmMemory implements TruffleObject {
         return sb.toString();
     }
 
-    private String hex(long value) {
+    private static String hex(long value) {
         return pad(Long.toHexString(value), 16);
     }
 
-    private String batch(String s, int count) {
+    private static String batch(String s, int count) {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
             result.insert(0, s.charAt(i));
@@ -157,7 +157,7 @@ public abstract class WasmMemory implements TruffleObject {
         return result.reverse().toString();
     }
 
-    private String pad(String s, int length) {
+    private static String pad(String s, int length) {
         StringBuilder padded = new StringBuilder(s);
         while (padded.length() < length) {
             padded.insert(0, "0");
@@ -185,7 +185,7 @@ public abstract class WasmMemory implements TruffleObject {
         return isArrayElementReadable(index);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     final boolean isArrayElementInsertable(long index) {
         return false;

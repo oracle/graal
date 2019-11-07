@@ -96,14 +96,17 @@ public class Linker {
         }
     }
 
+    @SuppressWarnings("unused")
     private void linkGlobals(WasmModule module) {
         // TODO: Ensure that the globals are resolved.
     }
 
+    @SuppressWarnings("unused")
     private void linkTables(WasmModule module) {
         // TODO: Ensure that tables are resolved.
     }
 
+    @SuppressWarnings("unused")
     private void linkMemories(WasmModule module) {
         // TODO: Ensure that tables are resolved.
     }

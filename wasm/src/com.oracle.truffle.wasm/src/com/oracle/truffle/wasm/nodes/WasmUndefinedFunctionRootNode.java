@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.WasmLanguage;
+import com.oracle.truffle.wasm.WasmVoidResult;
 
 public class WasmUndefinedFunctionRootNode extends WasmRootNode {
 
@@ -41,8 +42,7 @@ public class WasmUndefinedFunctionRootNode extends WasmRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        // TODO: See how to return a Unit value
-        return Boolean.TRUE;
+        return WasmVoidResult.getInstance();
     }
 
     @Override

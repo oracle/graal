@@ -75,13 +75,13 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
 
-    private Context getInterpretedNoInline(Context.Builder contextBuilder) {
+    private static Context getInterpretedNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "false");
         contextBuilder.option("engine.Inlining", "false");
         return contextBuilder.build();
     }
 
-    private Context getSyncCompiledNoInline(Context.Builder contextBuilder) {
+    private static Context getSyncCompiledNoInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "false");
         contextBuilder.option("engine.CompileImmediately", "true");
@@ -89,7 +89,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Context getSyncCompiledWithInline(Context.Builder contextBuilder) {
+    private static Context getSyncCompiledWithInline(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "false");
         contextBuilder.option("engine.CompileImmediately", "true");
@@ -97,7 +97,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Context getAsyncCompiled(Context.Builder contextBuilder) {
+    private static Context getAsyncCompiled(Context.Builder contextBuilder) {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "true");
         contextBuilder.option("engine.CompileImmediately", "false");
@@ -105,7 +105,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return contextBuilder.build();
     }
 
-    private Value runInContext(WasmCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+    private static Value runInContext(WasmCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
         final PrintStream oldOut = System.out;
@@ -172,11 +172,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return result;
     }
 
-    private boolean iterationNeedsStateCheck(int i) {
+    private static boolean iterationNeedsStateCheck(int i) {
         return i < INITIAL_STATE_CHECK_ITERATIONS || i % STATE_CHECK_PERIODICITY == 0;
     }
 
-    private void resetStatus(PrintStream oldOut, String icon, String label) {
+    private static void resetStatus(PrintStream oldOut, String icon, String label) {
         String formattedLabel = label;
         if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
             formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
@@ -190,7 +190,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         oldOut.flush();
     }
 
-    private void eraseStatus(PrintStream oldOut) {
+    private static void eraseStatus(PrintStream oldOut) {
         for (int i = 0; i < STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH; i++) {
             oldOut.print(MOVE_LEFT);
         }
@@ -332,7 +332,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println();
     }
 
-    private int retrieveTerminalWidth() {
+    private static int retrieveTerminalWidth() {
         try {
             final ProcessBuilder builder = new ProcessBuilder("/bin/sh", "-c", "stty size </dev/tty");
             final Process process = builder.start();
