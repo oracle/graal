@@ -62,7 +62,6 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
-        "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
@@ -275,6 +274,12 @@ suite = {
         "mx:JMH_1_21",
       ],
       "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
+        "WASM",
+        "WASM_TESTS",
+      ],
+      "overlaps" : [
         "WASM_BENCHMARKS",
       ],
       "defaultBuild" : False,
