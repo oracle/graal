@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.wasm.nodes;
 
+import static com.oracle.truffle.wasm.WasmTracing.trace;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -43,8 +46,6 @@ import com.oracle.truffle.wasm.WasmCodeEntry;
 import com.oracle.truffle.wasm.WasmContext;
 import com.oracle.truffle.wasm.WasmLanguage;
 import com.oracle.truffle.wasm.WasmVoidResult;
-
-import static com.oracle.truffle.wasm.WasmTracing.trace;
 
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
@@ -61,6 +62,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     protected ContextReference<WasmContext> contextReference() {
         if (rawContextReference == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             rawContextReference = lookupContextReference(WasmLanguage.class);
         }
         return rawContextReference;
