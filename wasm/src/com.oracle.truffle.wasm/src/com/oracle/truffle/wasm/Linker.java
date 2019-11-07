@@ -56,11 +56,13 @@ public class Linker {
         // that are inside the current context (which will happen behind the call boundary).
         // This linking will set this flag to true.
         //
-        // If the code is compiled synchronously, then this check will persist in the compiled code.
-        // If the code is compiled asynchronously, then linking will have been done before
+        // If the code is compiled asynchronously, then linking will usually end before
         // compilation, and this check will fold away.
+        // If the code is compiled synchronously, then this check will persist in the compiled code.
+        // We nevertheless invalidate the compiled code that reaches this point.
         if (!linked) {
             tryLinkOutsidePartialEvaluation();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
     }
 
