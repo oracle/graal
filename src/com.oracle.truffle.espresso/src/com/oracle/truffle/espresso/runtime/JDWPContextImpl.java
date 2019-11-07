@@ -184,6 +184,9 @@ public final class JDWPContextImpl implements JDWPContext {
         byte tag = TagConstants.OBJECT;
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
+            if (object == StaticObject.NULL) {
+                return tag;
+            }
             tag = staticObject.getKlass().getTagConstant();
             if (tag == TagConstants.OBJECT) {
                 // check specifically for String
