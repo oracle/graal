@@ -130,7 +130,7 @@ public class MapperBCI extends Node {
      * 
      * @see Arrays#binarySearch(int[], int, int, int)
      */
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     private int slowLookup(int targetBCI, int start, int end) {
         // Our usage should not see an out of bounds
         int low = start;
