@@ -73,6 +73,11 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     @Override
+    protected boolean isInstrumentable() {
+        return false;
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
