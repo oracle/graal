@@ -57,6 +57,7 @@ public final class CatalogContents implements ComponentCatalog {
     private final Version graalVersion;
     private final ComponentRegistry installed;
     private final Verifier verifier;
+    private final Verifier capVerifier;
     private final DownloadInterceptor downloadInterceptor;
 
     /**
@@ -74,6 +75,7 @@ public final class CatalogContents implements ComponentCatalog {
         this.storage = storage;
         this.env = env.withBundle(Feedback.class);
         this.verifier = new Verifier(env, inst, this);
+        this.capVerifier = new Verifier(env, inst, this);
         this.graalVersion = version;
         this.installed = inst;
 
@@ -81,6 +83,13 @@ public final class CatalogContents implements ComponentCatalog {
         verifier.setSilent(true);
         verifier.setCollectErrors(true);
         verifier.setVersionMatch(graalVersion.match(Version.Match.Type.SATISFIES));
+
+        // just verify required capabilities:
+        capVerifier.ignoreExisting(true);
+        capVerifier.setSilent(true);
+        capVerifier.setCollectErrors(true);
+        // ignore graal version, compare just the required capabilities.
+        capVerifier.setVersionMatch(Version.NO_VERSION.match(Version.Match.Type.GREATER));
 
         if (storage instanceof DownloadInterceptor) {
             this.downloadInterceptor = (DownloadInterceptor) storage;
@@ -278,6 +287,15 @@ public final class CatalogContents implements ComponentCatalog {
                     return null;
                 }
                 List<ComponentInfo> versions = new ArrayList<>(infos);
+                for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
+                    ComponentInfo ci = it.next();
+                    // skip components that require capabilities that we do not have.
+                    // Catalogs contain just "right" components, but in case someone will
+                    // mess up the content, or directory-based mess catalog, the filter is handy.
+                    if (capVerifier.validateRequirements(ci).hasErrors()) {
+                        it.remove();
+                    }
+                }
                 Collections.sort(versions, ComponentInfo.versionComparator());
                 if (filelist) {
                     for (ComponentInfo ci : infos) {

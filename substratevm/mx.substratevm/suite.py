@@ -5,11 +5,12 @@ suite = {
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
-    "developer" : {
-        "name" : "SubstrateVM developers",
-        "email" : "graal-dev@openjdk.java.net",
-        "organization" : "Graal",
-        "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    "groupId" : "org.graalvm.nativeimage",
+    "developer": {
+        "name": "GraalVM Development",
+        "email": "graalvm-dev@oss.oracle.com",
+        "organization": "Oracle Corporation",
+        "organizationUrl": "http://www.graalvm.org/",
     },
     "scm" : {
         "url" : "https://github.com/oracle/graal",

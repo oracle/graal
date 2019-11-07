@@ -209,11 +209,17 @@ public class UninstallTest extends CommandTestBase {
 
         List<ComponentInfo> comps = uc.getUninstallSequence();
         assertEquals(4, comps.size());
-        assertEquals("org.graalvm.ruby", comps.get(0).getId());
-        int id = comps.indexOf(localRegistry.findComponent("org.graalvm.native-image"));
-        assertTrue(id > 0 && id < 3);
-        id = comps.indexOf(localRegistry.findComponent("org.graalvm.r"));
-        assertTrue(id < 3);
+
+        // handle possible different ordering of the component removal
+        int nativeIndex = comps.indexOf(localRegistry.findComponent("org.graalvm.native-image"));
+        int rubyIndex = comps.indexOf(localRegistry.findComponent("org.graalvm.ruby"));
+        int rIndex = comps.indexOf(localRegistry.findComponent("org.graalvm.r"));
+
+        // native depends on llvm so llvm must be the last; native may not be the first, as ruby
+        // depends on it
+        assertTrue(nativeIndex > 0 && nativeIndex < 3);
+        assertTrue(rubyIndex < nativeIndex);
+        assertTrue(rIndex < 3);
         assertEquals("org.graalvm.llvm-toolchain", comps.get(3).getId());
     }
 

@@ -27,7 +27,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.oracle.substratevm</groupId>
+    <groupId>org.graalvm.nativeimage</groupId>
     <artifactId>native-image-maven-plugin</artifactId>
     <version><svmVersion/></version>
 
@@ -74,7 +74,7 @@
     <dependencies>
 
         <dependency>
-            <groupId>com.oracle.substratevm</groupId>
+            <groupId>org.graalvm.nativeimage</groupId>
             <artifactId>svm-driver</artifactId>
             <version><svmVersion/></version>
         </dependency>

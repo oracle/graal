@@ -27,10 +27,10 @@ maven_base_8_11: {
   }
   mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js", "--disable-installables=true"]
   build: ${maven_base_8_11.mx_cmd_base} [build]
-  deploy: ${maven_base_8_11.mx_cmd_base} [--suite, compiler, --suite, truffle, --suite, sdk, --suite, tools, --suite, regex, --suite, graal-js, maven-deploy, --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
+  deploy: ${maven_base_8_11.mx_cmd_base} [--suite, compiler, --suite, truffle, --suite, sdk, --suite, tools, --suite, regex, --suite, graal-js, maven-deploy, "--tags=default", --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
   mx_cmd_base_svm: [mx, --dynamicimports, "/tools,/compiler,/graal-js,/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
   build_svm: ${maven_base_8_11.mx_cmd_base_svm} [build]
-  deploy_svm: ${maven_base_8_11.mx_cmd_base_svm} [--suite, substratevm, maven-deploy, --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
+  deploy_svm: ${maven_base_8_11.mx_cmd_base_svm} [--suite, substratevm, maven-deploy, "--tags=default", --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
   build_svm_plugin: ${maven_base_8_11.mx_cmd_base_svm} [maven-plugin-install, --deploy-dependencies]
   deploy_svm_plugin: ${maven_base_8_11.mx_cmd_base_svm} [maven-plugin-install, --licenses, "GPLv2-CPE,UPL,MIT"]
 }
@@ -42,7 +42,7 @@ maven_base_8_native: {
   native_distributions: "TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE"
   mx_cmd_base: [mx, --dynamicimports, "/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
   build: ${maven_base_8_native.mx_cmd_base} [build, --dependencies, ${maven_base_8_native.native_distributions}]
-  deploy: ${maven_base_8_native.mx_cmd_base} [maven-deploy, --only, ${maven_base_8_native.native_distributions}, --all-suites, --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
+  deploy: ${maven_base_8_native.mx_cmd_base} [maven-deploy, --only, ${maven_base_8_native.native_distributions}, "--tags=default", --all-suites, --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
 }
 
 builds += [

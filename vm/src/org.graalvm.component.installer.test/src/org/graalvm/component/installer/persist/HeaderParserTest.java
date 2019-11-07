@@ -25,7 +25,6 @@
 package org.graalvm.component.installer.persist;
 
 import org.graalvm.component.installer.MetadataException;
-import org.graalvm.component.installer.DependencyException;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
@@ -157,8 +156,8 @@ public class HeaderParserTest extends TestBase {
         try {
             r("foobar").parseRequiredCapabilities();
             fail("Should fail on unkown capability");
-        } catch (DependencyException ex) {
-            assertEquals("foobar", ex.getComponent());
+        } catch (MetadataException ex) {
+            assertEquals(BundleConstants.BUNDLE_REQUIRED, ex.getOffendingHeader());
         }
         try {
             r("foobar = aaa").parseRequiredCapabilities();
