@@ -192,7 +192,6 @@ suite = {
       "dependencies" : ["com.oracle.truffle.wasm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "truffle:TRUFFLE_TCK",
         "sdk:GRAAL_SDK",
       ],
       "maven" : {
@@ -206,7 +205,6 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
         "com.oracle.truffle.wasm.utils",
-        "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
         "mx:JUNIT",
