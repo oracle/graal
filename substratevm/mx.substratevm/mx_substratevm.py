@@ -1282,10 +1282,7 @@ def maven_plugin_test(args):
     # Build native image with native-image-maven-plugin
     env = os.environ.copy()
     maven_opts = env.get('MAVEN_OPTS', '').split()
-    if svm_java8():
-        # Workaround Java 8 issue https://bugs.openjdk.java.net/browse/JDK-8145260
-        maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
-    else:
+    if not svm_java8():
         # On Java 9+ without native-image executable the plugin needs access to jdk.internal.module
         maven_opts.append('-XX:+UnlockExperimentalVMOptions')
         maven_opts.append('-XX:+EnableJVMCI')
