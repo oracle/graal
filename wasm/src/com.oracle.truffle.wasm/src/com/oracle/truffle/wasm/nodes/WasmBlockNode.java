@@ -687,6 +687,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             trace("local.get %d, value = %f [f64]", index, value);
                             break;
                         }
+                        default: {
+                            throw new WasmTrap(this, "Local variable cannot have the void type.");
+                        }
                     }
                     break;
                 }
@@ -725,6 +728,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             setDouble(frame, index, value);
                             trace("local.set %d, value = %f [f64]", index, value);
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Local variable cannot have the void type.");
                         }
                     }
                     break;
@@ -772,6 +778,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             setDouble(frame, index, value);
                             trace("local.tee %d, value = %f [f64]", index, value);
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Local variable cannot have the void type.");
                         }
                     }
                     break;
@@ -822,6 +831,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             stackPointer++;
                             trace("global.get %d, value = %f [f64]", index, Double.longBitsToDouble(value));
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Local variable cannot have the void type.");
                         }
                     }
                     break;
@@ -875,6 +887,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             context.globals().storeDoubleWithLong(address, value);
                             trace("global.set %d, value = %f [f64]", index, Double.longBitsToDouble(value));
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Local variable cannot have the void type.");
                         }
                     }
                     break;
@@ -995,6 +1010,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 push(frame, stackPointer, value);
                                 break;
                             }
+                            default: {
+                                throw new WasmTrap(this, "Unknown load opcode: " + opcode);
+                            }
                         }
                     } catch (WasmMemoryException e) {
                         throw new WasmTrap(this, "memory address out-of-bounds");
@@ -1114,6 +1132,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 memory.validateAddress(address, 32);
                                 memory.store_i64_32(address, (int) value);
                                 break;
+                            }
+                            default: {
+                                throw new WasmTrap(this, "Unknown store opcode: " + opcode);
                             }
                         }
                     } catch (WasmMemoryException e) {
@@ -2372,6 +2393,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case ValueTypes.F64_TYPE:
                     args[i] = popAsDouble(frame, stackPointer);
                     break;
+                default: {
+                    throw new WasmTrap(this, "Unknown type: " + type);
+                }
             }
         }
         return args;

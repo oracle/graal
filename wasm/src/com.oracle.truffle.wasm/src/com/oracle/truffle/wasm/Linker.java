@@ -52,6 +52,13 @@ public class Linker {
     // TODO: Many of the following methods should work on all the modules in the context, instead of
     // a single one. See which ones and update.
     public void tryLink() {
+        // The first execution of a WebAssembly call target will trigger the linking of the modules
+        // that are inside the current context (which will happen behind the call boundary).
+        // This linking will set this flag to true.
+        //
+        // If the code is compiled synchronously, then this check will persist in the compiled code.
+        // If the code is compiled asynchronously, then linking will have been done before
+        // compilation, and this check will fold away.
         if (!linked) {
             tryLinkOutsidePartialEvaluation();
         }
