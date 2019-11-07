@@ -217,9 +217,13 @@ public class UninstallCommand implements InstallerCommand {
             }
 
             if (removeDependent) {
+                Set<ComponentInfo> newBroken = new HashSet<>();
                 for (ComponentInfo i : allBroken) {
-                    toUninstall.put(i.getId(), i);
+                    ComponentInfo full = registry.loadSingleComponent(i.getId(), true);
+                    newBroken.add(full);
+                    toUninstall.put(i.getId(), full);
                 }
+                allBroken = newBroken;
             }
         }
 
