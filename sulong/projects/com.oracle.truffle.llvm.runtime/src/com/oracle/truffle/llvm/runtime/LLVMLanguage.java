@@ -44,6 +44,9 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -67,6 +70,13 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
                 characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
+
+    static class GlobalObjectType extends ObjectType {
+        private static final GlobalObjectType INSTANCE = new GlobalObjectType();
+    }
+
+    static final Layout GLOBAL_LAYOUT = Layout.createLayout();
+    Shape emptyGlobalShape = GLOBAL_LAYOUT.createShape(GlobalObjectType.INSTANCE);
 
     static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     static final String LLVM_BITCODE_EXTENSION = "bc";
@@ -96,6 +106,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
+        verifyContextExtensionsInitialized();
         return contextExtensions;
     }
 
@@ -109,12 +120,20 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
+        verifyContextExtensionsInitialized();
         for (ContextExtension ce : contextExtensions) {
             if (ce.extensionClass() == type) {
                 return type.cast(ce);
             }
         }
         return null;
+    }
+
+    private void verifyContextExtensionsInitialized() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (contextExtensions == null) {
+            throw new IllegalStateException("LLVMContext is not yet initialized");
+        }
     }
 
     /**
@@ -167,15 +186,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
         env.registerService(toolchain);
-        this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
-        LLVMContext context = new LLVMContext(this, env, getLanguageHome(), toolchain);
+        LLVMContext context = new LLVMContext(this, env, toolchain);
         return context;
     }
 
     @Override
     protected void initializeContext(LLVMContext context) {
+        this.contextExtensions = activeConfiguration.createContextExtensions(context.getEnv());
         context.initialize();
+    }
+
+    @Override
+    protected boolean patchContext(LLVMContext context, Env newEnv) {
+        boolean compatible = Configurations.areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions());
+        if (!compatible) {
+            return false;
+        }
+        return context.patchContext(newEnv);
     }
 
     @Override

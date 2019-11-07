@@ -26,6 +26,7 @@ package org.graalvm.component.installer;
 
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * Provides access to command line parameters and useful variables.
@@ -102,7 +103,34 @@ public interface CommandInput {
         return s == null ? defV : s;
     }
 
+    default boolean hasOption(String option) {
+        return optValue(option) != null;
+    }
+
     FileOperations getFileOperations();
+
+    /**
+     * Obtains a named parameter.
+     * 
+     * @param key parameter name
+     * @param cmdLine true, if parameter is on cmdline (system properties); false if from
+     *            environment (env vars)
+     * @return parameter value
+     */
+    String getParameter(String key, boolean cmdLine);
+
+    default String getParameter(String key, String defValue, boolean cmdLine) {
+        String s = getParameter(key, cmdLine);
+        return s != null ? s : defValue;
+    }
+
+    /**
+     * Obtains a Map of named parameters.
+     * 
+     * @param cmdLine
+     * @return parameters from commandline or environment
+     */
+    Map<String, String> parameters(boolean cmdLine);
 
     interface CatalogFactory {
         /**

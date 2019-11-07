@@ -182,6 +182,13 @@ final class OptionValuesImpl implements OptionValues {
         return new OptionValuesImpl(this);
     }
 
+    void copyInto(OptionValuesImpl target) {
+        if (!target.values.isEmpty()) {
+            throw new IllegalStateException("Values must be empty.");
+        }
+        target.values.putAll(values);
+    }
+
     public OptionDescriptors getDescriptors() {
         return descriptors;
     }

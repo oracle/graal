@@ -162,6 +162,10 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
         @Specialization
         protected float doFloat(long from) {
+            return doI64(from);
+        }
+
+        public static float doI64(long from) {
             float val = from & Long.MAX_VALUE;
             if (from < 0) {
                 val += LEADING_BIT;

@@ -131,29 +131,7 @@ final class AgentObject implements TruffleObject {
             case "version":
                 return AgentScript.VERSION;
         }
-        Object obj = importExported(name);
-        if (obj == null) {
-            return NullObject.nullCheck(null);
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return obj;
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private Object importExported(String name) {
-        final Object v = env.getExportedSymbols().get(name);
-        if (v != null) {
-            try {
-                java.lang.reflect.Method m = v.getClass().getSuperclass().getDeclaredMethod("getGuestObject");
-                m.setAccessible(true);
-                return m.invoke(v);
-            } catch (Exception exception) {
-                throw AgentException.raise(exception);
-            }
-        } else {
-            return null;
-        }
+        throw UnknownIdentifierException.create(name);
     }
 
     @CompilerDirectives.TruffleBoundary

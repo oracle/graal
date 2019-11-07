@@ -128,25 +128,26 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
-        if (sampler.hasStackOverflowed()) {
-            out.println("-------------------------------------------------------------------------------- ");
-            out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
-            out.println("The gathered data is incomplete and incorrect!");
-            out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
-            out.println("-------------------------------------------------------------------------------- ");
-            return;
-        }
-        Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
-        switch (env.getOptions().get(OUTPUT)) {
-            case HISTOGRAM:
-                printSamplingHistogram(out, sampler, summariseThreads);
-                break;
-            case CALLTREE:
-                printSamplingCallTree(out, sampler, summariseThreads);
-                break;
-            case JSON:
-                printSamplingJson(out, sampler);
+        try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
+            if (sampler.hasStackOverflowed()) {
+                out.println("-------------------------------------------------------------------------------- ");
+                out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
+                out.println("The gathered data is incomplete and incorrect!");
+                out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+                out.println("-------------------------------------------------------------------------------- ");
+                return;
+            }
+            Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
+            switch (env.getOptions().get(OUTPUT)) {
+                case HISTOGRAM:
+                    printSamplingHistogram(out, sampler, summariseThreads);
+                    break;
+                case CALLTREE:
+                    printSamplingCallTree(out, sampler, summariseThreads);
+                    break;
+                case JSON:
+                    printSamplingJson(out, sampler);
+            }
         }
     }
 

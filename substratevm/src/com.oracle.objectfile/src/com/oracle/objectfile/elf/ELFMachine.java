@@ -60,6 +60,18 @@ public enum ELFMachine/* implements Integral */ {
 
     abstract Class<? extends Enum<? extends RelocationMethod>> relocationTypes();
 
+    public static ELFMachine from(String s) {
+        switch (s.toLowerCase()) {
+            case "amd64":
+            case "x86_64":
+                return X86_64;
+            case "arm64":
+            case "aarch64":
+                return AArch64;
+        }
+        throw new IllegalStateException("unknown CPU type: " + s);
+    }
+
     public static ELFRelocationMethod getRelocation(ELFMachine m, RelocationKind k, int sizeInBytes) {
         switch (m) {
             case X86_64:

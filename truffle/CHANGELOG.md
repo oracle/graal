@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.0.0
+* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner *Type class.
+
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.
 * Deprecated `TruffleLanguage.Env.getTruffleFile` use [getInternalTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-) for language standard library files located in language home or [getPublicTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPublicTruffleFile-java.lang.String-) for user files.
@@ -20,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Truffle languages and instruments no longer create `META-INF/truffle` files, but generate service implementations for [TruffleLanguage.Provider](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Provider.html) and [TruffleInstrument.Provider](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Provider.html) automatically. Recompiling the TruffleLanguage using the Truffle annotation processor automatically migrates the language.
 * The Truffle DSL processor jar no longer requires the Truffle API or Graal SDK as a dependency. 
 * Added interop messages for guest language exception objects: [InteropLibrary#isException(Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isException-java.lang.Object-) and [InteropLibrary#throwException(Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#throwException-java.lang.Object-).
+* [TruffleLanguage.patchContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#patchContext-C-com.oracle.truffle.api.TruffleLanguage.Env-) is invoked for all languages whose contexts were created during context pre-initialization. Originally the `patchContext`  was invoked only for languages with initialized contexts.
 
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).

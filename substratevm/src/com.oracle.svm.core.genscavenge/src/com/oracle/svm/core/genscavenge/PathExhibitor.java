@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -52,6 +53,16 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 
+/**
+ * Can be used to debug object liveness.
+ *
+ * <pre>
+ * PathElements pathElements = new PathElements(10);
+ * PathExhibitor pathFinder = PathExhibitor.factory();
+ * PathExhibitor.TestingBackDoor.findPathToObject(pathFinder, jarEntry, pathElements);
+ * pathElements.toLog(Log.log());
+ * </pre>
+ */
 public class PathExhibitor {
 
     public static PathExhibitor factory() {
@@ -59,6 +70,7 @@ public class PathExhibitor {
     }
 
     public boolean findPathToRoot(final Object leaf) {
+        PathElements singleElement = new PathElements(1);
         // Put the obj in the path as a leaf.
         PathElement currentElement = LeafElement.factory(leaf);
         Object currentObject = leaf;
@@ -66,7 +78,9 @@ public class PathExhibitor {
             // Current is an element of the path.
             path.add(currentElement);
             // Walk backwards one step.
-            currentElement = findPathToObject(currentObject);
+            singleElement.clear();
+            findPathToObject(currentObject, singleElement);
+            currentElement = singleElement.isEmpty() ? null : singleElement.get(0);
             // Look for reasons to stop walking.
             // - I didn't find a path to the current object.
             if (currentElement == null) {
@@ -79,13 +93,6 @@ public class PathExhibitor {
             if (currentObject == null) {
                 // Add element to path and stop.
                 path.add(currentElement);
-                break;
-            }
-            // - The path leads to a path element
-            if (currentObject instanceof PathElement) {
-                // Record that.
-                final InterferenceElement interference = InterferenceElement.factory();
-                path.add(interference);
                 break;
             }
             // - I have seen this object before.
@@ -105,60 +112,39 @@ public class PathExhibitor {
         }
     }
 
-    protected PathElement findPathToObject(final Object obj) {
-        PathElement result = null;
-        if (obj == null) {
-            return result;
+    protected void findPathToObject(Object obj, PathElements result) {
+        if (obj == null || !result.isSpaceAvailable()) {
+            return;
         }
         // Look in all the roots.
-        // - Look in the regular heap.
-        result = findPathInHeap(obj);
-        if (result != null) {
-            return result;
-        }
-        // - Look in the native image heap.
-        result = findPathInBootImageHeap(obj);
-        if (result != null) {
-            return result;
-        }
-        // - Look in the stack.
-        result = findPathInStack(obj);
-        if (result != null) {
-            return result;
-        }
-        return null;
+        findPathInHeap(obj, result);
+        findPathInBootImageHeap(obj, result);
+        findPathInStack(obj, result);
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
-    protected StackElement findPathInStack(final Object obj) {
-        stackFrameVisitor.initialize(obj);
+    protected void findPathInStack(final Object obj, PathElements result) {
+        if (!result.isSpaceAvailable()) {
+            return;
+        }
+
+        stackFrameVisitor.initialize(obj, result);
         Pointer sp = readCallerStackPointer();
         JavaStackWalker.walkCurrentThread(sp, stackFrameVisitor);
         stackFrameVisitor.reset();
-        return frameSlotVisitor.getElement();
     }
 
-    protected PathElement findPathInBootImageHeap(final Object targetObject) {
-        PathElement result = null;
+    protected void findPathInBootImageHeap(final Object targetObject, PathElements result) {
         // Look in each of the partitions of the heap.
-        if (result == null) {
-            result = findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject);
-        }
-        if (result == null) {
-            result = findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject);
-        }
-        if (result == null) {
-            result = findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject);
-        }
-        if (result == null) {
-            result = findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject);
-        }
-        return result;
+        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject, result);
+        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject, result);
+        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject, result);
+        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject, result);
     }
 
-    protected PathElement findPathInBootImageHeap(final Object targetObject, final Object firstObject, final Object lastObject) {
-        if ((firstObject == null) || (lastObject == null)) {
-            return null;
+    protected void findPathInBootImageHeap(final Object targetObject, final Object firstObject, final Object lastObject, PathElements result) {
+        if (firstObject == null || lastObject == null || !result.isSpaceAvailable()) {
+            return;
         }
         final Pointer targetPointer = Word.objectToUntrackedPointer(targetObject);
         final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
@@ -166,23 +152,21 @@ public class PathExhibitor {
         Pointer current = firstPointer;
         while (current.belowOrEqual(lastPointer)) {
             final Object bihObject = current.toObject();
-            // I am not interested in references from path elements.
-            if (!checkForInterference(bihObject)) {
-                bootImageHeapObjRefVisitor.initialize(current, targetPointer);
-                if (!InteriorObjRefWalker.walkObject(bihObject, bootImageHeapObjRefVisitor)) {
-                    break;
-                }
+            bootImageHeapObjRefVisitor.initialize(current, targetPointer, result);
+            if (!InteriorObjRefWalker.walkObject(bihObject, bootImageHeapObjRefVisitor)) {
+                break;
             }
             current = LayoutEncoding.getObjectEnd(bihObject);
         }
-        return bootImageHeapObjRefVisitor.getElement();
     }
 
-    protected HeapElement findPathInHeap(final Object obj) {
-        heapObjectVisitor.initialize(obj);
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        heap.walkObjects(heapObjectVisitor);
-        return heapObjRefVisitor.getElement();
+    protected void findPathInHeap(final Object obj, PathElements result) {
+        if (!result.isSpaceAvailable()) {
+            return;
+        }
+
+        heapObjectVisitor.initialize(obj, result);
+        HeapImpl.getHeapImpl().walkObjects(heapObjectVisitor);
     }
 
     protected boolean checkForCycles(final Object currentObject) {
@@ -193,14 +177,6 @@ public class PathExhibitor {
                 result = true;
                 break;
             }
-        }
-        return result;
-    }
-
-    protected static boolean checkForInterference(final Object currentObject) {
-        boolean result = false;
-        if (currentObject instanceof PathElement) {
-            result = true;
         }
         return result;
     }
@@ -238,32 +214,21 @@ public class PathExhibitor {
         // so I do not allocate one of these for each target for each frame.
         /** A pointer to the object I am looking for. */
         protected Pointer targetPointer;
+        private PathElements result;
 
         protected FrameVisitor() {
         }
 
-        public void initialize(final Object targetObject) {
-            final Log trace = Log.noopLog();
-            trace.string("[PathExhibitor.FrameVisitor.initialize:").newline();
-            trace.string("  targetObject: ").object(targetObject);
+        public void initialize(final Object targetObject, PathElements res) {
             this.targetPointer = Word.objectToUntrackedPointer(targetObject);
-            trace.string("]").newline();
+            this.result = res;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
         public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            final Log trace = Log.noopLog();
-            trace.string("[PathExhibitor.FrameVisitor.visitFrame:").newline();
-            trace.string("  sp: ").hex(sp);
-            trace.string("  ip: ").hex(ip);
-            trace.string("  deoptFrame: ").object(deoptimizedFrame);
-            trace.newline();
-            frameSlotVisitor.initialize(ip, deoptimizedFrame, targetPointer);
-            boolean result = CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, frameSlotVisitor);
-            trace.string("  returns: ").bool(result);
-            trace.string("]").newline();
-            return result;
+            frameSlotVisitor.initialize(ip, deoptimizedFrame, targetPointer, result);
+            return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, frameSlotVisitor);
         }
 
         public void reset() {
@@ -272,10 +237,6 @@ public class PathExhibitor {
     }
 
     private static class FrameSlotVisitor implements ObjectReferenceVisitor {
-
-        // Mutable state: if I have found the target object.
-        protected StackElement element;
-
         // Lazily-initialized state,
         // so I do not allocate one of these for each target for each frame.
         /** The instruction pointer of the current frame. */
@@ -283,57 +244,32 @@ public class PathExhibitor {
         protected DeoptimizedFrame deoptFrame;
         /** A pointer to the object I am looking for. */
         protected Pointer targetPointer;
+        private PathElements result;
 
         protected FrameSlotVisitor() {
-            super();
-            // All other state is initialized lazily.
         }
 
-        public void initialize(final CodePointer ipArg, final DeoptimizedFrame deoptFrameArg, final Pointer targetArg) {
-            final Log trace = Log.noopLog();
-            trace.string("[PathExhibitor.FrameSlotVisitor.initialize:").newline();
-            element = null;
+        public void initialize(final CodePointer ipArg, final DeoptimizedFrame deoptFrameArg, final Pointer targetArg, PathElements res) {
             ip = ipArg;
             deoptFrame = deoptFrameArg;
             targetPointer = targetArg;
-            trace.string("  element: ").object(element);
-            trace.string("  ip: ").hex(ip);
-            trace.string("  deoptFrame: ").object(deoptFrame);
-            trace.string("  targetPointer: ").hex(targetPointer);
-            trace.string("]").newline();
+            result = res;
         }
 
         @Override
         public boolean visitObjectReference(final Pointer stackSlot, boolean compressed) {
             final Log trace = Log.noopLog();
-            trace.string("[PathExhibitor.FrameSlotVisitor.visitObjectReference:").newline();
-            trace.string("  stackSlot: ").hex(stackSlot);
-            final boolean result;
             if (stackSlot.isNull()) {
-                // Null is not the object I am looking for.
-                result = true;
-            } else {
-                final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
-                trace.string("  referentPointer: ").hex(referentPointer);
-                if (referentPointer.equal(targetPointer)) {
-                    element = StackElement.factory(stackSlot, ip, deoptFrame);
-                    // Found what I was looking for; do not continue searching.
-                    result = false;
-                } else {
-                    result = true;
-                }
+                return true;
             }
-            trace.string("  returns: ").bool(result);
-            trace.string("]").newline();
-            return result;
-        }
 
-        public StackElement getElement() {
-            final Log trace = Log.noopLog();
-            trace.string("[PathExhibitor.FrameSlotVisitor.getElement:").newline();
-            trace.string("  returns element: ").object(element);
-            trace.string("]").newline();
-            return element;
+            final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
+            trace.string("  referentPointer: ").hex(referentPointer);
+            if (referentPointer.equal(targetPointer)) {
+                result.add(StackElement.factory(stackSlot, ip, deoptFrame));
+                return result.isSpaceAvailable();
+            }
+            return true;
         }
     }
 
@@ -342,35 +278,30 @@ public class PathExhibitor {
         // Lazily-initialized instance state.
         protected Pointer targetPointer;
         protected Pointer containerPointer;
-        protected BootImageHeapElement element;
+        private PathElements result;
 
         protected BootImageHeapObjRefVisitor() {
         }
 
-        public void initialize(final Pointer container, final Pointer target) {
+        public void initialize(final Pointer container, final Pointer target, PathElements res) {
             containerPointer = container;
             targetPointer = target;
+            result = res;
         }
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
             if (objRef.isNull()) {
-                // Null is not the object I am looking for.
                 return true;
             }
             final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
             if (referentPointer.equal(targetPointer)) {
                 final Object containerObject = containerPointer.toObject();
                 final UnsignedWord offset = objRef.subtract(containerPointer);
-                element = BootImageHeapElement.factory(containerObject, offset, referentPointer);
-                // Found what I was looking for; do not continue searching.
-                return false;
+                result.add(BootImageHeapElement.factory(containerObject, offset, referentPointer));
+                return result.isSpaceAvailable();
             }
             return true;
-        }
-
-        public BootImageHeapElement getElement() {
-            return element;
         }
     }
 
@@ -379,29 +310,21 @@ public class PathExhibitor {
         // Lazily-initialized instance state.
         // - A pointer to the target object.
         protected Pointer targetPointer;
+        private PathElements result;
 
         protected HeapObjectVisitor() {
-            super();
-            // All other state is initialized lazily.
         }
 
-        public void initialize(final Object targetObject) {
+        public void initialize(final Object targetObject, PathElements res) {
             targetPointer = Word.objectToUntrackedPointer(targetObject);
+            result = res;
         }
 
         @Override
         public boolean visitObject(final Object containerObject) {
-            if (PathExhibitor.checkForInterference(containerObject)) {
-                // I am not interested in references from path elements; continue visiting.
-                return true;
-            }
             final Pointer containerPointer = Word.objectToUntrackedPointer(containerObject);
-            heapObjRefVisitor.initialize(containerPointer, targetPointer);
-            if (!InteriorObjRefWalker.walkObject(containerObject, heapObjRefVisitor)) {
-                // Found what I was looking for; do not continue visiting.
-                return false;
-            }
-            return true;
+            heapObjRefVisitor.initialize(containerPointer, targetPointer, result);
+            return InteriorObjRefWalker.walkObject(containerObject, heapObjRefVisitor);
         }
     }
 
@@ -412,35 +335,29 @@ public class PathExhibitor {
         protected Pointer containerPointer;
         // - A pointer to the target object.
         protected Pointer targetPointer;
-        // A path element if the target was found.
-        protected HeapElement element;
+        private PathElements result;
 
         protected HeapObjRefVisitor() {
         }
 
-        public void initialize(final Pointer container, final Pointer target) {
+        public void initialize(final Pointer container, final Pointer target, PathElements res) {
             // Initialize lazily-initialized state.
             containerPointer = container;
             targetPointer = target;
-        }
-
-        public HeapElement getElement() {
-            return element;
+            result = res;
         }
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed) {
             if (objRef.isNull()) {
-                // Null is not the object I am looking for.
                 return true;
             }
             final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
             if (referentPointer.equal(targetPointer)) {
                 final UnsignedWord offset = objRef.subtract(containerPointer);
                 final Object containerObject = containerPointer.toObject();
-                element = HeapElement.factory(containerObject, offset);
-                // Found what I was looking for; do not continue searching.
-                return false;
+                result.add(HeapElement.factory(containerObject, offset));
+                return result.isSpaceAvailable();
             }
             return true;
         }
@@ -613,31 +530,6 @@ public class PathExhibitor {
         protected final Object previous;
     }
 
-    /** A path element for when I find a PathElement. */
-    public static class InterferenceElement extends PathElement {
-
-        public static InterferenceElement factory() {
-            return new InterferenceElement();
-        }
-
-        @Override
-        public Object getObject() {
-            // Cyclic elements are roots.
-            return null;
-        }
-
-        @Override
-        public Log toLog(Log log) {
-            log.string("[interference");
-            log.string("]");
-            return log;
-        }
-
-        protected InterferenceElement() {
-            // Nothing to do.
-        }
-    }
-
     /** For debugging. */
     public static final class TestingBackDoor {
 
@@ -645,27 +537,80 @@ public class PathExhibitor {
             // No instances.
         }
 
-        public static PathElement findPathToObject(final PathExhibitor exhibitor, final Object obj) {
-            FindPathToObjectOperation op = new FindPathToObjectOperation(exhibitor, obj);
+        public static PathElement findPathToObject(PathExhibitor exhibitor, Object obj) {
+            PathElements result = new PathElements(1);
+            findPathToObject(exhibitor, obj, result);
+            return result.isEmpty() ? null : result.get(0);
+        }
+
+        public static void findPathToObject(PathExhibitor exhibitor, Object obj, PathElements result) {
+            FindPathToObjectOperation op = new FindPathToObjectOperation(exhibitor, obj, result);
             op.enqueue();
-            return op.result;
         }
     }
 
     private static final class FindPathToObjectOperation extends JavaVMOperation {
         private final PathExhibitor exhibitor;
         private final Object object;
-        private PathElement result;
+        private PathElements result;
 
-        FindPathToObjectOperation(PathExhibitor exhibitor, Object object) {
+        FindPathToObjectOperation(PathExhibitor exhibitor, Object object, PathElements result) {
             super("FindPathToObjectOperation", SystemEffect.SAFEPOINT);
             this.exhibitor = exhibitor;
             this.object = object;
+            this.result = result;
         }
 
         @Override
         protected void operate() {
-            result = exhibitor.findPathToObject(object);
+            exhibitor.findPathToObject(object, result);
+        }
+    }
+
+    public static class PathElements {
+        private PathElement[] elements;
+        private int size;
+
+        public PathElements(int maxSize) {
+            elements = new PathElement[maxSize];
+            size = 0;
+        }
+
+        public boolean isSpaceAvailable() {
+            return size < elements.length;
+        }
+
+        public boolean isEmpty() {
+            return size == 0;
+        }
+
+        public int size() {
+            return size;
+        }
+
+        public PathElement get(int index) {
+            return elements[index];
+        }
+
+        public void add(PathElement elem) {
+            if (!isInterfering(elem.getObject())) {
+                elements[size++] = elem;
+            }
+        }
+
+        public void clear() {
+            Arrays.fill(elements, null);
+            size = 0;
+        }
+
+        public void toLog(Log log) {
+            for (int i = 0; i < size; i++) {
+                elements[i].toLog(log);
+            }
+        }
+
+        private static boolean isInterfering(Object currentObject) {
+            return currentObject instanceof PathElement || currentObject instanceof FindPathToObjectOperation;
         }
     }
 }

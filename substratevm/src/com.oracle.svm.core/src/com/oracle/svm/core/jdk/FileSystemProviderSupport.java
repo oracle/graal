@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -308,8 +309,11 @@ class UnixFileSystemAccessors {
          * We invoke the original constructor of UnixFileSystem. This overwrites the provider field
          * with the same value it is already set to, so this is harmless. All other field writes are
          * redirected to the set-accessors of this class and write the injected fields.
+         *
+         * Note that the `System.getProperty("user.dir")` value is always used when re-initializing
+         * a UnixFileSystem, which is not the case with the WindowsFileSystem (JDK-8066709).
          */
-        that.originalConstructor(that.provider, ImageSingletons.lookup(SystemPropertiesSupport.class).userDir());
+        that.originalConstructor(that.provider, System.getProperty("user.dir"));
 
         /*
          * Now the object is completely re-initialized and can be used by any thread without
@@ -383,7 +387,13 @@ class WindowsFileSystemAccessors {
             return;
         }
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
-        that.originalConstructor(that.provider, ImageSingletons.lookup(SystemPropertiesSupport.class).userDir());
+        /*
+         * On JDK 11, the `StaticProperty.userDir()` value is used when re-initializing a
+         * WindowsFileSystem (JDK-8066709).
+         */
+        that.originalConstructor(that.provider, JavaVersionUtil.JAVA_SPEC >= 11
+                        ? ImageSingletons.lookup(SystemPropertiesSupport.class).userDir()
+                        : System.getProperty("user.dir"));
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
     }
 }

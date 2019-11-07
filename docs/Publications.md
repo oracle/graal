@@ -51,11 +51,47 @@ JVM Language Summit 2013, July 29-31, Santa Clara, CA
 **Truffle: A Self-Optimizing Runtime System**  
 SPLASH 2012, October 19-26, Tucson, AZ  
 [Download slides](http://lafo.ssw.uni-linz.ac.at/papers/2012_SPLASH_Truffle_Slides.pdf)  
-[Download absract](http://lafo.ssw.uni-linz.ac.at/papers/2012_SPLASH_Truffle.pdf)
+[Download abstract](http://lafo.ssw.uni-linz.ac.at/papers/2012_SPLASH_Truffle.pdf)
 
 ## Truffle Papers
 
 ### 2019
+
+-  Christian Wimmer, Peter Hofer, Codrut Stancu, Vojin Jovanovic, Peter Kessler, Thomas Wuerthinger, Oleg Pliss, Paul Woegerer
+[**Initialize Once, Start Fast: Application Initialization at Build Time**](https://dl.acm.org/citation.cfm?id=3360610)
+In _Proceedings of the ACM on Programming Languages_
+
+- Aleksandar Prokopec, Gilles Duboscq, David Leopoldseder, Thomas Wuerthinger
+[**An Optimization-Driven Incremental Inline Substitution Algorithm for Just-In-Time Compilers**](https://dl.acm.org/citation.cfm?id=3314893)
+In _Proceedings of the 2019 International Symposium on Code Generation and Optimization (CGO 2019)_
+
+- Aleksandar Prokopec, Andrea Rosà, David Leopoldseder, Gilles Duboscq, Petr Tůma, Martin Studener, Lubomír Bulej, Yudi Zheng, Alex Villazón, Doug Simon, Thomas Würthinger, Walter Binder
+[**Renaissance: benchmarking suite for parallel applications on the JVM**](https://dl.acm.org/citation.cfm?id=3314637)
+In _Proceedings of the 40th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2019)_
+
+- Christian Humer, Tim Felgentreff, Robert Hirschfeld, Fabio Niephaus, Daniel Stolpe
+[**Language-independent Development Environment Support For Dynamic Runtimes**](https://dl.acm.org/citation.cfm?id=3359746)
+In _Proceedings of the 15th ACM SIGPLAN International Symposium on Dynamic Languages_
+
+- Florian Latifi, David Leopoldseder
+[**Practical Second Futamura Projection**](https://dl.acm.org/citation.cfm?id=3361077)
+In _Proceedings Companion of the 2019 ACM SIGPLAN International Conference on Systems, Programming, Languages, and Applications: Software for Humanity_
+
+- Jacob Kreindl, Hanspeter Moessenboeck, Daniele Bonetta
+[**Towards Efficient, Multi-Language Dynamic Taint Analysis**](https://dl.acm.org/citation.cfm?id=3361028)
+In _Proceedings of the 16th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes_
+
+- Raphael Mosaner, Hanspeter Moessenboeck, Manuel Rigger, Roland Schatz, David Leopoldseder
+[**Supporting On-Stack Replacement in Unstructured Languages by Loop Reconstruction and Extraction**](https://dl.acm.org/citation.cfm?id=3361030)
+In _Proceedings of the 16th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes_
+
+- Robert Hirschfeld, Christian Humer, Fabio Niephaus, Daniel Stolpe, Tim Felgentreff
+[**Language-independent Development Environment Support For Dynamic Runtimes**](https://dl.acm.org/citation.cfm?id=3359746)
+In _Proceedings of the 15th ACM SIGPLAN International Symposium on Dynamic Languages_
+
+- Stefan Marr, Manuel Rigger, Bram Adams, Hanspeter Moessenboeck
+[**Understanding GCC Builtins to Develop Better Tools**](https://dl.acm.org/citation.cfm?id=3338907)
+In _Proceedings of the 2019 27th ACM Joint Meeting on European Software Engineering Conference and Symposium on the Foundations of Software Engineering_
 
 - Fabio Niephaus, Tim Felgentreff, and Robert Hirschfeld [**GraalSqueak: Toward a Smalltalk-based Tooling Platform for Polyglot Programming**](https://doi.org/10.1145/3357390.3361024)
 In _Proceedings of the International Conference on Managed Programming Languages and Runtimes (MPLR) 2019_

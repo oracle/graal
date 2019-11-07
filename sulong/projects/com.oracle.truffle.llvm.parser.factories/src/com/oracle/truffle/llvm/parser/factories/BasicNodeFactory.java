@@ -29,13 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -123,6 +116,8 @@ import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSi
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToI32VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMSignedCastToI8VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToDoubleVectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToFloatVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToI16VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToI1VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUnsignedCastToI32VectorNodeGen;
@@ -327,7 +322,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVM80BitFloatSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMDoubleSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMSelectNodeFactory.LLVMFloatSelectNodeGen;
@@ -395,6 +390,13 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
@@ -1008,6 +1010,10 @@ public class BasicNodeFactory implements NodeFactory {
                         return LLVMUnsignedCastToI32VectorNodeGen.create(fromNode, vectorLength);
                     case I64:
                         return LLVMUnsignedCastToI64VectorNodeGen.create(fromNode, vectorLength);
+                    case FLOAT:
+                        return LLVMUnsignedCastToFloatVectorNodeGen.create(fromNode, vectorLength);
+                    case DOUBLE:
+                        return LLVMUnsignedCastToDoubleVectorNodeGen.create(fromNode, vectorLength);
                 }
             } else if (elemType instanceof PointerType) {
                 return LLVMBitcastToPointerVectorNodeGen.create(fromNode, vectorLength);
@@ -1301,7 +1307,7 @@ public class BasicNodeFactory implements NodeFactory {
             } else if (LLVMManagedPointer.isInstance(value)) {
                 return new LLVMManagedPointerLiteralNode(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal) {
-                return new LLVMAccessGlobalVariableStorageNode((LLVMGlobal) value);
+                return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobal) value);
             } else {
                 throw new AssertionError(value.getClass());
             }

@@ -397,6 +397,34 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.llvm.tests.llirtestgen" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.llirtestgen.generated" : {
+      "class": "GeneratedTestSuite",
+      "subDir" : "tests",
+      "native" : True,
+      "vpath" : True,
+      "variants" : ["O0"],
+      "buildDependencies" : [
+        "LLIR_TEST_GEN",
+      ],
+      "buildEnv" : {
+        "LDFLAGS": "-lm",
+        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+      },
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.llvm.tests.pipe.native" : {
       "subDir" : "tests",
       "native" : True,
@@ -574,6 +602,27 @@ suite = {
       "variants" : ["O0"],
       "buildEnv" : {
         "OS" : "<os>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      # This should be the O1 variant (and the CFLAGS buildEnv entry
+      # below should be changed to -O1) but it currently breaks the
+      # tests in the project (difference in behavior between O0 and
+      # O1). This issue is related to the vstore.ll.ignored test in
+      # that we should fix it once we have a solution for the general
+      # issue in exeuction mistmatches. Until then the Sulong behavior
+      # is the more accurate one.
+      "variants" : ["O0"],
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1047,6 +1096,16 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "LLIR_TEST_GEN" : {
+      "relpath" : True,
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+
     "SULONG_TEST_SUITES" : {
       "native" : True,
       "relpath" : True,
@@ -1054,8 +1113,10 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",

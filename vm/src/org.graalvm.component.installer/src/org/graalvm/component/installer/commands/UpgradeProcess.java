@@ -318,6 +318,7 @@ public class UpgradeProcess implements AutoCloseable {
                         feedback.withBundle(ComponentInstaller.class),
                         home.resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE)),
                         home);
+        dst.setJavaVersion(input.getLocalRegistry().getJavaVersion());
         return new ComponentRegistry(feedback, dst);
     }
 
@@ -636,6 +637,16 @@ public class UpgradeProcess implements AutoCloseable {
         @Override
         public String optValue(String option) {
             return input.optValue(option);
+        }
+
+        @Override
+        public String getParameter(String key, boolean cmdLine) {
+            return input.getParameter(key, cmdLine);
+        }
+
+        @Override
+        public Map<String, String> parameters(boolean cmdLine) {
+            return input.parameters(cmdLine);
         }
     }
 }

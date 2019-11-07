@@ -47,6 +47,7 @@ import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
@@ -65,7 +66,6 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -83,7 +83,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
-    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new WeakHashMap<>();
+    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
     private final String className;
     private final Set<String> mimeTypes;
@@ -517,7 +517,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             return resolvedId;
         }
 
-        static String getLanguageHomeFromURLConnection(URLConnection connection) {
+        static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
             if (connection instanceof JarURLConnection) {
                 /*
                  * The previous implementation used a `URL.getPath()`, but OS Windows is offended by
@@ -537,12 +537,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * `URI.toASCIIString()` all reserved and non-ASCII characters are percent-quoted.
                  */
                 try {
-                    Path path;
-                    path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
-                    Path parent = path.getParent();
-                    return parent != null ? parent.toString() : null;
-                } catch (URISyntaxException e) {
-                    assert false : "Could not resolve path.";
+                    URL url = ((JarURLConnection) connection).getJarFileURL();
+                    if ("file".equals(url.getProtocol())) {
+                        Path path = Paths.get(url.toURI());
+                        Path parent = path.getParent();
+                        return parent != null ? parent.toString() : null;
+                    }
+                } catch (URISyntaxException | FileSystemNotFoundException | IllegalArgumentException | SecurityException e) {
+                    assert false : "Cannot locate " + languageId + " language home due to " + e.getMessage();
                 }
             }
             return null;
@@ -599,7 +601,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
                 String languageHome = System.getProperty(id + ".home");
                 if (languageHome == null) {
-                    languageHome = getLanguageHomeFromURLConnection(connection);
+                    languageHome = getLanguageHomeFromURLConnection(id, connection);
                 }
                 String className = info.getProperty(prefix + "className");
                 String implementationName = info.getProperty(prefix + "implementationName");
@@ -819,7 +821,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         URL url = provider.getClass().getClassLoader().getResource(className.replace('.', '/') + ".class");
                         if (url != null) {
                             try {
-                                languageHome = getLanguageHomeFromURLConnection(url.openConnection());
+                                languageHome = getLanguageHomeFromURLConnection(id, url.openConnection());
                             } catch (IOException ioe) {
                             }
                         }

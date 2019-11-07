@@ -30,21 +30,13 @@
 package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.DoubleArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.LongArrayObject;
-import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
-import com.oracle.truffle.llvm.tests.interop.values.TestCallback.Function;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.lang.reflect.Array;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collection;
-import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -53,80 +45,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
-public final class ManagedMemmoveTest extends InteropTestBase {
-
-    private static TruffleObject testLibrary;
-
-    enum TestType {
-        I8(1, false) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.put((byte) (long) value);
-            }
-        },
-        I16(2, false) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.putShort((short) (long) value);
-            }
-        },
-        I32(4, false) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.putInt((int) (long) value);
-            }
-        },
-        I64(8, false) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.putLong((long) value);
-            }
-        },
-        FLOAT(4, true) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.putFloat((float) (double) value);
-            }
-        },
-        DOUBLE(8, true) {
-            @Override
-            void serialize(ByteBuffer buffer, Object value) {
-                buffer.putDouble((double) value);
-            }
-        };
-
-        final int elementSize;
-        final boolean isFloating;
-
-        TestType(int elementSize, boolean isFloating) {
-            this.elementSize = elementSize;
-            this.isFloating = isFloating;
-        }
-
-        abstract void serialize(ByteBuffer buffer, Object value);
-    }
-
-    private static Object[] types;
-
-    @BeforeClass
-    public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("managedMemmove");
-
-        Value lib = runWithPolyglot.getPolyglotContext().asValue(testLibrary);
-        Value getTypes = lib.getMember("get_types");
-
-        types = new Object[6];
-        getTypes.execute(new TestCallback(1, new Function() {
-
-            int idx = 0;
-
-            @Override
-            public Object call(Object... args) {
-                types[idx++] = args[0];
-                return null;
-            }
-        }));
-    }
+public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
 
     @Parameters(name = "{1}->{0}")
     public static Collection<Object[]> data() {
@@ -147,15 +66,6 @@ public final class ManagedMemmoveTest extends InteropTestBase {
         public DoMemmoveNode() {
             super(testLibrary, "do_memmove");
         }
-    }
-
-    private static byte[] serialize(TestType type, Object array) {
-        int size = Array.getLength(array) * type.elementSize;
-        ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.nativeOrder());
-        for (int i = 0; i < Array.getLength(array); i++) {
-            type.serialize(buffer, Array.get(array, i));
-        }
-        return buffer.array();
     }
 
     @Test

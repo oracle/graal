@@ -52,6 +52,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
@@ -473,7 +474,7 @@ public class Inflation extends BigBang {
     private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
         JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, "Hub");
+        objectScanner.scanConstant(hubConstant, ScanReason.HUB);
     }
 
     private void handleUnknownValueField(AnalysisField field) {

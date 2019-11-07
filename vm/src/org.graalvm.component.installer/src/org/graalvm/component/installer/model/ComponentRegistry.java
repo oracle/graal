@@ -489,4 +489,8 @@ public final class ComponentRegistry implements ComponentCollection {
         }
         return result;
     }
+
+    public String getJavaVersion() {
+        return getGraalCapabilities().get(CommonConstants.CAP_JAVA_VERSION);
+    }
 }

@@ -594,7 +594,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean patch(PolyglotContextConfig newConfig) {
-        if (isInitialized()) {
+        if (isCreated()) {
             try {
                 final OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
                 final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,

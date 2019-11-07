@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -39,6 +40,7 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
 
     @CompilationFinal private LLVMMemory llvmMemory;
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
+    @CompilationFinal private boolean hasSeenHandleMemory;
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
@@ -49,6 +51,13 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
     }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
+        if (!hasSeenHandleMemory) {
+            if (!LLVMNativeMemory.isHandleMemory(addr.asNative())) {
+                return false;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasSeenHandleMemory = true;
+        }
         return getLLVMMemoryCached().isDerefHandleMemory(addr.asNative());
     }
 

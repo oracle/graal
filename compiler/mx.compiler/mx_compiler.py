@@ -54,7 +54,7 @@ from mx_unittest import unittest
 from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
-from mx_sdk_vm import jdk_enables_jvmci_by_default, jlink_new_jdk
+from mx_sdk_vm import jlink_new_jdk
 
 import mx_jaotc
 
@@ -143,7 +143,7 @@ class SafeDirectoryUpdater(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
-            shutil.rmtree(self.workspace)
+            mx.rmtree(self.workspace)
             raise
 
         # Try delete the target directory if it existed prior to creating
@@ -166,7 +166,7 @@ class SafeDirectoryUpdater(object):
                 # Silently assume another process won the race to create self.target
                 pass
 
-        shutil.rmtree(self.workspace)
+        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """
@@ -1149,8 +1149,9 @@ def makegraaljdk_cli(args):
     if args.bootstrap:
         map_file = join(dst_jdk_dir, 'proguard.map')
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
-            select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
-            mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+            # Just use a set of flags that will work on all JVMCI enabled VMs without trying
+            # to remove flags that are unnecessary for a specific VM.
+            mx.run([dst_jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler', '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
     if args.archive:
         mx.log('Archiving {}'.format(args.archive))
         create_archive(dst_jdk_dir, args.archive, basename(args.dest) + '/')
@@ -1226,6 +1227,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
 
+        vm_name = 'Graal'
+        for d in _graal_config().jvmci_dists:
+            s = ':' + d.suite.name + '_' + d.suite.version()
+            if s not in vm_name:
+                vm_name = vm_name + s
+
         if isJDK8:
             jre_dir = join(tmp_dst_jdk_dir, 'jre')
             shutil.copytree(src_jdk.home, tmp_dst_jdk_dir)
@@ -1253,7 +1260,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         else:
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names)
+            vendor_info = {'vendor-version' : vm_name}
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1284,12 +1292,10 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         mx.ensure_dir_exists(libjvm_dir)
         jvmlib = join(libjvm_dir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
 
-        vm_name = 'Graal'
         with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
             for d in _graal_config().jvmci_dists:
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
-                vm_name = vm_name + ':' + s.name + '_' + s.version()
             for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)

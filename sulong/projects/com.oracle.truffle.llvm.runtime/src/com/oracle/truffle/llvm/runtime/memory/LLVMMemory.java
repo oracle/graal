@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMMemory implements LLVMCapability {
@@ -234,11 +235,23 @@ public abstract class LLVMMemory implements LLVMCapability {
 
     public abstract void fullFence();
 
-    public abstract long allocateHandle(boolean autoDeref);
-
-    public abstract boolean isHandleMemory(long addr);
+    public abstract boolean isCommonHandleMemory(long addr);
 
     public abstract boolean isDerefHandleMemory(long addr);
+
+    public abstract static class HandleContainer {
+
+        public abstract LLVMNativePointer allocate(Object value);
+
+        public abstract void free(long address);
+
+        public abstract LLVMManagedPointer getValue(long address);
+
+        public abstract boolean isHandle(long address);
+
+    }
+
+    public abstract HandleContainer createHandleContainer(boolean deref);
 
     @ValueType
     public static final class CMPXCHGI8 {

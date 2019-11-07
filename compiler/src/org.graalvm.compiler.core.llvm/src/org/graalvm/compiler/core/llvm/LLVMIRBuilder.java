@@ -38,21 +38,22 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
-import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
-import org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
-import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import org.bytedeco.javacpp.LLVM.LLVMModuleRef;
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
-import org.bytedeco.javacpp.PointerPointer;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.GraalError;
+
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMModuleRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.PointerPointer;
 
 import jdk.vm.ci.meta.JavaKind;
 

@@ -2,14 +2,20 @@
 	"name": "graalvm-ruby",
 	"displayName": "GraalVM Ruby",
 	"description": "Support for GraalVM Ruby",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"license": "SEE LICENSE IN LICENSE.txt",
-	"publisher": "OracleLabs",
+	"publisher": "oracle-labs-graalvm",
+	"author": {
+		"name": "Oracle Labs"
+	},
 	"icon": "images/graalvm-ruby-logo.png",
 	"homepage": "https://github.com/oracle/graal/blob/master/vscode/graalvm-ruby/README.md",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/oracle/graal.git"
+	},
+	"bugs": {
+		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
 		"vscode": "^1.32.0"
@@ -93,7 +99,7 @@
 		"webpack-cli": "^3.3.6"
 	},
 	"extensionDependencies": [
-		"OracleLabs.graalvm",
+		"oracle-labs-graalvm.graalvm",
 		"rebornix.Ruby"
 	]
 }

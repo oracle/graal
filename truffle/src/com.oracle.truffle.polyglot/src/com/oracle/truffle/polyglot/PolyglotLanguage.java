@@ -332,6 +332,10 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return optionValues;
     }
 
+    OptionValuesImpl getOptionValuesIfExists() {
+        return optionValues;
+    }
+
     @Override
     public String getDefaultMimeType() {
         return cache.getDefaultMimeType();
@@ -365,7 +369,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.getVersion();
+            return engine.creatorApi.getVersion();
         } else {
             return version;
         }

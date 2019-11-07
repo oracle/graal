@@ -181,6 +181,12 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasContextBindings(Object engine) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            return instrumentationHandler.hasContextBindings();
+        }
+
+        @Override
         @CompilerDirectives.TruffleBoundary
         public void notifyContextCreated(Object engine, TruffleContext context) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);

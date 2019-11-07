@@ -81,6 +81,7 @@ public class LayoutParser {
     private final Map<String, PropertyBuilder> properties = new HashMap<>();
     private List<VariableElement> implicitCasts = new ArrayList<>();
     private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
+    private TypeMirror dispatch;
 
     public LayoutParser(LayoutProcessor processor) {
         this.processor = processor;
@@ -115,6 +116,8 @@ public class LayoutParser {
                     VariableElement var = ElementUtils.findVariableElement(types.Layout_ImplicitCast, "IntToDouble");
                     implicitCasts.add(var);
                 }
+
+                dispatch = ElementUtils.getAnnotationValue(TypeMirror.class, annotationMirror, "dispatch");
             }
         }
 
@@ -597,7 +600,7 @@ public class LayoutParser {
 
     public LayoutModel build() {
         return new LayoutModel(objectTypeSuperclass, superLayout, name, packageName, hasObjectTypeGuard, hasObjectGuard,
-                        hasDynamicObjectGuard, hasBuilder, buildProperties(), interfaceFullName, implicitCasts);
+                        hasDynamicObjectGuard, hasBuilder, buildProperties(), interfaceFullName, implicitCasts, dispatch);
     }
 
     private List<PropertyModel> buildProperties() {

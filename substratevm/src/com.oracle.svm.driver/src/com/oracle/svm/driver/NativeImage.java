@@ -217,7 +217,11 @@ public class NativeImage {
          * @return the name of the image generator main class.
          */
         default String getGeneratorMainClass() {
-            return DEFAULT_GENERATOR_CLASS_NAME;
+            String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
+            if (useJavaModules()) {
+                generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
+            }
+            return generatorClassName;
         }
 
         /**
@@ -396,15 +400,13 @@ public class NativeImage {
         private final Path workDir;
         private final Path rootDir;
         private final List<String> args;
-        private final String generatorClassName;
 
-        DefaultBuildConfiguration(String generatorClassName, List<String> args) {
-            this(generatorClassName, null, null, args);
+        DefaultBuildConfiguration(List<String> args) {
+            this(null, null, args);
         }
 
         @SuppressWarnings("deprecation")
-        DefaultBuildConfiguration(String generatorClassName, Path rootDir, Path workDir, List<String> args) {
-            this.generatorClassName = generatorClassName;
+        DefaultBuildConfiguration(Path rootDir, Path workDir, List<String> args) {
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
@@ -431,11 +433,6 @@ public class NativeImage {
                     this.rootDir = Paths.get(rootDirString);
                 }
             }
-        }
-
-        @Override
-        public String getGeneratorMainClass() {
-            return generatorClassName;
         }
 
         @Override
@@ -691,6 +688,11 @@ public class NativeImage {
         addImageBuilderJavaArgs(oXms + getXmsValue());
         addImageBuilderJavaArgs(oXmx + getXmxValue(1));
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
+        /* Prevent JVM that runs the image builder to steal focus */
+        if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
+            /* Conditional because of https://bugs.openjdk.java.net/browse/JDK-8159956 */
+            addImageBuilderJavaArgs("-Djava.awt.headless=true");
+        }
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -1012,6 +1014,9 @@ public class NativeImage {
         }
 
         imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
+        // The following two are for backwards compatibility reasons. They should be removed.
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
@@ -1177,12 +1182,8 @@ public class NativeImage {
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
 
-    private static void main(String[] args, String generatorClassName) {
-        performBuild(new DefaultBuildConfiguration(generatorClassName, Arrays.asList(args)), defaultNativeImageProvider);
-    }
-
     public static void main(String[] args) {
-        main(args, DEFAULT_GENERATOR_CLASS_NAME);
+        performBuild(new DefaultBuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
     }
 
     public static void build(BuildConfiguration config) {
@@ -1190,11 +1191,7 @@ public class NativeImage {
     }
 
     public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
-        String generatorClassName = DEFAULT_GENERATOR_CLASS_NAME;
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            generatorClassName += DEFAULT_GENERATOR_9PLUS_SUFFIX;
-        }
-        performBuild(new DefaultBuildConfiguration(generatorClassName, javaHome, workDir, buildArgs), NativeImage::new);
+        performBuild(new DefaultBuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
     }
 
     public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
@@ -1670,7 +1667,7 @@ public class NativeImage {
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
                 ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             }
-            NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
+            NativeImage.main(args);
         }
     }
 }

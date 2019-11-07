@@ -882,7 +882,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
     ],
-    provided_executables=['bin/rebuild-images'] if not mx.is_windows() else [],
+    provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
 ))
 
@@ -900,22 +900,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     priority=1,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=suite,
-    name='SubstrateVM LLVM',
-    short_name='svml',
-    dir_name='svm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['SubstrateVM'],
-    builder_jar_distributions=[
-        'substratevm:SVM_LLVM',
-        'compiler:GRAAL_LLVM',
-        'compiler:LLVM_WRAPPER',
-        'compiler:JAVACPP',
-        'compiler:LLVM_PLATFORM_SPECIFIC',
-    ],
-))
+if not mx.is_windows():
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=suite,
+        name='SubstrateVM LLVM',
+        short_name='svml',
+        dir_name='svm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['SubstrateVM'],
+        builder_jar_distributions=[
+            'substratevm:SVM_LLVM',
+            'compiler:GRAAL_LLVM',
+            'compiler:LLVM_WRAPPER_SHADOWED',
+            'compiler:JAVACPP_SHADOWED',
+            'compiler:LLVM_PLATFORM_SPECIFIC_SHADOWED',
+        ],
+    ))
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -1228,7 +1229,21 @@ def maven_plugin_install(args):
             deploy_args += [parsed.repository_id]
             if parsed.url:
                 deploy_args += [parsed.url]
-        mx.maven_deploy(deploy_args)
+        suites = set()
+
+        def collect_imports(s):
+            if s.name not in suites:
+                suites.add(s.name)
+                s.visit_imports(visitor)
+
+        def visitor(_, suite_import):
+            collect_imports(mx.suite(suite_import.name))
+
+        collect_imports(suite)
+        new_env = os.environ.copy()
+        if 'DYNAMIC_IMPORTS' in new_env:
+            del new_env['DYNAMIC_IMPORTS']
+        mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
 
     deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)
 
@@ -1237,7 +1252,7 @@ def maven_plugin_install(args):
         'Use the following plugin snippet to enable native-image building for your maven project:',
         '',
         '<plugin>',
-        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <groupId>org.graalvm.nativeimage</groupId>',
         '    <artifactId>native-image-maven-plugin</artifactId>',
         '    <version>' + svm_version + '</version>',
         '    <executions>',
@@ -1260,7 +1275,18 @@ def maven_plugin_test(args):
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
     pom_from_template(proj_dir, svm_version)
     # Build native image with native-image-maven-plugin
-    mx.run_maven(['package'], cwd=proj_dir)
+    env = os.environ.copy()
+    maven_opts = env.get('MAVEN_OPTS', '').split()
+    if svm_java8():
+        # Workaround Java 8 issue https://bugs.openjdk.java.net/browse/JDK-8145260
+        maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
+    else:
+        # On Java 9+ without native-image executable the plugin needs access to jdk.internal.module
+        maven_opts.append('-XX:+UnlockExperimentalVMOptions')
+        maven_opts.append('-XX:+EnableJVMCI')
+        maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
+    env['MAVEN_OPTS'] = ' '.join(maven_opts)
+    mx.run_maven(['package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 

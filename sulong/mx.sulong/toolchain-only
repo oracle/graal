@@ -1,6 +1,4 @@
 DYNAMIC_IMPORTS=/substratevm,/vm
-DISABLE_LIBPOLYGLOT=true
+COMPONENTS=SubstrateVM,Sulong,LLVM.org toolchain
+NATIVE_IMAGES=graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld
 DISABLE_POLYGLOT=true
-DISABLE_INSTALLABLES=slg
-FORCE_BASH_LAUNCHERS=native-image,gu,lli
-EXCLUDE_COMPONENTS=svmag,nju,ni,nil

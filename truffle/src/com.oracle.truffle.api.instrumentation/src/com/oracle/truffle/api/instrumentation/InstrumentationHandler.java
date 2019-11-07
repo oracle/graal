@@ -1064,6 +1064,10 @@ final class InstrumentationHandler {
         return addThreadsBinding(new EventBinding<>(instrumenter, listener), includeStartedThreads);
     }
 
+    boolean hasContextBindings() {
+        return !contextsBindings.isEmpty();
+    }
+
     void notifyContextCreated(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onContextCreated(context);

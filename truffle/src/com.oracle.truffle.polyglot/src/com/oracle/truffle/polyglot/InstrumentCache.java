@@ -49,6 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,6 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.TruffleJDKServices;
@@ -67,7 +67,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 final class InstrumentCache {
 
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
-    private static Map<List<ClassLoader>, List<InstrumentCache>> runtimeCaches = new WeakHashMap<>();
+    private static Map<List<ClassLoader>, List<InstrumentCache>> runtimeCaches = new HashMap<>();
 
     private final String className;
     private final String id;
