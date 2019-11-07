@@ -331,4 +331,16 @@ public final class StandardTags {
         }
 
     }
+
+    /*
+     * Marks at least the root location of each possible compilation unit, so that you can set a filter to include each
+     * compilation unit. The tag is set implicitly by Truffle - languages do not need to set the tag manually.
+     */
+    @Tag.Identifier("COMPILATION_ROOT")
+    public static final class CompilationRootTag extends Tag {
+        private CompilationRootTag() {
+            /* No instances */
+        }
+    }
+
 }

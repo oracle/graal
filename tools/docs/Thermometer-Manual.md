@@ -113,9 +113,6 @@ lock addl $0x0,(%rsp)
 There is a single flag, so the thermometer works best with applications with a
 single thread running most of the time.
 
-OSR compiled loop bodies are not not detected as being compiled code, as the
-node is set on root nodes.
-
 The sample flag is set for each guest-language method root, so a compilation
 unit may set it multiple times increasing overhead.
 

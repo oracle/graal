@@ -975,6 +975,11 @@ public final class SourceSectionFilter {
                 Class<?>[] filterTags = this.tags;
                 for (int i = 0; i < filterTags.length; i++) {
                     Class<?> tag = filterTags[i];
+
+                    if (tag == StandardTags.CompilationRootTag.class && instrumentedNode.getParent() instanceof RootNode) {
+                        return true;
+                    }
+
                     if (InstrumentationHandler.hasTagImpl(providedTags, instrumentedNode, tag)) {
                         return true;
                     }
@@ -985,6 +990,10 @@ public final class SourceSectionFilter {
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode, int rootNodeBits) {
                 for (Class<?> tag : tags) {
+                    if (tag == StandardTags.CompilationRootTag.class) {
+                        return true;
+                    }
+
                     if (providedTags.contains(tag)) {
                         return true;
                     }

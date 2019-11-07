@@ -63,9 +63,9 @@ public final class Thermometer implements AutoCloseable {
         running = true;
         startTime = System.nanoTime();
 
-        // Install a node in the prelude of each method to set the compilation flag
+        // Install a node at the root of each compilation unit to set the compilation flag
 
-        final SourceSectionFilter rootNodeFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
+        final SourceSectionFilter rootNodeFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.CompilationRootTag.class).build();
         env.getInstrumenter().attachExecutionEventFactory(rootNodeFilter, context -> new ThermometerCompilationSampleNode(sampler));
 
         // Install a node at the IPS sample location to count iterations
