@@ -172,8 +172,8 @@ public class GraalError extends Error {
      * This constructor creates a {@link GraalError} for a given causing Throwable instance with
      * detailed error message.
      */
-    public GraalError(Throwable cause, String msg) {
-        super(msg, cause);
+    public GraalError(Throwable cause, String msg, Object... args) {
+        super(format(msg, args), cause);
     }
 
     /**
