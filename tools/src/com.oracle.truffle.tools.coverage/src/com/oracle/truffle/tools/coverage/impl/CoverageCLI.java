@@ -101,7 +101,7 @@ final class CoverageCLI {
     private static String lineCoverage(LineCoverage lineCoverage) {
         final double coverage = lineCoverage.getCoverage();
         if (Double.isNaN(coverage)) {
-           return "";
+            return "";
         }
         return percentFormat(100 * coverage);
     }
