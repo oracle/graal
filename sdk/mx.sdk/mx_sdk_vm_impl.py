@@ -1538,11 +1538,10 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         super(GraalVmBashLauncherBuildTask, self).__init__(args, 1, subject)
 
     def _template_file(self):
-        ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
-        _custom_launcher = self.subject.native_image_config.custom_bash_launcher
-        if _custom_launcher:
-            return join(self.subject.component.suite.dir, _custom_launcher + "." + ext)
-        return join(_suite.mxDir, 'vm', 'launcher_template.' + ext)
+        custom_launcher_script = self.subject.native_image_config.custom_launcher_script
+        if custom_launcher_script:
+            return join(self.subject.component.suite.dir, custom_launcher_script)
+        return join(_suite.mxDir, 'vm', 'launcher_template.{}'.format('cmd' if mx.is_windows() else 'sh'))
 
     def native_image_needs_build(self, out_file):
         sup = super(GraalVmBashLauncherBuildTask, self).native_image_needs_build(out_file)
