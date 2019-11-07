@@ -40,7 +40,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -301,11 +300,6 @@ class Package_jdk_internal_loader implements Function<TargetClass, String> {
             return "jdk.internal.loader." + annotation.className();
         }
     }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath", innerClass = "JarLoader")
-@Delete
-final class Target_sun_misc_URLClassPath_JarLoader {
 }
 
 @TargetClass(className = "sun.reflect.misc.MethodUtil")
