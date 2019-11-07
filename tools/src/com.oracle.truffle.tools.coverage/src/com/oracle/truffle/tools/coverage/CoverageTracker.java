@@ -283,8 +283,8 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private void instrumentLoadedStatements(Instrumenter instrumenter, SourceSectionFilter f) {
-        final SourceSectionFilter statemtnFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
-        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statemtnFilter, new LoadSourceSectionListener() {
+        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
+        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statementFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
                 addStatement(event);
