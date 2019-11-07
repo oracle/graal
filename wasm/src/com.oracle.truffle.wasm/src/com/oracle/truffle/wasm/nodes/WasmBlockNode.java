@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.wasm.nodes;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.wasm.Assert.format;
 import static com.oracle.truffle.wasm.WasmTracing.trace;
 import static com.oracle.truffle.wasm.constants.Instructions.BLOCK;
@@ -205,16 +204,16 @@ import static com.oracle.truffle.wasm.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.constants.Instructions.UNREACHABLE;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.Assert;
@@ -285,6 +284,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private ContextReference<WasmContext> contextReference() {
         if (rawContextReference == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             rawContextReference = lookupContextReference(WasmLanguage.class);
         }
         return rawContextReference;
@@ -591,7 +591,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     }
 
                     // Invoke the resolved function.
-                    IndirectCallNode callNode = (IndirectCallNode) callNodeTable[callNodeOffset];
+                    WasmIndirectCallNode callNode = (WasmIndirectCallNode) callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
                     int numArgs = module().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
@@ -599,12 +599,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer -= args.length;
 
                     trace("indirect call to function %s (%d args)", function, args.length);
-                    Object result = callNode.call(function.resolveCallTarget(), args);
+                    Object result = callNode.execute(function, args);
                     trace("return from indirect_call to function %s : %s", function, result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the
                     // future.
-                    switch (function.returnType()) {
+                    int returnType = module().symbolTable().getFunctionTypeReturnType(expectedFunctionTypeIndex);
+                    switch (returnType) {
                         case ValueTypes.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
                             stackPointer++;
@@ -2367,7 +2368,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @TruffleBoundary
     private void resolveCallNode(int callNodeOffset) {
-        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
+        final CallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
     }
 

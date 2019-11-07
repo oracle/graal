@@ -120,7 +120,7 @@ public interface RepeatingNode extends NodeInterface {
      * @param value the value that was previously returned by {@code executeRepeatingWithValue}
      * @return <code>true</code> if the loop should be continued for this value
      *
-     * @since 19.4
+     * @since 20.0
      */
     default boolean shouldContinue(Object value) {
         return value == CONTINUE_LOOP_STATUS;

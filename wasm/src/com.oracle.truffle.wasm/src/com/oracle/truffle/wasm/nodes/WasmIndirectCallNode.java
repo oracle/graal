@@ -27,28 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.predefined.emscripten;
+package com.oracle.truffle.wasm.nodes;
 
-import static com.oracle.truffle.wasm.WasmTracing.trace;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.wasm.WasmFunction;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.WasmCodeEntry;
-import com.oracle.truffle.wasm.WasmLanguage;
-import com.oracle.truffle.wasm.memory.WasmMemory;
+public abstract class WasmIndirectCallNode extends Node {
 
-public class AbortOnCannotGrowMemory extends AbortNode {
-    public AbortOnCannotGrowMemory(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+    static final int INLINE_CACHE_LIMIT = 5;
+
+    public abstract Object execute(WasmFunction function, Object[] args);
+
+    @Specialization(guards = "function.resolveCallTarget() == callNode.getCallTarget()", limit = "INLINE_CACHE_LIMIT")
+    @SuppressWarnings("unused")
+    static Object doCached(WasmFunction function, Object[] args,
+                    @Cached("create(function.resolveCallTarget())") DirectCallNode callNode) {
+        return callNode.call(args);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        trace("AbortOnCannotGrowMemory EXECUTE");
-        return super.execute(frame);
+    @Specialization(replaces = "doCached")
+    static Object doIndirect(WasmFunction function, Object[] args,
+                    @Cached IndirectCallNode indirectCall) {
+        return indirectCall.call(function.resolveCallTarget(), args);
     }
 
-    @Override
-    public String name() {
-        return "abortOnCannotGrowMemory";
+    public static WasmIndirectCallNode create() {
+        return WasmIndirectCallNodeGen.create();
     }
+
 }
