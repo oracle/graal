@@ -1073,6 +1073,24 @@ final class InstrumentationHandler {
         return !contextsBindings.isEmpty();
     }
 
+    private CompilationState sampleCompilationState(AbstractInstrumenter instrumenter) {
+        if (TRACE) {
+            trace("BEGIN: Sampling compilation state%n");
+        }
+
+        try {
+            if (CompilationStateBackdoor.ACCESSOR == null) {
+                return null;
+            } else {
+                return CompilationStateBackdoor.ACCESSOR.get();
+            }
+        } finally {
+            if (TRACE) {
+                trace("END: Sampling compilation state%n");
+            }
+        }
+    }
+
     void notifyContextCreated(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
             binding.getElement().onContextCreated(context);
@@ -2177,6 +2195,11 @@ final class InstrumentationHandler {
         @Override
         public <T extends OutputStream> EventBinding<T> attachErrConsumer(T stream) {
             return InstrumentationHandler.this.attachOutputConsumer(this, stream, true);
+        }
+
+        @Override
+        public CompilationState sampleCompilationState() {
+            return InstrumentationHandler.this.sampleCompilationState(this);
         }
 
         private void verifySourceOnly(SourceSectionFilter filter) {

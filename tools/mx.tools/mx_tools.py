@@ -252,6 +252,19 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     include_by_default=True,
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Thermometer',
+    short_name='temp',
+    dir_name='thermometer',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:TRUFFLE_THERMOMETER'],
+    support_distributions=['tools:TRUFFLE_THERMOMETER_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',

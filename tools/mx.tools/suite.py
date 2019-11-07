@@ -202,6 +202,35 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
         },
+        "com.oracle.truffle.tools.thermometer" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+                ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              "com.oracle.truffle.tools.thermometer.impl to org.graalvm.truffle",
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.thermometer.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.thermometer",
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
     },
 
     "libraries": {
@@ -398,6 +427,41 @@ suite = {
             "description" : "Truffle Code coverage support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-coverage.properties",
+            },
+        },
+        "TRUFFLE_THERMOMETER": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleName" : "com.oracle.truffle.tools.thermometer",
+            "dependencies": [
+                "com.oracle.truffle.tools.thermometer",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "thermometer",
+            },
+            "description" : "Truffle optimization thermometer tool.",
+            "javadocType" : "api",
+        },
+        "TRUFFLE_THERMOMETER_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.thermometer.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_INSTRUMENT_TEST",
+                "TRUFFLE_COVERAGE",
+            ],
+            "description" : "Tests for the truffle thermometer tool.",
+            "maven" : False,
+         },
+        "TRUFFLE_THERMOMETER_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle optimization thermometer support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-thermometer.properties",
             },
         },
         "VISUALVM_GRAALVM_SUPPORT": {

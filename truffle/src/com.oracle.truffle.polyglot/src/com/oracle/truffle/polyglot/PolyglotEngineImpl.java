@@ -193,6 +193,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     MessageTransport messageInterceptor, Handler logHandler) {
         super(impl);
         this.messageInterceptor = messageInterceptor;
+
+        EngineAccessor.EngineImpl.backdoorEngine = this;
+
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor);
         this.impl = impl;
         this.out = out;

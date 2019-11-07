@@ -346,7 +346,13 @@ final class EngineAccessor extends Accessor {
             return getEngine(polyglotObject).idToInternalInstrumentInfo;
         }
 
+        public static PolyglotEngineImpl backdoorEngine;
+
         private static PolyglotEngineImpl getEngine(Object polyglotObject) throws AssertionError {
+            if (polyglotObject == null) {
+                return backdoorEngine;
+            }
+
             if (!(polyglotObject instanceof PolyglotImpl.VMObject)) {
                 throw new AssertionError();
             }

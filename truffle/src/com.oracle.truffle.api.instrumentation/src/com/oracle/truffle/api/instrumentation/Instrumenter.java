@@ -372,4 +372,6 @@ public abstract class Instrumenter {
      */
     public abstract ExecutionEventNode lookupExecutionEventNode(Node node, EventBinding<?> binding);
 
+    public abstract CompilationState sampleCompilationState();
+
 }
