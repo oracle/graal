@@ -304,7 +304,8 @@ class NativeImageVM(GraalVm):
                 i += 1
 
             # Build the final image
-            pgo_args = ['--pgo=' + profile_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
+            pgo_verification_output_path = os.path.join(config.output_dir, executable_name + '-probabilities.log')
+            pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
             final_image_args = base_image_build_args + pgo_args
             mx.log('Building the final image with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))

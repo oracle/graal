@@ -347,8 +347,6 @@ public class CompileQueue {
             // Checking @MustNotSynchronize annotations does not take long enough to justify a
             // timer.
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
-            afterParse(debug);
-            performAfterParseCanonicalization();
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
@@ -369,29 +367,10 @@ public class CompileQueue {
         }
     }
 
-    private void performAfterParseCanonicalization() throws InterruptedException {
-        PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
-        executor.init();
-        for (HostedMethod method : universe.getMethods()) {
-            if (method.compilationInfo.hasDefaultParseFunction() && method.compilationInfo.getGraph() != null) {
-                HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
-                executor.execute(debug -> {
-                    method.compilationInfo.getGraph().resetDebug(debug);
-                    afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-                    assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
-                });
-            }
-        }
-        executor.start();
-        executor.complete();
-        executor.shutdown();
-    }
-
     private boolean suitesNotCreated() {
         return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
     }
 
-    /* This can be moved to the constructor now. */
     private void createSuites() {
         regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
@@ -530,10 +509,6 @@ public class CompileQueue {
     private void ensureParsedForDeoptTesting(HostedMethod method) {
         method.compilationInfo.canDeoptForTesting = true;
         ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
-    }
-
-    @SuppressWarnings("unused")
-    protected void afterParse(DebugContext debug) throws InterruptedException {
     }
 
     private void checkTrivial(HostedMethod method) {
@@ -746,6 +721,11 @@ public class CompileQueue {
 
                 method.compilationInfo.graph = graph;
 
+                afterParse(method);
+                PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
+                afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+                assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
                         invoke.setUseForInlining(false);
@@ -785,6 +765,10 @@ public class CompileQueue {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterParse(HostedMethod method) {
     }
 
     protected OptionValues getCustomizedOptions(DebugContext debug) {
