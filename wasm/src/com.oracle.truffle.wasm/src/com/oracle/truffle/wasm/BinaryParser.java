@@ -1353,8 +1353,8 @@ public class BinaryParser extends BinaryStreamParser {
                         readGlobalIndex();
                         // TODO: Implement GLOBAL_GET case for data sections (and add tests).
                         throw new WasmException("GLOBAL_GET in data section not implemented.");
-                    // dataOffset = module.globals().getAsInt(index);
-                    // break;
+                        // dataOffset = module.globals().getAsInt(index);
+                        // break;
                     case END:
                         break;
                     default:

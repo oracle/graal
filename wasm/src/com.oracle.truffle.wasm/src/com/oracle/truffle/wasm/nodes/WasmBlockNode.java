@@ -2395,7 +2395,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-       throw new WasmExecutionException(this, "This method should never have been called.");
+        throw new WasmExecutionException(this, "This method should never have been called.");
     }
 
     @Override
