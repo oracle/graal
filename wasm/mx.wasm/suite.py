@@ -83,6 +83,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,WebAssembly",
       "license" : "BSD-new",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.wasm.test" : {
@@ -109,7 +110,7 @@ suite = {
       "class" : "GraalWasmSourceFileProject",
       "checkstyle" : "com.oracle.truffle.wasm",
       "workingSets" : "Truffle,WebAssembly",
-      "testProject" : False,
+      "testProject" : True,
       "defaultBuild" : False,
     },
 
@@ -135,7 +136,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.wasm",
       "includeset" : "bench",
       "workingSets" : "Truffle,WebAssembly",
-      "testProject" : False,
+      "testProject" : True,
       "defaultBuild" : False,
     },
 
@@ -150,7 +151,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "workingSets" : "Truffle,WebAssembly",
-      "testProject" : False,
+      "testProject" : True,
       "defaultBuild" : False,
     },
 
@@ -164,6 +165,7 @@ suite = {
       ],
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["mx:JMH_1_21"],
+      "testProject" : True,
     },
   },
 
@@ -246,6 +248,7 @@ suite = {
       ],
       "defaultBuild" : False,
       "maven" : False,
+      "testDistribution" : True,
     },
 
     "WASM_BENCHMARKS" : {
@@ -258,20 +261,25 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
         "WASM",
+        "WASM_TESTS",
       ],
       "maven" : False,
+      "testDistribution" : True,
     },
 
     "WASM_BENCHMARKCASES" : {
       "description" : "Benchmarks compiled from the source code.",
       "dependencies" : [
-        "com.oracle.truffle.wasm.benchmark",
         "com.oracle.truffle.wasm.benchcases",
         "com.oracle.truffle.wasm.benchcases.bench",
         "mx:JMH_1_21",
       ],
+      "distDependencies" : [
+        "WASM_BENCHMARKS",
+      ],
       "defaultBuild" : False,
       "maven" : False,
+      "testDistribution" : True,
     },
   }
 }
