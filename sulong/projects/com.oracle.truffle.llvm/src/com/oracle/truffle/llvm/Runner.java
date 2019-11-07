@@ -709,6 +709,20 @@ final class Runner {
         }
     }
 
+    public void loadDefaults(Path internalLibraryPath) {
+        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+        ExternalLibrary polyglotMock = new ExternalLibrary(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
+        ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
+        LLVMParserResult polyglotMockResult = parse(parserResults, dependencyQueue, polyglotMock);
+        // We use the global scope here to avoid trying to intrinsify functions in the file scope.
+        // However, this is based on the assumption that polyglot-mock is the first loaded library!
+        for (LLVMSymbol symbol : polyglotMockResult.getRuntime().getGlobalScope().values()) {
+            if (symbol.isFunction()) {
+                symbol.asFunction().define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
+            }
+        }
+    }
+
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
         if (lib.hasFile() && !lib.getFile().isRegularFile() || lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
