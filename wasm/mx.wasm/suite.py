@@ -176,25 +176,11 @@ suite = {
         "src",
       ],
     },
-    "mxbuild.com.oracle.truffle.wasm.testcases": {
-      "type": "web",
-      "path": "mxbuild/com.oracle.truffle.wasm.testcases",
-      "source": [
-        "test",
-      ],
-    },
     "resource.com.oracle.truffle.wasm.benchcases": {
       "type": "web",
       "path": "src/com.oracle.truffle.wasm.benchcases",
       "source": [
         "src",
-      ],
-    },
-    "mxbuild.com.oracle.truffle.wasm.benchcases": {
-      "type": "web",
-      "path": "mxbuild/com.oracle.truffle.wasm.benchcases",
-      "source": [
-        "test",
       ],
     },
   },
