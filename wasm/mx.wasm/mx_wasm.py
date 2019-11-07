@@ -41,7 +41,6 @@
 import mx
 import mx_wasm_benchmark  # pylint: disable=unused-import
 
-import errno
 import os
 import re
 import shutil
@@ -81,7 +80,7 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         return os.path.join(self.get_output_base(), self.name)
 
     def getSources(self):
-        for root, dirs, files in os.walk(self.getSourceDir()):
+        for root, _, files in os.walk(self.getSourceDir()):
             for filename in files:
                 if filename.endswith(".c"):
                     yield (root, filename)
@@ -210,7 +209,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     f.write("\n")
 
     def extractInitialization(self, output_js_path):
-        globals = {}
+        global_vars = {}
         stores = []
         with open(output_js_path, "r") as f:
             while True:
@@ -218,8 +217,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 line = f.readline()
                 match = re.match(r"var DYNAMIC_BASE = (.*), DYNAMICTOP_PTR = (.*).*;\n", line)
                 if match:
-                    globals["DYNAMIC_BASE"] = int(match.group(1))
-                    globals["DYNAMICTOP_PTR"] = int(match.group(2))
+                    global_vars["DYNAMIC_BASE"] = int(match.group(1))
+                    global_vars["DYNAMICTOP_PTR"] = int(match.group(2))
                     break
                 if not line:
                     break
@@ -246,15 +245,15 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     value = match.group(2)
                     if name != "memory":
                         numeric_value = int(value)
-                        globals[name] = numeric_value
+                        global_vars[name] = numeric_value
                 line = f.readline()
 
         init_info = ""
-        for name in globals:
-            value = globals[name]
+        for name in global_vars:
+            value = global_vars[name]
             init_info += name + "=" + str(value) + "\n"
         for address, value in stores:
-            init_info += "[" + str(globals[address]) + "]=" + str(globals[value])
+            init_info += "[" + str(global_vars[address]) + "]=" + str(global_vars[value])
 
         return init_info
 

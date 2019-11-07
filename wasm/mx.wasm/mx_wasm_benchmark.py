@@ -38,10 +38,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-import mx_wasm
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
-
 
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
@@ -52,9 +50,6 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
     def subgroup(self):
         return "truffle"
-
-    def createVmCommandLineArgs(self, benchmarks, runArgs):
-        return super(JMHDistBenchmarkSuite, self).extraVmArgs()
 
 
 add_bm_suite(WasmBenchmarkSuite())
