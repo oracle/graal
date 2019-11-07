@@ -29,11 +29,15 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
+
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
     public enum PolySigIntrinsics {
@@ -52,22 +56,42 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         }
     }
 
-    public static int firstStaticSigPoly = PolySigIntrinsics.LinkToVirtual.value;
-    public static int lastSigPoly = PolySigIntrinsics.LinkToInterface.value;
+    public static final int FIRST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToVirtual.value;
+    public static final int LAST_SIG_POLY = PolySigIntrinsics.LinkToInterface.value;
+
+    private static final PolySigIntrinsics FIRST_MH_SIG_POLY = PolySigIntrinsics.InvokeGeneric;
+    private static final PolySigIntrinsics LAST_MH_SIG_POLY = PolySigIntrinsics.LinkToInterface;
+
+    private static boolean isSignaturePolymorphic(PolySigIntrinsics iid) {
+        return (iid.value >= FIRST_MH_SIG_POLY.value &&
+                        iid.value <= LAST_MH_SIG_POLY.value);
+    }
+
+    @SuppressWarnings("unused")
+    private static boolean isSignaturePolymorphicIntrinsic(PolySigIntrinsics iid) {
+        assert isSignaturePolymorphic(iid);
+        // Most sig-poly methods are intrinsics which do not require an
+        // appeal to Java for adapter code.
+        return (iid != PolySigIntrinsics.InvokeGeneric);
+    }
 
     public static boolean isMethodHandleIntrinsic(Method m, Meta meta) {
         if (m.getDeclaringKlass() == meta.MethodHandle) {
             PolySigIntrinsics id = getId(m);
-            return (id != PolySigIntrinsics.None && id != PolySigIntrinsics.InvokeGeneric);
+            /*
+             * Contrary to HotSpot implementation, Espresso pushes the MH.invoke_ frames on the
+             * stack. Thus, we need to explicitly ignore them, and can't copy the HotSpot
+             * implementation here.
+             *
+             * HotSpot: return isSignaturePolymorphic(id) && isSignaturePolymorphicIntrinsic(id);
+             */
+            return isSignaturePolymorphic(id);
         }
         return false;
     }
 
     public static PolySigIntrinsics getId(Method m) {
         Symbol<Name> name = m.getName();
-        if (name == Name.invoke || name == Name.invokeExact) {
-            return PolySigIntrinsics.InvokeGeneric;
-        }
         if (name == Name.linkToStatic) {
             return PolySigIntrinsics.LinkToStatic;
         }
@@ -83,7 +107,30 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         if (name == Name.invokeBasic) {
             return PolySigIntrinsics.InvokeBasic;
         }
+        if (name == Name.invoke || isIntrinsicInvoke(m)) {
+            return PolySigIntrinsics.InvokeGeneric;
+        }
         return PolySigIntrinsics.None;
+    }
+
+    private static boolean isIntrinsicInvoke(Method m) {
+        // JVM 2.9 Special Methods:
+        // A method is signature polymorphic if and only if all of the following conditions hold :
+        // * It is declared in the java.lang.invoke.MethodHandle class.
+        // * It has a single formal parameter of type Object[].
+        // * It has a return type of Object.
+        // * It has the ACC_VARARGS and ACC_NATIVE flags set.
+        if (!Type.MethodHandle.equals(m.getDeclaringKlass().getType())) {
+            return false;
+        }
+        Symbol<Signature> polySig = Signature.Object_ObjectArray;
+        Method lookup = m.getDeclaringKlass().lookupMethod(m.getName(), polySig);
+        if (lookup == null) {
+            return false;
+        }
+        int required = ACC_NATIVE | ACC_VARARGS;
+        int flags = m.getModifiers();
+        return (flags & required) == required;
     }
 
     private final EspressoContext context;
