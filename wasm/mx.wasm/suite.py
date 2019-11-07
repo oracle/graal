@@ -63,7 +63,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
       ],
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyleVersion" : "8.8",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, WebAssembly",
