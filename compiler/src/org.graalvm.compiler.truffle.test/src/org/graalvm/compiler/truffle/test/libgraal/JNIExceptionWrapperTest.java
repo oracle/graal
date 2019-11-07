@@ -60,7 +60,6 @@ public class JNIExceptionWrapperTest {
                 options.put("CompilationFailureAction", CompilationWrapper.ExceptionAction.Silent);
                 options.put("TruffleCompilationExceptionsAreFatal", false);
                 try (TruffleDebugContext debug = compiler.openDebugContext(options, compilation)) {
-                    compilable.getCompilationProfile();
                     TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
                     TestListener listener = new TestListener();
                     compiler.doCompile(debug, compilation, options, inliningPlan, null, listener);
