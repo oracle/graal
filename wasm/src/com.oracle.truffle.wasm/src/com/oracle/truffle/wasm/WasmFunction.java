@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -87,6 +88,7 @@ public class WasmFunction implements TruffleObject {
 
     public RootCallTarget resolveCallTarget() {
         if (callTarget == null) {
+            CompilerDirectives.transferToInterpreter();
             // TODO: If this is an imported function, the call target might not yet be resolved.
             // Check this, and wait until the call target gets resolved.
             throw new RuntimeException("Call target was not resolved.");
