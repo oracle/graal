@@ -582,11 +582,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Validate that the function type matches the expected type.
                     if (expectedFunctionTypeIndex != function.typeIndex()) {
                         // TODO: This check may be too rigorous, as the WebAssembly specification
-                        // seems to allow
-                        // multiple definitions of the same type. We should refine the check.
+                        // seems to allow multiple definitions of the same type.
+                        // We should refine the check.
                         // Alternatively, we should maybe refine our modules to avoid function type
-                        // redefinition --
-                        // the predefined modules may currently redefine a type.
+                        // redefinition -- the predefined modules may currently redefine a type.
                         throw new WasmTrap(this, format("Actual (%d) and expected (%d) function types differ in the indirect call.",
                                         function.typeIndex(), expectedFunctionTypeIndex));
                     }

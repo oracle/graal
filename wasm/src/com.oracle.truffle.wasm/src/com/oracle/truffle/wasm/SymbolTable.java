@@ -476,7 +476,8 @@ public class SymbolTable {
      */
     void trackUnresolvedGlobal(int globalIndex, int dependentGlobal) {
         assertGlobalAllocated(globalIndex);
-        addUnresolvedGlobal((dependentGlobal << 32) | globalIndex);
+        long encoding = ((long) dependentGlobal << 32) | globalIndex;
+        addUnresolvedGlobal(encoding);
     }
 
     private void assertGlobalAllocated(int globalIndex) {
