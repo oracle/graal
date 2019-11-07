@@ -892,7 +892,7 @@ class JDWP {
                         reply.writeLong(0);
                     }
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                    throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
                 return new JDWPResult(reply);
             }
