@@ -478,7 +478,9 @@ _DACAPO_EXTRA_VM_ARGS = {
                     'org.h2.Driver,org.apache.derby.jdbc.AutoloadedDriver,'
                     'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder'],
     'h2' :         ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,org.h2.Driver'],
-    'pmd' :        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver']
+    'pmd' :        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver'],
+    # GR-19371
+    'batik':       ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
 
 _DACAPO_EXTRA_AGENT_ARGS = [
