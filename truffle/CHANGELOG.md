@@ -2,7 +2,7 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 19.4.0
+## Version 20.0.0
 * Added ability to define which return value signals that a loop should be continued in `RepeatingNode`.
 
 ## Version 19.3.0
