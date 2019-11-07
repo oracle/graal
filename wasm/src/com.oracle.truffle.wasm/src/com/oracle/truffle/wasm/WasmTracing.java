@@ -32,8 +32,8 @@ package com.oracle.truffle.wasm;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.wasm.constants.Debug;
 
-public class WasmTracing {
-    private final static TruffleLogger logger = TruffleLogger.getLogger("wasm");
+public final class WasmTracing {
+    private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
 
     private WasmTracing() {
     }

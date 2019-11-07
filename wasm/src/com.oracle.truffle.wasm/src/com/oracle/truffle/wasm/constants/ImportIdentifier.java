@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.constants;
 
-public class ImportIdentifier {
+public final class ImportIdentifier {
     public static final int FUNCTION = 0x00;
     public static final int TABLE = 0x01;
     public static final int MEMORY = 0x02;

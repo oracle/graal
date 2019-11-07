@@ -31,7 +31,7 @@ package com.oracle.truffle.wasm.constants;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public class TargetOffset {
+public final class TargetOffset {
     public final int value;
 
     private TargetOffset(int value) {

@@ -113,6 +113,7 @@ public class UnsafeWasmMemory extends WasmMemory {
         return true;
     }
 
+    // Checkstyle: stop
     @Override
     public int load_i32(long address) {
         trace("load.i32 address = %d", address);
@@ -280,6 +281,7 @@ public class UnsafeWasmMemory extends WasmMemory {
         trace("store.i64_32 address = %d, value = 0x%08X (%d)", address, value, value);
         unsafe.putInt(startAddress + address, value);
     }
+    // Checkstyle: resume
 
     @Override
     public WasmMemory duplicate() {

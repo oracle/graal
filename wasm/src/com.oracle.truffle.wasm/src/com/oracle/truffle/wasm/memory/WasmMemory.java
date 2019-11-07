@@ -61,6 +61,7 @@ public abstract class WasmMemory implements TruffleObject {
 
     public abstract long maxPageSize();
 
+    // Checkstyle: stop
     public abstract int load_i32(long address);
 
     public abstract long load_i64(long address);
@@ -106,6 +107,7 @@ public abstract class WasmMemory implements TruffleObject {
     public abstract void store_i64_16(long address, short value);
 
     public abstract void store_i64_32(long address, int value);
+    // Checkstyle: resume
 
     public abstract void clear();
 
