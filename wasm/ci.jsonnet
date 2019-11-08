@@ -69,6 +69,6 @@
 
   builds: [
     jdk8_gate_linux_eclipse_jdt + gate_graalwasm         + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
-    jdk8_gate_linux_wabt        + gate_graalwasm         + {environment+: {GATE_TAGS: 'build'}}  + {name: 'gate-graalwasm-unittest-linux-amd64'},
+    jdk8_gate_linux_wabt        + gate_graalwasm         + {environment+: {GATE_TAGS: 'build'}}           + {name: 'gate-graalwasm-unittest-linux-amd64'},
   ]
 }
