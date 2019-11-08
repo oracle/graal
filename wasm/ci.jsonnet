@@ -51,7 +51,7 @@
       },
   },
 
-  local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   local gate_graalwasm = {
     setup+: [
