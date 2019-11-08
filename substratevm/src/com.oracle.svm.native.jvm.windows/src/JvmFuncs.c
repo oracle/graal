@@ -218,6 +218,7 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
 
 JNIEXPORT jobject JNICALL
 JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
+    jclass errorClass;
     jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
     if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
         jmethodID run = (*env)->GetMethodID(env, actionClass, "run", "()Ljava/lang/Object;");
@@ -225,7 +226,7 @@ JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jbool
             return (*env)->CallObjectMethod(env, action, run);
         }
     }
-    jclass errorClass = (*env)->FindClass(env, "java/lang/InternalError");
+    errorClass = (*env)->FindClass(env, "java/lang/InternalError");
     if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
         (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
     } else {
