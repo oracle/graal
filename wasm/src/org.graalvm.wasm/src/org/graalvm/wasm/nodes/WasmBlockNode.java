@@ -800,7 +800,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     final GlobalResolution resolution = module().symbolTable().globalResolution(index);
                     if (!resolution.isResolved()) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        CompilerDirectives.transferToInterpreter();
                         throw new WasmExecutionException(this, "Globals should be resolved before runtime.");
                     }
 
