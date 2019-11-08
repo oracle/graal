@@ -213,6 +213,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import org.graalvm.wasm.Assert;
@@ -263,7 +264,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialLongConstantOffset;
     @CompilationFinal private final int initialBranchTableOffset;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
-    @Children private WasmNode[] nestedControlTable;
+    @Children private Node[] nestedControlTable;
     @Children private Node[] callNodeTable;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
@@ -290,7 +291,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @SuppressWarnings("hiding")
-    public void initialize(WasmNode[] nestedControlTable, Node[] callNodeTable, int byteLength, int byteConstantLength,
+    public void initialize(Node[] nestedControlTable, Node[] callNodeTable, int byteLength, int byteConstantLength,
                     int intConstantLength, int longConstantLength, int branchTableLength) {
         initialize(byteLength);
         this.nestedControlTable = nestedControlTable;
@@ -346,7 +347,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     trace("noop");
                     break;
                 case BLOCK: {
-                    WasmNode block = nestedControlTable[nestedControlOffset];
+                    WasmBlockNode block = (WasmBlockNode) nestedControlTable[nestedControlOffset];
 
                     // The unwind counter indicates how many levels up we need to branch from within
                     // the block.
@@ -367,7 +368,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 }
                 case LOOP: {
-                    WasmNode loopNode = nestedControlTable[nestedControlOffset];
+                    LoopNode loopNode = (LoopNode) nestedControlTable[nestedControlOffset];
+                    final WasmBlockNode loopBody = (WasmBlockNode) loopNode.getRepeatingNode();
 
                     // The unwind counter indicates how many levels up we need to branch from within
                     // the loop block.
@@ -382,7 +384,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // "shallower" than the current loop block
                     // (break out of the loop and even further).
                     trace("loop ENTER");
-                    TargetOffset unwindCounter = loopNode.execute(context, frame);
+                    TargetOffset unwindCounter = (TargetOffset) loopNode.execute(frame);
                     trace("loop EXIT, target = %d", unwindCounter.value);
                     if (unwindCounter.isGreaterThanZero()) {
                         return unwindCounter.decrement();
@@ -392,16 +394,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     assert unwindCounter.isMinusOne() : "Unwind counter after loop exit: " + unwindCounter.value;
 
                     nestedControlOffset++;
-                    offset += loopNode.byteLength();
-                    stackPointer += loopNode.returnTypeLength();
-                    byteConstantOffset += loopNode.byteConstantLength();
-                    intConstantOffset += loopNode.intConstantLength();
-                    longConstantOffset += loopNode.longConstantLength();
-                    branchTableOffset += loopNode.branchTableLength();
+                    offset += loopBody.byteLength();
+                    stackPointer += loopBody.returnTypeLength();
+                    byteConstantOffset += loopBody.byteConstantLength();
+                    intConstantOffset += loopBody.intConstantLength();
+                    longConstantOffset += loopBody.longConstantLength();
+                    branchTableOffset += loopBody.branchTableLength();
                     break;
                 }
                 case IF: {
-                    WasmNode ifNode = nestedControlTable[nestedControlOffset];
+                    WasmIfNode ifNode = (WasmIfNode) nestedControlTable[nestedControlOffset];
                     stackPointer--;
                     trace("if ENTER");
                     TargetOffset unwindCounter = ifNode.execute(context, frame);

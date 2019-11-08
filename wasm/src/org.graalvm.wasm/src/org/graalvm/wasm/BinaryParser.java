@@ -34,6 +34,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.CallIndirect;
@@ -50,7 +51,6 @@ import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmEmptyNode;
 import org.graalvm.wasm.nodes.WasmIfNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmLoopNode;
 import org.graalvm.wasm.nodes.WasmNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.constants.Instructions;
@@ -401,13 +401,13 @@ public class BinaryParser extends BinaryStreamParser {
         return readBlockBody(codeEntry, state, blockTypeId, blockTypeId);
     }
 
-    private WasmLoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state) {
+    private LoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
         return readLoop(codeEntry, state, blockTypeId);
     }
 
     private WasmBlockNode readBlockBody(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId, byte continuationTypeId) {
-        ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
+        ArrayList<Node> nestedControlTable = new ArrayList<>();
         ArrayList<Node> callNodes = new ArrayList<>();
         int startStackSize = state.stackSize();
         int startOffset = offset();
@@ -443,7 +443,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Save the current block's stack pointer, in case we branch out of
                     // the nested block (continuation stack pointer).
                     state.pushStackState(state.stackSize());
-                    WasmLoopNode loopBlock = readLoop(codeEntry, state);
+                    LoopNode loopBlock = readLoop(codeEntry, state);
                     nestedControlTable.add(loopBlock);
                     state.popStackState();
                     break;
@@ -905,7 +905,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
             }
         } while (opcode != Instructions.END && opcode != Instructions.ELSE);
-        currentBlock.initialize(nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]),
+        currentBlock.initialize(nestedControlTable.toArray(new Node[nestedControlTable.size()]),
                         callNodes.toArray(new Node[callNodes.size()]),
                         offset() - startOffset, state.byteConstantOffset() - startByteConstantOffset,
                         state.intConstantOffset() - startIntConstantOffset, state.longConstantOffset() - startLongConstantOffset,
@@ -921,7 +921,7 @@ public class BinaryParser extends BinaryStreamParser {
         return currentBlock;
     }
 
-    private WasmLoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
+    private LoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
         int initialStackPointer = state.stackSize();
         WasmBlockNode loopBlock = readBlockBody(codeEntry, state, returnTypeId, ValueTypes.VOID_TYPE);
 
@@ -933,7 +933,7 @@ public class BinaryParser extends BinaryStreamParser {
         // instructions.
         state.setStackPointer(returnTypeId != ValueTypes.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
 
-        return new WasmLoopNode(loopBlock);
+        return Truffle.getRuntime().createLoopNode(loopBlock);
     }
 
     private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
