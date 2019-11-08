@@ -56,7 +56,7 @@ suite = {
   },
 
   "projects" : {
-    "com.oracle.truffle.wasm" : {
+    "org.graalvm.wasm" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -70,14 +70,14 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.wasm.utils" : {
+    "org.graalvm.wasm.utils" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.wasm",
+        "org.graalvm.wasm",
         "truffle:TRUFFLE_API",
       ],
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
@@ -85,16 +85,16 @@ suite = {
       "testProject" : True,
     },
 
-    "com.oracle.truffle.wasm.test" : {
+    "org.graalvm.wasm.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.wasm",
-        "com.oracle.truffle.wasm.utils",
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.utils",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
@@ -102,51 +102,51 @@ suite = {
       "testProject" : True,
     },
 
-    "com.oracle.truffle.wasm.testcases" : {
+    "org.graalvm.wasm.testcases" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
     },
 
-    "com.oracle.truffle.wasm.testcases.test" : {
+    "org.graalvm.wasm.testcases.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.wasm.test",
+        "org.graalvm.wasm.test",
         "mx:JUNIT",
       ],
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "1.8",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
     },
 
-    "com.oracle.truffle.wasm.benchcases" : {
+    "org.graalvm.wasm.benchcases" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "class" : "GraalWasmSourceFileProject",
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "includeset" : "bench",
       "workingSets" : "WebAssembly",
       "testProject" : True,
       "defaultBuild" : False,
     },
 
-    "com.oracle.truffle.wasm.benchcases.bench" : {
+    "org.graalvm.wasm.benchcases.bench" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.wasm.benchmark",
+        "org.graalvm.wasm.benchmark",
         "mx:JMH_1_21",
       ],
-      "checkstyle" : "com.oracle.truffle.wasm",
+      "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "workingSets" : "WebAssembly",
@@ -154,12 +154,12 @@ suite = {
       "defaultBuild" : False,
     },
 
-    "com.oracle.truffle.wasm.benchmark" : {
+    "org.graalvm.wasm.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.wasm",
-        "com.oracle.truffle.wasm.utils",
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
       ],
       "javaCompliance" : "1.8",
@@ -169,16 +169,16 @@ suite = {
   },
 
   "externalProjects": {
-    "resource.com.oracle.truffle.wasm.testcases": {
+    "resource.org.graalvm.wasm.testcases": {
       "type": "web",
-      "path": "src/com.oracle.truffle.wasm.testcases",
+      "path": "src/org.graalvm.wasm.testcases",
       "source": [
         "src",
       ],
     },
-    "resource.com.oracle.truffle.wasm.benchcases": {
+    "resource.org.graalvm.wasm.benchcases": {
       "type": "web",
-      "path": "src/com.oracle.truffle.wasm.benchcases",
+      "path": "src/org.graalvm.wasm.benchcases",
       "source": [
         "src",
       ],
@@ -187,9 +187,9 @@ suite = {
 
   "distributions" : {
     "WASM" : {
-      "moduleName" : "com.oracle.truffle.wasm",
+      "moduleName" : "org.graalvm.wasm",
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.wasm"],
+      "dependencies" : ["org.graalvm.wasm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
@@ -203,8 +203,8 @@ suite = {
 
     "WASM_TESTS" : {
       "dependencies" : [
-        "com.oracle.truffle.wasm.test",
-        "com.oracle.truffle.wasm.utils",
+        "org.graalvm.wasm.test",
+        "org.graalvm.wasm.utils",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -220,8 +220,8 @@ suite = {
     "WASM_TESTCASES" : {
       "description" : "Tests compiled from the source code.",
       "dependencies" : [
-        "com.oracle.truffle.wasm.testcases",
-        "com.oracle.truffle.wasm.testcases.test",
+        "org.graalvm.wasm.testcases",
+        "org.graalvm.wasm.testcases.test",
       ],
       "exclude" : [
         "mx:JUNIT",
@@ -237,7 +237,7 @@ suite = {
     "WASM_BENCHMARKS" : {
       "subDir" : "src",
       "dependencies" : [
-        "com.oracle.truffle.wasm.benchmark",
+        "org.graalvm.wasm.benchmark",
         "mx:JMH_1_21",
       ],
       "distDependencies" : [
@@ -253,8 +253,8 @@ suite = {
     "WASM_BENCHMARKCASES" : {
       "description" : "Benchmarks compiled from the source code.",
       "dependencies" : [
-        "com.oracle.truffle.wasm.benchcases",
-        "com.oracle.truffle.wasm.benchcases.bench",
+        "org.graalvm.wasm.benchcases",
+        "org.graalvm.wasm.benchcases.bench",
         "mx:JMH_1_21",
       ],
       "distDependencies" : [
