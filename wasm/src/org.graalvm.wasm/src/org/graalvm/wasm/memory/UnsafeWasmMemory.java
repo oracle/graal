@@ -35,8 +35,6 @@ import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.WasmTracing;
 import sun.misc.Unsafe;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
 public class UnsafeWasmMemory extends WasmMemory {
     private final Unsafe unsafe;
     private long startAddress;
@@ -59,16 +57,18 @@ public class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void validateAddress(long address, int offset) {
+    public void validateAddress(long address, long offset) {
         WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
         if (address < 0 || address + offset >= this.byteSize()) {
-            throw new WasmTrap(null, "Requested memory address out-of-bounds");
+            throw new WasmTrap(null, "Accessed memory address out-of-bounds: " + address);
         }
     }
 
     @Override
     public void copy(long src, long dst, long n) {
         WasmTracing.trace("memcopy from = %d, to = %d, n = %d", src, dst, n);
+        validateAddress(src, n);
+        validateAddress(dst, n);
         unsafe.copyMemory(startAddress + src, startAddress + dst, n);
     }
 

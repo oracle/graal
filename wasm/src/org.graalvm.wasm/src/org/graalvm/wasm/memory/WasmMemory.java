@@ -45,7 +45,7 @@ public abstract class WasmMemory implements TruffleObject {
     static final int PAGE_SIZE = 1 << 16;
     static final int LONG_SIZE = 8;
 
-    public abstract void validateAddress(long address, int size);
+    public abstract void validateAddress(long address, long offset);
 
     public abstract void copy(long src, long dst, long n);
 
