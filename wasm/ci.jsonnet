@@ -43,6 +43,12 @@
           JDT: {name: 'ecj', version: '4.6.1', platformspecific: false},
         },
       },
+
+      wabt: {
+        downloads+: {
+          WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
+        },
+      },
   },
 
   local gate_cmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
