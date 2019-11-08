@@ -210,6 +210,9 @@ public class LoopNodeTest {
 
     }
 
+    private static class CustomContinueStatus {
+    }
+
     private static class IterateAndReturnValueNode extends GuestLanguageNode {
         final Object specialValue;
         int iterations;
@@ -225,7 +228,7 @@ public class LoopNodeTest {
                 return specialValue;
             } else {
                 iterations--;
-                return RepeatingNode.CONTINUE_LOOP_STATUS;
+                return new CustomContinueStatus();
             }
         }
     }
@@ -310,10 +313,15 @@ public class LoopNodeTest {
             @Override
             public Object executeRepeatingWithValue(VirtualFrame frame) {
                 final Object result = bodyNode.execute(frame);
-                if (result == CONTINUE_LOOP_STATUS) {
+                if (result instanceof CustomContinueStatus) {
                     continues++;
                 }
                 return result;
+            }
+
+            @Override
+            public boolean shouldContinue(Object value) {
+                return value instanceof CustomContinueStatus;
             }
         }
     }
