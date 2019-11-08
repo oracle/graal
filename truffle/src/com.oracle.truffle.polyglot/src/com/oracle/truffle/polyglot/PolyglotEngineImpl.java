@@ -1385,6 +1385,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             final Object prev = enter(context);
             try {
                 context.replayInstrumentationEvents();
+            } catch (Throwable e) {
+                throw PolyglotImpl.wrapGuestException(this, e);
             } finally {
                 leave(prev, context);
             }
