@@ -548,9 +548,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             stackPointer++;
                             break;
                         }
-                        default: {
+                        case ValueTypes.VOID_TYPE: {
                             // Void return type - do nothing.
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Unknown return type: " + returnType);
                         }
                     }
 
@@ -625,9 +628,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             stackPointer++;
                             break;
                         }
-                        default:
+                        case ValueTypes.VOID_TYPE: {
                             // Void return type - do nothing.
                             break;
+                        }
+                        default: {
+                            throw new WasmTrap(this, "Unknown return type: " + returnType);
+                        }
                     }
 
                     break;
