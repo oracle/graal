@@ -87,8 +87,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    private static EspressoContext currentContext;
-
     private long startupClock = 0;
 
     public EspressoLanguage() {
@@ -132,7 +130,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (sourceFile != null) {
             context.setMainSourceFile((Source) sourceFile);
         }
-        currentContext = context;
         return context;
     }
 
@@ -267,13 +264,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     public static EspressoContext getCurrentContext() {
-        EspressoContext context;
-        try {
-            context = getCurrentContext(EspressoLanguage.class);
-        } catch (Throwable t) {
-            context = currentContext;
-        }
-        return context;
+        return getCurrentContext(EspressoLanguage.class);
     }
 
     public String getEspressoHome() {
