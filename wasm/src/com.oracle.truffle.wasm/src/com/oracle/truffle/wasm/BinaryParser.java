@@ -565,7 +565,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void initCodeEntryLocals(int funcIndex) {
         WasmCodeEntry codeEntry = module.symbolTable().function(funcIndex).codeEntry();
         int typeIndex = module.symbolTable().function(funcIndex).typeIndex();
-        ByteArrayList argumentTypes = module.symbolTable().getFunctionTypeArgumentTypes(typeIndex);
+        ByteArrayList argumentTypes = module.symbolTable().functionTypeArgumentTypes(typeIndex);
         ByteArrayList localTypes = readCodeEntryLocals();
         byte[] allLocalTypes = ByteArrayList.concat(argumentTypes, localTypes);
         codeEntry.setLocalTypes(allLocalTypes);
@@ -745,7 +745,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.useLongConstant(expectedFunctionTypeIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     int numArguments = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                    int returnLength = module.symbolTable().getFunctionTypeReturnTypeLength(expectedFunctionTypeIndex);
+                    int returnLength = module.symbolTable().functionTypeReturnTypeLength(expectedFunctionTypeIndex);
 
                     // Pop the function index to call, then pop the arguments and push the return
                     // value.

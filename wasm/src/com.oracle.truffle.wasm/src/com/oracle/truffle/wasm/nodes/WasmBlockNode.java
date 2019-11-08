@@ -604,7 +604,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the
                     // future.
-                    int returnType = module().symbolTable().getFunctionTypeReturnType(expectedFunctionTypeIndex);
+                    int returnType = module().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
@@ -2379,7 +2379,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
+            byte type = module().symbolTable().functionTypeArgumentTypeAt(function.typeIndex(), i);
             switch (type) {
                 case ValueTypes.I32_TYPE:
                     args[i] = popInt(frame, stackPointer);

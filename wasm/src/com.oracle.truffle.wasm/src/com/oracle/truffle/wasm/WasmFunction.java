@@ -71,15 +71,15 @@ public class WasmFunction implements TruffleObject {
     }
 
     public byte argumentTypeAt(int argumentIndex) {
-        return symbolTable.getFunctionTypeArgumentTypeAt(typeIndex, argumentIndex);
+        return symbolTable.functionTypeArgumentTypeAt(typeIndex, argumentIndex);
     }
 
     public byte returnType() {
-        return symbolTable.getFunctionTypeReturnType(typeIndex);
+        return symbolTable.functionTypeReturnType(typeIndex);
     }
 
     public int returnTypeLength() {
-        return symbolTable.getFunctionTypeReturnTypeLength(typeIndex);
+        return symbolTable.functionTypeReturnTypeLength(typeIndex);
     }
 
     public void setCallTarget(CallTarget callTarget) {

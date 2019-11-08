@@ -61,6 +61,7 @@ public class Linker {
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
         if (!linked) {
+            // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation();
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
