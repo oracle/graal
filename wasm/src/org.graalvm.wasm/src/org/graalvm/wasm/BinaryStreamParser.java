@@ -30,7 +30,6 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
     @CompilationFinal(dimensions = 1) protected byte[] data;
@@ -56,7 +55,6 @@ public abstract class BinaryStreamParser {
         return value;
     }
 
-    @ExplodeLoop
     protected static int peekSignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
         int result = 0;
         int shift = 0;
@@ -92,7 +90,6 @@ public abstract class BinaryStreamParser {
         return value;
     }
 
-    @ExplodeLoop
     protected static int peekUnsignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
         int result = 0;
         int shift = 0;
@@ -117,7 +114,6 @@ public abstract class BinaryStreamParser {
         return result;
     }
 
-    @ExplodeLoop
     protected int peekUnsignedInt32(int ahead) {
         int result = 0;
         int shift = 0;
@@ -150,7 +146,6 @@ public abstract class BinaryStreamParser {
         return value;
     }
 
-    @ExplodeLoop
     protected static long peekSignedInt64(byte[] data, int initialOffset, byte[] bytesConsumed) {
         long result = 0;
         int shift = 0;
