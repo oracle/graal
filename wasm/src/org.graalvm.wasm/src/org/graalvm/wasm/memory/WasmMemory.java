@@ -215,7 +215,7 @@ public abstract class WasmMemory implements TruffleObject {
         if (valueLib.fitsInByte(value)) {
             rawValue = valueLib.asByte(value);
         } else {
-            throw UnsupportedTypeException.create(new Object[] { value }, "Only bytes can be stored into WebAssembly memory.");
+            throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
         store_i32_8(address, rawValue);
     }
