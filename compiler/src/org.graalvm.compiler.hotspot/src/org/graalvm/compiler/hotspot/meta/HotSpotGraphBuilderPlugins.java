@@ -59,6 +59,7 @@ import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitution
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.CounterModeSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -232,10 +233,34 @@ public class HotSpotGraphBuilderPlugins {
         }
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
         if (config.inlineNotify()) {
-            r.registerMethodSubstitution(ObjectSubstitutions.class, "notify", Receiver.class);
+            r.register1("notify", Receiver.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    ValueNode object = receiver.get();
+                    b.add(new FastNotifyNode(object, false, b.bci()));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
         }
         if (config.inlineNotifyAll()) {
-            r.registerMethodSubstitution(ObjectSubstitutions.class, "notifyAll", Receiver.class);
+            r.register1("notifyAll", Receiver.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    ValueNode object = receiver.get();
+                    b.add(new FastNotifyNode(object, true, b.bci()));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
         }
     }
 
