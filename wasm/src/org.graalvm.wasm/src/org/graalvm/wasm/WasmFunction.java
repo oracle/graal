@@ -40,30 +40,27 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunction implements TruffleObject {
-
     private final SymbolTable symbolTable;
     private final int index;
     private ImportDescriptor importDescriptor;
     private WasmCodeEntry codeEntry;
-    private final String name;
     private final int typeIndex;
     private CallTarget callTarget;
 
     /**
      * Represents a WebAssembly function.
-     *
-     * If a Wasm function has a
      */
     public WasmFunction(SymbolTable symbolTable, int index, int typeIndex, ImportDescriptor importDescriptor) {
         this.symbolTable = symbolTable;
         this.index = index;
         this.importDescriptor = importDescriptor;
         this.codeEntry = null;
-        // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove
-        // this.
-        this.name = String.valueOf(index);
         this.typeIndex = typeIndex;
         this.callTarget = null;
+    }
+
+    public String moduleName() {
+        return symbolTable.module().name();
     }
 
     public int numArguments() {
@@ -98,7 +95,18 @@ public class WasmFunction implements TruffleObject {
 
     @Override
     public String toString() {
-        return name;
+        return name();
+    }
+
+    public String name() {
+        if (importDescriptor != null) {
+            return importDescriptor.memberName;
+        }
+        String exportedName = symbolTable.exportedFunctionName(index);
+        if (exportedName != null) {
+            return exportedName;
+        }
+        return "wasm-function:" + index;
     }
 
     @ExportMessage

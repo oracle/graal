@@ -326,8 +326,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private WasmRootNode createCodeEntry(int funcIndex) {
-        WasmCodeEntry codeEntry = new WasmCodeEntry(funcIndex, data);
-        module.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
+        final WasmFunction function = module.symbolTable().function(funcIndex);
+        WasmCodeEntry codeEntry = new WasmCodeEntry(function, data);
+        function.setCodeEntry(codeEntry);
 
         /*
          * Create the root node and create and set the call target for the body. This needs to be
@@ -336,7 +337,7 @@ public class BinaryParser extends BinaryStreamParser {
          */
         WasmRootNode rootNode = new WasmRootNode(language, codeEntry);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        module.symbolTable().function(funcIndex).setCallTarget(callTarget);
+        function.setCallTarget(callTarget);
 
         return rootNode;
     }

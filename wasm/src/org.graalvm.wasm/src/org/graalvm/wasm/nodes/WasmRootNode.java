@@ -50,7 +50,7 @@ import org.graalvm.wasm.WasmVoidResult;
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
-    @CompilationFinal private WasmCodeEntry codeEntry;
+    private final WasmCodeEntry codeEntry;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Child private WasmNode body;
 
@@ -199,6 +199,22 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @Override
     public String toString() {
-        return "wasm-function:" + codeEntry.functionIndex();
+        return getName();
+    }
+
+    @Override
+    public String getName() {
+        if (codeEntry == null) {
+            return "function";
+        }
+        return codeEntry.function().name();
+    }
+
+    @Override
+    public String getQualifiedName() {
+        if (codeEntry == null) {
+            return getName();
+        }
+        return codeEntry.function().moduleName() + "." + getName();
     }
 }

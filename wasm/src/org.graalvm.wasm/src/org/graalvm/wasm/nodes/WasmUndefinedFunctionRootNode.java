@@ -46,7 +46,7 @@ public class WasmUndefinedFunctionRootNode extends WasmRootNode {
     }
 
     @Override
-    public String toString() {
+    public String getName() {
         return "wasm-undefined-function-root-node";
     }
 }

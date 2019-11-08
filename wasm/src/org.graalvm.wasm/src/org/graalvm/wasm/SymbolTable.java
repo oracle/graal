@@ -30,6 +30,7 @@
 package org.graalvm.wasm;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,8 +100,24 @@ public class SymbolTable {
     @CompilationFinal(dimensions = 1) private WasmFunction[] functions;
     @CompilationFinal private int numFunctions;
 
-    @CompilationFinal private ArrayList<WasmFunction> importedFunctions;
-    @CompilationFinal private LinkedHashMap<String, WasmFunction> exportedFunctions;
+    /**
+     * List of all imported functions.
+     */
+    private final ArrayList<WasmFunction> importedFunctions;
+
+    /**
+     * Map from exported function names to respective functions.
+     */
+    private final LinkedHashMap<String, WasmFunction> exportedFunctions;
+
+    /**
+     * Map from function indices to the exported names of respective functions.
+     */
+    private final HashMap<Integer, String> exportedFunctionsByIndex;
+
+    /**
+     * Index of the start function if it exists, or -1 otherwise.
+     */
     @CompilationFinal private int startFunctionIndex;
 
     /**
@@ -191,6 +208,7 @@ public class SymbolTable {
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
         this.exportedFunctions = new LinkedHashMap<>();
+        this.exportedFunctionsByIndex = new HashMap<>();
         this.startFunctionIndex = -1;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.globalTypes = new int[INITIAL_GLOBALS_SIZE];
@@ -320,6 +338,10 @@ public class SymbolTable {
         return function;
     }
 
+    public String exportedFunctionName(int index) {
+        return exportedFunctionsByIndex.get(index);
+    }
+
     void setStartFunction(int functionIndex) {
         checkNotLinked();
         this.startFunctionIndex = functionIndex;
@@ -391,6 +413,7 @@ public class SymbolTable {
     void exportFunction(String exportName, int functionIndex) {
         checkNotLinked();
         exportedFunctions.put(exportName, functions[functionIndex]);
+        exportedFunctionsByIndex.put(functionIndex, exportName);
     }
 
     Map<String, WasmFunction> exportedFunctions() {
