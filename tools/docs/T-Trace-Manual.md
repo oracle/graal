@@ -419,6 +419,49 @@ print(`Agent version is ${agent.version}`);
 
 and act accordingly to the obtained version.
 
+### Delaying **T-Trace** Initialization in **node.js**
+
+**T-Trace** can be used in any GraalVM enabled environment including GraalVM's
+`node` implementation. However, when in `node`, one doesn't want to write 
+plain simple **T-Trace** scripts - one wants to use full power of `node` 
+ecosystem including its modules. Here is a sample `agent-require.js` script that does it:
+
+```js
+let waitForRequire = function(ctx, frame) {
+    if (frame.require) {
+        let require = frame.require;
+
+        let waitForUserScript = function (ev) {
+            if (ev.uri.startsWith("file://")) {
+                agent.off('source', waitForUserScript);
+                initializeAgent(require);
+            }
+        };
+        agent.on('source', waitForUserScript);
+        agent.off('enter', waitForRequire);
+    }
+};
+agent.on('enter', waitForRequire, { roots : true });
+
+function initializeAgent(require) {
+    let http = require("http");
+    print(`${typeof http.createServer} http.createServer is available to the agent`);
+}
+```
+
+The script is slightly complicated. The problem is that **T-Trace** agents are
+initialized as soon as possible and at that moment the `require` function isn't
+yet ready. As such the agent first waits for an invocation of a `function` with
+`require` argument, stores it and then waits for first user script to be loaded.
+Then it removes all the early probes using `agent.off` and invokes the actual 
+`initializeAgent` function to perform the real initialization while having 
+access to all the node modules. The script can be used as
+
+```js
+$ node --experimental-options --js.print --agentscript=agent-require.js -e "print('OK')" 
+```
+
+
 <!--
 
 ### TODO:
