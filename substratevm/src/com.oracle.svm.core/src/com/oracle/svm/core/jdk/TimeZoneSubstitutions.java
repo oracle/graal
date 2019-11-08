@@ -76,18 +76,27 @@ final class Target_java_util_TimeZone {
 @AutomaticFeature
 final class TimeZoneFeature implements Feature {
     static class Options {
+        private static final TimeZone defaultZone = TimeZone.getDefault();
+
         @Option(help = "When true, all time zones will be pre-initialized in the image.")//
         public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<>(false);
+
+        @Option(help = "The time zones, in addition to the default zone of the host, that will be pre-initialized in the image.")//
+        public static final HostedOptionKey<String[]> IncludeTimeZones = new HostedOptionKey<>(new String[]{"GMT", "UTC", defaultZone.getID()});
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        TimeZone defaultZone = TimeZone.getDefault();
-        String[] supportedZoneIDs = Options.IncludeAllTimeZones.getValue() ? TimeZone.getAvailableIDs() : new String[]{"GMT", "UTC", defaultZone.getID()};
+        final String[] supportedZoneIDs;
+        if (Options.IncludeAllTimeZones.getValue()) {
+            supportedZoneIDs = TimeZone.getAvailableIDs();
+        } else {
+            supportedZoneIDs = Options.IncludeTimeZones.getValue();
+        }
         Map<String, TimeZone> supportedZones = Arrays.stream(supportedZoneIDs)
                         .map(TimeZone::getTimeZone)
                         .collect(toMap(TimeZone::getID, tz -> tz, (tz1, tz2) -> tz1));
-        ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(supportedZones, defaultZone));
+        ImageSingletons.add(TimeZoneSupport.class, new TimeZoneSupport(supportedZones, Options.defaultZone));
     }
 }
 
