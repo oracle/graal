@@ -46,11 +46,31 @@ import re
 import shutil
 
 from collections import defaultdict
+from mx_gate import Task, add_gate_runner
+from mx_unittest import unittest
 
 _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
 wabt_dir = mx.get_env("WABT_DIR", None)
+
+#
+# Gate runners.
+#
+
+class GraalWasmDefaultTags:
+    wasmtest = 'wasmtest'
+
+def _graal_wasm_gate_runner(args, tasks):
+    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
+        if t:
+            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"), "WasmTestSuite"])
+
+add_gate_runner(_suite, _graal_wasm_gate_runner)
+
+#
+# Project types.
+#
 
 benchmark_methods = [
     "_benchmarkWarmupCount",
