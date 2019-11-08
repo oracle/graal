@@ -30,12 +30,14 @@
 package com.oracle.truffle.wasm.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.WasmFunction;
 
+@GenerateUncached
 public abstract class WasmIndirectCallNode extends Node {
 
     static final int INLINE_CACHE_LIMIT = 5;
