@@ -533,7 +533,7 @@ public class HotSpotGraphBuilderPlugins {
             r.registerMethodSubstitution(substitutionClass, intrinsicNames.getLeft(), argumentTypes);
         } catch (NoSuchMethodError e) {
             throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                            intrinsicNames.getRight(), intrinsicNames.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperty("java.home"));
+                            intrinsicNames.getRight(), intrinsicNames.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
         }
     }
 
@@ -542,7 +542,7 @@ public class HotSpotGraphBuilderPlugins {
             r.registerMethodSubstitution(substitutionClass, intrinsicNames.getLeft(), substituteName, argumentTypes);
         } catch (NoSuchMethodError e) {
             throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                            intrinsicNames.getRight(), intrinsicNames.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperty("java.home"));
+                            intrinsicNames.getRight(), intrinsicNames.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
         }
     }
 
