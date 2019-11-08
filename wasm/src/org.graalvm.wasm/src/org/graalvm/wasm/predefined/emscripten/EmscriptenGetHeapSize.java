@@ -51,7 +51,7 @@ public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "_emscripten_get_heap_size";
     }
 }

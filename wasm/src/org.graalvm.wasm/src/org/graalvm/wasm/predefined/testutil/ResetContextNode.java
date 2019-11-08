@@ -55,7 +55,7 @@ public class ResetContextNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 

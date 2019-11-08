@@ -59,7 +59,7 @@ public class LLVMExp2F64 extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "_llvm_exp2_f64";
     }
 

@@ -52,12 +52,12 @@ public class UnimplementedNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return name;
     }
 
     @CompilerDirectives.TruffleBoundary
     private WasmTrap fail() {
-        throw new WasmExecutionException(this, "Not implemented: " + name());
+        throw new WasmExecutionException(this, "Not implemented: " + predefinedNodeName());
     }
 }

@@ -51,7 +51,7 @@ public class EmscriptenResizeHeap extends AbortNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "_emscripten_resize_heap";
     }
 }

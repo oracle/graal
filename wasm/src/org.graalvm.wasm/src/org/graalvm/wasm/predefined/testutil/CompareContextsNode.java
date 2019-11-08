@@ -57,7 +57,7 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 

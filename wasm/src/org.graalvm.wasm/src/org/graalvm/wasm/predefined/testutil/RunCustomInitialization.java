@@ -58,7 +58,7 @@ public class RunCustomInitialization extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
     }
 

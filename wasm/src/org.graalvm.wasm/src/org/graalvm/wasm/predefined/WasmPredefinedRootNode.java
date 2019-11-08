@@ -50,10 +50,10 @@ public abstract class WasmPredefinedRootNode extends WasmRootNode {
         return 0;
     }
 
-    public abstract String name();
+    public abstract String predefinedNodeName();
 
     @Override
     public String getName() {
-        return "wasm-function:" + name();
+        return "wasm-function:" + predefinedNodeName();
     }
 }

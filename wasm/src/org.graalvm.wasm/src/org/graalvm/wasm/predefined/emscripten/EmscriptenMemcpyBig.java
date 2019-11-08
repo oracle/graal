@@ -62,7 +62,7 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "_emscripten_memcpy_big";
     }
 }

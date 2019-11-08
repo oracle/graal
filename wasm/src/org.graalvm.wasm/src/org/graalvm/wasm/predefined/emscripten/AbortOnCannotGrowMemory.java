@@ -48,7 +48,7 @@ public class AbortOnCannotGrowMemory extends AbortNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "abortOnCannotGrowMemory";
     }
 }

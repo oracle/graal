@@ -94,7 +94,7 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "___wasi_fd_write";
     }
 }

@@ -61,7 +61,7 @@ public class SetErrNo extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "___setErrNo";
     }
 }

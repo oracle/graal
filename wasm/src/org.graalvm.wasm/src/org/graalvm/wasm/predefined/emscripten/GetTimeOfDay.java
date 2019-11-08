@@ -63,7 +63,7 @@ public class GetTimeOfDay extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "_gettimeofday";
     }
 

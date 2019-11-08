@@ -49,7 +49,7 @@ public class Lock extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "___lock";
     }
 }

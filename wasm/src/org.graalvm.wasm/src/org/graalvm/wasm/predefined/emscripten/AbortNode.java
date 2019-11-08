@@ -49,7 +49,7 @@ public class AbortNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String name() {
+    public String predefinedNodeName() {
         return "abort";
     }
 
