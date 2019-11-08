@@ -41,7 +41,22 @@
 suite = {
   "mxversion" : "5.210.2",
   "name" : "wasm",
+  "groupId" : "org.graalvm.wasm",
+  "version" : "20.0.0",
   "versionConflictResolution" : "latest",
+  "url" : "http://graalvm.org/",
+  "developer" : {
+    "name" : "Truffle and Graal developers",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
+    "organizationUrl" : "http://www.graalvm.org/",
+  },
+  "scm" : {
+    "url" : "https://github.com/oracle/graal",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
+  },
+  "defaultLicense" : "UPL",
 
   "imports" : {
     "suites" : [
@@ -67,7 +82,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
-      "license" : "BSD-new",
+      "license" : "UPL",
     },
 
     "org.graalvm.wasm.utils" : {
@@ -199,6 +214,7 @@ suite = {
       },
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,
+      "license" : "UPL",
     },
 
     "WASM_TESTS" : {
