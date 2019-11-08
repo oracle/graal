@@ -216,6 +216,36 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
+JNIEXPORT jobject JNICALL
+JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
+    jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
+    if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
+        jmethodID run = (*env)->GetMethodID(env, actionClass, "run", "()Ljava/lang/Object;");
+        if (run != NULL && !(*env)->ExceptionCheck(env)) {
+            return (*env)->CallObjectMethod(env, action, run);
+        }
+    }
+    jclass errorClass = (*env)->FindClass(env, "java/lang/InternalError");
+    if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
+        (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
+    } else {
+        (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
+    }
+    return NULL;
+}
+
+JNIEXPORT jobject JNICALL
+JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
+    fprintf(stderr, "JVM_GetInheritedAccessControlContext called:  Unimplemented\n");
+    return NULL;
+}
+
+JNIEXPORT jobject JNICALL
+JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
+    fprintf(stderr, "JVM_GetStackAccessControlContext called:  Unimplemented\n");
+    return NULL;
+}
+
 #ifdef JNI_VERSION_9
 JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
     fprintf(stderr, "JVM_AddModuleExports called\n");
