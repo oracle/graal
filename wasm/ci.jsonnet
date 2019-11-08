@@ -64,9 +64,11 @@
     timelimit: '15:00',
   },
 
-  local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate   + base.linux + base.eclipse + base.jdt,
+  local jdk8_gate_linux_wabt        = base.jdk8 + base.gate + base.linux + base.wabt,
+  local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate + base.linux + base.eclipse + base.jdt,
 
   builds: [
-    jdk8_gate_linux_eclipse_jdt + gate_graalwasm         + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'graalwasm-style-fullbuild-linux-amd64'},
+    jdk8_gate_linux_eclipse_jdt + gate_graalwasm         + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
+    jdk8_gate_linux_wabt        + gate_graalwasm         + {environment+: {GATE_TAGS: 'build'}}  + {name: 'gate-graalwasm-unittest-linux-amd64'},
   ]
 }
