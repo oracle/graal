@@ -42,13 +42,17 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -96,16 +100,30 @@ final class EngineAccessor extends Accessor {
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
-    private static List<ClassLoader> locatorLoaders() {
-        return TruffleOptions.AOT ? Collections.emptyList() : TruffleLocator.loaders();
+    private static List<AbstractClassLoaderSupplier> locatorLoaders() {
+        if (TruffleOptions.AOT) {
+            return Collections.emptyList();
+        }
+        List<ClassLoader> loaders = TruffleLocator.loaders();
+        if (loaders == null) {
+            return null;
+        }
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(loaders.size());
+        for (ClassLoader loader : loaders) {
+            suppliers.add(new StrongClassLoaderSupplier(loader));
+        }
+        return suppliers;
     }
 
-    private static List<ClassLoader> defaultLoaders() {
-        return Arrays.<ClassLoader> asList(EngineAccessor.class.getClassLoader(), ClassLoader.getSystemClassLoader(), Thread.currentThread().getContextClassLoader());
+    private static List<AbstractClassLoaderSupplier> defaultLoaders() {
+        return Arrays.<AbstractClassLoaderSupplier> asList(
+                        new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+                        new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
+                        new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
     }
 
-    static List<ClassLoader> locatorOrDefaultLoaders() {
-        List<ClassLoader> loaders = locatorLoaders();
+    static List<AbstractClassLoaderSupplier> locatorOrDefaultLoaders() {
+        List<AbstractClassLoaderSupplier> loaders = locatorLoaders();
         if (loaders == null) {
             loaders = defaultLoaders();
         }
@@ -927,6 +945,62 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isIOAllowed() {
             return PolyglotEngineImpl.ALLOW_IO;
+        }
+    }
+
+    abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
+
+        private final int hashCode;
+
+        AbstractClassLoaderSupplier(ClassLoader loader) {
+            this.hashCode = loader == null ? 0 : loader.hashCode();
+        }
+
+        @Override
+        public final int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (!(obj instanceof AbstractClassLoaderSupplier)) {
+                return false;
+            }
+            AbstractClassLoaderSupplier supplier = (AbstractClassLoaderSupplier) obj;
+            return Objects.equals(get(), supplier.get());
+        }
+    }
+
+    static final class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
+
+        private final ClassLoader classLoader;
+
+        StrongClassLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+            this.classLoader = classLoader;
+        }
+
+        @Override
+        public ClassLoader get() {
+            return classLoader;
+        }
+    }
+
+    private static final class WeakClassLoaderSupplier extends AbstractClassLoaderSupplier {
+
+        private final Reference<ClassLoader> classLoaderRef;
+
+        WeakClassLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+            this.classLoaderRef = new WeakReference<>(classLoader);
+        }
+
+        @Override
+        public ClassLoader get() {
+            return classLoaderRef.get();
         }
     }
 }
