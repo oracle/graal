@@ -99,10 +99,7 @@ final class EngineAccessor extends Accessor {
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
-    static final JDKSupport JDKSERVICES;
-    static {
-        JDKSERVICES = ACCESSOR.jdkSupport();
-    }
+    static final JDKSupport JDKSERVICES = ACCESSOR.jdkSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (TruffleOptions.AOT) {

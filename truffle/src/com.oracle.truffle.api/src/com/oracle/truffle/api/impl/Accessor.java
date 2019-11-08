@@ -127,7 +127,7 @@ public abstract class Accessor {
     }
 
     protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
-        SUPPORT.reloadEngineOptions(runtimeData, optionValues);
+        getTVMCI().reloadEngineOptions(runtimeData, optionValues);
     }
 
     public abstract static class NodeSupport {
@@ -625,6 +625,10 @@ public abstract class Accessor {
             return TruffleJDKServices.verifyModuleVisibility(lookupModule, memberClass);
         }
 
+        public boolean isNonTruffleClass(Class<?> clazz) {
+            return TruffleJDKServices.isNonTruffleClass(clazz);
+        }
+
     }
 
     // A separate class to break the cycle such that Accessor can fully initialize
@@ -686,6 +690,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
             case "org.graalvm.compiler.truffle.runtime.CompilerRuntimeAccessor":
+            case "com.oracle.truffle.api.library.LibraryAccessor":
                 // OK, classes allowed to use accessors
                 break;
             default:

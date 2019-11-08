@@ -116,7 +116,7 @@ final class TruffleJDKServices {
      *
      * @param clazz the class to check.
      */
-    public static boolean isNonTruffleClass(Class<?> clazz) {
+    static boolean isNonTruffleClass(Class<?> clazz) {
         throw shouldNotReachHere();
     }
 }

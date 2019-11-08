@@ -131,7 +131,7 @@ final class TruffleJDKServices {
         }
     }
 
-    public static boolean isNonTruffleClass(Class<?> clazz) {
+    static boolean isNonTruffleClass(Class<?> clazz) {
         ClassLoader truffleClassLoader = TruffleJDKServices.class.getModule().getClassLoader();
         ClassLoader classLoader = clazz.getClassLoader();
         return truffleClassLoader != classLoader;

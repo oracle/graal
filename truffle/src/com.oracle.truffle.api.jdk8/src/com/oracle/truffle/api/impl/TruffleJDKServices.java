@@ -132,7 +132,7 @@ final class TruffleJDKServices {
         return true;
     }
 
-    public static boolean isNonTruffleClass(Class<?> clazz) {
+    static boolean isNonTruffleClass(Class<?> clazz) {
         // classes on the boot loader should not be cleared
         return clazz.getClassLoader() != null;
     }
