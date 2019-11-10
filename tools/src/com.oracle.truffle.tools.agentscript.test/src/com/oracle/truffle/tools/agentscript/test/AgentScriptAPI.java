@@ -36,14 +36,22 @@ import java.util.function.Predicate;
  * {@link AgentScript#registerAgentScript registered scripts}.
  */
 public interface AgentScriptAPI {
-    /** Version of the API.
+    /** Version of the API. Version {@code 0.1} has been released as
+     * part of GraalVM 19.3.0 release.
      *
      * @return same value of {@link AgentScript#VERSION}
+     * @since 0.1
      */
     String version();
 
+    /** Marker interface for any handler.
+     * @since 0.1
+     */
+    interface Handler {
+    }
+
     @FunctionalInterface
-    interface OnSourceLoadedHandler {
+    interface OnSourceLoadedHandler extends Handler {
         interface Info {
             /** Name of the {@link #sourceLoaded}.
              * @return name of the loaded source
@@ -77,7 +85,7 @@ public interface AgentScriptAPI {
     void on(String event, OnSourceLoadedHandler handler);
 
     @FunctionalInterface
-    interface OnEventHandler {
+    interface OnEventHandler extends Handler {
         interface Context {
             String name();
         }
@@ -99,7 +107,7 @@ public interface AgentScriptAPI {
     void on(String event, OnEventHandler handler, OnConfig config);
 
     @FunctionalInterface
-    interface OnCloseHandler {
+    interface OnCloseHandler extends Handler {
         void closed();
     }
     /** Register on close handler.
@@ -112,11 +120,10 @@ public interface AgentScriptAPI {
     /** Unregisters a handler.
      * 
      * @param event the event type to unregister from
-     * @param handler the instances of handler registered 
+     * @param handler the instance of handler registered 
      *   by one of the {@code on} methods
+     * @since 0.2
      */
-    void off(String event, OnSourceLoadedHandler handler);
-    void off(String event, OnEventHandler handler);
-    void off(String event, OnCloseHandler handler);
+    void off(String event, Handler handler);
 }
 // END: AgentScriptAPI

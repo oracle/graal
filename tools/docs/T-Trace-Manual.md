@@ -417,7 +417,9 @@ feature, it may check version of the exposed API:
 print(`Agent version is ${agent.version}`);
 ```
 
-and act accordingly to the obtained version.
+and act accordingly to the obtained version. The documentation of the `agent`
+object properties and functions is available as part of its
+[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html).
 
 ### Delaying **T-Trace** Initialization in **node.js**
 
