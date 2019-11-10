@@ -1538,11 +1538,10 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         super(GraalVmBashLauncherBuildTask, self).__init__(args, 1, subject)
 
     def _template_file(self):
-        ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
-        _custom_launcher = self.subject.native_image_config.custom_bash_launcher
-        if _custom_launcher:
-            return join(self.subject.component.suite.dir, _custom_launcher + "." + ext)
-        return join(_suite.mxDir, 'vm', 'launcher_template.' + ext)
+        custom_launcher_script = self.subject.native_image_config.custom_launcher_script
+        if custom_launcher_script:
+            return join(self.subject.component.suite.dir, custom_launcher_script)
+        return join(_suite.mxDir, 'vm', 'launcher_template.{}'.format('cmd' if mx.is_windows() else 'sh'))
 
     def native_image_needs_build(self, out_file):
         sup = super(GraalVmBashLauncherBuildTask, self).native_image_needs_build(out_file)
@@ -1771,7 +1770,7 @@ class InstallableComponentArchiver(mx.Archiver):
         _manifest_str = """Bundle-Name: {name}
 Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
-Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
+Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch})(java_version={java_version}))"
 x-GraalVM-Polyglot-Part: {polyglot}
 """.format(  # GR-10249: the manifest file must end with a newline
             name=main_component.name,
@@ -1779,6 +1778,7 @@ x-GraalVM-Polyglot-Part: {polyglot}
             version=_suite.release_version(),
             os=get_graalvm_os(),
             arch=mx.get_arch(),
+            java_version=_src_jdk_version,
             polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
                      and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
         )

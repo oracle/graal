@@ -29,14 +29,6 @@
 
 setlocal enabledelayedexpansion
 
-echo %* | findstr = >nul && (
-  echo Warning: the '=' character in program arguments is not fully supported.
-  echo Make sure that command line arguments using it are wrapped in double quotes.
-  echo Example:
-  echo "--vm.Dfoo=bar"
-  echo.
-)
-
 set location=%~dp0
 
 set "relcp=<classpath>"
@@ -55,11 +47,20 @@ set "jvm_args=-Dorg.graalvm.launcher.shell=true"
 set "launcher_args="
 set "args_delim="
 
-for %%a in (%*) do (
-  rem Unquote the argument (`u_arg=%%~a`) before checking its prefix.
-  rem Pass program arguments to the main class as they are quoted by the user (`arg=%%a`)
-  set "arg=%%a"
-  set "u_arg=%%~a"
+:arg_loop
+if not "%~1"=="" (
+  echo %* | findstr /C:%1=%2 >nul && (
+    set "arg=%1=%2"
+    set "u_arg=!arg!"
+    shift
+  ) || (
+    set "arg=%1"
+    set "u_arg=%~1"
+  )
+  shift
+
+  rem `!arg!` is the argument as passed by the user, propagated as-is to `java`.
+  rem `!u_arg!` is the unquoted argument, used to understand if `!arg!` is a JVM or a program argument.
 
   set "jvm_arg="
   set "wrong_cp="
@@ -94,6 +95,8 @@ for %%a in (%*) do (
     set "launcher_args=!launcher_args!!args_delim!!arg!"
     set "args_delim= "
   )
+
+  goto :arg_loop
 )
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on

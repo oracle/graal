@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -75,7 +76,7 @@ final class GraalTVMCI extends TVMCI {
      */
     @Override
     protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
-        ((OptimizedCallTarget) target).getCompilationProfile().initializeArgumentTypes(argumentTypes);
+        ((OptimizedCallTarget) target).initializeArgumentTypes(argumentTypes);
     }
 
     @Override
@@ -136,14 +137,18 @@ final class GraalTVMCI extends TVMCI {
         return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 
+    static void resetEngineData() {
+        TVMCI.resetFallbackEngineData();
+    }
+
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
         final RootNode rootNode = source.getRootNode();
         final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
-        if (callTarget == null || callTarget.engineData.options.isLegacySplitting()) {
+        if (callTarget == null) {
             return;
         }
-        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engineData);
+        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engine);
         callTarget.polymorphicSpecialize(source);
     }
 
@@ -165,6 +170,11 @@ final class GraalTVMCI extends TVMCI {
     @Override
     protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
         return new OptimizedBlockNode<>(elements, executor);
+    }
+
+    @Override
+    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
+        ((EngineData) runtimeData).loadOptions(optionValues);
     }
 
     private static final GraalCastUnsafe CAST_UNSAFE = new GraalCastUnsafe();

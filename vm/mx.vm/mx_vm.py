@@ -61,7 +61,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             build_args=[],
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
-            custom_bash_launcher="mx.vm/gu" if mx.is_windows() else None,
+            custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
         ),
     ],
 ))
@@ -141,7 +141,7 @@ class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
                 if not os.path.lexists(dest):
                     return True, '{} does not exist'.format(dest)
                 link_file = mx.TimeStampFile(dest, False)
-                if link_file.isOlderThan(newestInput):
+                if newestInput and link_file.isOlderThan(newestInput):
                     return True, '{} is older than {}'.format(dest, newestInput)
                 if src != os.readlink(dest):
                     return True, '{} points to the wrong file'.format(dest)

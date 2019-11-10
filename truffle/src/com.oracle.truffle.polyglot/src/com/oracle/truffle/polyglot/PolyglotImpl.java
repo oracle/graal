@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 
 import org.graalvm.polyglot.Context;
@@ -233,19 +234,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (ClassLoader loader : EngineAccessor.locatorOrDefaultLoaders()) {
-            try {
-                Class<?> c = loader.loadClass(className);
-                if (!TruffleOptions.AOT) {
-                    /*
-                     * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
-                     * API client since the Truffle API module descriptor only exports these
-                     * packages to modules known at build time (such as the Graal module).
-                     */
-                    TruffleJDKServices.exportTo(loader, null);
+        for (Supplier<ClassLoader> supplier : EngineAccessor.locatorOrDefaultLoaders()) {
+            ClassLoader loader = supplier.get();
+            if (loader != null) {
+                try {
+                    Class<?> c = loader.loadClass(className);
+                    if (!TruffleOptions.AOT) {
+                        /*
+                         * In JDK 9+, the Truffle API packages must be dynamically exported to a
+                         * Truffle API client since the Truffle API module descriptor only exports
+                         * these packages to modules known at build time (such as the Graal module).
+                         */
+                        TruffleJDKServices.exportTo(loader, null);
+                    }
+                    return c;
+                } catch (ClassNotFoundException e) {
                 }
-                return c;
-            } catch (ClassNotFoundException e) {
             }
         }
         return null;

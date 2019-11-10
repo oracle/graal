@@ -61,14 +61,14 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation) {
             runtime.logEvent(0, "opt queued", target.toString(), target.getDebugProperties(null));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilationDetails) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
@@ -78,7 +78,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
             }
@@ -88,25 +88,25 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilationDetails) {
             runtime.logEvent(0, "opt start", target.toString(), target.getDebugProperties(null));
         }
 
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             currentCompilation.set(new Times());
         }
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             runtime.logEvent(0, "opt deopt", target.toString(), target.getDebugProperties(null));
         }
     }
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             final Times current = currentCompilation.get();
             current.timePartialEvaluationFinished = System.nanoTime();
             current.nodeCountPartialEval = graph.getNodeCount();
@@ -115,7 +115,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        if (!target.getOptionValue(TraceCompilation) && !target.getOptionValue(TraceCompilationDetails)) {
+        if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
 

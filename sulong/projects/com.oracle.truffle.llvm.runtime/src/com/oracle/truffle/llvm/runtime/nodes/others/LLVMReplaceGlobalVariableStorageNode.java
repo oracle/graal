@@ -61,7 +61,10 @@ public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
     void doReplacee(LLVMPointer value,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMReplaceGlobalVariableStorageNode.ReplaceDynamicObjectHelper replaceHelper) {
-        replaceHelper.execute(context.getGlobalStorage(), descriptor, value);
+        DynamicObject global = context.getGlobalStorage();
+        synchronized (global) {
+            replaceHelper.execute(global, descriptor, value);
+        }
     }
 
     abstract static class ReplaceDynamicObjectHelper extends LLVMNode {
@@ -85,9 +88,7 @@ public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
                         @Cached("cachedShape.getProperty(descriptor).getLocation()") Location loc) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
-                synchronized (loc) {
-                    loc.set(object, value);
-                }
+                loc.set(object, value);
             } catch (IncompatibleLocationException | FinalLocationException e) {
                 CompilerDirectives.transferToInterpreter();
                 // cannot happen due to guard
@@ -100,9 +101,7 @@ public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
                         "object.getShape().isValid()"
         }, replaces = {"doDirect"})
         protected static void doIndirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value) {
-            synchronized (object) {
-                object.set(descriptor, value);
-            }
+            object.set(descriptor, value);
         }
 
         @Specialization(guards = "!object.getShape().isValid()")

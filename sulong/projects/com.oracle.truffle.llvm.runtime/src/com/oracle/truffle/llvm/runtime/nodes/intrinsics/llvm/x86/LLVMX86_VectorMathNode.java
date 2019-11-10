@@ -65,6 +65,18 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorMaxsdNode extends LLVMBuiltin { // mm_max_sd
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            v1.getValue(1)
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorMinNode extends LLVMBuiltin { // mm_min_pd
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {

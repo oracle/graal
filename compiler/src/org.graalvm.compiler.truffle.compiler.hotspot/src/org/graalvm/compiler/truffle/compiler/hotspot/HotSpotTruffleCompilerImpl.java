@@ -212,6 +212,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     public void installTruffleCallBoundaryMethods() {
         HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
+            HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
+            if (hotSpotMethod.hasCompiledCode()) {
+                // nothing to do
+                return;
+            }
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
             OptionValues options = getOptions();
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)

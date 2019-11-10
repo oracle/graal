@@ -42,6 +42,7 @@ import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -62,6 +63,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
     }
 
     @Test
+    @Ignore("Test needs to be updated it behaved wrongly when knownCallSites was taken into account. See GR-19271.")
     public void testThreeTangledRecursions() {
         // @formatter:off
         OptimizedCallTarget target = builder.
@@ -77,13 +79,14 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("one").
                     calls("two").
                     calls("three").
-                buildTarget();
+                buildTarget(false);
         // @formatter:on
         assertRootCallsExplored(target, 2);
         assertBudget(target);
     }
 
     @Test
+    @Ignore("Budget assertion is wrong when knownCallSites are taken into account. See See GR-19271.")
     public void testFourTangledRecursions() {
         // @formatter:off
         OptimizedCallTarget target = builder.
@@ -109,7 +112,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("four").
                 buildTarget();
         // @formatter:on
-        assertRootCallsExplored(target, 1);
+        assertRootCallsExplored(target, 2);
         assertBudget(target);
     }
 
@@ -159,7 +162,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                 knowsCallSites++;
             }
         }
-        // The exploration brudged should be blown before exploring the other 2 call sites of the
+        // The exploration budget should be exceeded before exploring the other 2 call sites of the
         // root
         Assert.assertEquals("Only one target should not know about it's call sites!", explored, knowsCallSites);
     }

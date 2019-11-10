@@ -25,14 +25,6 @@ rem questions.
 
 setlocal enabledelayedexpansion
 
-echo %* | findstr = >nul && (
-  echo Warning: the '=' character in program arguments is not fully supported.
-  echo Make sure that command line arguments using it are wrapped in double quotes.
-  echo Example:
-  echo "-Dfoo=bar"
-  echo.
-)
-
 set "rebuild_images=%~dpnx0"
 call :dirname "%rebuild_images%" bin_dir
 rem We assume we are in `lib\svm\bin`
@@ -41,11 +33,20 @@ set "graalvm_home=%bin_dir%\..\..\.."
 set "to_build="
 set "custom_args="
 
-for %%a in (%*) do (
-  rem Unquote the argument (`u_arg=%%~a`) before checking its prefix.
-  rem Pass the argument to the native-image executable as it was quoted by the user (`arg=%%a`)
-  set "arg=%%a"
-  set "u_arg=%%~a"
+:arg_loop
+if not "%~1"=="" (
+  echo %* | findstr /C:%1=%2 >nul && (
+    set "arg=%1=%2"
+    set "u_arg=!arg!"
+    shift
+  ) || (
+    set "arg=%1"
+    set "u_arg=%~1"
+  )
+  shift
+
+  rem `!arg!` is the argument as passed by the user, propagated as-is to `java`.
+  rem `!u_arg!` is the unquoted argument, used to understand if `!arg!` is a JVM or a program argument.
 
   set "_tb="
   set "_h="
@@ -87,6 +88,8 @@ for %%a in (%*) do (
   ) else (
     set "custom_args=!arg!"
   )
+
+  goto :arg_loop
 )
 
 if not defined to_build (
