@@ -51,7 +51,8 @@
       },
   },
 
-  local gate_cmd = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   local gate_graalwasm = {
     setup+: [
@@ -64,11 +65,22 @@
     timelimit: '15:00',
   },
 
+  local gate_graalwasm_jvmci = {
+    setup+: [
+      ['cd', 'wasm'],
+      ['mx', 'sversions'],
+    ],
+    run+: [
+      gate_cmd_jvmci
+    ],
+    timelimit: '15:00',
+  },
+
   local jdk8_gate_linux_wabt        = base.jdk8 + base.gate + base.linux + base.wabt,
   local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate + base.linux + base.eclipse + base.jdt,
 
   builds: [
-    jdk8_gate_linux_eclipse_jdt + gate_graalwasm         + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
-    jdk8_gate_linux_wabt        + gate_graalwasm         + {environment+: {GATE_TAGS: 'build,wasmtest'}}  + {name: 'gate-graalwasm-unittest-linux-amd64'},
-  ]
+    jdk8_gate_linux_eclipse_jdt + gate_graalwasm       + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
+    jdk8_gate_linux_wabt        + gate_graalwasm_jvmci + {environment+: {GATE_TAGS: 'build,wasmtest'}}  + {name: 'gate-graalwasm-unittest-linux-amd64'},
+  ],
 }
