@@ -69,7 +69,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
@@ -245,7 +244,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                          * Truffle API client since the Truffle API module descriptor only exports
                          * these packages to modules known at build time (such as the Graal module).
                          */
-                        TruffleJDKServices.exportTo(loader, null);
+                        EngineAccessor.JDKSERVICES.exportTo(loader, null);
                     }
                     return c;
                 } catch (ClassNotFoundException e) {

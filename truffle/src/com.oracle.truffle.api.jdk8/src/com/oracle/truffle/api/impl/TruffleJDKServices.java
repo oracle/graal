@@ -49,27 +49,27 @@ import java.util.ServiceLoader;
 /**
  * JDK 8 implementation of {@code TruffleJDKServices}.
  */
-public class TruffleJDKServices {
+final class TruffleJDKServices {
 
     @SuppressWarnings("unused")
-    public static void exportTo(ClassLoader loader, String moduleName) {
+    static void exportTo(ClassLoader loader, String moduleName) {
         // No need to do anything on JDK 8
     }
 
     @SuppressWarnings("unused")
-    public static void exportTo(Class<?> client) {
+    static void exportTo(Class<?> client) {
         // No need to do anything on JDK 8
     }
 
     @SuppressWarnings("unused")
-    public static <S> void addUses(Class<S> service) {
+    static <S> void addUses(Class<S> service) {
         // No need to do anything on JDK 8
     }
 
     /**
      * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
      */
-    public static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
+    static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
         // public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         Iterable<Service> jvmciProviders = getJVMCIProviders(serviceClass);
         if (Boolean.getBoolean("truffle.TrustAllTruffleRuntimeProviders")) {
@@ -123,16 +123,16 @@ public class TruffleJDKServices {
         }
     }
 
-    public static Object getUnnamedModule(@SuppressWarnings("unused") ClassLoader classLoader) {
+    static Object getUnnamedModule(@SuppressWarnings("unused") ClassLoader classLoader) {
         return null;
     }
 
-    public static boolean verifyModuleVisibility(Object currentModule, @SuppressWarnings("unused") Class<?> memberClass) {
+    static boolean verifyModuleVisibility(Object currentModule, @SuppressWarnings("unused") Class<?> memberClass) {
         assert currentModule == null;
         return true;
     }
 
-    public static boolean isNonTruffleClass(Class<?> clazz) {
+    static boolean isNonTruffleClass(Class<?> clazz) {
         // classes on the boot loader should not be cleared
         return clazz.getClassLoader() != null;
     }

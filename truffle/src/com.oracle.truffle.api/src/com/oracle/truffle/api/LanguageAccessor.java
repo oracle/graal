@@ -98,6 +98,10 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.ioSupport();
     }
 
+    static JDKSupport jdkServicesAccessor() {
+        return ACCESSOR.jdkSupport();
+    }
+
     static final class LanguageImpl extends LanguageSupport {
 
         @Override
