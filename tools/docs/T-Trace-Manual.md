@@ -461,6 +461,9 @@ access to all the node modules. The script can be used as
 $ node --experimental-options --js.print --agentscript=agent-require.js -e "print('OK')" 
 ```
 
+This initialization sequence is known to work on GraalVM's node `v12.10.0`.
+However, as it depends on internals of the node behavior, it may need to be
+adjusted for different node versions in the future.
 
 <!--
 
