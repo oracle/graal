@@ -55,6 +55,8 @@ import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
 
+import static junit.framework.TestCase.fail;
+
 public abstract class WasmSuiteBase extends WasmTestBase {
 
     private static final String MOVE_LEFT = "\u001b[1D";
@@ -326,10 +328,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 entry.getValue().printStackTrace();
             }
             System.err.println(String.format("\uD83D\uDCA5\u001B[31m %d/%d Wasm tests passed.\u001B[0m", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size()));
+            System.out.println();
+            fail();
         } else {
             System.out.println(String.format("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m", qualifyingTestCases.size() - errors.size(), qualifyingTestCases.size()));
+            System.out.println();
         }
-        System.out.println();
     }
 
     private static int retrieveTerminalWidth() {
