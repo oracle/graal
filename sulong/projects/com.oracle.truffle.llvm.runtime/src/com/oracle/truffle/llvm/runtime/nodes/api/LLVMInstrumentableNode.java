@@ -33,18 +33,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
-
-    private static final SourceSection DEFAULT_SOURCE_SECTION;
-
-    static {
-        final Source source = Source.newBuilder("llvm", "LLVM IR", "<llvm ir>").mimeType("text/plain").build();
-        DEFAULT_SOURCE_SECTION = source.createUnavailableSection();
-    }
 
     private LLVMSourceLocation sourceLocation;
     private boolean hasStatementTag;
@@ -66,10 +58,7 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @Override
     public final SourceSection getSourceSection() {
-        if (sourceLocation == null) {
-            return DEFAULT_SOURCE_SECTION;
-        }
-        return sourceLocation.getSourceSection();
+        return sourceLocation == null ? null : sourceLocation.getSourceSection();
     }
 
     /**

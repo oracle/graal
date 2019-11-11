@@ -489,17 +489,17 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
         SourceInstrumentationStrategy intent = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
-        if (node == null) {
+        if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                node = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, call.getType());
-                assignSourceLocation(node, call);
+                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, call.getType());
+                assignSourceLocation(result, call);
             } else {
                 final LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
                 final FunctionType functionType = new FunctionType(call.getType(), argTypes, false);
-                node = CommonNodeFactory.createFunctionCall(function, argNodes, functionType);
+                result = CommonNodeFactory.createFunctionCall(function, argNodes, functionType);
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
                 // If it did not provide a source location, the debugger may not be able to show the
@@ -508,7 +508,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        addStatement(LLVMVoidStatementNodeGen.create(node), call, intent);
+        addStatement(result, call, intent);
     }
 
     @Override
@@ -1040,6 +1040,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private void addStatement(LLVMStatementNode node, Instruction instruction) {
         addStatement(node, instruction, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
+    }
+
+    private void addStatement(LLVMExpressionNode node, Instruction instruction, SourceInstrumentationStrategy intention) {
+        assignSourceLocation(node, instruction, intention);
+        addNode(LLVMVoidStatementNodeGen.create(node), null);
+        handleNullerInfo();
     }
 
     private void addStatement(LLVMStatementNode node, Instruction instruction, SourceInstrumentationStrategy intention) {
