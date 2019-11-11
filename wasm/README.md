@@ -187,6 +187,8 @@ Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(bin
 Source source = sourceBuilder.build();
 Context context = contextBuilder.build();
 
+context.eval(source);
+
 Value mainFunction = context.getBindings("wasm").getMember("_main");
 mainFunction.execute();
 ```
