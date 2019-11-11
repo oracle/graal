@@ -144,5 +144,10 @@ abstract class AbstractIterable implements ComponentIterable {
         public Collection<ComponentInfo> loadComponents(String id, Version.Match selector, boolean filelist) {
             return Collections.emptySet();
         }
+
+        @Override
+        public boolean isRemoteEnabled() {
+            return false;
+        }
     }
 }

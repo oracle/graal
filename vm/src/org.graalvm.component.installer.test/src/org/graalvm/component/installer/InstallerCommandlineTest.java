@@ -380,7 +380,8 @@ public class InstallerCommandlineTest extends CommandTestBase {
         main.processOptions(args);
         assertEquals(0, main.doProcessCommand());
 
-        assertTrue(Handler.isVisited(releaseURL));
+        // no ID is resolved
+        assertFalse(Handler.isVisited(releaseURL));
         assertFalse(Handler.isVisited(envURL));
         assertFalse(Handler.isVisited(testCatalogURL));
     }
