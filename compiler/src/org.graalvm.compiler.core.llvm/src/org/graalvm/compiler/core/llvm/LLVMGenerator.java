@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.llvm;
 
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
@@ -732,18 +733,15 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef inArray1;
         LLVMValueRef inArray2;
         if (directPointers) {
-            inArray1 = builder.buildIntToPtr(getVal(array1), builder.pointerType(elemType, false));
-            inArray2 = builder.buildIntToPtr(getVal(array2), builder.pointerType(elemType, false));
+            throw shouldNotReachHere("Array comparison by direct pointers is not supported by the LLVM backend.");
         } else {
             int arrayBaseOffset = getProviders().getMetaAccess().getArrayBaseOffset(kind);
 
-            inArray1 = builder.buildAddrSpaceCast(getVal(array1), builder.rawPointerType());
-            inArray1 = builder.buildGEP(inArray1, builder.constantInt(arrayBaseOffset));
-            inArray1 = builder.buildBitcast(inArray1, builder.pointerType(elemType, false));
+            inArray1 = builder.buildGEP(getVal(array1), builder.constantInt(arrayBaseOffset));
+            inArray1 = builder.buildBitcast(inArray1, builder.pointerType(elemType, isObject(typeOf(inArray1))));
 
-            inArray2 = builder.buildAddrSpaceCast(getVal(array2), builder.rawPointerType());
-            inArray2 = builder.buildGEP(inArray2, builder.constantInt(arrayBaseOffset));
-            inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, false));
+            inArray2 = builder.buildGEP(getVal(array2), builder.constantInt(arrayBaseOffset));
+            inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, isObject(typeOf(inArray2))));
         }
         int constantLength = LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1;
         if (constantLength == 0) {
