@@ -601,8 +601,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 Collections.emptyMap(), newOptionValues, newConfig.getApplicationArguments(language),
                                 newConfig.fileSystem, newConfig.internalFileSystem, context.engine.getFileTypeDetectorsSupplier());
                 if (newEnv != null) {
-                    env = newEnv;
-                    lazy.languageInstance.patchFirstOptions(newOptionValues);
+                    synchronized (context.engine) {
+                        env = newEnv;
+                        lazy.languageInstance.patchFirstOptions(newOptionValues);
+                    }
                     LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
                     return true;
                 }
