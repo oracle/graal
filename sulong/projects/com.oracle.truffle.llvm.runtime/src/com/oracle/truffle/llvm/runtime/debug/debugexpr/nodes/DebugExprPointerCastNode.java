@@ -30,6 +30,7 @@
 
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -60,6 +61,7 @@ public class DebugExprPointerCastNode extends LLVMExpressionNode implements Memb
         return typeNode.getType();
     }
 
+    @TruffleBoundary
     private Object getMember(Object executedPointerNode) {
         if (executedPointerNode == null) {
             throw DebugExprException.create(this, "debugObject to dereference is null");
@@ -84,6 +86,7 @@ public class DebugExprPointerCastNode extends LLVMExpressionNode implements Memb
     }
 
     @Override
+    @TruffleBoundary
     public Object getMember() {
         if (pointerNode instanceof MemberAccessible) {
             MemberAccessible ma = (MemberAccessible) pointerNode;
