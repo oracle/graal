@@ -73,6 +73,8 @@ import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
+import org.graalvm.compiler.hotspot.replacements.CipherNode;
+import org.graalvm.compiler.hotspot.replacements.CipherSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
@@ -209,6 +211,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ProfileSnippets.Templates profileSnippets;
     protected ObjectSnippets.Templates objectSnippets;
     protected UnsafeSnippets.Templates unsafeSnippets;
+    protected CipherSnippets.Templates cipherSnippets;
 
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
@@ -242,6 +245,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
         objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
         unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
+        cipherSnippets = new CipherSnippets.Templates(options, factories, providers, target);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
@@ -424,6 +428,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             } else if (n instanceof UnsafeCopyMemoryNode) {
                 if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                     unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
+                }
+            } else if (n instanceof CipherNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    cipherSnippets.lower((CipherNode) n, tool);
                 }
             } else {
                 super.lower(n, tool);
