@@ -241,9 +241,9 @@ public final class LLVMDebugExprParserTest {
                         }
                     }
                     assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), noNewLineActual);
-                    }
                 }
             }
+        }
 
         boolean isDone() {
             return info.getLastStop() == bpr.getLine();

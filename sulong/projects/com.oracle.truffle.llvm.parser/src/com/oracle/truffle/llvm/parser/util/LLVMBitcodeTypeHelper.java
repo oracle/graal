@@ -33,14 +33,15 @@ import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
 
-    public static LLVMExpressionNode createArithmeticInstruction(LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type) {
-        return CommonNodeFactory.createArithmeticOp(getArithmeticOperation(operator), type, lhs, rhs);
+    public static LLVMExpressionNode createArithmeticInstruction(LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type, NodeFactory nodeFactory) {
+        return nodeFactory.createArithmeticOp(getArithmeticOperation(operator), type, lhs, rhs);
     }
 
     private static ArithmeticOperation getArithmeticOperation(BinaryOperator operator) {
@@ -81,7 +82,7 @@ public final class LLVMBitcodeTypeHelper {
         }
     }
 
-    public static LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, CastOperator operator) {
+    public static LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, CastOperator operator, NodeFactory nodeFactory) {
         switch (operator) {
             case ZERO_EXTEND:
             case UNSIGNED_INT_TO_FP:
@@ -97,7 +98,9 @@ public final class LLVMBitcodeTypeHelper {
             case SIGNED_INT_TO_FP:
                 return CommonNodeFactory.createSignedCast(fromNode, targetType);
             case BITCAST:
-                return CommonNodeFactory.createBitcast(fromNode, targetType, fromType);
+                // Bitcast still uses nodeFactory as it is implemeneted for managed.
+                // Note: managed is not avaliable for expression debugging.
+                return nodeFactory.createBitcast(fromNode, targetType, fromType);
             case ADDRESS_SPACE_CAST:
             default:
                 return null;

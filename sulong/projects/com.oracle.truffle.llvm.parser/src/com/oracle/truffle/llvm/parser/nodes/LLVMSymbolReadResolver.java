@@ -266,7 +266,7 @@ public final class LLVMSymbolReadResolver {
             final LLVMExpressionNode lhs = resolve(operation.getLHS());
             final LLVMExpressionNode rhs = resolve(operation.getRHS());
 
-            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(lhs, rhs, operation.getOperator(), operation.getType());
+            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(lhs, rhs, operation.getOperator(), operation.getType(), nodeFactory);
         }
 
         @Override
@@ -279,7 +279,7 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(CastConstant constant) {
             final LLVMExpressionNode fromNode = resolve(constant.getValue());
-            resolvedNode = LLVMBitcodeTypeHelper.createCast(fromNode, constant.getType(), constant.getValue().getType(), constant.getOperator());
+            resolvedNode = LLVMBitcodeTypeHelper.createCast(fromNode, constant.getType(), constant.getValue().getType(), constant.getOperator(), nodeFactory);
         }
 
         @Override
