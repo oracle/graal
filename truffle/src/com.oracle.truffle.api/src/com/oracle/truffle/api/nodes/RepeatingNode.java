@@ -114,8 +114,8 @@ public interface RepeatingNode extends NodeInterface {
     /**
      * Checks if the value returned by this repeating node indicates that the loop should continue.
      *
-     * By default, this method checks whether the value is equal to {@code CONTINUE_LOOP_STATUS}, but
-     * it can be overridden in the implementations as required by the language semantics.
+     * By default, this method checks whether the value is equal to {@code CONTINUE_LOOP_STATUS},
+     * but it can be overridden in the implementations as required by the language semantics.
      *
      * @param value the value that was previously returned by {@code executeRepeatingWithValue}
      * @return <code>true</code> if the loop should be continued for this value
