@@ -176,7 +176,7 @@ public class RequestedJDWPEvents {
             case 5: // class positive pattern
                 String classPattern = input.readString();
                 try {
-                    Pattern pattern = Pattern.compile(classPattern);
+                    Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
                     filter.addPositivePattern(pattern);
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
@@ -185,7 +185,7 @@ public class RequestedJDWPEvents {
             case 6:
                 classPattern = input.readString();
                 try {
-                    Pattern pattern = Pattern.compile(classPattern);
+                    Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
                     filter.addExcludePattern(pattern);
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
