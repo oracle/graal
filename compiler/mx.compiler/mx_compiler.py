@@ -805,6 +805,10 @@ def _unittest_config_participant(config):
         # access JVMCI loaded classes.
         vmArgs.append('-XX:-UseJVMCIClassLoader')
 
+    # Always run unit tests without UseJVMCICompiler unless explicitly requested
+    if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
+        vmArgs.append('-XX:-UseJVMCICompiler')
+
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -917,7 +921,7 @@ class StdoutUnstripping:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.mapFiles:
+        if self.mapFiles and self.capture:
             try:
                 with tempfile.NamedTemporaryFile(mode='w') as inputFile:
                     data = self.capture.data
