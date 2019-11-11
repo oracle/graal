@@ -90,7 +90,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -452,8 +451,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode((OptimizedCallTarget) target);
-            TruffleSplittingStrategy.newDirectCallNodeCreated(directCallNode);
+            OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
+            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
+            optimizedTarget.addDirectCallNode(directCallNode);
             return directCallNode;
         } else {
             throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
@@ -570,7 +570,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
             LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            TruffleJDKServices.exportTo(layoutFactory.getClass());
+            CompilerRuntimeAccessor.jdkServicesAccessor().exportTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
@@ -591,10 +591,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (!callTarget.getOptionValue(PolyglotCompilerOptions.Compilation)) {
+        if (!callTarget.engine.compilation) {
             return false;
         }
-        String includesExcludes = callTarget.getOptionValue(PolyglotCompilerOptions.CompileOnly);
+        String includesExcludes = callTarget.engine.compileOnly;
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
                 parseCompileOnly(includesExcludes);

@@ -321,7 +321,11 @@ public abstract class ValueProfile extends Profile {
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
                 if (clazz != null && value != null && value.getClass() == clazz) {
-                    return (T) CompilerDirectives.castExact(value, clazz);
+                    if (CompilerDirectives.inInterpreter()) {
+                        return value;
+                    } else {
+                        return (T) CompilerDirectives.castExact(value, clazz);
+                    }
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (clazz == null && value != null) {

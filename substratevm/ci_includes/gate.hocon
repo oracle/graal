@@ -34,12 +34,18 @@ builds += [
   }
   ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
     name: "gate-svm-build-ee-11"
+    environment : {
+      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
+    }
     run: [
       ${svm-cmd-gate} ["build,helloworld,test,relocations,maven"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
+    environment : {
+      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
+    }
     run: [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
     ]
@@ -48,6 +54,7 @@ builds += [
     name: "gate-svm-windows-basics"
     environment: {
       PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
+      MAVEN_REPO_LOCAL : "$BUILD_DIR\.m2"
     }
     run: [
       ${svm-cmd-gate} ["build,helloworld,svmjunit,maven"]

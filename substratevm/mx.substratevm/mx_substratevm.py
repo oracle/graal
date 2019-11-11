@@ -29,6 +29,7 @@
 from __future__ import print_function
 
 import os
+import time
 import re
 import tempfile
 from contextlib import contextmanager
@@ -415,7 +416,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         yield native_image_func
     finally:
         if exists(native_image_cmd) and has_server:
+            def timestr():
+                return time.strftime('%d %b %Y %H:%M:%S') + ' - '
+            mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
             _native_image(['--server-shutdown'])
+            mx.log(timestr() + 'Shutting down completed')
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature'
@@ -1277,10 +1282,7 @@ def maven_plugin_test(args):
     # Build native image with native-image-maven-plugin
     env = os.environ.copy()
     maven_opts = env.get('MAVEN_OPTS', '').split()
-    if svm_java8():
-        # Workaround Java 8 issue https://bugs.openjdk.java.net/browse/JDK-8145260
-        maven_opts.append('-Dsun.zip.disableMemoryMapping=true')
-    else:
+    if not svm_java8():
         # On Java 9+ without native-image executable the plugin needs access to jdk.internal.module
         maven_opts.append('-XX:+UnlockExperimentalVMOptions')
         maven_opts.append('-XX:+EnableJVMCI')

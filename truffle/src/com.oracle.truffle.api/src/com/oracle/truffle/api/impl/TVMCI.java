@@ -306,6 +306,10 @@ public abstract class TVMCI {
         }
     }
 
+    protected static void resetFallbackEngineData() {
+        fallbackEngineData = null;
+    }
+
     @SuppressWarnings("unused")
     protected void reportPolymorphicSpecialize(Node node) {
     }
@@ -331,5 +335,9 @@ public abstract class TVMCI {
     }
 
     protected abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
+
+    @SuppressWarnings("unused")
+    protected void reloadEngineOptions(Object runtimeData, OptionValues optionValues) {
+    }
 
 }

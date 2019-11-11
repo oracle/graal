@@ -406,9 +406,13 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         TwoSilblingLoopNodesTest rootNode = new TwoSilblingLoopNodesTest(factory, new TestRepeatingNode(), new TestRepeatingNode());
         CallTarget target = runtime.createCallTarget(rootNode);
         target.call(OSR_THRESHOLD + 1, 1);
+        waitForCompiled(rootNode.getOSRTarget());
+        waitForCompiled(rootNode.getOSRTarget2());
         assertCompiled(rootNode.getOSRTarget());
         assertNotCompiled(rootNode.getOSRTarget2());
         target.call(1, OSR_THRESHOLD + 1);
+        waitForCompiled(rootNode.getOSRTarget());
+        waitForCompiled(rootNode.getOSRTarget2());
         assertCompiled(rootNode.getOSRTarget());
         assertCompiled(rootNode.getOSRTarget2());
         Assert.assertTrue(rootNode.getOSRTarget() != rootNode.getOSRTarget2());

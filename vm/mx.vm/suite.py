@@ -32,7 +32,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "2ba60ed891dcc8b896d8cfc6f202a2354e2360ee",
+                "version": "201226f93083c9262014e0c7ccfee3ddcf46e9c1",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "2ba60ed891dcc8b896d8cfc6f202a2354e2360ee",
+                "version": "201226f93083c9262014e0c7ccfee3ddcf46e9c1",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -74,7 +74,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "6609c0d1fc3fa7aef21c3455c5fd150056382125",
+                "version": "8b362ae5c7085fb749b9ccb06be11db847e7c272",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},

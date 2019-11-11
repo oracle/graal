@@ -42,6 +42,12 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
 
     @CompilationFinal private ValueProfile exceptionProfile;
 
+    /*
+     * Should be instantiated with the runtime.
+     */
+    OptimizedIndirectCallNode() {
+    }
+
     @Override
     public Object call(CallTarget target, Object... arguments) {
         try {

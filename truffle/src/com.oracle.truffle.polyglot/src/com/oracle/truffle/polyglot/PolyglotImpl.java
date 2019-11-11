@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 
 import org.graalvm.polyglot.Context;
@@ -68,7 +69,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
@@ -233,19 +233,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (ClassLoader loader : EngineAccessor.locatorOrDefaultLoaders()) {
-            try {
-                Class<?> c = loader.loadClass(className);
-                if (!TruffleOptions.AOT) {
-                    /*
-                     * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
-                     * API client since the Truffle API module descriptor only exports these
-                     * packages to modules known at build time (such as the Graal module).
-                     */
-                    TruffleJDKServices.exportTo(loader, null);
+        for (Supplier<ClassLoader> supplier : EngineAccessor.locatorOrDefaultLoaders()) {
+            ClassLoader loader = supplier.get();
+            if (loader != null) {
+                try {
+                    Class<?> c = loader.loadClass(className);
+                    if (!TruffleOptions.AOT) {
+                        /*
+                         * In JDK 9+, the Truffle API packages must be dynamically exported to a
+                         * Truffle API client since the Truffle API module descriptor only exports
+                         * these packages to modules known at build time (such as the Graal module).
+                         */
+                        EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                    }
+                    return c;
+                } catch (ClassNotFoundException e) {
                 }
-                return c;
-            } catch (ClassNotFoundException e) {
             }
         }
         return null;

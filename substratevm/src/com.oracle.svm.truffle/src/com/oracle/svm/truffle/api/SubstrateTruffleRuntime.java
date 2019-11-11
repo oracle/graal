@@ -84,9 +84,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private BackgroundCompileQueue compileQueue;
     private CallMethods hostedCallMethods;
-    private boolean initialized;
+    private volatile BackgroundCompileQueue compileQueue;
+    private volatile boolean initialized;
 
     @Override
     protected BackgroundCompileQueue getCompileQueue() {
@@ -106,7 +106,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         truffleCompiler = null;
     }
 
-    public void initializeAtRuntime() {
+    private void initializeAtRuntime() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             compileQueue = new BackgroundCompileQueue();
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
@@ -117,7 +117,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
-
         updateGraalArchitectureWithHostCPUFeatures(getTruffleCompiler().getBackend());
         installDefaultListeners();
     }
@@ -216,13 +215,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
-
-        if (!SubstrateUtil.HOSTED && !initialized) {
-            initializeAtRuntime();
-            initialized = true;
-        }
-
+        ensureInitializedAtRuntime();
         return TruffleFeature.getSupport().createOptimizedCallTarget(source, rootNode);
+    }
+
+    private void ensureInitializedAtRuntime() {
+        if (!SubstrateUtil.HOSTED && !initialized) {
+            // Checkstyle: stop
+            synchronized (this) {
+                if (!initialized) {
+                    initializeAtRuntime();
+                    initialized = true;
+                }
+            }
+            // Checkstyle: resume
+        }
     }
 
     @Override
@@ -251,6 +258,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
              */
             return null;
         }
+        /*
+         * Normally creating call targets schedules the initialization. However if call targets were
+         * already created in the boot image and they are directly compiled then the compile queue
+         * might not yet be initialized.
+         */
+        ensureInitializedAtRuntime();
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
