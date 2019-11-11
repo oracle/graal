@@ -26,9 +26,6 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_INTRINSIC_CONTEXT;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions.aesCryptType;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
@@ -37,13 +34,9 @@ import static org.graalvm.compiler.replacements.ReplacementsUtil.getArrayBaseOff
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.word.Word;
@@ -124,14 +117,14 @@ public class AESCryptSubstitutions {
         Word inAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(in, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + inOffset));
         Word outAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(out, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + outOffset));
         if (encrypt) {
-            encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
+            AESCryptNode.encryptBlock(true, false, inAddr, outAddr, kAddr);
         } else {
             if (withOriginalKey) {
                 Object lastKeyObject = RawLoadNode.load(realReceiver, lastKeyOffset(INJECTED_INTRINSIC_CONTEXT), JavaKind.Object, LocationIdentity.any());
                 Pointer lastKeyAddr = Word.objectToTrackedPointer(lastKeyObject).add(getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte));
-                decryptBlockWithOriginalKeyStub(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, inAddr, outAddr, kAddr, lastKeyAddr);
+                AESCryptNode.decryptBlockWithOriginalKey(false, true, inAddr, outAddr, kAddr, lastKeyAddr);
             } else {
-                decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
+                AESCryptNode.decryptBlock(false, false, inAddr, outAddr, kAddr);
             }
         }
     }
@@ -145,12 +138,4 @@ public class AESCryptSubstitutions {
         }
     }
 
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptBlockWithOriginalKeyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer originalKey);
 }
