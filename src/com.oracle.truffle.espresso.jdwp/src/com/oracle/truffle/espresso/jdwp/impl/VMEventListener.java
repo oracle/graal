@@ -52,7 +52,7 @@ public interface VMEventListener {
     void addFieldBreakpointRequest(FieldBreakpointInfo info);
     boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value);
     boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
-    void removedFieldBreakpoint(FieldRef field);
+    void removedFieldBreakpoint(int requestId);
 
     void fieldAccessBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);
     void fieldModificationBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);

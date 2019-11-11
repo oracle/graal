@@ -34,6 +34,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -128,8 +130,17 @@ public class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void removedFieldBreakpoint(FieldRef field) {
-        fieldBreakpoints.remove(field);
+    public void removedFieldBreakpoint(int requestId) {
+        Iterator<Map.Entry<FieldRef, FieldBreakpointInfo>> it = fieldBreakpoints.entrySet().iterator();
+
+        while (it.hasNext()) {
+            Map.Entry<FieldRef, FieldBreakpointInfo> entry = it.next();
+
+            if (entry.getValue().getRequestId() == requestId) {
+                it.remove();
+                return;
+            }
+        }
     }
 
     @Override
