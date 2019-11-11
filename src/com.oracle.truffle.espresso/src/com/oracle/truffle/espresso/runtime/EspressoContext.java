@@ -119,11 +119,10 @@ public final class EspressoContext {
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
         this.threadManager = new EspressoThreadManager(this);
-
-        this.InlineFieldAccessors = env.getOptions().get(EspressoOptions.InlineFieldAccessors);
-        this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions); // null if not
                                                                               // specified
+        this.InlineFieldAccessors = JDWPOptions != null ? false : env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.Verify = env.getOptions().get(EspressoOptions.Verify);
     }
 
     public ClassRegistries getRegistries() {
