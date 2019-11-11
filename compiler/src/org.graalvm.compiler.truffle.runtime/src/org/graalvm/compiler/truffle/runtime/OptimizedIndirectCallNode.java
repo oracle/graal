@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 /**
- * A call node with a constant {@link CallTarget} that can be optimized by Graal.
+ * A call node with a dynamic {@link CallTarget} that can be optimized by Graal.
  */
 @NodeInfo
 public final class OptimizedIndirectCallNode extends IndirectCallNode {
