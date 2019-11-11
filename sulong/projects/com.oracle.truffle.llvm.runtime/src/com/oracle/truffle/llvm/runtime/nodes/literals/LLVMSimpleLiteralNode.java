@@ -60,13 +60,8 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         }
 
         @Override
-        public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) {
+        public LLVMIVarBit executeGeneric(VirtualFrame frame) {
             return literal.copy();
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeLLVMIVarBit(frame);
         }
     }
 
@@ -216,13 +211,8 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         }
 
         @Override
-        public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
+        public LLVM80BitFloat executeGeneric(VirtualFrame frame) {
             return new LLVM80BitFloat(sign, exponent, fraction);
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeLLVM80BitFloat(frame);
         }
     }
 
@@ -260,13 +250,8 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         }
 
         @Override
-        public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) {
+        public LLVMNativePointer executeGeneric(VirtualFrame frame) {
             return LLVMNativePointer.create(address);
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return executeLLVMNativePointer(frame);
         }
     }
 }
