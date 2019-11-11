@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -58,6 +59,7 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
     }
 
     @Override
+    @TruffleBoundary
     public Object executeGeneric(VirtualFrame frame) {
         int idx;
         try {

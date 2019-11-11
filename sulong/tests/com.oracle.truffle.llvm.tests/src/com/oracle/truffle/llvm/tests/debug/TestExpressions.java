@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 public final class TestExpressions implements Iterable<StopRequest> {
 
     private TestExpressions() {
@@ -112,6 +114,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
         }
 
         @Override
+        @TruffleBoundary
         public void accept(String line) {
             split(line);
             final String token = nextToken();

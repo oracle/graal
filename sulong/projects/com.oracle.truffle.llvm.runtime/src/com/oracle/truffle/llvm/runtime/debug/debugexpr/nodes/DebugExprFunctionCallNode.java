@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -37,6 +39,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
@@ -58,6 +61,7 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
         }
     }
 
+    @ExplodeLoop
     public DebugExprType getType() {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
         for (Scope scope : scopes) {
@@ -85,6 +89,7 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
     }
 
     @Override
+    @TruffleBoundary
     public Object executeGeneric(VirtualFrame frame) {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
         for (Scope scope : scopes) {
