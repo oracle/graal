@@ -54,6 +54,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+
 public class JDWPDebuggerController {
 
     private static final Debug debugLevel = Debug.THREAD;
@@ -87,6 +88,7 @@ public class JDWPDebuggerController {
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
+    private HashMap<Object, FieldBreakpointInfo> fieldBreakpointExpected = new HashMap<>();
 
     private Ids<Object> ids;
     private Method suspendMethod;
@@ -190,7 +192,7 @@ public class JDWPDebuggerController {
 
     public void stepOver(Object thread) {
         SuspendedInfo susp = suspendedInfos.get(thread);
-        if (susp != null) {
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareStepOver(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_OVER);
         }
@@ -198,7 +200,7 @@ public class JDWPDebuggerController {
 
     public void stepInto(Object thread) {
         SuspendedInfo susp = suspendedInfos.get(thread);
-        if (susp != null) {
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareStepInto(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_INTO);
         }
@@ -206,7 +208,7 @@ public class JDWPDebuggerController {
 
     public void stepOut(Object thread) {
         SuspendedInfo susp = suspendedInfos.get(thread);
-        if (susp != null) {
+        if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareStepOut(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
         }
@@ -350,6 +352,10 @@ public class JDWPDebuggerController {
         return options;
     }
 
+    public void prepareFieldBreakpoint(FieldBreakpointInfo info) {
+        fieldBreakpointExpected.put(Thread.currentThread(), info);
+    }
+
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
         @CompilerDirectives.CompilationFinal
@@ -435,6 +441,16 @@ public class JDWPDebuggerController {
                         suspendedInfos.put(currentThread, null);
                         return;
                     }
+                }
+            }
+
+            // check if suspended for a field breakpoint
+            FieldBreakpointInfo info = fieldBreakpointExpected.remove(Thread.currentThread());
+            if (info != null) {
+                if (info.isAccessBreakpoint()) {
+                    VMEventListeners.getDefault().fieldAccessBreakpointHit(info, currentThread, callFrames[0]);
+                } else if (info.isModificationBreakpoint()) {
+                    VMEventListeners.getDefault().fieldModificationBreakpointHit(info, currentThread, callFrames[0]);
                 }
             }
 

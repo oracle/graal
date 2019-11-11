@@ -155,7 +155,7 @@ public class DebuggerConnection implements JDWPCommands {
 
         @CompilerDirectives.CompilationFinal
         private boolean started;
-        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(context, connection);
+        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(context, connection, controller);
         // constant used to allow for initial startup sequence debugger commands to occur before
         // waking up the main Espresso startup thread
         private static final int GRACE_PERIOD = 100;

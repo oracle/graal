@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 import java.util.concurrent.Callable;
@@ -47,4 +48,12 @@ public interface VMEventListener {
     void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
 
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame);
+
+    void addFieldBreakpointRequest(FieldBreakpointInfo info);
+    boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value);
+    boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
+    void removedFieldBreakpoint(FieldRef field);
+
+    void fieldAccessBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);
+    void fieldModificationBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);
 }

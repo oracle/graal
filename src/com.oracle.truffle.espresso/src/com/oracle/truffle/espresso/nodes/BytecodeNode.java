@@ -282,6 +282,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -981,9 +982,9 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
                         // TODO(peterssen): Order shuffled.
                         case GETSTATIC: // fall through
-                        case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
+                        case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode, statementIndex); break;
                         case PUTSTATIC: // fall through
-                        case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
+                        case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode, statementIndex); break;
 
                         case INVOKEVIRTUAL: // fall through
                         case INVOKESPECIAL: // fall through
@@ -2054,7 +2055,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int putField(final VirtualFrame frame, int top, Field field, int opcode) {
+    private int putField(final VirtualFrame frame, int top, Field field, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
 
         if (opcode == PUTFIELD) {
@@ -2104,15 +2105,69 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         // @formatter:off
         // Checkstyle: stop
         switch (field.getKind()) {
-            case Boolean : InterpreterToVM.setFieldBoolean(peekInt(frame, top - 1) == 1, receiver, field);  break;
-            case Byte    : InterpreterToVM.setFieldByte((byte) peekInt(frame, top - 1), receiver, field);   break;
-            case Char    : InterpreterToVM.setFieldChar((char) peekInt(frame, top - 1), receiver, field);   break;
-            case Short   : InterpreterToVM.setFieldShort((short) peekInt(frame, top - 1), receiver, field); break;
-            case Int     : InterpreterToVM.setFieldInt(peekInt(frame, top - 1), receiver, field);           break;
-            case Double  : InterpreterToVM.setFieldDouble(peekDouble(frame, top - 1), receiver, field);     break;
-            case Float   : InterpreterToVM.setFieldFloat(peekFloat(frame, top - 1), receiver, field);       break;
-            case Long    : InterpreterToVM.setFieldLong(peekLong(frame, top - 1), receiver, field);         break;
-            case Object  : InterpreterToVM.setFieldObject(peekAndReleaseObject(frame, top - 1), receiver, field);     break;
+            case Boolean :
+                boolean booleanValue = peekInt(frame, top - 1) == 1;
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, booleanValue);
+                }
+                InterpreterToVM.setFieldBoolean(booleanValue, receiver, field);
+                break;
+            case Byte :
+                byte byteValue = (byte) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, byteValue);
+                }
+                InterpreterToVM.setFieldByte(byteValue, receiver, field);
+                break;
+            case Char :
+                char charValue = (char) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, charValue);
+                }
+                InterpreterToVM.setFieldChar(charValue, receiver, field);
+                break;
+            case Short :
+                short shortValue = (short) peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, shortValue);
+                }
+                InterpreterToVM.setFieldShort(shortValue, receiver, field);
+                break;
+            case Int :
+                int intValue = peekInt(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, intValue);
+                }
+                InterpreterToVM.setFieldInt(intValue, receiver, field);
+                break;
+            case Double :
+                double doubleValue = peekDouble(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, doubleValue);
+                }
+                InterpreterToVM.setFieldDouble(doubleValue, receiver, field);
+                break;
+            case Float :
+                float floatValue = peekFloat(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, floatValue);
+                }
+                InterpreterToVM.setFieldFloat(floatValue, receiver, field);
+                break;
+            case Long :
+                long longValue = peekLong(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, longValue);
+                }
+                InterpreterToVM.setFieldLong(longValue, receiver, field);
+                break;
+            case Object :
+                StaticObject value = peekAndReleaseObject(frame, top - 1);
+                if (instrumentation != null) {
+                    instrumentation.notifyFieldModification(frame, statementIndex, field, receiver, value);
+                }
+                InterpreterToVM.setFieldObject(value, receiver, field);
+                break;
             default      : throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
@@ -2131,7 +2186,7 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int getField(final VirtualFrame frame, int top, Field field, int opcode) {
+    private int getField(final VirtualFrame frame, int top, Field field, int opcode, int statementIndex) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
 
@@ -2153,9 +2208,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         assert field.isStatic() == (opcode == GETSTATIC);
 
+
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekAndReleaseObject(frame, top - 1));
+
+        if (instrumentation != null) {
+            instrumentation.notifyFieldAccess(frame, statementIndex, field, receiver);
+        }
 
         int resultAt = field.isStatic() ? top : (top - 1);
         // @formatter:off
@@ -2353,6 +2413,18 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
+            if (VMEventListeners.getDefault().hasFieldModificationBreakpoint(field, receiver, value)) {
+                enterAt(frame, index);
+            }
+        }
+
+        public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
+            if (VMEventListeners.getDefault().hasFieldAccessBreakpoint(field, receiver)) {
+                enterAt(frame, index);
+            }
         }
 
         private void enterAt(VirtualFrame frame, int index) {

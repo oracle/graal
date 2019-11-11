@@ -25,10 +25,12 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,15 +43,18 @@ public class VMEventListenerImpl implements VMEventListener {
     private final SocketConnection connection;
     private final Ids<Object> ids;
     private final JDWPContext context;
+    private final JDWPDebuggerController debuggerController;
     private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
+    private HashMap<FieldRef, FieldBreakpointInfo> fieldBreakpoints = new HashMap<>();
     private int threadStartedRequestId;
     private int threadDeathRequestId;
 
-    public VMEventListenerImpl(SocketConnection connection, JDWPContext context) {
+    public VMEventListenerImpl(SocketConnection connection, JDWPContext context, JDWPDebuggerController controller) {
         this.connection = connection;
         this.ids = context.getIds();
         this.context = context;
+        this.debuggerController = controller;
     }
 
     @Override
@@ -115,6 +120,47 @@ public class VMEventListenerImpl implements VMEventListener {
         BreakpointInfo remove = breakpointRequests.remove(requestId);
         Breakpoint breakpoint = remove.getBreakpoint();
         breakpoint.dispose();
+    }
+
+    @Override
+    public void addFieldBreakpointRequest(FieldBreakpointInfo info) {
+        fieldBreakpoints.put(info.getField(), info);
+    }
+
+    @Override
+    public void removedFieldBreakpoint(FieldRef field) {
+        fieldBreakpoints.remove(field);
+    }
+
+    @Override
+    public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
+        boolean isActive = fieldBreakpoints.containsKey(field);
+        if (isActive) {
+            FieldBreakpointInfo info = fieldBreakpoints.get(field);
+            if (info.isModificationBreakpoint()) {
+                // OK, tell the Debug API to suspend the thread now
+                info.setReceiver(receiver);
+                info.setValue(value);
+                debuggerController.prepareFieldBreakpoint(info);
+                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+            }
+        }
+        return isActive;
+    }
+
+    @Override
+    public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
+        boolean isActive = fieldBreakpoints.containsKey(field);
+        if (isActive) {
+            FieldBreakpointInfo info = fieldBreakpoints.get(field);
+            if (info.isAccessBreakpoint()) {
+                // OK, tell the Debug API to suspend the thread now
+                info.setReceiver(receiver);
+                debuggerController.prepareFieldBreakpoint(info);
+                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+            }
+        }
+        return isActive;
     }
 
     @Override
@@ -189,6 +235,62 @@ public class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(info.getMethodId());
         stream.writeLong(info.getBci());
         connection.queuePacket(stream);
+    }
+
+    @Override
+    public void fieldAccessBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame) {
+        PacketStream stream = writeSharedFieldInformation(info, currentThread, callFrame, RequestedJDWPEvents.FIELD_ACCESS);
+        connection.queuePacket(stream);
+    }
+
+    @Override
+    public void fieldModificationBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame) {
+        PacketStream stream = writeSharedFieldInformation(info, currentThread, callFrame, RequestedJDWPEvents.FIELD_MODIFICATION);
+
+        // value about to be set
+        Object value = info.getValue();
+        byte tag = info.getField().getTagConstant();
+        if (tag == TagConstants.OBJECT) {
+            tag = context.getTag(value);
+        }
+        JDWP.writeValue(tag, value, stream, true, context);
+
+        connection.queuePacket(stream);
+    }
+
+    private PacketStream writeSharedFieldInformation(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame, byte fieldModification) {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+
+        stream.writeByte(info.getSuspendPolicy());
+        stream.writeInt(1); // # events in reply
+
+        stream.writeByte(fieldModification);
+        stream.writeInt(info.getRequestId());
+        long threadId = ids.getIdAsLong(currentThread);
+        stream.writeLong(threadId);
+
+        // location
+        stream.writeByte(callFrame.getTypeTag());
+        stream.writeLong(callFrame.getClassId());
+        stream.writeLong(callFrame.getMethodId());
+        stream.writeLong(callFrame.getCodeIndex());
+
+        // tagged refType
+        KlassRef klass = info.getKlass();
+        stream.writeByte(klass.getTagConstant());
+        stream.writeLong(context.getIds().getIdAsLong(klass));
+
+        // fieldID
+        stream.writeLong(context.getIds().getIdAsLong(info.getField()));
+
+        // tagged object ID for field being accessed
+        stream.writeByte(TagConstants.OBJECT);
+        if (Modifier.isStatic(info.getField().getModifiers())) {
+            stream.writeLong(0);
+        } else {
+            stream.writeLong(context.getIds().getIdAsLong(info.getReceiver()));
+        }
+        return stream;
     }
 
     @Override
