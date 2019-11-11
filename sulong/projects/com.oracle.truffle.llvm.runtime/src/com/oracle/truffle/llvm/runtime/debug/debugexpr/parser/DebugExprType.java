@@ -33,6 +33,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
@@ -463,6 +464,7 @@ public final class DebugExprType {
         }
     }
 
+    @TruffleBoundary
     public Object parse(Object member) {
         switch (kind) {
             case BOOL:
@@ -496,6 +498,7 @@ public final class DebugExprType {
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
         switch (kind) {
             case VOID:
