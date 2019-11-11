@@ -34,6 +34,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 public final class LLVMFrameNuller extends LLVMStatementNode {
 
