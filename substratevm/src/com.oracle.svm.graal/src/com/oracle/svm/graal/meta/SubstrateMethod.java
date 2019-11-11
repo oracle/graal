@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -99,7 +99,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);
-        neverInline = (original.getAnnotation(NeverInline.class) != null);
+        neverInline = SubstrateUtil.NativeImageLoadingShield.isNeverInline(original);
 
         /*
          * AnalysisMethods of snippets are stored in a hash map of SubstrateReplacements. The
