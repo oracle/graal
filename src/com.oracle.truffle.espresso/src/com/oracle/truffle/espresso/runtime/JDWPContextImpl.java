@@ -131,11 +131,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Object toGuestString(String string) {
-        return context.getMeta().toGuestString(string);
-    }
-
-    @Override
     public String getStringValue(Object object) {
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
@@ -307,6 +302,20 @@ public final class JDWPContextImpl implements JDWPContext {
         try {
             previous = context.getEnv().getContext().enter();
             return context.getMeta().toGuestBoxed(object);
+        } finally {
+            if (previous != null) {
+                context.getEnv().getContext().leave(previous);
+            }
+        }
+    }
+
+    @Override
+    public Object toGuestString(String string) {
+        // be sure that current thread has set context
+        Object previous = null;
+        try {
+            previous = context.getEnv().getContext().enter();
+            return context.getMeta().toGuestString(string);
         } finally {
             if (previous != null) {
                 context.getEnv().getContext().leave(previous);
