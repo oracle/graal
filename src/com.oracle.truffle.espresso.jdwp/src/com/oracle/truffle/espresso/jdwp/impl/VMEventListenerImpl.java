@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
@@ -48,7 +49,7 @@ public class VMEventListenerImpl implements VMEventListener {
     private final JDWPDebuggerController debuggerController;
     private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
-    private HashMap<FieldRef, FieldBreakpointInfo> fieldBreakpoints = new HashMap<>();
+    private HashMap<FieldRef, List<FieldBreakpointInfo>> fieldBreakpoints = new HashMap<>();
     private int threadStartedRequestId;
     private int threadDeathRequestId;
 
@@ -126,52 +127,67 @@ public class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void addFieldBreakpointRequest(FieldBreakpointInfo info) {
-        fieldBreakpoints.put(info.getField(), info);
+        List<FieldBreakpointInfo> infos = fieldBreakpoints.get(info.getField());
+        if (infos == null) {
+            infos = new ArrayList<>();
+            fieldBreakpoints.put(info.getField(), infos);
+        }
+        infos.add(info);
+        fieldBreakpoints.put(info.getField(), infos);
     }
 
     @Override
     public void removedFieldBreakpoint(int requestId) {
-        Iterator<Map.Entry<FieldRef, FieldBreakpointInfo>> it = fieldBreakpoints.entrySet().iterator();
+        Iterator<Map.Entry<FieldRef, List<FieldBreakpointInfo>>> it = fieldBreakpoints.entrySet().iterator();
 
         while (it.hasNext()) {
-            Map.Entry<FieldRef, FieldBreakpointInfo> entry = it.next();
+            Map.Entry<FieldRef, List<FieldBreakpointInfo>> entry = it.next();
 
-            if (entry.getValue().getRequestId() == requestId) {
-                it.remove();
-                return;
+            Iterator<FieldBreakpointInfo> infoIt = entry.getValue().iterator();
+
+            while (infoIt.hasNext()) {
+                FieldBreakpointInfo info = infoIt.next();
+                if (info.getRequestId() == requestId) {
+                    infoIt.remove();
+                    return;
+                }
             }
         }
     }
 
     @Override
     public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        boolean isActive = fieldBreakpoints.containsKey(field);
-        if (isActive) {
-            FieldBreakpointInfo info = fieldBreakpoints.get(field);
-            if (info.isModificationBreakpoint()) {
-                // OK, tell the Debug API to suspend the thread now
-                info.setReceiver(receiver);
-                info.setValue(value);
-                debuggerController.prepareFieldBreakpoint(info);
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+        if (fieldBreakpoints.containsKey(field)) {
+            List<FieldBreakpointInfo> infos = fieldBreakpoints.get(field);
+            for (FieldBreakpointInfo info : infos) {
+                if (info.isModificationBreakpoint()) {
+                    // OK, tell the Debug API to suspend the thread now
+                    info.setReceiver(receiver);
+                    info.setValue(value);
+                    debuggerController.prepareFieldBreakpoint(info);
+                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                    return true;
+                }
             }
         }
-        return isActive;
+        return false;
     }
 
     @Override
     public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        boolean isActive = fieldBreakpoints.containsKey(field);
-        if (isActive) {
-            FieldBreakpointInfo info = fieldBreakpoints.get(field);
-            if (info.isAccessBreakpoint()) {
-                // OK, tell the Debug API to suspend the thread now
-                info.setReceiver(receiver);
-                debuggerController.prepareFieldBreakpoint(info);
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+        if (fieldBreakpoints.containsKey(field)) {
+            List<FieldBreakpointInfo> infos = fieldBreakpoints.get(field);
+            for (FieldBreakpointInfo info : infos) {
+                if (info.isAccessBreakpoint()) {
+                    // OK, tell the Debug API to suspend the thread now
+                    info.setReceiver(receiver);
+                    debuggerController.prepareFieldBreakpoint(info);
+                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                    return true;
+                }
             }
         }
-        return isActive;
+        return false;
     }
 
     @Override
