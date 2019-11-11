@@ -137,7 +137,7 @@ public abstract class LLVMNode extends Node {
     /**
      * Creates a short (single line) textual description of the given node.
      *
-     * A unique name is built from the class name an a global map of node identifiers.
+     * A unique name is built from the class name and a global map of node identifiers.
      *
      * A source location will be appended if available.
      *
