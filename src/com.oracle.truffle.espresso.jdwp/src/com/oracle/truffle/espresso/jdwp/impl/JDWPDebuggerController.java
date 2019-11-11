@@ -57,7 +57,7 @@ import java.util.regex.Pattern;
 
 public class JDWPDebuggerController {
 
-    private static final Debug debugLevel = Debug.THREAD;
+    private static final Debug debugLevel = Debug.NONE;
 
     public enum Debug {
         NONE,
