@@ -57,7 +57,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.hotspot.BigIntegerSubstitutionNode;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
@@ -73,12 +72,7 @@ import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
 import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
-import org.graalvm.compiler.hotspot.replacements.AESCryptNode;
-import org.graalvm.compiler.hotspot.replacements.AESCryptSnippets;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
-import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
-import org.graalvm.compiler.hotspot.replacements.CipherNode;
-import org.graalvm.compiler.hotspot.replacements.CipherSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
@@ -105,7 +99,6 @@ import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -118,6 +111,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -215,11 +209,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ProfileSnippets.Templates profileSnippets;
     protected ObjectSnippets.Templates objectSnippets;
     protected UnsafeSnippets.Templates unsafeSnippets;
-    protected CipherSnippets.Templates cipherSnippets;
-    protected AESCryptSnippets.Templates aesCryptSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
-    protected BigIntegerSnippets.Templates bigIntegerSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -250,9 +241,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
         objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
         unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
-        cipherSnippets = new CipherSnippets.Templates(options, factories, providers, target);
-        aesCryptSnippets = new AESCryptSnippets.Templates(options, factories, providers, target);
-        bigIntegerSnippets = new BigIntegerSnippets.Templates(options, factories, providers, target);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
@@ -435,18 +423,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             } else if (n instanceof UnsafeCopyMemoryNode) {
                 if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                     unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
-                }
-            } else if (n instanceof CipherNode) {
-                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
-                    cipherSnippets.lower((CipherNode) n, tool);
-                }
-            } else if (n instanceof AESCryptNode) {
-                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
-                    aesCryptSnippets.lower((AESCryptNode) n, tool);
-                }
-            } else if (n instanceof BigIntegerSubstitutionNode) {
-                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
-                    bigIntegerSnippets.lower((BigIntegerSubstitutionNode) n, tool);
                 }
             } else {
                 super.lower(n, tool);

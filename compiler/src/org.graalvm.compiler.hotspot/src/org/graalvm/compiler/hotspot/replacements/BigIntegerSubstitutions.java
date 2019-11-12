@@ -29,11 +29,37 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.hotspot.BigIntegerSubstitutionNode;
-import org.graalvm.compiler.hotspot.BigIntegerSubstitutionNode.BigIntegerOp;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.word.Word;
 
 @ClassSubstitution(className = "java.math.BigInteger", optional = true)
 public class BigIntegerSubstitutions {
+
+    @Snippet
+    public static void multiplyToLen(Word xAddr, int xlen, Word yAddr, int ylen, Word zAddr, int zLen) {
+        HotSpotBackend.multiplyToLenStub(xAddr, xlen, yAddr, ylen, zAddr, zLen);
+    }
+
+    @Snippet
+    public static int mulAdd(Word inAddr, Word outAddr, int newOffset, int len, int k) {
+        return HotSpotBackend.mulAddStub(inAddr, outAddr, newOffset, len, k);
+    }
+
+    @Snippet
+    public static void squareToLen(Word xAddr, int len, Word zAddr, int zLen) {
+        HotSpotBackend.implSquareToLen(xAddr, len, zAddr, zLen);
+    }
+
+    @Snippet
+    public static void montgomerySquare(Word aAddr, Word nAddr, int len, long inv, Word productAddr) {
+        HotSpotBackend.implMontgomerySquare(aAddr, nAddr, len, inv, productAddr);
+    }
+
+    @Snippet
+    public static void montgomeryMultiply(Word aAddr, Word bAddr, Word nAddr, int len, long inv, Word productAddr) {
+        HotSpotBackend.implMontgomeryMultiply(aAddr, bAddr, nAddr, len, inv, productAddr);
+    }
 
     @MethodSubstitution(isStatic = false)
     static int[] multiplyToLen(@SuppressWarnings("unused") Object receiver, int[] x, int xlen, int[] y, int ylen, int[] zIn) {
@@ -50,7 +76,7 @@ public class BigIntegerSubstitutions {
         } else {
             zLen = zIn.length;
         }
-        BigIntegerSubstitutionNode.multiplyToLen(BigIntegerOp.MUL_TO_LEN, arrayStart(x), xlen, arrayStart(y), ylen, arrayStart(zResult), zLen);
+        multiplyToLen(arrayStart(x), xlen, arrayStart(y), ylen, arrayStart(zResult), zLen);
         return zResult;
     }
 
@@ -58,32 +84,31 @@ public class BigIntegerSubstitutions {
     static int mulAdd(int[] out, int[] in, int offset, int len, int k) {
         int[] outNonNull = GraalDirectives.guardingNonNull(out);
         int newOffset = outNonNull.length - offset;
-        return BigIntegerSubstitutionNode.mulAdd(BigIntegerOp.MUL_ADD, arrayStart(outNonNull), arrayStart(in), newOffset, len, k);
+        return mulAdd(arrayStart(outNonNull), arrayStart(in), newOffset, len, k);
     }
 
     @MethodSubstitution(isStatic = true)
     static int implMulAdd(int[] out, int[] in, int offset, int len, int k) {
         int[] outNonNull = GraalDirectives.guardingNonNull(out);
         int newOffset = outNonNull.length - offset;
-        return BigIntegerSubstitutionNode.mulAdd(BigIntegerOp.MUL_ADD, arrayStart(outNonNull), arrayStart(in), newOffset, len, k);
+        return mulAdd(arrayStart(outNonNull), arrayStart(in), newOffset, len, k);
     }
 
     @MethodSubstitution(isStatic = true)
     static int[] implMontgomeryMultiply(int[] a, int[] b, int[] n, int len, long inv, int[] product) {
-        BigIntegerSubstitutionNode.montgomeryMultiply(BigIntegerOp.MONTGOMERY_MUL, arrayStart(a), arrayStart(b), arrayStart(n), len, inv, arrayStart(product));
+        montgomeryMultiply(arrayStart(a), arrayStart(b), arrayStart(n), len, inv, arrayStart(product));
         return product;
-
     }
 
     @MethodSubstitution(isStatic = true)
     static int[] implMontgomerySquare(int[] a, int[] n, int len, long inv, int[] product) {
-        BigIntegerSubstitutionNode.montgomerySquare(BigIntegerOp.MONTOGEMRY_SQUARE, arrayStart(a), arrayStart(n), len, inv, arrayStart(product));
+        montgomerySquare(arrayStart(a), arrayStart(n), len, inv, arrayStart(product));
         return product;
     }
 
     @MethodSubstitution(isStatic = true)
     static int[] implSquareToLen(int[] x, int len, int[] z, int zLen) {
-        BigIntegerSubstitutionNode.squareToLen(BigIntegerOp.SQUARE_TO_LEN, arrayStart(x), len, arrayStart(z), zLen);
+        squareToLen(arrayStart(x), len, arrayStart(z), zLen);
         return z;
     }
 

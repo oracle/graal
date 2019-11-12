@@ -683,11 +683,17 @@ public class BytecodeParser implements GraphBuilderContext {
                 // Restore the original return value
                 parser.frameState.push(returnKind, returnValue);
             }
-            if (parser.getInvokeReturnType() != null) {
+            boolean inlinedIntrinsic = parser.getInvokeReturnType() != null;
+            if (inlinedIntrinsic) {
                 for (Node n : parser.graph.getNewNodes(mark)) {
                     if (n.isAlive() && n instanceof FrameState) {
                         GraalError.guarantee(((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI,
-                                        "Intrinsics (for callee %s) must not produce invalid framestate %s, they are only allowed after framestate assignment.", callee, n);
+                                        "Inlined call to intrinsic (callee %s) produced invalid framestate %s. " +
+                                                        "Such framestates must never be used as deoptimizing targets, thus they cannot be part of a high-tier graph, " +
+                                                        "and must only be used after framestate assignment. A common error is the usage of foreign call nodes in method " +
+                                                        "substitutions, which can be avoided by replacing such calls with nodes that are snippet lowered after framestate " +
+                                                        "assignment (see FastNotifyNode.java for example).",
+                                        callee, n);
                     }
                 }
             }

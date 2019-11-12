@@ -152,7 +152,8 @@ public abstract class NonSnippetLowerings {
             assert descriptor != null && descriptor.getArgumentTypes().length == arguments.size();
 
             StructuredGraph graph = node.graph();
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            ForeignCallNode foreignCallNode = graph
+                            .add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
             foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
@@ -173,7 +174,8 @@ public abstract class NonSnippetLowerings {
             assert descriptor != null && descriptor.getArgumentTypes().length == arguments.size();
 
             StructuredGraph graph = node.graph();
-            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            ForeignCallNode foreignCallNode = graph
+                            .add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 
