@@ -36,6 +36,7 @@ import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -80,6 +81,8 @@ import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.filters.FilterConfigurationParser;
+import com.oracle.svm.configure.filters.PackageNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
@@ -130,7 +133,8 @@ public final class Agent {
         ConfigurationSet restrictConfigs = new ConfigurationSet();
         ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean restrict = false;
-        boolean noFilter = false;
+        boolean builtinFilter = true;
+        List<String> callerFilterFiles = new ArrayList<>();
         boolean build = false;
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
             String[] optionTokens = fromCString(options).split(",");
@@ -161,10 +165,14 @@ public final class Agent {
                     restrict = true;
                 } else if (token.startsWith("restrict=")) {
                     restrict = Boolean.parseBoolean(getTokenValue(token));
-                } else if (token.equals("no-filter")) {
-                    noFilter = true;
-                } else if (token.startsWith("no-filter=")) {
-                    noFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-builtin-caller-filter") || /* legacy: */ token.equals("no-filter")) {
+                    builtinFilter = false;
+                } else if (token.startsWith("builtin-caller-filter=")) {
+                    builtinFilter = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.startsWith("no-filter=")) { // legacy
+                    builtinFilter = !Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.startsWith("caller-filter-file=")) {
+                    callerFilterFiles.add(getTokenValue(token));
                 } else if (token.equals("build")) {
                     build = true;
                 } else if (token.startsWith("build=")) {
@@ -177,6 +185,26 @@ public final class Agent {
         } else {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
             System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
+        }
+
+        PackageNode callersFilter = null;
+        if (!builtinFilter) {
+            callersFilter = PackageNode.createRoot();
+        }
+        if (!callerFilterFiles.isEmpty()) {
+            if (callersFilter == null) {
+                callersFilter = AccessAdvisor.copyBuiltinFilterTree();
+            }
+            for (String path : callerFilterFiles) {
+                try {
+                    FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
+                    parser.parseAndRegister(new FileReader(path));
+                } catch (Exception e) {
+                    System.err.println(MESSAGE_PREFIX + "cannot parse filter file " + path + ": " + e);
+                    return 1;
+                }
+            }
+            callersFilter.removeRedundantNodes();
         }
 
         if (configOutputDir != null) {
@@ -198,7 +226,10 @@ public final class Agent {
                 };
                 TraceProcessor processor = new TraceProcessor(mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
-                processor.setFilterEnabled(!noFilter);
+                processor.setHeuristicsEnabled(builtinFilter);
+                if (callersFilter != null) {
+                    processor.setCallerFilterTree(callersFilter);
+                }
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 System.err.println(MESSAGE_PREFIX + t);

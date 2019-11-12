@@ -34,7 +34,7 @@ export JAVA_TOOL_OPTIONS="java -agentlib:native-image-agent=config-output-dir=/p
 
 The `{pid}` placeholder is replaced with the process identifier, while `{datetime}` is replaced with the system date and time in UTC, formatted according to ISO 8601. For the above example, the resulting path could be: `/path/to/config-output-dir-31415-20181231T235950Z/`.
 
-The agent also tracks failed lookups of classes, methods, fields or resources, but by default, it does not include them in the generated configuration files. Likewise, it filters accesses from inside the Java class library or the Java VM (such as in `java.nio`) by default. For testing purposes, filtering can be disabled by adding the `no-filter` option, but the resulting configuration files are generally unsuitable for a native image build. For example: `-agentlib:native-image-agent=no-filter,config-output-dir=...`
+The agent also tracks failed lookups of classes, methods, fields or resources, but by default, it does not include them in the generated configuration files. Likewise, it filters lookups that originate inside the Java class library or the Java VM (such as in `java.nio`) by default. For testing purposes, filtering can be disabled by adding the `no-builtin-caller-filter` option, but the resulting configuration files are generally unsuitable for a native image build. For example: `-agentlib:native-image-agent=no-builtin-caller-filter,config-output-dir=...`
 
 ### The Configuration Tool
 

@@ -90,7 +90,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnore(lazyValue(callerClass))) {
+        if (advisor.shouldIgnoreCaller(lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;

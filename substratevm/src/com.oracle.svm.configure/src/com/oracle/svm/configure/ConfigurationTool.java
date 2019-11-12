@@ -25,6 +25,8 @@
 package com.oracle.svm.configure;
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -42,8 +44,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.filters.FilterConfigurationParser;
+import com.oracle.svm.configure.filters.ModuleFilterTools;
+import com.oracle.svm.configure.filters.PackageNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationTool {
@@ -71,6 +77,9 @@ public class ConfigurationTool {
                     break;
                 case "process-trace": // legacy
                     generate(argsIter, true);
+                    break;
+                case "generate-filters":
+                    generateFilterRules(argsIter);
                     break;
                 case "help":
                 case "--help":
@@ -181,7 +190,7 @@ public class ConfigurationTool {
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }
-        p.setFilterEnabled(filter);
+        p.setHeuristicsEnabled(filter);
         if (traceInputs.isEmpty() && inputSet.isEmpty()) {
             throw new UsageException("No inputs specified.");
         }
@@ -214,6 +223,98 @@ public class ConfigurationTool {
                 p.getResourceConfiguration().printJson(writer);
             }
         }
+    }
+
+    private static void generateFilterRules(Iterator<String> argsIter) throws IOException {
+        Path outputPath = null;
+        boolean reduce = false;
+        List<String> args = new ArrayList<>();
+        while (argsIter.hasNext()) {
+            String arg = argsIter.next();
+            if (arg.startsWith("--reduce")) {
+                String[] parts = arg.split("=", 2);
+                reduce = (parts.length < 2) || Boolean.parseBoolean(parts[1]);
+            } else {
+                args.add(arg);
+            }
+        }
+        PackageNode rootNode = null;
+        for (String arg : args) {
+            String[] parts = arg.split("=", 2);
+            String current = parts[0];
+            String value = (parts.length > 1) ? parts[1] : null;
+            switch (current) {
+                case "--include-modules":
+                    if (SubstrateUtil.HOSTED) {
+                        if (rootNode != null) {
+                            throw new UsageException(current + " must be specified before other rule-creating arguments");
+                        }
+                        String[] moduleNames = (value != null) ? value.split(",") : new String[0];
+                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, reduce);
+                    } else {
+                        throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
+                    }
+                    break;
+
+                case "--input-file":
+                    rootNode = maybeCreateRootNode(rootNode);
+                    try (FileReader reader = new FileReader(requirePath(current, value).toFile())) {
+                        FilterConfigurationParser parser = new FilterConfigurationParser(rootNode);
+                        parser.parseAndRegister(reader);
+                    }
+                    break;
+
+                case "--output-file":
+                    outputPath = requirePath(current, value);
+                    break;
+
+                case "--include-classes":
+                    rootNode = addSingleRule(rootNode, current, value, PackageNode.Inclusion.Include);
+                    break;
+
+                case "--exclude-classes":
+                    rootNode = addSingleRule(rootNode, current, value, PackageNode.Inclusion.Exclude);
+                    break;
+
+                default:
+                    throw new UsageException("Unknown argument: " + current);
+            }
+        }
+
+        rootNode.removeRedundantNodes();
+        if (outputPath != null) {
+            try (FileOutputStream os = new FileOutputStream(outputPath.toFile())) {
+                rootNode.printJsonTree(os);
+            }
+        } else {
+            rootNode.printJsonTree(System.out);
+        }
+    }
+
+    private static PackageNode maybeCreateRootNode(PackageNode rootNode) {
+        return (rootNode != null) ? rootNode : PackageNode.createRoot();
+    }
+
+    private static PackageNode addSingleRule(PackageNode rootNode, String argName, String value, PackageNode.Inclusion inclusion) {
+        rootNode = maybeCreateRootNode(rootNode);
+        if (value == null || value.isEmpty()) {
+            throw new UsageException("Argument must be provided for: " + argName);
+        }
+        String qualifiedPkg;
+        boolean recursive = value.endsWith(".**");
+        if (recursive) {
+            qualifiedPkg = value.substring(0, value.length() - ".**".length());
+        } else if (value.endsWith(".*")) {
+            qualifiedPkg = value.substring(0, value.length() - ".*".length());
+        } else {
+            throw new UsageException("Rule must end with either .* to include all classes in the package, " +
+                            "or .** to include all classes in the package and all of its subpackages");
+        }
+        if (qualifiedPkg.contains("*")) {
+            throw new UsageException("Rule can only contain * wildcard at the end");
+        }
+        rootNode.addOrGetChild(qualifiedPkg, inclusion, true, null);
+        return rootNode;
     }
 
     private static String getResource(String resourceName) {
