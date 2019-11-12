@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -40,11 +41,11 @@ import com.oracle.svm.core.thread.Safepoint;
  * Compact instruction for {@link SafepointCheckNode}.
  */
 @Opcode
-public class AMD64DecrementingSafepointCheckOp extends AMD64LIRInstruction {
+public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
 
-    public static final LIRInstructionClass<AMD64DecrementingSafepointCheckOp> TYPE = LIRInstructionClass.create(AMD64DecrementingSafepointCheckOp.class);
+    public static final LIRInstructionClass<AMD64SafepointCheckOp> TYPE = LIRInstructionClass.create(AMD64SafepointCheckOp.class);
 
-    protected AMD64DecrementingSafepointCheckOp() {
+    protected AMD64SafepointCheckOp() {
         super(TYPE);
     }
 
@@ -53,5 +54,9 @@ public class AMD64DecrementingSafepointCheckOp extends AMD64LIRInstruction {
         assert SubstrateOptions.MultiThreaded.getValue();
         SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
         masm.subl(new AMD64Address(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())), 1);
+    }
+
+    public AMD64Assembler.ConditionFlag getConditionFlag() {
+        return AMD64Assembler.ConditionFlag.LessEqual;
     }
 }

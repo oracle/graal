@@ -29,8 +29,8 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
-import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.r29;
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
@@ -38,7 +38,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -471,8 +470,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
             if (node instanceof SafepointCheckNode) {
-                append(new AArch64DecrementingSafepointCheckOp());
-                append(new AArch64ControlFlow.BranchOp(AArch64Assembler.ConditionFlag.LE, trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                AArch64SafepointCheckOp op = new AArch64SafepointCheckOp();
+                append(op);
+                append(new AArch64ControlFlow.BranchOp(op.getConditionFlag(), trueSuccessor, falseSuccessor, trueSuccessorProbability));
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }

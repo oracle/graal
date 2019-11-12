@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.aarch64;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -42,11 +43,11 @@ import jdk.vm.ci.code.Register;
 /**
  * Compact instruction for {@link SafepointCheckNode}.
  */
-public class AArch64DecrementingSafepointCheckOp extends AArch64LIRInstruction {
+public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
 
-    public static final LIRInstructionClass<AArch64DecrementingSafepointCheckOp> TYPE = LIRInstructionClass.create(AArch64DecrementingSafepointCheckOp.class);
+    public static final LIRInstructionClass<AArch64SafepointCheckOp> TYPE = LIRInstructionClass.create(AArch64SafepointCheckOp.class);
 
-    protected AArch64DecrementingSafepointCheckOp() {
+    protected AArch64SafepointCheckOp() {
         super(TYPE);
     }
 
@@ -62,5 +63,9 @@ public class AArch64DecrementingSafepointCheckOp extends AArch64LIRInstruction {
             masm.subs(safepointSize, scratch, scratch, 1);
             masm.str(safepointSize, scratch, safepointAddress);
         }
+    }
+
+    public AArch64Assembler.ConditionFlag getConditionFlag() {
+        return AArch64Assembler.ConditionFlag.LE;
     }
 }
