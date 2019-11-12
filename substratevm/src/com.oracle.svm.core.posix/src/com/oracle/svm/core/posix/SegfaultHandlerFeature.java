@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -86,12 +87,17 @@ class SubstrateSegfaultHandler {
 
     private static volatile boolean dispatchInProgress = false;
 
+    @Fold
+    static boolean fixedRegisters() {
+        return !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+    }
+
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
-        if (SubstrateOptions.CompilerBackend.getValue().equals("lir")) {
+        if (fixedRegisters()) {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
                 WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
@@ -108,7 +114,7 @@ class SubstrateSegfaultHandler {
                  */
                 return;
             }
-        } else if (SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+        } else {
             Isolate isolate = CEntryPointSnippets.baseIsolate.get().readWord(0);
             if (isolate.rawValue() == -1) {
                 /*

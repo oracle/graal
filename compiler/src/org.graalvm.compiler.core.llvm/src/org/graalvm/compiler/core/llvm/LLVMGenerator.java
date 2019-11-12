@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
@@ -63,7 +62,6 @@ import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
@@ -724,74 +722,6 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     public Variable emitByteSwap(Value operand) {
         LLVMValueRef byteSwap = builder.buildBswap(getVal(operand));
         return new LLVMVariable(byteSwap);
-    }
-
-    @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
-        LLVMTypeRef elemType = builder.getLLVMType(kind);
-
-        LLVMValueRef inArray1;
-        LLVMValueRef inArray2;
-        if (directPointers) {
-            throw shouldNotReachHere("Array comparison by direct pointers is not supported by the LLVM backend.");
-        } else {
-            int arrayBaseOffset = getProviders().getMetaAccess().getArrayBaseOffset(kind);
-
-            inArray1 = builder.buildGEP(getVal(array1), builder.constantInt(arrayBaseOffset));
-            inArray1 = builder.buildBitcast(inArray1, builder.pointerType(elemType, isObject(typeOf(inArray1))));
-
-            inArray2 = builder.buildGEP(getVal(array2), builder.constantInt(arrayBaseOffset));
-            inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, isObject(typeOf(inArray2))));
-        }
-        int constantLength = LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1;
-        if (constantLength == 0) {
-            return new LLVMVariable(builder.constantBoolean(true));
-        }
-        LLVMValueRef count = (constantLength > 0) ? builder.constantInt(constantLength) : getVal(length);
-
-        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
-        LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(currentBlock.toString() + "array_equals_loop");
-        LLVMBasicBlockRef endBlock = builder.appendBasicBlock(currentBlock.toString() + "array_equals_end");
-        splitBlockEndMap.put(currentBlock, endBlock);
-
-        /* Loop prologue */
-        LLVMValueRef zeroLength = builder.buildIsNull(count);
-        builder.buildIf(zeroLength, endBlock, loopBlock);
-
-        /* Loop body (will be vectorized by LLVM) */
-        builder.positionAtEnd(loopBlock);
-
-        LLVMBasicBlockRef[] incomingBlocks = {startBlock};
-        LLVMValueRef[] incomingEqualsValues = {builder.constantBoolean(true)};
-        LLVMValueRef equals = builder.buildPhi(builder.booleanType(), incomingEqualsValues, incomingBlocks);
-        LLVMValueRef[] incomingIValues = {builder.constantInt(0)};
-        LLVMValueRef i = builder.buildPhi(builder.intType(), incomingIValues, incomingBlocks);
-
-        LLVMValueRef elem1 = builder.buildLoad(builder.buildGEP(inArray1, i));
-        LLVMValueRef elem2 = builder.buildLoad(builder.buildGEP(inArray2, i));
-        LLVMValueRef compare = builder.buildCompare(Condition.EQ, elem1, elem2, false);
-
-        LLVMValueRef newEquals = builder.buildAnd(compare, equals);
-        LLVMValueRef newI = builder.buildAdd(i, builder.constantInt(1));
-
-        LLVMBasicBlockRef[] newIncomingBlocks = new LLVMBasicBlockRef[]{loopBlock};
-        LLVMValueRef[] newIncomingEqualsValues = new LLVMValueRef[]{newEquals};
-        builder.addIncoming(equals, newIncomingEqualsValues, newIncomingBlocks);
-        LLVMValueRef[] newIncomingIValues = new LLVMValueRef[]{newI};
-        builder.addIncoming(i, newIncomingIValues, newIncomingBlocks);
-
-        LLVMValueRef atEnd = builder.buildCompare(Condition.EQ, newI, count, false);
-        LLVMValueRef exitLoop = builder.buildOr(atEnd, builder.buildNot(newEquals));
-        builder.buildIf(exitLoop, endBlock, loopBlock);
-
-        /* Loop exit */
-        builder.positionAtEnd(endBlock);
-
-        LLVMBasicBlockRef[] incomingArrayEqualsBlocks = new LLVMBasicBlockRef[]{startBlock, loopBlock};
-        LLVMValueRef[] incomingArrayEqualsValues = new LLVMValueRef[]{builder.constantBoolean(true), newEquals};
-        LLVMValueRef arrayEquals = builder.buildPhi(builder.booleanType(), incomingArrayEqualsValues, incomingArrayEqualsBlocks);
-
-        return new LLVMVariable(builder.buildSelect(arrayEquals, builder.constantInt(1), builder.constantInt(0)));
     }
 
     @Override
