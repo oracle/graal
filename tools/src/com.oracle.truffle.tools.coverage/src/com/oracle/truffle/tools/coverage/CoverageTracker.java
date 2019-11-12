@@ -33,9 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -192,14 +190,8 @@ public final class CoverageTracker implements AutoCloseable {
             final Source source = section.getSource();
             final Node node = loadedEvent.getNode();
             final RootNode rootNode = node.getRootNode();
-            final Map<SourceSection, RootData> perSourceData = sourceCoverage.computeIfAbsent(source, s -> {
-                TruffleLogger.getLogger(CoverageInstrument.ID).log(Level.WARNING, "This should never happen, to have a instrumented source section without instrumented root in same source");
-                return new HashMap<>();
-            });
-            final RootData rootData = perSourceData.computeIfAbsent(rootNode.getSourceSection(), s -> {
-                TruffleLogger.getLogger(CoverageInstrument.ID).log(Level.WARNING, "This should never happen, to have a instrumented source section without instrumented root.");
-                return new RootData(s, rootNode.getName());
-            });
+            final Map<SourceSection, RootData> perSourceData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
+            final RootData rootData = perSourceData.computeIfAbsent(rootNode.getSourceSection(), s -> new RootData(s, rootNode.getName()));
             rootData.loadedStatements.add(section);
         }
     }
