@@ -312,7 +312,6 @@ public class JDWPDebuggerController {
             ThreadSuspension.addHardSuspendedThread(thread);
             suspendedInfos.put(thread, new UnknownSuspendedInfo(thread, getContext()));
         } catch (Exception e) {
-            e.printStackTrace();
             System.err.println("not able to suspend thread: " + getThreadName(thread));
         }
     }
