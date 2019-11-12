@@ -149,7 +149,7 @@ class SafeDirectoryUpdater(object):
         # Try delete the target directory if it existed prior to creating
         # self.workspace and has not been modified in between.
         if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
-            old_target = join(self.workspace, 'to_deleted_' + basename(self.target))
+            old_target = join(self.workspace, 'to_delete_' + basename(self.target))
             try:
                 os.rename(self.target, old_target)
             except:
@@ -1198,16 +1198,21 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     # may have changed and we want to pick up these changes.
     source_jdk_timestamps_file = dst_jdk_dir + '.source_jdk_timestamps'
     timestamps = []
+    nl = os.linesep
     for root, _, filenames in os.walk(jdk.home):
         for name in filenames:
             ts = mx.TimeStampFile(join(root, name))
             timestamps.append(str(ts))
-    jdk_timestamps = os.linesep.join(timestamps)
+    timestamps = sorted(timestamps)
+    jdk_timestamps = nl.join(timestamps)
     if exists(source_jdk_timestamps_file):
         with open(source_jdk_timestamps_file) as fp:
             old_jdk_timestamps = fp.read()
         if old_jdk_timestamps != jdk_timestamps:
-            update_reason = 'source JDK was updated'
+            old_timestamps = old_jdk_timestamps.split(nl)
+            import difflib
+            diff = difflib.unified_diff(timestamps, old_timestamps, 'new_timestamps.txt', 'old_timestamps.txt')
+            update_reason = 'source JDK was updated as shown by following time stamps diff:{}{}'.format(nl, nl.join(diff))
     with open(source_jdk_timestamps_file, 'w') as fp:
         fp.write(jdk_timestamps)
 
@@ -1223,10 +1228,9 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     if update_reason is None:
         return dst_jdk_dir, False
 
-    mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
-
     with SafeDirectoryUpdater(dst_jdk_dir) as sdu:
         tmp_dst_jdk_dir = sdu.directory
+        mx.log('Updating/creating {} from {} using intermediate directory {} since {}'.format(dst_jdk_dir, src_jdk.home, tmp_dst_jdk_dir, update_reason))
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
