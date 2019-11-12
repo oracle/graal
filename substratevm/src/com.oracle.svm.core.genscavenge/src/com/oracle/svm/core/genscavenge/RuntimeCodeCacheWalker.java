@@ -70,6 +70,7 @@ public class RuntimeCodeCacheWalker implements CodeInfoVisitor {
                 // The tether object is not reachable and the CodeInfo was already invalidated, so
                 // we don't need to visit any references and will free the unmanaged memory during
                 // this garbage collection.
+                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_UNREACHABLE);
                 return true;
             }
 
