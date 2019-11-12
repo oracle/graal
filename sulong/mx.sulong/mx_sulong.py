@@ -1034,10 +1034,6 @@ def create_parsers(args=None, out=None):
     create_asm_parser(args, out)
     create_debugexpr_parser(args, out)
 
-def create_parsers(args=None, out=None):
-    create_asm_parser(args, out)
-    create_debugexpr_parser(args, out)
-
 def llirtestgen(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
 
