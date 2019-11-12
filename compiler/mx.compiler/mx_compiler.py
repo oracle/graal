@@ -1205,16 +1205,23 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             timestamps.append(str(ts))
     timestamps = sorted(timestamps)
     jdk_timestamps = nl.join(timestamps)
+    jdk_timestamps_outdated = False
     if exists(source_jdk_timestamps_file):
         with open(source_jdk_timestamps_file) as fp:
             old_jdk_timestamps = fp.read()
         if old_jdk_timestamps != jdk_timestamps:
-            old_timestamps = old_jdk_timestamps.split(nl)
+            jdk_timestamps_outdated = True
             import difflib
+            old_timestamps = old_jdk_timestamps.split(nl)
             diff = difflib.unified_diff(timestamps, old_timestamps, 'new_timestamps.txt', 'old_timestamps.txt')
             update_reason = 'source JDK was updated as shown by following time stamps diff:{}{}'.format(nl, nl.join(diff))
-    with open(source_jdk_timestamps_file, 'w') as fp:
-        fp.write(jdk_timestamps)
+    else:
+        jdk_timestamps_outdated = True
+
+    if jdk_timestamps_outdated:
+        with mx.SafeFileCreation(source_jdk_timestamps_file) as sfc:
+            with open(sfc.tmpPath, 'w') as fp:
+                fp.write(jdk_timestamps)
 
     jvmci_release_file = mx.TimeStampFile(join(dst_jdk_dir, 'release.jvmci'))
     if update_reason is None:
