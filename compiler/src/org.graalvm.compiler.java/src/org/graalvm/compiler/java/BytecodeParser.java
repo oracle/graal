@@ -683,10 +683,12 @@ public class BytecodeParser implements GraphBuilderContext {
                 // Restore the original return value
                 parser.frameState.push(returnKind, returnValue);
             }
-            for (Node n : parser.graph.getNewNodes(mark)) {
-                if (n.isAlive() && n instanceof FrameState) {
-                    GraalError.guarantee(((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI,
-                                    "Intrinsics (for callee %s) must not produce invalid framestate %s, they are only allowed after framestate assignment.", callee, n);
+            if (parser.getInvokeReturnType() != null) {
+                for (Node n : parser.graph.getNewNodes(mark)) {
+                    if (n.isAlive() && n instanceof FrameState) {
+                        GraalError.guarantee(((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI,
+                                        "Intrinsics (for callee %s) must not produce invalid framestate %s, they are only allowed after framestate assignment.", callee, n);
+                    }
                 }
             }
         }
