@@ -39,7 +39,7 @@ import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class VMEventListenerImpl implements VMEventListener {
+public final class VMEventListenerImpl implements VMEventListener {
 
     private final SocketConnection connection;
     private final Ids<Object> ids;
@@ -51,6 +51,8 @@ public class VMEventListenerImpl implements VMEventListener {
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
+
+    private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
 
     public VMEventListenerImpl(SocketConnection connection, JDWPContext context, JDWPDebuggerController controller) {
         this.connection = connection;
@@ -128,44 +130,57 @@ public class VMEventListenerImpl implements VMEventListener {
     @Override
     public void addFieldBreakpointRequest(FieldBreakpointInfo info) {
         fieldBreakpointInfos.addInfo(info);
+        // OK, flip the assumption and enable the
+        // second-level checking for field breakpoints
+        fieldBreakpointsActive.set(true);
     }
 
     @Override
-    public void removedFieldBreakpoint(int requestId) {
-        fieldBreakpointInfos.removeInfo(requestId);
+    public void removeFieldBreakpoint(int requestId) {
+        if (fieldBreakpointInfos.removeInfo(requestId)) {
+            // when removing the very last field breakpoint
+            // re-establsh the fast-path state
+            fieldBreakpointsActive.set(false);
+        }
     }
 
     @Override
     public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        context.getIds().getIdAsLong(field);
-
-        FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
-        for (FieldBreakpointInfo info : infos) {
-            if (info.isModificationBreakpoint()) {
-                // OK, tell the Debug API to suspend the thread now
-                info.setReceiver(receiver);
-                info.setValue(value);
-                debuggerController.prepareFieldBreakpoint(info);
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
-                return true;
+        if (fieldBreakpointsActive.get()) {
+            return false;
+        } else {
+            FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
+            for (FieldBreakpointInfo info : infos) {
+                if (info.isModificationBreakpoint()) {
+                    // OK, tell the Debug API to suspend the thread now
+                    info.setReceiver(receiver);
+                    info.setValue(value);
+                    debuggerController.prepareFieldBreakpoint(info);
+                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     @Override
     public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
-        for (FieldBreakpointInfo info : infos) {
-            if (info.isAccessBreakpoint()) {
-                // OK, tell the Debug API to suspend the thread now
-                info.setReceiver(receiver);
-                debuggerController.prepareFieldBreakpoint(info);
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
-                return true;
+        if (fieldBreakpointsActive.get()) {
+            return false;
+        } else {
+            FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
+            for (FieldBreakpointInfo info : infos) {
+                if (info.isAccessBreakpoint()) {
+                    // OK, tell the Debug API to suspend the thread now
+                    info.setReceiver(receiver);
+                    debuggerController.prepareFieldBreakpoint(info);
+                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     @Override

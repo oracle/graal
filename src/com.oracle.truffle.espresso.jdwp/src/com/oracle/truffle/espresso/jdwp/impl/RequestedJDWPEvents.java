@@ -280,7 +280,7 @@ public class RequestedJDWPEvents {
                         break;
                     case FIELD_ACCESS:
                     case FIELD_MODIFICATION:
-                        eventListener.removedFieldBreakpoint(requestFilter.getRequestId());
+                        eventListener.removeFieldBreakpoint(requestFilter.getRequestId());
                         break;
                     case CLASS_PREPARE:
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());
