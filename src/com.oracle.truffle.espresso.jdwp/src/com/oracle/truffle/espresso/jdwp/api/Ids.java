@@ -32,7 +32,7 @@ import java.lang.ref.WeakReference;
  */
 public class Ids<T> {
 
-    private static volatile long uniqueID = 1;
+    private volatile long uniqueID = 1;
 
     /**
      * All entities stored while communicating with the debugger.
