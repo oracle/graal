@@ -57,6 +57,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.hotspot.BigIntegerSubstitutionNode;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
@@ -75,6 +76,7 @@ import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AESCryptNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSnippets;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
+import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
 import org.graalvm.compiler.hotspot.replacements.CipherNode;
 import org.graalvm.compiler.hotspot.replacements.CipherSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
@@ -217,6 +219,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected AESCryptSnippets.Templates aesCryptSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
+    protected BigIntegerSnippets.Templates bigIntegerSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -249,6 +252,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
         cipherSnippets = new CipherSnippets.Templates(options, factories, providers, target);
         aesCryptSnippets = new AESCryptSnippets.Templates(options, factories, providers, target);
+        bigIntegerSnippets = new BigIntegerSnippets.Templates(options, factories, providers, target);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
@@ -440,10 +444,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                     aesCryptSnippets.lower((AESCryptNode) n, tool);
                 }
+            } else if (n instanceof BigIntegerSubstitutionNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    bigIntegerSnippets.lower((BigIntegerSubstitutionNode) n, tool);
+                }
             } else {
                 super.lower(n, tool);
             }
         }
+
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
