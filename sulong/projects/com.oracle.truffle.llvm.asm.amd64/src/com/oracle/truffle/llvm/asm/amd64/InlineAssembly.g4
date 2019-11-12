@@ -898,3 +898,5 @@ HEX_NUMBER : '0x' HEX_DIGIT+;
 NUMBER : '-'? DIGIT+;
 
 WS : ( ' ' | '\t' )+ -> skip;
+COMMENT : '/*' .*? '*/' -> skip;
+LINE_COMMENT : '#' ~[\r\n]* -> skip;
