@@ -57,6 +57,11 @@ public interface ComponentCatalog extends ComponentCollection {
 
     DownloadInterceptor getDownloadInterceptor();
 
+    /**
+     * @return True, if emote catalogs are enabled.
+     */
+    boolean isRemoteEnabled();
+
     public interface DownloadInterceptor {
         /**
          * Configures the downloader, as appropriate for the catalog item. Note that the Catalog may

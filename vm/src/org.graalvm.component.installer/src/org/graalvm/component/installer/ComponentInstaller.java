@@ -302,13 +302,6 @@ public class ComponentInstaller {
         }
         if (input.hasOption(Commands.OPTION_URLS)) {
             srcCount++;
-            // catalogs are allowed to resolve dependnencies for files
-            if (input.hasOption(Commands.OPTION_CATALOG)) {
-                srcCount++;
-            }
-            if (input.hasOption(Commands.OPTION_FOREIGN_CATALOG)) {
-                srcCount++;
-            }
         }
         if (srcCount > 1) {
             error("ERROR_MultipleSourcesUnsupported");
@@ -341,6 +334,7 @@ public class ComponentInstaller {
                                 downloader.getOverrideCatalogSpec());
             }
             CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
+            col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
             return col;
         };
         env.setCatalogFactory(cFactory);
@@ -380,7 +374,8 @@ public class ComponentInstaller {
         if (setIterable) {
             env.setFileIterable(new CatalogIterable(env, env));
         }
-        downloader.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG));
+        downloader.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
+                        env.hasOption(Commands.OPTION_FOREIGN_CATALOG));
         return -1;
     }
 
