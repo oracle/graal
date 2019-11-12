@@ -216,9 +216,6 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         @CompilationFinal(dimensions = 1) private final LLVMStatementNode[] statements;
         private final LLVMControlFlowNode termInstruction;
 
-        @CompilationFinal(dimensions = 1) public FrameSlot[] nullableBefore;
-        @CompilationFinal(dimensions = 1) public FrameSlot[] nullableAfter;
-
         private LazyBlock(LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
             super(blockId, blockName);
             this.statements = statements;
