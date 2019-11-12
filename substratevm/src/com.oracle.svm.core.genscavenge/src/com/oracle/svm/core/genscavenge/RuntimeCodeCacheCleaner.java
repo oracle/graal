@@ -58,7 +58,7 @@ public class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     }
 
     private static void freeMemory(CodeInfo codeInfo) {
-        boolean removed = RuntimeCodeInfoMemory.singleton().remove(codeInfo);
+        boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
         RuntimeCodeInfoAccess.releaseMethodInfoMemory(codeInfo);
     }
