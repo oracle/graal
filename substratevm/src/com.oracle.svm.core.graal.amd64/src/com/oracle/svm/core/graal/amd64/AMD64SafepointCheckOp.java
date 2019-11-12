@@ -36,6 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 /**
  * Compact instruction for {@link SafepointCheckNode}.
@@ -53,7 +54,14 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
         SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
-        masm.subl(new AMD64Address(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())), 1);
+        int safepointRequestedOffset = Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset());
+        AMD64Address safepointRequested = new AMD64Address(threadRegister.getThreadRegister(), safepointRequestedOffset);
+        if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+            masm.subl(safepointRequested, 1);
+        } else {
+            // Ensuring safepointRequested offset fits a byte would make for a smaller instruction
+            masm.cmpl(safepointRequested, 0);
+        }
     }
 
     public AMD64Assembler.ConditionFlag getConditionFlag() {

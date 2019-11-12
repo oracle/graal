@@ -36,6 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -61,7 +62,9 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);
             masm.subs(safepointSize, scratch, scratch, 1);
-            masm.str(safepointSize, scratch, safepointAddress);
+            if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+                masm.str(safepointSize, scratch, safepointAddress);
+            }
         }
     }
 

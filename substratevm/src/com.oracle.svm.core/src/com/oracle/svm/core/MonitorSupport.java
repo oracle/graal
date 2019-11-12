@@ -150,7 +150,7 @@ public class MonitorSupport {
     @RestrictHeapAccess(reason = "No longer uninterruptible", overridesCallers = true, access = Access.UNRESTRICTED)
     @SuppressWarnings("try")
     public static void monitorEnterWithoutBlockingCheck(Object obj) {
-        assert ThreadingSupportImpl.isRecurringCallbackPaused();
+        assert !ThreadingSupportImpl.isRecurringCallbackSupported() || ThreadingSupportImpl.isRecurringCallbackPaused();
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* Synchronization is a no-op in single threaded mode. */
@@ -202,7 +202,7 @@ public class MonitorSupport {
     @RestrictHeapAccess(reason = "No longer uninterruptible", overridesCallers = true, access = Access.UNRESTRICTED)
     @SuppressWarnings("try")
     private static void monitorExit0(Object obj) {
-        assert ThreadingSupportImpl.isRecurringCallbackPaused();
+        assert !ThreadingSupportImpl.isRecurringCallbackSupported() || ThreadingSupportImpl.isRecurringCallbackPaused();
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* Synchronization is a no-op in single threaded mode. */
