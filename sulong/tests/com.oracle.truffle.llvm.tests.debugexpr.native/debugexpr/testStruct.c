@@ -45,6 +45,12 @@ void printPoint(struct Point *p) {
   printf("Point: x=%i, y=%i", p->x, p->y);
 }
 
+// on some platforms sqrt is a macro or an intrinsic
+// define a new function here so we can call it reliably from the debugger
+double mySqrt(double value) {
+  return sqrt(value);
+}
+
 double getLineLength(struct Line *l) {
   int difX = l->end.x - l->start.x;
   int difY = l->end.y - l->start.y;
