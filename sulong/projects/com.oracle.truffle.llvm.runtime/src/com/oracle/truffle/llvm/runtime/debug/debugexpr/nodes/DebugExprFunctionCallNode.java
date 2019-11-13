@@ -69,12 +69,17 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 try {
                     Object member = library.readMember(vars, functionName);
                     try {
+                        System.out.println("\n In getType of ExprFunctionCallNode. \n");
                         LLVMFunctionDescriptor ldv = (LLVMFunctionDescriptor) member;
+                        System.out.println("The LLVMFunctionDescriptor is: " + ldv);
                         Type returnType = ldv.getType().getReturnType();
+                        System.out.println("The returnType is: " + returnType);
                         DebugExprType t = DebugExprType.getTypeFromLLVMType(returnType);
+                        System.out.println("The DebugExprType is: " + t);
                         return t;
                     } catch (ClassCastException e) {
-
+                        System.out.println("\n In ClassCastException of getType of ExprFunctionCallNode. \n");
+                        System.out.println("The exception is: " + e.getMessage());
                     }
                     throw DebugExprException.create(this, "no type found for function " + functionName);
                 } catch (UnsupportedMessageException e) {
