@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
@@ -31,6 +32,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -243,6 +245,39 @@ public final class Field extends Member<Type> implements FieldRef {
     @Override
     public void setValue(Object self, Object value) {
         set((StaticObject) self, value);
+    }
+
+    private FieldBreakpointInfo[] infos = new FieldBreakpointInfo[0];
+
+    @Override
+    public FieldBreakpointInfo[] getFieldBreakpointInfos() {
+        return infos;
+    }
+
+    @Override
+    public void addFieldBreakpointInfo(FieldBreakpointInfo info) {
+        boolean added = false;
+        for (int i = 0; i < infos.length; i++) {
+            if (infos[i] == null) {
+                added = true;
+                infos[i] = info;
+            }
+        }
+        if (!added) {
+            FieldBreakpointInfo[] temp = new FieldBreakpointInfo[infos.length + 1];
+            System.arraycopy(infos, 0, temp, 0, infos.length);
+            temp[infos.length] = info;
+            infos = temp;
+        }
+    }
+
+    @Override
+    public void removeFieldBreakpointInfo(int requestId) {
+        for (int i = 0; i < infos.length; i++) {
+            if (infos[i].getRequestId() == requestId) {
+                infos[i] = null;
+            }
+        }
     }
 
     //endregion jdwp-specific

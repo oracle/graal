@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
+
 /**
  * Interface representing a Field in a running program.
  */
@@ -79,4 +81,10 @@ public interface FieldRef {
      * @param value the value to set
      */
     void setValue(Object self, Object value);
+
+    FieldBreakpointInfo[] getFieldBreakpointInfos();
+
+    void addFieldBreakpointInfo(FieldBreakpointInfo info);
+
+    void removeFieldBreakpointInfo(int requestId);
 }

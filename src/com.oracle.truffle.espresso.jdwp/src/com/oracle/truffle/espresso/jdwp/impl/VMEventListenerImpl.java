@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -47,7 +48,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final JDWPDebuggerController debuggerController;
     private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
-    private final FieldBreakpointInfos fieldBreakpointInfos = new FieldBreakpointInfos();
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
@@ -127,29 +127,30 @@ public final class VMEventListenerImpl implements VMEventListener {
         breakpoint.dispose();
     }
 
+    private static volatile int fieldBreakpointCount;
+
     @Override
-    public void addFieldBreakpointRequest(FieldBreakpointInfo info) {
-        fieldBreakpointInfos.addInfo(info);
-        // OK, flip the assumption and enable the
-        // second-level checking for field breakpoints
+    public void increaseFieldBreakpointCount() {
+        fieldBreakpointCount++;
         fieldBreakpointsActive.set(true);
     }
 
     @Override
-    public void removeFieldBreakpoint(int requestId) {
-        if (fieldBreakpointInfos.removeInfo(requestId)) {
-            // when removing the very last field breakpoint
-            // re-establsh the fast-path state
+    public void decreaseFieldBreakpointCount() {
+        fieldBreakpointCount--;
+        if (fieldBreakpointCount <= 0) {
+            fieldBreakpointCount = 0;
             fieldBreakpointsActive.set(false);
         }
     }
 
     @Override
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        if (fieldBreakpointsActive.get()) {
+        if (!fieldBreakpointsActive.get()) {
             return false;
         } else {
-            FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
+            FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
             for (FieldBreakpointInfo info : infos) {
                 if (info.isModificationBreakpoint()) {
                     // OK, tell the Debug API to suspend the thread now
@@ -165,11 +166,12 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        if (fieldBreakpointsActive.get()) {
+        if (!fieldBreakpointsActive.get()) {
             return false;
         } else {
-            FieldBreakpointInfo[] infos = fieldBreakpointInfos.getInfos(field);
+            FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
             for (FieldBreakpointInfo info : infos) {
                 if (info.isAccessBreakpoint()) {
                     // OK, tell the Debug API to suspend the thread now

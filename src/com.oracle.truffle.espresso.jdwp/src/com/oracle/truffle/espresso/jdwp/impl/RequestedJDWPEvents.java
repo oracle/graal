@@ -116,14 +116,16 @@ public class RequestedJDWPEvents {
                 FieldBreakpointInfo fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setAccessBreakpoint();
-                eventListener.addFieldBreakpointRequest(fieldBreakpointInfo);
+                fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
             case FIELD_MODIFICATION:
                 fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setModificationBreakpoint();
-                eventListener.addFieldBreakpointRequest(fieldBreakpointInfo);
+                fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
             case THREAD_START:
@@ -280,7 +282,9 @@ public class RequestedJDWPEvents {
                         break;
                     case FIELD_ACCESS:
                     case FIELD_MODIFICATION:
-                        eventListener.removeFieldBreakpoint(requestFilter.getRequestId());
+                        FieldBreakpointInfo info = (FieldBreakpointInfo) requestFilter.getBreakpointInfo();
+                        info.getField().removeFieldBreakpointInfo(requestFilter.getRequestId());
+                        eventListener.decreaseFieldBreakpointCount();
                         break;
                     case CLASS_PREPARE:
                         eventListener.removeClassPrepareRequest(requestFilter.getRequestId());

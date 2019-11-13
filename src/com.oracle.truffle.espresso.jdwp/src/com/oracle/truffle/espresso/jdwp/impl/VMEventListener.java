@@ -49,10 +49,10 @@ public interface VMEventListener {
 
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame);
 
-    void addFieldBreakpointRequest(FieldBreakpointInfo info);
+    void increaseFieldBreakpointCount();
+    void decreaseFieldBreakpointCount();
     boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value);
     boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
-    void removeFieldBreakpoint(int requestId);
 
     void fieldAccessBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);
     void fieldModificationBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame);
