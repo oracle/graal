@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -120,7 +119,7 @@ public abstract class LibraryFactory<T extends Library> {
     private static void clearNonTruffleClasses(Map<Class<?>, ?> map) {
         Class<?>[] classes = map.keySet().toArray(new Class<?>[0]);
         for (Class<?> clazz : classes) {
-            if (TruffleJDKServices.isNonTruffleClass(clazz)) {
+            if (LibraryAccessor.jdkServicesAccessor().isNonTruffleClass(clazz)) {
                 map.remove(clazz);
             }
         }

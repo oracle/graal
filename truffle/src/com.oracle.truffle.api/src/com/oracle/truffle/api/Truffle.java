@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.ServiceConfigurationError;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -118,11 +117,11 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleJDKServices.getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
+                List<Iterable<TruffleRuntimeAccess>> loaders = LanguageAccessor.jdkServicesAccessor().getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
                 TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
 
                 if (access != null) {
-                    TruffleJDKServices.exportTo(access.getClass());
+                    LanguageAccessor.jdkServicesAccessor().exportTo(access.getClass());
                     return access.getRuntime();
                 }
                 return new DefaultTruffleRuntime();

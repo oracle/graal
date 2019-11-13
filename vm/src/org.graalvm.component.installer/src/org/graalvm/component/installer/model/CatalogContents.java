@@ -60,6 +60,8 @@ public final class CatalogContents implements ComponentCatalog {
     private final Verifier capVerifier;
     private final DownloadInterceptor downloadInterceptor;
 
+    private boolean remoteEnabled = true;
+
     /**
      * Allows update to a newer distribution, not just patches. This will cause components from
      * newer GraalVM distributions to be accepted, even though it means a reinstall. Normally just
@@ -113,6 +115,15 @@ public final class CatalogContents implements ComponentCatalog {
             Version civ = v.installVersion();
             return giv.equals(civ);
         }
+    }
+
+    public void setRemoteEnabled(boolean remoteEnabled) {
+        this.remoteEnabled = remoteEnabled;
+    }
+
+    @Override
+    public boolean isRemoteEnabled() {
+        return remoteEnabled;
     }
 
     private ComponentInfo compatibleComponent(List<ComponentInfo> cis, Version.Match versionSelect, boolean fallback) {
@@ -202,6 +213,10 @@ public final class CatalogContents implements ComponentCatalog {
                 return id;
             }
             String shortId = id.substring(l + 1);
+            // special case: if the component is local, do not go to catalogs.
+            if (info.getRemoteURL() == null) {
+                return shortId;
+            }
             try {
                 Collection<ComponentInfo> regs = doLoadComponents(shortId, false, false);
                 if (regs == null) {

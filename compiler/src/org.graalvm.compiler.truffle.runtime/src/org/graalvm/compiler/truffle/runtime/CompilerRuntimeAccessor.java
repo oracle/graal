@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.truffle.api.impl.Accessor;
 
-public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
+final class CompilerRuntimeAccessor extends Accessor {
 
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PartialEvaluator getPartialEvaluator();
+    private static final CompilerRuntimeAccessor ACCESSOR = new CompilerRuntimeAccessor();
 
-    void initializeAtRuntime();
+    private CompilerRuntimeAccessor() {
+    }
+
+    static JDKSupport jdkServicesAccessor() {
+        return ACCESSOR.jdkSupport();
+    }
 }

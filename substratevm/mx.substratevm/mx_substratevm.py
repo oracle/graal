@@ -299,15 +299,18 @@ def _vm_home(config):
     return _vm_homes[config]
 
 
+_graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
+_graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
+
 _graalvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=['polyglot', 'native-image-configure', 'gu'],
-                                skip_libraries=['native-image-agent'],
+                                force_bash_launchers=_graalvm_force_bash_launchers,
+                                skip_libraries=_graalvm_skip_libraries,
                                 exclude_components=_graalvm_exclude_components)
 _graalvm_jvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=True,
-                                skip_libraries=True,
-                                exclude_components=_graalvm_exclude_components)
+                                    force_bash_launchers=True,
+                                    skip_libraries=True,
+                                    exclude_components=_graalvm_exclude_components)
 
 graalvm_configs = [_graalvm_config]
 graalvm_jvm_configs = [_graalvm_jvm_config]
@@ -651,9 +654,10 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
         mx.abort('JS benchmark ' + name + ' failed')
 
 
-_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpolyglot=True,
-                                   force_bash_launchers=['polyglot', 'native-image-configure', 'js'],
-                                   skip_libraries=['native-image-agent'],
+_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'],
+                                   disable_libpolyglot=True,
+                                   force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
+                                   skip_libraries=_graalvm_skip_libraries,
                                    exclude_components=_graalvm_exclude_components)
 
 
@@ -1288,7 +1292,7 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    mx.run_maven(['package'], cwd=proj_dir, env=env)
+    mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 

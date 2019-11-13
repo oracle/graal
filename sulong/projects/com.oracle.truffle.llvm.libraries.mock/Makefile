@@ -30,22 +30,34 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/${LIBSULONG}
+default: bin/${LIBPOLYGLOT_MOCK}
 
 CLANG?=clang
 
+CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.mock
+
 ifeq ($(OS), darwin)
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
 LDFLAGS=-dynamiclib -g
-bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
+bin/${LIBPOLYGLOT_MOCK}: LDFLAGS+=-install_name ${LIBPOLYGLOT_MOCK}
 else
+CLANG_PREFIX=
 LDFLAGS=-shared -g
+endif
+
+ifeq ($(OS), darwin)
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+else
+CLANG_PREFIX=
 endif
 
 LDFLAGS+= ${EXTRA_LDFLAGS}
 CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
-bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o bin/globals.o
-	$(QUIETLY) $(CLANG) ${LDFLAGS} -lm -o $@ $+
+bin/polyglot-mock.o: CFLAGS+=-Wno-return-type
+
+bin/${LIBPOLYGLOT_MOCK}: bin/polyglot-mock.o
+	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin

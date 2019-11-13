@@ -54,7 +54,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 
 final class HostClassCache {
 
@@ -73,7 +72,7 @@ final class HostClassCache {
         this.listAccess = apiAccess.isListAccessible(hostAccess);
         this.apiAccess = apiAccess;
         this.targetMappings = groupMappings(apiAccess, conf);
-        this.unnamedModule = TruffleJDKServices.getUnnamedModule(classLoader);
+        this.unnamedModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
     }
 
     Object getUnnamedModule() {
