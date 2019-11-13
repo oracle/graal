@@ -151,6 +151,11 @@ final class NodeAccessor extends Accessor {
             rootNode.sourceVM = null;
         }
 
+        @Override
+        public void applyVMObject(RootNode from, RootNode to) {
+            to.sourceVM = from.sourceVM;
+        }
+
     }
 
 }

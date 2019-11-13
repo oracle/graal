@@ -161,6 +161,8 @@ public abstract class Accessor {
 
         public abstract void makeSharableRoot(RootNode rootNode);
 
+        public abstract void applyVMObject(RootNode from, RootNode to);
+
     }
 
     public abstract static class SourceSupport {

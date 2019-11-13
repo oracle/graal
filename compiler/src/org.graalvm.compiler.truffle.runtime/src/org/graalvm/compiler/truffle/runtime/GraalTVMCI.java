@@ -192,4 +192,9 @@ final class GraalTVMCI extends TVMCI {
         }
     }
 
+    @Override
+    protected void applyVMObject(@SuppressWarnings("unused") RootNode from, RootNode to) {
+        super.applyVMObject(from, to);
+    }
+
 }
