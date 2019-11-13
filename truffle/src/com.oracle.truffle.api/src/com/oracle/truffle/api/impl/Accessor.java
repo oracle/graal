@@ -583,6 +583,8 @@ public abstract class Accessor {
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
+        public abstract Collection<CallTarget> getLoadedCallTargets(Object instrumentationHandler);
+
     }
 
     public abstract static class FrameSupport {
@@ -609,7 +611,8 @@ public abstract class Accessor {
         private static final Accessor.EngineSupport ENGINE;
 
         static {
-            // Eager load all accessors so the above fields are all set and all methods are usable
+            // Eager load all accessors so the above fields are all set and all methods are
+            // usable
             LANGUAGE = loadSupport("com.oracle.truffle.api.LanguageAccessor$LanguageImpl");
             NODES = loadSupport("com.oracle.truffle.api.nodes.NodeAccessor$AccessNodes");
             INSTRUMENT = loadSupport("com.oracle.truffle.api.instrumentation.InstrumentAccessor$InstrumentImpl");

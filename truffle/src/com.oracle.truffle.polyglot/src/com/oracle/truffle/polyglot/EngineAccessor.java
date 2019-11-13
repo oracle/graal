@@ -216,7 +216,7 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
-            return targetContext.parseCached(sourceContext.language, source, argumentNames);
+            return targetContext.parseCached(sourceContext.language, source, argumentNames, true);
         }
 
         @Override

@@ -84,6 +84,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -355,6 +356,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = EngineAccessor.ACCESSOR.getCompilerOptions();
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+    }
+
+    Collection<CallTarget> findActiveCallTargets() {
+        return INSTRUMENT.getLoadedCallTargets(instrumentationHandler);
     }
 
     static Collection<Engine> findActiveEngines() {
