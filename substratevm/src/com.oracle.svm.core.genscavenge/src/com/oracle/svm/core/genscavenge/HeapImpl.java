@@ -140,6 +140,13 @@ public class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInImageHeap(Pointer pointer) {
+        return NativeImageInfo.isInReadOnlyPrimitivePartition(pointer) || NativeImageInfo.isInReadOnlyReferencePartition(pointer) ||
+                        NativeImageInfo.isInWritablePrimitivePartition(pointer) || NativeImageInfo.isInWritableReferencePartition(pointer);
+    }
+
+    @Override
     public void suspendAllocation() {
         ThreadLocalAllocation.suspendThreadLocalAllocation();
     }

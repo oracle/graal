@@ -49,6 +49,9 @@ import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -81,7 +84,8 @@ public class IsolatedClassLoaderTest {
 
         final Method loadersMethod = locatorClass.getDeclaredMethod("locatorOrDefaultLoaders");
         ReflectionUtils.setAccessible(loadersMethod, true);
-        List<?> loaders = (List<?>) loadersMethod.invoke(null);
+        @SuppressWarnings("unchecked")
+        Set<ClassLoader> loaders = ((List<Supplier<ClassLoader>>) loadersMethod.invoke(null)).stream().map(Supplier::get).collect(Collectors.toSet());
         assertTrue("Contains locator's loader: " + loaders, loaders.contains(loader));
         assertTrue("Contains system loader: " + loader, loaders.contains(ClassLoader.getSystemClassLoader()));
     }

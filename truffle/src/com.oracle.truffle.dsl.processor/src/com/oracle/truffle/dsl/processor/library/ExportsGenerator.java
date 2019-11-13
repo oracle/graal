@@ -487,6 +487,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     }
                 }
             }
+            if (cachedExecute == null) {
+                throw new AssertionError("execute not found");
+            }
             if (message.getName().equals(ACCEPTS)) {
                 if (export.getExportsLibrary().isFinalReceiver() && (cachedSpecializedNode == null || !cachedSpecializedNode.needsRewrites(context))) {
                     cachedExecute.getModifiers().add(Modifier.STATIC);

@@ -79,6 +79,34 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMSqrtVectorNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMDoubleVector doVector(LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double[] result = new double[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                result[i] = Math.sqrt(value.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doVector(LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float[] result = new float[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                result[i] = (float) Math.sqrt(value.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLog extends LLVMBuiltin {
 
         @Specialization

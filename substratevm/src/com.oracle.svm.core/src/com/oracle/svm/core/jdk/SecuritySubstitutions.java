@@ -41,6 +41,7 @@ import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
@@ -49,6 +50,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
@@ -394,12 +396,27 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
     }
 }
 
+@TargetClass(value = java.security.Policy.class, innerClass = "PolicyInfo")
+final class Target_java_security_Policy_PolicyInfo {
+}
+
 @TargetClass(java.security.Policy.class)
 final class Target_java_security_Policy {
+
+    @Delete @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private static AtomicReference<?> policy;
+
+    @Delete @TargetElement(onlyWith = JDK11OrLater.class) //
+    private static Target_java_security_Policy_PolicyInfo policyInfo;
 
     @Substitute
     private static Policy getPolicyNoCheck() {
         return AllPermissionsPolicy.SINGLETON;
+    }
+
+    @Substitute
+    private static boolean isSet() {
+        return true;
     }
 
     @Substitute

@@ -119,8 +119,7 @@ public abstract class LibraryFactory<T extends Library> {
     private static void clearNonTruffleClasses(Map<Class<?>, ?> map) {
         Class<?>[] classes = map.keySet().toArray(new Class<?>[0]);
         for (Class<?> clazz : classes) {
-            // classes on the boot loader should not be cleared
-            if (clazz.getClassLoader() != null) {
+            if (LibraryAccessor.jdkServicesAccessor().isNonTruffleClass(clazz)) {
                 map.remove(clazz);
             }
         }

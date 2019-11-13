@@ -29,14 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAsForeignNode extends LLVMNode {
@@ -63,27 +67,27 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         return LLVMAsForeignNodeGen.create(true, null);
     }
 
-    @Specialization(guards = "isForeign(pointer)")
-    Object doForeign(LLVMManagedPointer pointer) {
-
-        Object foreign = pointer.getObject();
-
-        if (foreign instanceof LLVMTypedForeignObject) {
-            return ((LLVMTypedForeignObject) foreign).getForeign();
+    @Specialization
+    Object doForeign(Object pointer,
+                    @Cached("createClassProfile()") ValueProfile objectProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile foreignProfile,
+                    @Cached BranchProfile nonForeignProfile) {
+        if (LLVMManagedPointer.isInstance(pointer)) {
+            LLVMManagedPointer managed = LLVMManagedPointer.cast(pointer);
+            if (managed.getOffset() == 0) {
+                Object object = objectProfile.profile(managed.getObject());
+                if (foreignProfile.profile(object instanceof LLVMTypedForeignObject)) {
+                    return ((LLVMTypedForeignObject) object).getForeign();
+                } else if (!(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object)) {
+                    return object;
+                }
+            }
         }
-        return foreign;
-    }
-
-    @Fallback
-    Object doOther(@SuppressWarnings("unused") Object pointer) {
+        nonForeignProfile.enter();
         if (allowNonForeign) {
             return null;
         } else {
             throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
         }
-    }
-
-    protected static boolean isForeign(LLVMManagedPointer pointer) {
-        return pointer.getOffset() == 0 && (pointer.getObject() instanceof LLVMTypedForeignObject || LLVMExpressionNode.notLLVM(pointer.getObject()));
     }
 }

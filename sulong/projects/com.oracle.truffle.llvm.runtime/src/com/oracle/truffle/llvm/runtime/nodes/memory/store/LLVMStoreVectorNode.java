@@ -105,10 +105,17 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     protected void writeVector(LLVMNativePointer address, LLVMI1Vector vector) {
         assert vector.getLength() == getVectorLength();
         LLVMMemory memory = getLLVMMemoryCached();
-        long currentPtr = address.asNative();
-        for (int i = 0; i < getVectorLength(); i++) {
-            memory.putI1(currentPtr, vector.getValue(i));
-            currentPtr += I1_SIZE_IN_BYTES;
+        long basePtr = address.asNative();
+        for (int byteOffset = 0; byteOffset < (getVectorLength() / 8) + 1; byteOffset++) {
+            long byteAddr = basePtr + byteOffset;
+            int b = memory.getI8(byteAddr);
+            for (int bitOffset = 0; bitOffset < 8 && ((byteOffset * 8) + bitOffset) < getVectorLength(); bitOffset++) {
+                int mask = (1 << bitOffset) & 0xFF;
+                int maskInvert = (~mask) & 0xFF;
+                int v = vector.getValue((byteOffset * 8) + bitOffset) ? 1 : 0;
+                b = (b & maskInvert) | ((v << bitOffset) & mask);
+            }
+            memory.putI8(byteAddr, (byte) b);
         }
     }
 

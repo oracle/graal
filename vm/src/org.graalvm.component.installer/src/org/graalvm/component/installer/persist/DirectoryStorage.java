@@ -148,10 +148,21 @@ public class DirectoryStorage implements ManagementStorage {
     private static final String ENTERPRISE_EDITION = "ee"; // NOI18N
     private static final String VM_ENTERPRISE_COMPONENT = "vm-enterprise:"; // NOI18N
 
+    private String javaVersion;
+
     public DirectoryStorage(Feedback feedback, Path storagePath, Path graalHomePath) {
         this.feedback = feedback;
         this.registryPath = storagePath;
         this.graalHomePath = graalHomePath;
+        this.javaVersion = "" + SystemUtils.getJavaMajorVersion(); // NOI18N
+    }
+
+    public String getJavaVersion() {
+        return javaVersion;
+    }
+
+    public void setJavaVersion(String javaVersion) {
+        this.javaVersion = javaVersion;
     }
 
     @Override
@@ -208,6 +219,7 @@ public class DirectoryStorage implements ManagementStorage {
                 graalAttributes.put(CommonConstants.CAP_EDITION, CommonConstants.EDITION_CE);
             }
         }
+        graalAttributes.putIfAbsent(CommonConstants.CAP_JAVA_VERSION, javaVersion);
         return graalAttributes;
     }
 

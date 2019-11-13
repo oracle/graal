@@ -39,8 +39,8 @@ while [[ -h "$source" ]] ; do
 done
 location="$( cd -P "$( dirname "$source" )" && pwd )"
 
-# we assume we are in `jre/lib/svm/bin`
-graalvm_home="${location}/../../../.."
+# we assume we are in `lib/svm/bin`
+graalvm_home="${location}/../../.."
 
 function usage_and_exit() {
     echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
@@ -83,7 +83,7 @@ function common() {
         cmd_line+=("--no-server")
     fi
 
-    if [[ -f "${graalvm_home}/jre/lib/svm/builder/svm-enterprise.jar" ]]; then
+    if [[ -f "${graalvm_home}/lib/svm/builder/svm-enterprise.jar" ]]; then
         cmd_line+=("-g")
     fi
 }

@@ -1,6 +1,7 @@
 # GraalVM Support for VS Code
 
 A VS Code extension providing the basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org).
+The extension is Technology Preview.
 
 ## Features
 
@@ -50,3 +51,6 @@ This extension contributes the following settings:
 
 * __graalvm.home__ - Path to GraalVM installation.
 
+## Privacy Policy
+
+Please read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.

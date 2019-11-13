@@ -92,7 +92,7 @@ public class LayoutProcessor extends AbstractProcessor {
 
             final LayoutModel layout = parser.build();
 
-            final LayoutGenerator generator = new LayoutGenerator(layout);
+            final LayoutGenerator generator = new LayoutGenerator(layout, processingEnv);
 
             final JavaFileObject output = processingEnv.getFiler().createSourceFile(generator.getGeneratedClassName(), layoutElement);
 

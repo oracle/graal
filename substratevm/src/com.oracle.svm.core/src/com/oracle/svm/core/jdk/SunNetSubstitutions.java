@@ -26,11 +26,15 @@ package com.oracle.svm.core.jdk;
 
 import java.io.FileDescriptor;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.net.SocketFlow;
 
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(className = "sun.net.ExtendedOptionsImpl", onlyWith = JDK8OrEarlier.class)
 final class Target_sun_net_ExtendedOptionsImpl {
 

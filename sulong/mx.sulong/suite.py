@@ -397,6 +397,34 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.llvm.tests.llirtestgen" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.llirtestgen.generated" : {
+      "class": "GeneratedTestSuite",
+      "subDir" : "tests",
+      "native" : True,
+      "vpath" : True,
+      "variants" : ["O0"],
+      "buildDependencies" : [
+        "LLIR_TEST_GEN",
+      ],
+      "buildEnv" : {
+        "LDFLAGS": "-lm",
+        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+      },
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.llvm.tests.pipe.native" : {
       "subDir" : "tests",
       "native" : True,
@@ -443,13 +471,33 @@ suite = {
       },
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.libraries.mock" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:polyglot-mock>",
+      ],
+      "buildDependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "buildEnv" : {
+        "LIBPOLYGLOT_MOCK" : "<lib:polyglot-mock>",
+        "CLANG" : "<toolchainGetToolPath:native,CC>",
+        "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
+        "OS" : "<os>",
+      },
+      "license" : "BSD-new",
+    },
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
       "results" : [
         "bin/<lib:sulong>",
-        "bin/<lib:polyglot-mock>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
@@ -574,6 +622,27 @@ suite = {
       "variants" : ["O0"],
       "buildEnv" : {
         "OS" : "<os>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      # This should be the O1 variant (and the CFLAGS buildEnv entry
+      # below should be changed to -O1) but it currently breaks the
+      # tests in the project (difference in behavior between O0 and
+      # O1). This issue is related to the vstore.ll.ignored test in
+      # that we should fix it once we have a solution for the general
+      # issue in exeuction mistmatches. Until then the Sulong behavior
+      # is the more accurate one.
+      "variants" : ["O0"],
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -921,12 +990,14 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
@@ -935,6 +1006,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
@@ -948,6 +1020,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           {
             "source_type": "extracted-dependency",
             "dependency": "LLVM_ORG",
@@ -962,6 +1035,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
@@ -1047,6 +1121,16 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "LLIR_TEST_GEN" : {
+      "relpath" : True,
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+
     "SULONG_TEST_SUITES" : {
       "native" : True,
       "relpath" : True,
@@ -1054,8 +1138,10 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",

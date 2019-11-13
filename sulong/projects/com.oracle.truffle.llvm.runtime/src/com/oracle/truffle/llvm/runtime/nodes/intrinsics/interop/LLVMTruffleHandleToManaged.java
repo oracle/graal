@@ -31,15 +31,17 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
@@ -47,9 +49,14 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
     @Specialization
     protected LLVMManagedPointer doIntrinsic(Object rawHandle,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode) {
-        LLVMNativePointer handle = forceAddressNode.executeWithTarget(rawHandle);
-        Object object = context.getManagedObjectForHandle(handle);
-        return LLVMManagedPointer.create(object);
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode,
+                    @CachedLanguage LLVMLanguage language,
+                    @Cached("createBinaryProfile()") ConditionProfile isDerefProfile) {
+        long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
+        if (isDerefProfile.profile(language.getCapability(LLVMMemory.class).isDerefHandleMemory(address))) {
+            return context.getDerefHandleContainer().getValue(address).copy();
+        } else {
+            return context.getHandleContainer().getValue(address).copy();
+        }
     }
 }

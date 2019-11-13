@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
@@ -92,7 +93,7 @@ public final class PosixJavaThreads extends JavaThreads {
                         "PosixJavaThreads.start0: pthread_attr_init");
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()),
-                        "PosixJavaThreads.start0: pthread_attr_init");
+                        "PosixJavaThreads.start0: pthread_attr_setdetachstate");
         UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
         /* If there is a chosen stack size, use it as the stack size. */
         if (threadStackSize.notEqual(WordFactory.zero())) {
@@ -178,7 +179,7 @@ public final class PosixJavaThreads extends JavaThreads {
         @SuppressWarnings("unused")
         static void enter(ThreadStartData data) {
             int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }

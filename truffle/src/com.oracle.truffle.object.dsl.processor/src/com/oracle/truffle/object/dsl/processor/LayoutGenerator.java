@@ -44,6 +44,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -55,9 +56,13 @@ import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
 public class LayoutGenerator {
 
     private final LayoutModel layout;
+    private ProcessingEnvironment processingEnv;
+    private final TypeMirror dispatchDefaultValue;
 
-    public LayoutGenerator(LayoutModel layout) {
+    public LayoutGenerator(LayoutModel layout, ProcessingEnvironment processingEnv) {
         this.layout = layout;
+        this.processingEnv = processingEnv;
+        this.dispatchDefaultValue = processingEnv.getElementUtils().getTypeElement("com.oracle.truffle.api.object.dsl.Layout.DispatchDefaultValue").asType();
     }
 
     public void generate(final PrintStream stream) {
@@ -217,6 +222,14 @@ public class LayoutGenerator {
         }
 
         stream.printf("    public static class %sType extends %s {%n", layout.getName(), typeSuperclass);
+
+        if (!processingEnv.getTypeUtils().isSameType(layout.getDispatch(), dispatchDefaultValue)) {
+            stream.println("        ");
+            stream.println("        @Override");
+            stream.println("        public Class<?> dispatch() {");
+            stream.printf("            return %s.class;%n", layout.getDispatch().toString());
+            stream.println("        }");
+        }
 
         if (layout.hasShapeProperties()) {
             stream.println("        ");

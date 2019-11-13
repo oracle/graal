@@ -174,13 +174,6 @@ public class Option {
             .help("Propagate info about a polymorphic specialize through maximum this many call targets")
             .deprecatedBy("SplittingMaxPropagationDepth"),
 
-        option("TruffleLegacySplitting")
-            .type("Boolean")
-            .category("EXPERT")
-            .def("false")
-            .help("Use legacy splitting heuristic. This option will be removed.")
-            .deprecatedBy("LegacySplitting"),
-
         option("TruffleTraceSplittingSummary")
             .type("Boolean")
             .category("EXPERT")

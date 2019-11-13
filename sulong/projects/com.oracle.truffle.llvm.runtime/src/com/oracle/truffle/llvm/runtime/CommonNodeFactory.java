@@ -254,14 +254,14 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
+    public static LLVMDebugObjectBuilder createDebugStaticValue(LLVMContext context, LLVMExpressionNode valueNode, boolean isGlobal) {
         LLVMDebugValue.Builder toDebugNode = createDebugValueBuilder();
 
         Object value = null;
         if (isGlobal) {
             assert valueNode instanceof LLVMAccessGlobalVariableStorageNode;
             LLVMAccessGlobalVariableStorageNode node = (LLVMAccessGlobalVariableStorageNode) valueNode;
-            value = new LLVMDebugGlobalVariable(node.getDescriptor());
+            value = new LLVMDebugGlobalVariable(node.getDescriptor(), context);
         } else {
             try {
                 value = valueNode.executeGeneric(null);

@@ -65,7 +65,7 @@ import com.oracle.svm.util.ModuleSupport;
 
 @Mojo(name = "native-image", defaultPhase = LifecyclePhase.PACKAGE)
 public class NativeImageMojo extends AbstractMojo {
-    private static final String svmGroupId = "com.oracle.substratevm";
+    private static final String svmGroupId = "org.graalvm.nativeimage";
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)//
     private MavenProject project;

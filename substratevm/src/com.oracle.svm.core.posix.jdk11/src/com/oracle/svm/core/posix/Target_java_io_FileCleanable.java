@@ -26,11 +26,15 @@ package com.oracle.svm.core.posix;
 
 import java.io.IOException;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.headers.Unistd;
 
+@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 @TargetClass(className = "java.io.FileCleanable", onlyWith = JDK11OrLater.class)
 final class Target_java_io_FileCleanable {
 

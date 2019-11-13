@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 /*
  * The parser and lexer need to be generated using 'mx create-asm-parser';
  */
@@ -700,7 +700,7 @@ memory_reference returns [AsmMemoryOperand op] :
     )
     ( '('
       ( operand
-      	                                         { base = $operand.op; } 
+      	                                         { base = $operand.op; }
       )?
       ( ',' operand                              { offset = $operand.op; }
         ( ',' number                             { scale = (int) $number.n; }
@@ -710,7 +710,7 @@ memory_reference returns [AsmMemoryOperand op] :
     )?
   | '('
     ( operand
-      	                                         { base = $operand.op; } 
+      	                                         { base = $operand.op; }
     )?
     ( ',' operand                                { offset = $operand.op; }
       ( ',' number                               { scale = (int) $number.n; }
@@ -903,3 +903,5 @@ HEX_NUMBER : '0x' HEX_DIGIT+;
 NUMBER : '-'? DIGIT+;
 
 WS : ( ' ' | '\t' )+ -> skip;
+COMMENT : '/*' .*? '*/' -> skip;
+LINE_COMMENT : '#' ~[\r\n]* -> skip;

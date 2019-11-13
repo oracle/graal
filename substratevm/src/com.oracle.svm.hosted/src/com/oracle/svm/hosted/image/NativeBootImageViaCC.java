@@ -91,23 +91,27 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
             /*
              * On Linux we use --dynamic-list to ensure only our defined entrypoints end up as
-             * global symbols in the dynamic symbol table of the image.
+             * global symbols in the dynamic symbol table of the image. However, when compiling a
+             * static image these are not needed, and some linkers interpret them wrong, creating a
+             * corrupt binary.
              */
-            try {
-                List<String> exportedSymbols = new ArrayList<>();
-                exportedSymbols.add("{");
-                StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
-                                .filter(ObjectFile.Symbol::isGlobal)
-                                .filter(ObjectFile.Symbol::isDefined)
-                                .map(symbol -> "\"" + symbol.getName() + "\";")
-                                .forEachOrdered(exportedSymbols::add);
-                exportedSymbols.add("};");
-                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                Files.write(exportedSymbolsPath, exportedSymbols);
-                additionalPreOptions.add("-Wl,--dynamic-list");
-                additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-            } catch (IOException e) {
-                VMError.shouldNotReachHere();
+            if (!SubstrateOptions.StaticExecutable.getValue()) {
+                try {
+                    List<String> exportedSymbols = new ArrayList<>();
+                    exportedSymbols.add("{");
+                    StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
+                                    .filter(ObjectFile.Symbol::isGlobal)
+                                    .filter(ObjectFile.Symbol::isDefined)
+                                    .map(symbol -> "\"" + symbol.getName() + "\";")
+                                    .forEachOrdered(exportedSymbols::add);
+                    exportedSymbols.add("};");
+                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                    Files.write(exportedSymbolsPath, exportedSymbols);
+                    additionalPreOptions.add("-Wl,--dynamic-list");
+                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
+                } catch (IOException e) {
+                    VMError.shouldNotReachHere();
+                }
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {

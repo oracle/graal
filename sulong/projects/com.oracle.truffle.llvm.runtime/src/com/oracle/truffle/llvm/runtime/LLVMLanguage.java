@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,6 +45,9 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -68,6 +72,13 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
+    static class GlobalObjectType extends ObjectType {
+        private static final GlobalObjectType INSTANCE = new GlobalObjectType();
+    }
+
+    static final Layout GLOBAL_LAYOUT = Layout.createLayout();
+    Shape emptyGlobalShape = GLOBAL_LAYOUT.createShape(GlobalObjectType.INSTANCE);
+
     static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     static final String LLVM_BITCODE_EXTENSION = "bc";
 
@@ -91,6 +102,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
     public abstract static class Loader implements LLVMCapability {
+        public abstract void loadDefaults(LLVMContext context, Path internalLibraryPath);
 
         public abstract CallTarget load(LLVMContext context, Source source);
     }

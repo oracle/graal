@@ -82,10 +82,6 @@ public final class VectorType extends AggregateType {
 
     @Override
     public Type getElementType(long index) {
-        if (index >= length) {
-            CompilerDirectives.transferToInterpreter();
-            throw new ArrayIndexOutOfBoundsException();
-        }
         return getElementType();
     }
 

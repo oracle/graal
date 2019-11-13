@@ -45,13 +45,12 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedCompilationProfile;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -136,9 +135,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         if (firstCompilation == 0) {
             firstCompilation = System.nanoTime();
         }
-        OptimizedCompilationProfile profile = target.getCompilationProfile();
-        if (profile != null) {
-            timeToQueue.accept(System.nanoTime() - profile.getTimestamp());
+        long timeStamp = target.getInitializedTimestamp();
+        if (timeStamp != 0) {
+            timeToQueue.accept(System.nanoTime() - timeStamp);
         }
     }
 
@@ -157,9 +156,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
-        OptimizedCompilationProfile profile = target.getCompilationProfile();
-        if (profile != null) {
-            timeToCompilation.accept(times.compilationStarted - profile.getTimestamp());
+        long timeStamp = target.getInitializedTimestamp();
+        if (timeStamp != 0) {
+            timeToCompilation.accept(times.compilationStarted - timeStamp);
         }
     }
 

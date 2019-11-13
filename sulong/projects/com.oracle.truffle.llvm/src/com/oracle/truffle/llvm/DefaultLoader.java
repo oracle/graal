@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -60,6 +61,11 @@ public final class DefaultLoader extends Loader {
         }
         parserResults.addAll(cachedDefaultDependencies);
         return cachedSulongLibraries;
+    }
+
+    @Override
+    public void loadDefaults(LLVMContext context, Path internalLibraryPath) {
+        new Runner(context, this).loadDefaults(internalLibraryPath);
     }
 
     @Override

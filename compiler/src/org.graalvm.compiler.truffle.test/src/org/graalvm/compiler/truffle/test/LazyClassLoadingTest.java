@@ -63,14 +63,14 @@ import jdk.vm.ci.services.JVMCIServiceLocator;
  * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
  * Graal should not be initialized unless there is an actual compilation request.
  */
-public class LazyInitializationTest {
+public class LazyClassLoadingTest {
 
     private final Class<?> hotSpotVMEventListener;
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
     private final Class<?> hotSpotGraalJVMCIServiceLocatorShared;
     private final Class<?> jvmciVersionCheck;
 
-    public LazyInitializationTest() {
+    public LazyClassLoadingTest() {
         hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
         hotSpotGraalCompilerFactoryOptions = forNameOrNull("org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory$Options");
         hotSpotGraalJVMCIServiceLocatorShared = forNameOrNull("org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator$Shared");
@@ -86,10 +86,16 @@ public class LazyInitializationTest {
     }
 
     @Test
-    public void testSLTck() throws IOException, InterruptedException {
+    public void testClassLoading() throws IOException, InterruptedException {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
+        runTest(LazyClassLoadingTargetNegativeTest.class, false);
+        runTest(LazyClassLoadingTargetPositiveTest.class, true);
+    }
+
+    private void runTest(Class<?> testClass, boolean expectGraalClassesLoaded) throws IOException, InterruptedException, AssertionError {
+        List<String> vmCommandLine = getVMCommandLine();
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             vmArgs.add("-XX:+TraceClassLoading");
@@ -104,7 +110,7 @@ public class LazyInitializationTest {
         // Remove -Dgraal.CompilationFailureAction as it drags in CompilationWrapper
         vmArgs = vmArgs.stream().filter(e -> !e.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList());
 
-        Subprocess proc = SubprocessUtil.java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", "com.oracle.truffle.sl.test.SLFactorialTest");
+        Subprocess proc = SubprocessUtil.java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
         int exitCode = proc.exitCode;
         if (exitCode != 0) {
             Assert.fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
@@ -130,7 +136,16 @@ public class LazyInitializationTest {
         }
 
         try {
-            checkAllowedGraalClasses(loadedGraalClassNames);
+            List<String> graalClasses = filterGraalCompilerClasses(loadedGraalClassNames);
+            if (expectGraalClassesLoaded) {
+                if (graalClasses.isEmpty()) {
+                    Assert.fail(String.format("Failure for command:%n%s", proc) + ". Expected Graal classes loaded but weren't.");
+                }
+            } else {
+                if (!graalClasses.isEmpty()) {
+                    Assert.fail(String.format("Failure for command:%n%s", proc) + ". Loaded forbidden classes:\n    " + graalClasses.stream().collect(Collectors.joining("\n    ")) + "\n");
+                }
+            }
         } catch (AssertionError e) {
             throw new AssertionError(String.format("Failure for command:%n%s", proc), e);
         }
@@ -170,7 +185,7 @@ public class LazyInitializationTest {
         }
     }
 
-    private void checkAllowedGraalClasses(List<String> loadedGraalClassNames) {
+    private List<String> filterGraalCompilerClasses(List<String> loadedGraalClassNames) {
         HashSet<Class<?>> whitelist = new HashSet<>();
         List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
@@ -178,6 +193,10 @@ public class LazyInitializationTest {
             try {
                 loadedGraalClasses.add(Class.forName(name));
             } catch (ClassNotFoundException e) {
+                if (e.getMessage().contains("$$Lambda$")) {
+                    // lambdas may not be found.
+                    continue;
+                }
                 Assert.fail("loaded class " + name + " not found");
             }
         }
@@ -211,9 +230,7 @@ public class LazyInitializationTest {
                 forbiddenClasses.add(cls.getName());
             }
         }
-        if (!forbiddenClasses.isEmpty()) {
-            Assert.fail("loaded forbidden classes:\n    " + forbiddenClasses.stream().collect(Collectors.joining("\n    ")) + "\n");
-        }
+        return forbiddenClasses;
     }
 
     private boolean isGraalClassAllowed(Class<?> cls) {

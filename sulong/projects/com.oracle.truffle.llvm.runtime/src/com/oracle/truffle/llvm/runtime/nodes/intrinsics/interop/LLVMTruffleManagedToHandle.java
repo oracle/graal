@@ -30,16 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -48,10 +46,9 @@ public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
 
     @Specialization
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
         if (value.getOffset() == 0) {
-            LLVMNativePointer handle = context.getHandleForManagedObject(memory, value.getObject());
+            LLVMNativePointer handle = context.getHandleContainer().allocate(value.getObject());
             return handle;
         } else {
             CompilerDirectives.transferToInterpreter();
