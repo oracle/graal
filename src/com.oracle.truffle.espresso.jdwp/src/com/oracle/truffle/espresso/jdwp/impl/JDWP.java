@@ -1441,6 +1441,9 @@ class JDWP {
                 long classLoaderId = input.readLong();
 
                 Object classLoader = verifyClassLoader(classLoaderId, reply, context);
+                if (classLoader == null) {
+                    return new JDWPResult(reply);
+                }
 
                 // TODO(Gregersen) - we will need all classes for which this classloader was the initiating loader
                 KlassRef[] klasses = context.getInitiatedClasses(classLoader);
