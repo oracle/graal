@@ -141,13 +141,14 @@ public abstract class Accessor {
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
-        public abstract Object getEngineObject(LanguageInfo languageInfo);
+        public abstract Object getPolyglotLanguage(LanguageInfo languageInfo);
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
-        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive);
+        public abstract LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal,
+                        boolean interactive);
 
-        public abstract Object getSourceVM(RootNode rootNode);
+        public abstract Object getPolyglotEngine(RootNode rootNode);
 
         public abstract int getRootNodeBits(RootNode root);
 
@@ -159,9 +160,9 @@ public abstract class Accessor {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
 
-        public abstract void makeSharableRoot(RootNode rootNode);
+        public abstract void clearPolyglotEngine(RootNode rootNode);
 
-        public abstract void applyVMObject(RootNode from, RootNode to);
+        public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
     }
 
@@ -203,19 +204,19 @@ public abstract class Accessor {
 
     public abstract static class EngineSupport {
 
-        public abstract Object getInstrumentationHandler(Object languageShared);
+        public abstract Object getInstrumentationHandler(Object polyglotObject);
 
-        public abstract void exportSymbol(Object vmObject, String symbolName, Object value);
+        public abstract void exportSymbol(Object polyglotLanguageContext, String symbolName, Object value);
 
-        public abstract Map<String, ? extends Object> getExportedSymbols(Object vmObject);
+        public abstract Map<String, ? extends Object> getExportedSymbols();
 
-        public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
+        public abstract Object importSymbol(Object polyglotLanguageContext, Env env, String symbolName);
 
-        public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
+        public abstract boolean isMimeTypeSupported(Object polyglotLanguageContext, String mimeType);
 
         public abstract boolean isEvalRoot(RootNode target);
 
-        public abstract boolean isMultiThreaded(Object o);
+        public abstract boolean isMultiThreaded(Object guestObject);
 
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
@@ -227,27 +228,27 @@ public abstract class Accessor {
             dos.detach(out);
         }
 
-        public abstract Object getCurrentVM();
+        public abstract Object getCurrentPolyglotEngine();
 
-        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames, boolean allowInternal);
+        public abstract CallTarget parseForLanguage(Object sourceLanguageContext, Source source, String[] argumentNames, boolean allowInternal);
 
-        public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
+        public abstract Env getEnvForInstrument(String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
-        public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
+        public abstract LanguageInfo getObjectLanguage(Object obj);
 
-        public abstract ContextReference<Object> getCurrentContextReference(Object languageVMObject);
+        public abstract ContextReference<Object> getCurrentContextReference(Object polyglotLanguage);
 
-        public abstract boolean isDisposed(Object vmInstance);
+        public abstract boolean isDisposed(Object polyglotLanguageContext);
 
-        public abstract Map<String, LanguageInfo> getInternalLanguages(Object vmInstance);
+        public abstract Map<String, LanguageInfo> getInternalLanguages(Object polyglotObject);
 
-        public abstract Map<String, LanguageInfo> getPublicLanguages(Object vmInstance);
+        public abstract Map<String, LanguageInfo> getPublicLanguages(Object polyglotObject);
 
-        public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
+        public abstract Map<String, InstrumentInfo> getInstruments(Object polyglotObject);
 
-        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
+        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object polyglotObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
 
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
 
@@ -257,49 +258,49 @@ public abstract class Accessor {
 
         public abstract <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass);
 
-        public abstract TruffleContext getPolyglotContext(Object vmObject);
+        public abstract TruffleContext getTruffleContext(Object polyglotLanguageContext);
 
         public abstract Object toGuestValue(Object obj, Object languageContext);
 
-        public abstract Object getVMFromLanguageObject(Object engineObject);
+        public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
 
-        public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
+        public abstract Object lookupHostSymbol(Object polyglotLanguageContext, Env env, String symbolName);
 
-        public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
+        public abstract Object asHostSymbol(Object polyglotLanguageContext, Class<?> symbolClass);
 
-        public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
+        public abstract boolean isHostAccessAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);
+        public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
 
-        public abstract boolean inContextPreInitialization(Object vmObject);
+        public abstract boolean inContextPreInitialization(Object polyglotLanguageContext);
 
-        public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
+        public abstract Object createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, TruffleContext spiContext);
 
-        public abstract void initializeInternalContext(Object vmObject, Object contextImpl);
+        public abstract void initializeInternalContext(Object sourcePolyglotLanguageContext, Object polyglotContext);
 
-        public abstract Object enterInternalContext(Object impl);
+        public abstract Object enterInternalContext(Object polyglotContext);
 
-        public abstract void leaveInternalContext(Object impl, Object prev);
+        public abstract void leaveInternalContext(Object polyglotContext, Object prev);
 
-        public abstract void closeInternalContext(Object impl);
+        public abstract void closeInternalContext(Object polyglotContext);
 
-        public abstract void reportAllLanguageContexts(Object vmObject, Object contextsListener);
+        public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
-        public abstract void reportAllContextThreads(Object vmObject, Object threadsListener);
+        public abstract void reportAllContextThreads(Object polyglotEngine, Object threadsListener);
 
-        public abstract TruffleContext getParentContext(Object impl);
+        public abstract TruffleContext getParentContext(Object polyglotContext);
 
-        public abstract boolean isCreateThreadAllowed(Object vmObject);
+        public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
-            return createThread(vmObject, runnable, innerContextImpl, group, 0);
+        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
+            return createThread(polyglotLanguageContext, runnable, innerContextImpl, group, 0);
         }
 
-        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
-            return createThread(vmObject, runnable, innerContextImpl, null, 0);
+        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl) {
+            return createThread(polyglotLanguageContext, runnable, innerContextImpl, null, 0);
         }
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
@@ -315,29 +316,29 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine, Function<OptionValues, T> constructor);
 
         public abstract Set<? extends Class<?>> getProvidedTags(LanguageInfo language);
 
-        public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
+        public abstract Object getPolyglotBindingsForLanguage(Object polyglotLanguageContext);
 
-        public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
+        public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
         public abstract boolean isDefaultFileSystem(FileSystem fs);
 
         public abstract String getLanguageHome(Object engineObject);
 
-        public abstract void addToHostClassPath(Object vmObject, TruffleFile entries);
+        public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);
 
-        public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
+        public abstract boolean isInstrumentExceptionsAreThrown(Object polyglotEngine);
 
-        public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
+        public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
         public abstract Handler getLogHandler(Object polyglotEngine);
 
-        public abstract Map<String, Level> getLogLevels(Object vmObject);
+        public abstract Map<String, Level> getLogLevels(Object polyglotObject);
 
-        public abstract TruffleLogger getLogger(Object vmObject, String name);
+        public abstract TruffleLogger getLogger(Object polyglotInstrument, String name);
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
@@ -355,25 +356,25 @@ public abstract class Accessor {
 
         public abstract boolean isHostSymbol(Object guestObject);
 
-        public abstract <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
+        public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
 
         public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
 
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object sourceVM, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
 
-        public abstract FileSystem getFileSystem(Object contextVMObject);
+        public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
+        public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object polyglotContext);
 
-        public abstract boolean isPolyglotEvalAllowed(Object vmObject);
+        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
 
-        public abstract boolean isPolyglotBindingsAccessAllowed(Object vmObject);
+        public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 
         public abstract TruffleFile getTruffleFile(String path);
 
@@ -388,18 +389,19 @@ public abstract class Accessor {
 
         public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
 
-        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
+        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object polyglotLanguageContext, OutputStream stream);
 
         public abstract boolean isIOAllowed();
 
-        public abstract ZoneId getTimeZone(Object vmObject);
+        public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
     }
 
     public abstract static class LanguageSupport {
 
-        public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject);
+        public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance);
 
-        public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+        public abstract Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
+                        OptionValues options,
                         String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
                         Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
@@ -421,7 +423,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage<?> language);
 
-        public abstract Object getVMObject(TruffleLanguage<?> language);
+        public abstract Object getPolyglotLanguageInstance(TruffleLanguage<?> language);
 
         public abstract CallTarget parse(Env env, Source code, Node context, String... argumentNames);
 
@@ -439,9 +441,9 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getSPI(Env env);
 
-        public abstract InstrumentInfo createInstrument(Object vmObject, String id, String name, String version);
+        public abstract InstrumentInfo createInstrument(Object polyglotInstrument, String id, String name, String version);
 
-        public abstract Object getVMObject(InstrumentInfo info);
+        public abstract Object getPolyglotInstrument(InstrumentInfo info);
 
         public abstract boolean isContextInitialized(Env env);
 
@@ -494,8 +496,6 @@ public abstract class Accessor {
 
         public abstract Charset getEncoding(TruffleFile file, String mimeType) throws IOException;
 
-        public abstract Object getLanguageInstance(TruffleLanguage<?> language);
-
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
@@ -515,19 +515,19 @@ public abstract class Accessor {
 
     public abstract static class InstrumentSupport {
 
-        public abstract void initializeInstrument(Object instrumentationHandler, Object key, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
+        public abstract void initializeInstrument(Object instrumentationHandler, Object polyglotInstrument, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
-        public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
+        public abstract void createInstrument(Object instrumentationHandler, Object polyglotInstrument, String[] expectedServices, OptionValues options);
 
-        public abstract void finalizeInstrument(Object instrumentationHandler, Object key);
+        public abstract void finalizeInstrument(Object instrumentationHandler, Object polyglotInstrument);
 
-        public abstract void disposeInstrument(Object instrumentationHandler, Object key, boolean cleanupRequired);
+        public abstract void disposeInstrument(Object instrumentationHandler, Object polyglotInstrument, boolean cleanupRequired);
 
-        public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
+        public abstract <T> T getInstrumentationHandlerService(Object handler, Object polyglotInstrument, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor);
+        public abstract Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor);
 
-        public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, TruffleLanguage<?> language);
+        public abstract void collectEnvServices(Set<Object> collectTo, Object polyglotLanguage, TruffleLanguage<?> language);
 
         public abstract void onFirstExecution(RootNode rootNode);
 

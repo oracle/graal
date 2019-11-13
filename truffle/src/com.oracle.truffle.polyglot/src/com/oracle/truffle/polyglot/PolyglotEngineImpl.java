@@ -601,7 +601,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
 
         if (foundLanguage != null) {
-            return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
+            return (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(foundLanguage);
         }
 
         if (failIfNotFound) {

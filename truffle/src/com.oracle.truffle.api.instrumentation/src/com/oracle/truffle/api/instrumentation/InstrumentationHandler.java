@@ -95,7 +95,7 @@ final class InstrumentationHandler {
     /* Enable trace output to stdout. */
     static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
 
-    private final Object sourceVM;
+    private final Object polyglotEngine;
 
     /*
      * The contract is the following: "sources" and "sourcesList" can only be accessed while
@@ -152,8 +152,8 @@ final class InstrumentationHandler {
 
     final EngineInstrumenter engineInstrumenter;
 
-    InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
-        this.sourceVM = sourceVM;
+    InstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
+        this.polyglotEngine = polyglotEngine;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -162,7 +162,7 @@ final class InstrumentationHandler {
     }
 
     Object getSourceVM() {
-        return sourceVM;
+        return polyglotEngine;
     }
 
     void onLoad(RootNode root) {
@@ -355,12 +355,12 @@ final class InstrumentationHandler {
 
     }
 
-    void initializeInstrument(Object vmObject, String instrumentClassName, Supplier<? extends Object> instrumentSupplier) {
+    void initializeInstrument(Object polyglotInstrument, String instrumentClassName, Supplier<? extends Object> instrumentSupplier) {
         if (TRACE) {
             trace("Initialize instrument class %s %n", instrumentClassName);
         }
 
-        Env env = new Env(vmObject, out, err, in, messageInterceptor);
+        Env env = new Env(polyglotInstrument, out, err, in, messageInterceptor);
         try {
             TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
             env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClassName);
@@ -374,7 +374,7 @@ final class InstrumentationHandler {
             trace("Initialized instrument %s class %s %n", env.instrumenter.instrument, instrumentClassName);
         }
 
-        addInstrumenter(vmObject, env.instrumenter);
+        addInstrumenter(polyglotInstrument, env.instrumenter);
     }
 
     void createInstrument(Object vmObject, String[] expectedServices, OptionValues optionValues) {
@@ -597,7 +597,7 @@ final class InstrumentationHandler {
         contextsBindings.add(binding);
         if (includeActiveContexts) {
             Accessor.EngineSupport engineAccess = InstrumentAccessor.engineAccess();
-            engineAccess.reportAllLanguageContexts(sourceVM, binding.getElement());
+            engineAccess.reportAllLanguageContexts(polyglotEngine, binding.getElement());
         }
 
         if (TRACE) {
@@ -614,7 +614,7 @@ final class InstrumentationHandler {
         threadsBindings.add(binding);
         if (includeStartedThreads) {
             Accessor.EngineSupport engineAccess = InstrumentAccessor.engineAccess();
-            engineAccess.reportAllContextThreads(sourceVM, binding.getElement());
+            engineAccess.reportAllContextThreads(polyglotEngine, binding.getElement());
         }
 
         if (TRACE) {

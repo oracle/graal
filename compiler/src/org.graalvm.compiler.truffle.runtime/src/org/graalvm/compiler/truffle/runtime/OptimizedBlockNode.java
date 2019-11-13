@@ -603,7 +603,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 }
 
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
-                runtime.getTvmci().applyVMObject(rootNode, partialRootNode);
+                runtime.getTvmci().applyPolyglotEngine(rootNode, partialRootNode);
 
                 targets[i] = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(partialRootNode);
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);

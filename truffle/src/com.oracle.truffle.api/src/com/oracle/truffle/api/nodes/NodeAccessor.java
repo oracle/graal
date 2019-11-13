@@ -111,18 +111,18 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public Object getEngineObject(LanguageInfo languageInfo) {
-            return languageInfo.getEngineObject();
+        public Object getPolyglotLanguage(LanguageInfo languageInfo) {
+            return languageInfo.getPolyglotLanguage();
         }
 
         @Override
-        public LanguageInfo createLanguage(Object vmObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
-            return new LanguageInfo(vmObject, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
+        public LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
+            return new LanguageInfo(polyglotLanguage, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
         }
 
         @Override
-        public Object getSourceVM(RootNode rootNode) {
-            return rootNode.sourceVM;
+        public Object getPolyglotEngine(RootNode rootNode) {
+            return rootNode.polyglotEngine;
         }
 
         @Override
@@ -147,13 +147,13 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public void makeSharableRoot(RootNode rootNode) {
-            rootNode.sourceVM = null;
+        public void clearPolyglotEngine(RootNode rootNode) {
+            rootNode.polyglotEngine = null;
         }
 
         @Override
-        public void applyVMObject(RootNode from, RootNode to) {
-            to.sourceVM = from.sourceVM;
+        public void applyPolyglotEngine(RootNode from, RootNode to) {
+            to.polyglotEngine = from.polyglotEngine;
         }
 
     }

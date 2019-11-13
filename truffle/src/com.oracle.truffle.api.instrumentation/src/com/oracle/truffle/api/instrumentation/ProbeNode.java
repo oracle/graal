@@ -636,8 +636,8 @@ public final class ProbeNode extends Node {
             // Terminates guest language execution immediately
             throw (ThreadDeath) t;
         }
-        final Object currentVm = InstrumentAccessor.engineAccess().getCurrentVM();
-        if (b.getInstrumenter() instanceof EngineInstrumenter || (currentVm != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(currentVm))) {
+        final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
+        if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {
             throw sthrow(RuntimeException.class, t);
         }
         // Exception is a failure in (non-language) instrumentation code; log and continue
