@@ -148,17 +148,17 @@ public class HeapImpl extends Heap {
         return getHeapImpl().imageHeapInfo;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public boolean isInImageHeap(Object object) {
-        return objectHeaderImpl.isBootImage(object);
-    }
-
     @Uninterruptible(reason = "Thread state not yet set up.")
     @Override
     public boolean initialize() {
         // nothing to do - all relevant data was already initialized at image build time
         return true;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean isInImageHeap(Object object) {
+        return objectHeaderImpl.isBootImage(object);
     }
 
     @Override

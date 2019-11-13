@@ -176,8 +176,7 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         long readOnlyRelocatableOffsetInSection = getReadOnlyRelocatable().getOffsetInSection();
         long readOnlyRelocatableSize = getReadOnlyRelocatable().getSize();
         return new ImageHeapLayout(getReadOnlyPrimitive().getOffsetInSection(), readOnlySectionSize, getWritablePrimitive().getOffsetInSection(), writableSectionSize,
-                        readOnlyRelocatableOffsetInSection,
-                        readOnlyRelocatableSize);
+                        readOnlyRelocatableOffsetInSection, readOnlyRelocatableSize);
     }
 
     @Fold

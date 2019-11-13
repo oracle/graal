@@ -39,9 +39,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -414,9 +416,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 roSectionSize += heapLayout.getReadOnlySize();
                 rwSectionSize += heapLayout.getWritableSize();
             }
-
             // after this point, the layout is final and must not be changed anymore
-            printHeapStatistics(layouter.getPartitions());
+            assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
             // Text section (code)
             final int textSectionSize = codeCache.getCodeCacheSize();
@@ -490,6 +491,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 markRelocationSitesFromMaps(heapSectionBuffer, heapSectionImpl);
             }
+
+            // We print the heap statistics after the heap was successfully written because this
+            // could modify objects that will be part of the image heap.
+            printHeapStatistics(layouter.getPartitions());
         }
 
         // [Footnote 1]
@@ -517,6 +522,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
         // could prevent future optimizations.
         //
         // -Christian
+    }
+
+    private boolean hasDuplicatedObjects(Collection<ObjectInfo> objects) {
+        Set<ObjectInfo> deduplicated = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (ObjectInfo info : objects) {
+            deduplicated.add(info);
+        }
+        return deduplicated.size() != heap.getObjectCount();
     }
 
     /**

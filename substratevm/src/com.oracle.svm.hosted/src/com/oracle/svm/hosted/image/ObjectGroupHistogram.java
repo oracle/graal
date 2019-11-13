@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,8 @@ package com.oracle.svm.hosted.image;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -51,7 +49,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ObjectGroupHistogram {
     private final NativeImageHeap heap;
-    private final Set<ObjectInfo> objects;
     private final Map<ObjectInfo, String> groups;
     private final Map<String, HeapHistogram> groupHistograms;
 
@@ -63,15 +60,6 @@ public final class ObjectGroupHistogram {
         this.heap = heap;
         this.groups = new HashMap<>();
         this.groupHistograms = new LinkedHashMap<>();
-
-        /*
-         * heap.objects has some ObjectInfo values registered for multiple keys. We therefore make
-         * our own map without duplicates.
-         */
-        objects = new HashSet<>(heap.getObjectCount());
-        for (ObjectInfo info : heap.getObjects()) {
-            objects.add(info);
-        }
     }
 
     public interface ObjectFilter {
@@ -132,7 +120,7 @@ public final class ObjectGroupHistogram {
         }
 
         HeapHistogram totalHistogram = new HeapHistogram();
-        for (ObjectInfo info : objects) {
+        for (ObjectInfo info : heap.getObjects()) {
             totalHistogram.add(info, info.getSize());
             addToGroup(info, "Other");
         }
@@ -165,7 +153,7 @@ public final class ObjectGroupHistogram {
     }
 
     public void processType(Class<?> clazz, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
-        for (ObjectInfo info : objects) {
+        for (ObjectInfo info : heap.getObjects()) {
             if (clazz.isInstance(info.getObject())) {
                 processObject(info, group, addObject, 1, objectFilter, fieldFilter);
             }
