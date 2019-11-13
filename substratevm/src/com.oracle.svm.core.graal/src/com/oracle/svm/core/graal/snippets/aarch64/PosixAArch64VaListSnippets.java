@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.snippets;
+package com.oracle.svm.core.graal.snippets.aarch64;
 
 import java.util.Map;
 
@@ -37,34 +37,15 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-class PosixAMD64VaListSnippetsFeature implements GraalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class) || Platform.includedIn(DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class) ||
-                        Platform.includedIn(Platform.LINUX_AMD64.class) || Platform.includedIn(Platform.DARWIN_AMD64.class);
-    }
-
-    @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-
-        PosixAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
-    }
-}
-
 /**
- * Implementation of C {@code va_list} handling for System V systems on AMD64 (Linux, but same
+ * Implementation of C {@code va_list} handling for System V systems on AArch64 (Linux, but same
  * behavior on Darwin). A {@code va_list} is used for passing the arguments of a C varargs function
  * ({@code ...} in the argument list) to another function. Varargs functions use the same calling
  * convention as other functions, which entails passing the first few arguments in registers and the
@@ -73,57 +54,54 @@ class PosixAMD64VaListSnippetsFeature implements GraalFeature {
  * read from the {@code va_list} in another function. The {@code va_list} structure looks like this:
  *
  * <pre>
- *   typedef struct {
- *     unsigned int gp_offset;  // offset of the next general-purpose argument in reg_save_area
- *     unsigned int fp_offset;  // offset of the next floating-point argument in reg_save_area
- *     void *overflow_arg_area; // address of the next overflow argument (can be gp or fp)
- *     void *reg_save_area;     // start address of the register save area
- *   } va_list[1];
+ *   typedef struct  va_list {
+ *     void * stack; // next stack param
+ *     void * gr_top; // end of GP arg reg save area
+ *     void * vr_top; // end of FP/SIMD arg reg save area
+ *     int gr_offs; // offset from  gr_top to next GP register arg
+ *     int vr_offs; // offset from  vr_top to next FP/SIMD register arg
+ *   } va_list;[1]
  * </pre>
  *
  * Reading a {@code va_list} requires knowing the types of the arguments. General-purpose values
- * (integers and pointers) are passed in the six 64-bit registers {@code rdi, rsi, rdx, rcx, r8} and
- * {@code r9}, which are saved to the start of {@code reg_save_area}. Floating-point values are
- * passed in the eight 128-bit registers {@code xmm0} through {@code xmm7}, which are saved to
- * {@code reg_save_area} following the general-purpose registers. (Some sources specify that the
- * sixteen registers {@code xmm0} through {@code xmm15} are used, but this appears to be wrong.)
+ * (integers and pointers) are passed in the eight 64-bit registers {@code x0} to {@code x7}, which
+ * are saved below {@code gr_top}. Floating-point values are passed in the eight 128-bit registers
+ * {@code v0} through {@code v7}, which are saved below {@code vr_top} following the general-purpose
+ * registers.
  * <p>
- * In the case of more than six general-purpose values or eight floating-point values, further
- * arguments are passed on the stack and can be read from {@code overflow_arg_area} (which is
- * typically a pointer to the arguments on the stack). For passing on the stack, 32-bit
- * {@code float} values are promoted to 64-bit {@code double}, and integer values with less than 32
- * bits are promoted to 32-bit {@code int}. However, each value in {@code overflow_arg_area} is
- * eight-byte aligned.
+ * In the case of more than eight general-purpose values or eight floating-point values, further
+ * arguments are passed on the stack and can be read from {@code stack} (which is typically a
+ * pointer to the arguments on the stack). For passing on the stack, 32-bit {@code float} values are
+ * promoted to 64-bit {@code double}, and integer values with less than 32 bits are promoted to
+ * 32-bit {@code int}. However, each value in {@code overflow_arg_area} is eight-byte aligned.
  * <p>
  * Reading an argument from a {@code va_list} requires checking whether all of the
- * {@code reg_save_area} for the type of argument has been consumed, that is, if <i>gp_offset == 6 *
- * 8</i>, or in case of a floating-point argument, if <i>fp_offset == 6 * 8 + 8 * 16</i>. If not,
- * the argument is read from {@code reg_save_area+offset}, and then either {@code gp_offset} is
+ * {@code reg_save_area} for the type of argument has been consumed, that is, if <i>gp_offset >=
+ * 0</i>, or in case of a floating-point argument, if <i>fp_offset >= 0</i>. If not, the argument is
+ * read from {@code gr_top+offset} or {@code vr_top+offset}, and then either {@code gp_offset} is
  * increased by 8 or {@code fp_offset} is increased by 16. If the {@code reg_save_area} has already
- * been consumed, the argument is read from {@code overflow_arg_area}, and {@code overflow_arg_area}
- * is increased to point to the next eight-byte-aligned value.
+ * been consumed, the argument is read from {@code stack}, and {@code stack} is increased to point
+ * to the next eight-byte-aligned value.
  *
  * <p>
  * References:<br>
- * <cite>Hubicka, Jaeger, Mitchell: System V Application Binary Interface, AMD64 Architecture
- * Processor Supplement (Draft, 0.99.7, 2014-11-17): 3.5.7 Variable Argument Lists.</cite><br>
- * <cite>Agner Fog: Calling conventions for different C++ compilers and operating systems (updated
- * 2017-05-01): 7. Function calling conventions.</cite>
+ * <cite>Procedure Call Standard for the ARM 64-bit architecture (AArch64): APPENDIX Variable
+ * Argument Lists.</cite><br>
  */
-final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snippets {
+final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Snippets {
 
     // (read above)
-    private static final int GP_OFFSET_LOCATION = 0;
-    private static final int NUM_GP_ARG_REGISTERS = 6;
-    private static final int MAX_GP_OFFSET = NUM_GP_ARG_REGISTERS * 8;
-    private static final int FP_OFFSET_LOCATION = 4;
-    private static final int NUM_FP_ARG_REGISTERS = 8;
-    private static final int MAX_FP_OFFSET = MAX_GP_OFFSET + NUM_FP_ARG_REGISTERS * 16;
-    private static final int OVERFLOW_ARG_AREA_LOCATION = 8;
-    private static final int OVERFLOW_ARG_AREA_ALIGNMENT = 8;
-    private static final int REG_SAVE_AREA_LOCATION = 16;
+    private static final int GP_OFFSET_LOCATION = 24;
+    private static final int MAX_GP_OFFSET = 0;
+    private static final int FP_OFFSET_LOCATION = 28;
+    private static final int MAX_FP_OFFSET = 0;
+    private static final int STACK_AREA_LOCATION = 0;
+    private static final int STACK_AREA_GP_ALIGNMENT = 8;
+    private static final int STACK_AREA_FP_ALIGNMENT = 8;
+    private static final int GP_TOP_LOCATION = 8;
+    private static final int FP_TOP_LOCATION = 16;
 
-    private PosixAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
+    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
         super(options, factories, providers, snippetReflection);
     }
 
@@ -131,14 +109,14 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
         if (fpOffset < MAX_FP_OFFSET) {
-            Pointer regSaveArea = vaList.readWord(REG_SAVE_AREA_LOCATION);
+            Pointer regSaveArea = vaList.readWord(FP_TOP_LOCATION);
             double v = regSaveArea.readDouble(fpOffset);
-            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte XMM register
+            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte FP register
             return v;
         } else {
-            Pointer overflowArgArea = vaList.readWord(OVERFLOW_ARG_AREA_LOCATION);
+            Pointer overflowArgArea = vaList.readWord(STACK_AREA_LOCATION);
             double v = overflowArgArea.readDouble(0);
-            vaList.writeWord(OVERFLOW_ARG_AREA_LOCATION, overflowArgArea.add(OVERFLOW_ARG_AREA_ALIGNMENT));
+            vaList.writeWord(STACK_AREA_LOCATION, overflowArgArea.add(STACK_AREA_FP_ALIGNMENT));
             return v;
         }
     }
@@ -153,14 +131,14 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
     protected static long vaArgLongSnippet(Pointer vaList) {
         int gpOffset = vaList.readInt(GP_OFFSET_LOCATION);
         if (gpOffset < MAX_GP_OFFSET) {
-            Pointer regSaveArea = vaList.readWord(REG_SAVE_AREA_LOCATION);
+            Pointer regSaveArea = vaList.readWord(GP_TOP_LOCATION);
             long v = regSaveArea.readLong(gpOffset);
             vaList.writeInt(GP_OFFSET_LOCATION, gpOffset + 8);
             return v;
         } else {
-            Pointer overflowArgArea = vaList.readWord(OVERFLOW_ARG_AREA_LOCATION);
+            Pointer overflowArgArea = vaList.readWord(STACK_AREA_LOCATION);
             long v = overflowArgArea.readLong(0);
-            vaList.writeWord(OVERFLOW_ARG_AREA_LOCATION, overflowArgArea.add(OVERFLOW_ARG_AREA_ALIGNMENT));
+            vaList.writeWord(STACK_AREA_LOCATION, overflowArgArea.add(STACK_AREA_GP_ALIGNMENT));
             return v;
         }
     }
@@ -174,10 +152,10 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
     public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
-        new PosixAMD64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
+        new PosixAArch64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 
-    private PosixAMD64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
         super(options, factories, providers, snippetReflection);
@@ -186,10 +164,10 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
 
-        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
+        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {

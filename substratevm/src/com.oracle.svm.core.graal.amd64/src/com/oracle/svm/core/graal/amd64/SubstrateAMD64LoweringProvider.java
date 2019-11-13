@@ -26,8 +26,15 @@ package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.RemNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfDispatchNode;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -36,5 +43,27 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
 
     public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
         super(metaAccess, foreignCalls, target);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void lower(Node n, LoweringTool tool) {
+        @SuppressWarnings("rawtypes")
+        NodeLoweringProvider lowering = getLowerings().get(n.getClass());
+        if (lowering != null) {
+            lowering.lower(n, tool);
+        } else if (n instanceof RemNode) {
+            /* No lowering necessary. */
+        } else if (n instanceof AMD64ArrayIndexOfDispatchNode) {
+            lowerArrayIndexOf((AMD64ArrayIndexOfDispatchNode) n);
+        } else {
+            super.lower(n, tool);
+        }
+    }
+
+    private void lowerArrayIndexOf(AMD64ArrayIndexOfDispatchNode dispatchNode) {
+        StructuredGraph graph = dispatchNode.graph();
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
+        graph.replaceFixed(dispatchNode, call);
     }
 }

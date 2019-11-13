@@ -22,38 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.aarch64;
+package com.oracle.svm.core.graal.snippets.amd64;
 
-import org.graalvm.compiler.core.aarch64.AArch64LoweringProviderMixin;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import java.util.Map;
+
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
+final class AMD64ArithmeticSnippets extends ArithmeticSnippets {
 
-public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProvider implements AArch64LoweringProviderMixin {
+    @SuppressWarnings("unused")
+    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
-    public SubstrateAArch64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target);
+        new AMD64ArithmeticSnippets(options, factories, providers, snippetReflection, lowerings);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        @SuppressWarnings("rawtypes")
-        NodeLoweringProvider lowering = getLowerings().get(n.getClass());
-        if (lowering != null) {
-            lowering.lower(n, tool);
-        } else if (n instanceof FloatConvertNode) {
-            // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
-            // to see a ConvertNode and throws an error, just do nothing here.
-        } else {
-            super.lower(n, tool);
-        }
+    private AMD64ArithmeticSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+
+        super(options, factories, providers, snippetReflection, lowerings);
     }
 }
