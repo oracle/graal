@@ -294,7 +294,6 @@ public abstract class PartialEvaluator {
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining) {
         // This is only called by agnostic inlining. Legacy inlining does not use this method.
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
-        assert (SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining.getValue(graph.getOptions()));
 
         doGraphPE(compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
     }
@@ -307,7 +306,6 @@ public abstract class PartialEvaluator {
         ResolvedJavaMethod rootMethod = inlineRootForCallTargetAgnostic(compilable);
         final StructuredGraph graph = createGraphForPE(debug, name, rootMethod, allowAssumptions, compilationId, log, cancellable);
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
-        assert (SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining.getValue(graph.getOptions()));
 
         doGraphPE(compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
 
