@@ -314,11 +314,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return initialized;
     }
 
-    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames, boolean forLanguage) throws AssertionError {
+    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
         ensureInitialized(accessingLanguage);
         PolyglotSourceCache cache = lazy.sourceCache;
         assert cache != null;
-        return cache.parseCached(this, source, argumentNames, forLanguage);
+        return cache.parseCached(this, source, argumentNames);
     }
 
     Env requireEnv() {
@@ -761,11 +761,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Object receiver = guestValue;
         PolyglotValue cache = lazy.valueCache.get(receiver.getClass());
         if (cache == null) {
-            Object prev = context.enterIfNeeded();
+            Object prev = language.engine.enterIfNeeded(this.context);
             try {
                 cache = lookupValueCache(guestValue);
             } finally {
-                context.leaveIfNeeded(prev);
+                language.engine.leaveIfNeeded(prev, this.context);
             }
         }
         return getAPIAccess().newValue(receiver, cache);

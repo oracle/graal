@@ -816,7 +816,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
             com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
-            CallTarget target = languageContext.parseCached(null, source, null, false);
+            CallTarget target = languageContext.parseCached(null, source, null);
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
             Value hostValue;
             try {

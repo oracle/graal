@@ -583,8 +583,6 @@ public abstract class Accessor {
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
-        public abstract Collection<CallTarget> getLoadedCallTargets(Object instrumentationHandler);
-
     }
 
     public abstract static class FrameSupport {
