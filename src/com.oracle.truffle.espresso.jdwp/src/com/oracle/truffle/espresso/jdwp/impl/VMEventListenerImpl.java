@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -149,19 +148,24 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (!fieldBreakpointsActive.get()) {
             return false;
         } else {
-            FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
-            for (FieldBreakpointInfo info : infos) {
-                if (info.isModificationBreakpoint()) {
-                    // OK, tell the Debug API to suspend the thread now
-                    info.setReceiver(receiver);
-                    info.setValue(value);
-                    debuggerController.prepareFieldBreakpoint(info);
-                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
-                    return true;
-                }
-            }
-            return false;
+            return checkFieldAccessBreakpoint(field, receiver, value);
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private boolean checkFieldAccessBreakpoint(FieldRef field, Object receiver, Object value) {
+        FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
+        for (FieldBreakpointInfo info : infos) {
+            if (info.isModificationBreakpoint()) {
+                // OK, tell the Debug API to suspend the thread now
+                info.setReceiver(receiver);
+                info.setValue(value);
+                debuggerController.prepareFieldBreakpoint(info);
+                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -169,18 +173,23 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (!fieldBreakpointsActive.get()) {
             return false;
         } else {
-            FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
-            for (FieldBreakpointInfo info : infos) {
-                if (info.isAccessBreakpoint()) {
-                    // OK, tell the Debug API to suspend the thread now
-                    info.setReceiver(receiver);
-                    debuggerController.prepareFieldBreakpoint(info);
-                    debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
-                    return true;
-                }
-            }
-            return false;
+            return checkFieldModificationBreakpoint(field, receiver);
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private boolean checkFieldModificationBreakpoint(FieldRef field, Object receiver) {
+        FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
+        for (FieldBreakpointInfo info : infos) {
+            if (info.isAccessBreakpoint()) {
+                // OK, tell the Debug API to suspend the thread now
+                info.setReceiver(receiver);
+                debuggerController.prepareFieldBreakpoint(info);
+                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
