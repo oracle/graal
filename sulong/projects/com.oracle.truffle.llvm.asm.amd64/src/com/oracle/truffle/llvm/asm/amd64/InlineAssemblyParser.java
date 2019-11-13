@@ -144,7 +144,7 @@ public class InlineAssemblyParser extends Parser {
 		T__533=534, T__534=535, T__535=536, T__536=537, T__537=538, T__538=539, 
 		T__539=540, T__540=541, T__541=542, T__542=543, T__543=544, T__544=545, 
 		T__545=546, T__546=547, T__547=548, T__548=549, T__549=550, IDENT=551, 
-		BIN_NUMBER=552, HEX_NUMBER=553, NUMBER=554, WS=555;
+		BIN_NUMBER=552, HEX_NUMBER=553, NUMBER=554, WS=555, COMMENT=556, LINE_COMMENT=557;
 	public static final int
 		RULE_inline_assembly = 0, RULE_prefix = 1, RULE_assembly_instruction = 2, 
 		RULE_int_value = 3, RULE_jump = 4, RULE_zero_op = 5, RULE_imul_div = 6, 
@@ -291,7 +291,7 @@ public class InlineAssemblyParser extends Parser {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, "IDENT", 
-		"BIN_NUMBER", "HEX_NUMBER", "NUMBER", "WS"
+		"BIN_NUMBER", "HEX_NUMBER", "NUMBER", "WS", "COMMENT", "LINE_COMMENT"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -4694,7 +4694,7 @@ public class InlineAssemblyParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\u022d\u01f2\4\2\t"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\u022f\u01f2\4\2\t"+
 		"\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13"+
 		"\t\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22"+
 		"\4\23\t\23\4\24\t\24\4\25\t\25\4\26\t\26\4\27\t\27\4\30\t\30\4\31\t\31"+

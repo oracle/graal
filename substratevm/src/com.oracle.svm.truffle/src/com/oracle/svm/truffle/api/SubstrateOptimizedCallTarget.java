@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,11 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
+public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateCompilableTruffleAST, SubstrateInstalledCode, OptimizedAssumptionDependency {
 
     protected long address;
 
@@ -70,6 +71,16 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public CompilableTruffleAST getCompilable() {
+        return this;
+    }
+
+    @Override
+    public SubstrateInstalledCode getSubstrateInstalledCode() {
+        return this;
+    }
+
+    @Override
+    public OptimizedAssumptionDependency getDependency() {
         return this;
     }
 
@@ -134,6 +145,11 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         } else {
             return callBoundary(args);
         }
+    }
+
+    @Override
+    public InstalledCode createInstalledCode() {
+        return new SubstrateTruffleInstalledCodeBridge(this);
     }
 
     interface CallBoundaryFunctionPointer extends CFunctionPointer {

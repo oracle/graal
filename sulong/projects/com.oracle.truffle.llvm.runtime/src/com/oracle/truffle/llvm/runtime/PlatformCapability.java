@@ -44,6 +44,8 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
 
+    public abstract String getPolyglotMockLibrary();
+
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
 
     protected PlatformCapability(Class<S> cls) {

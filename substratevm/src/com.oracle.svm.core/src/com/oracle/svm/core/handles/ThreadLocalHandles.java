@@ -41,6 +41,7 @@ public final class ThreadLocalHandles<T extends ObjectHandle> {
     public static final int MIN_VALUE = Math.toIntExact(1 + nullHandle().rawValue());
     public static final int MAX_VALUE = Integer.MAX_VALUE;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <U extends SignedWord> U nullHandle() {
         return WordFactory.signed(0);
     }

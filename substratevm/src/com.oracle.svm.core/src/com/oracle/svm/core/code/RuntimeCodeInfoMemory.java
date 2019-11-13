@@ -76,23 +76,20 @@ public class RuntimeCodeInfoMemory {
     }
 
     public boolean remove(CodeInfo info) {
+        assert !VMOperation.isGCInProgress() : "Must call removeDuringGC";
+        assert info.isNonNull();
+        lock.lock();
+        try {
+            return remove0(info);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean removeDuringGC(CodeInfo info) {
         assert VMOperation.isGCInProgress() : "Otherwise, we would need to protect the CodeInfo from the GC.";
         assert info.isNonNull();
-
-        int length = NonmovableArrays.lengthOf(table);
-        int index = hashIndex(info, length);
-        UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
-        while (entry.isNonNull()) {
-            if (entry.equal(info)) {
-                NonmovableArrays.setWord(table, index, WordFactory.zero());
-                count--;
-                rehashAfterUnregisterAt(index);
-                return true;
-            }
-            index = nextIndex(index, length);
-            entry = NonmovableArrays.getWord(table, index);
-        }
-        return false;
+        return remove0(info);
     }
 
     @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
@@ -147,6 +144,24 @@ public class RuntimeCodeInfoMemory {
         }
         NonmovableArrays.releaseUnmanagedArray(oldTable);
         return true;
+    }
+
+    @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
+    private boolean remove0(CodeInfo info) {
+        int length = NonmovableArrays.lengthOf(table);
+        int index = hashIndex(info, length);
+        UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
+        while (entry.isNonNull()) {
+            if (entry.equal(info)) {
+                NonmovableArrays.setWord(table, index, WordFactory.zero());
+                count--;
+                rehashAfterUnregisterAt(index);
+                return true;
+            }
+            index = nextIndex(index, length);
+            entry = NonmovableArrays.getWord(table, index);
+        }
+        return false;
     }
 
     /** Rehashes possibly-colliding entries after deletion to preserve collision properties. */

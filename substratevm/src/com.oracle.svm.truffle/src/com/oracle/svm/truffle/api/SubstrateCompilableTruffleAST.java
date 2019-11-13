@@ -24,16 +24,13 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 
-public interface SubstrateTruffleCompiler extends TruffleCompilerBase {
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PartialEvaluator getPartialEvaluator();
+import jdk.vm.ci.code.InstalledCode;
 
-    void initializeAtRuntime();
+public interface SubstrateCompilableTruffleAST extends CompilableTruffleAST, OptimizedAssumptionDependency.Access, SubstrateInstalledCode.Access {
+    InstalledCode createInstalledCode();
 }
