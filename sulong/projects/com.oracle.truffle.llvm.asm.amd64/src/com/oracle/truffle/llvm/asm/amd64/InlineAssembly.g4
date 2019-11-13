@@ -118,7 +118,8 @@ prefix :
   ;
 
 assembly_instruction :
-  ( zero_op
+  ( directive
+  | zero_op
   | unary_op8
   | unary_op16
   | unary_op32
@@ -182,6 +183,10 @@ jump :
   | 'loopz'
   )
   bta=operand64
+  ;
+
+directive :
+  op='.p2align' low_order_bits=number (',' padding_byte=number (',' max_bytes=number)?)? /* no-op */
   ;
 
 zero_op :
