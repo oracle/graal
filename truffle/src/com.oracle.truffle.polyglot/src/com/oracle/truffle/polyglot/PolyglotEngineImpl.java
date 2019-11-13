@@ -1381,13 +1381,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                         environmentAccess, environment, zone, polyglotLimits);
         context = loadPreinitializedContext(config, hostAccess);
+        boolean replayEvents = false;
         if (context == null) {
             synchronized (this) {
                 checkState();
                 context = new PolyglotContextImpl(this, config);
                 addContext(context);
             }
-        } else if (context.engine == this && EngineAccessor.INSTRUMENT.hasContextBindings(this)) {
+        } else if (context.engine == this) {
+            replayEvents = true;
+        }
+
+        if (replayEvents && EngineAccessor.INSTRUMENT.hasContextBindings(this)) {
             // replace events for preinitialized contexts
             // events must be replayed without engine lock.
             final Object prev = enter(context);
