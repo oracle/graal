@@ -155,6 +155,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldAccessBreakpoint(FieldRef field, Object receiver, Object value) {
         FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
+        if (infos == null) {
+            return false;
+        }
         for (FieldBreakpointInfo info : infos) {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
@@ -180,6 +183,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldModificationBreakpoint(FieldRef field, Object receiver) {
         FieldBreakpointInfo[] infos = field.getFieldBreakpointInfos();
+        if (infos == null) {
+            return false;
+        }
         for (FieldBreakpointInfo info : infos) {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now

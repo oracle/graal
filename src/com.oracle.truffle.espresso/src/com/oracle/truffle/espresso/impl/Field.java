@@ -248,7 +248,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     // array with maximum size 2, one access info and/or one modification info.
-    private FieldBreakpointInfo[] infos = new FieldBreakpointInfo[0];
+    private FieldBreakpointInfo[] infos = null;
 
     @Override
     public FieldBreakpointInfo[] getFieldBreakpointInfos() {
@@ -268,7 +268,7 @@ public final class Field extends Member<Type> implements FieldRef {
         // shrink the array to avoid null values
         switch (infos.length) {
             case 0: throw new RuntimeException("Field: " + getNameAsString() + " should contain field breakpoint info");
-            case 1: infos = new FieldBreakpointInfo[0]; return;
+            case 1: infos = null; return;
             case 2:
                 FieldBreakpointInfo[] temp = new FieldBreakpointInfo[1];
                 FieldBreakpointInfo info = infos[0];
