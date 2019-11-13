@@ -340,4 +340,10 @@ public final class JDWPContextImpl implements JDWPContext {
         // for arbitrary threads.
         return new JDWPCallFrame[0];
     }
+
+    @Override
+    public boolean isInstanceOf(Object object, KlassRef klass) {
+        StaticObject staticObject = (StaticObject) object;
+        return klass.isAssignable(staticObject.getKlass());
+    }
 }

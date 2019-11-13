@@ -105,4 +105,6 @@ public interface KlassRef {
      * @return the guest-language object of the thread
      */
     Object getPrepareThread();
+
+    boolean isAssignable(KlassRef klass);
 }
