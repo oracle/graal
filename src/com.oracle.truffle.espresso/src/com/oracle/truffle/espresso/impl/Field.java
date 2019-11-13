@@ -247,6 +247,7 @@ public final class Field extends Member<Type> implements FieldRef {
         set((StaticObject) self, value);
     }
 
+    // array with maximum size 2, one access info and/or one modification info.
     private FieldBreakpointInfo[] infos = new FieldBreakpointInfo[0];
 
     @Override
@@ -256,27 +257,34 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public void addFieldBreakpointInfo(FieldBreakpointInfo info) {
-        boolean added = false;
-        for (int i = 0; i < infos.length; i++) {
-            if (infos[i] == null) {
-                added = true;
-                infos[i] = info;
-            }
-        }
-        if (!added) {
-            FieldBreakpointInfo[] temp = new FieldBreakpointInfo[infos.length + 1];
-            System.arraycopy(infos, 0, temp, 0, infos.length);
-            temp[infos.length] = info;
-            infos = temp;
-        }
+        FieldBreakpointInfo[] temp = new FieldBreakpointInfo[infos.length + 1];
+        System.arraycopy(infos, 0, temp, 0, infos.length);
+        temp[infos.length] = info;
+        infos = temp;
     }
 
     @Override
     public void removeFieldBreakpointInfo(int requestId) {
-        for (int i = 0; i < infos.length; i++) {
-            if (infos[i].getRequestId() == requestId) {
-                infos[i] = null;
-            }
+        // shrink the array to avoid null values
+        switch (infos.length) {
+            case 0: throw new RuntimeException("Field: " + getNameAsString() + " should contain field breakpoint info");
+            case 1: infos = new FieldBreakpointInfo[0]; return;
+            case 2:
+                FieldBreakpointInfo[] temp = new FieldBreakpointInfo[1];
+                FieldBreakpointInfo info = infos[0];
+                if (info.getRequestId() == requestId) {
+                    // remove index 0, but keep info at index 1
+                    temp[0] = infos[1];
+                    infos = temp;
+                    return;
+                }
+                info = infos[1];
+                if (info.getRequestId() == requestId) {
+                    // remove index 1, but keep info at index 0
+                    temp[0] = infos[0];
+                    infos = temp;
+                    return;
+                }
         }
     }
 
