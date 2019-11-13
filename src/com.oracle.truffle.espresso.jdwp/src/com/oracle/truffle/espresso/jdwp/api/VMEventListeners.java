@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.VMEventListener;
@@ -140,15 +141,15 @@ public class VMEventListeners {
         return false;
     }
 
-    public void fieldAccessBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame) {
+    public void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
         if (listener != null) {
-            listener.fieldAccessBreakpointHit(info, currentThread, callFrame);
+            listener.fieldAccessBreakpointHit(event, currentThread, callFrame);
         }
     }
 
-    public void fieldModificationBreakpointHit(FieldBreakpointInfo info, Object currentThread, JDWPCallFrame callFrame) {
+    public void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
         if (listener != null) {
-            listener.fieldModificationBreakpointHit(info, currentThread, callFrame);
+            listener.fieldModificationBreakpointHit(event, currentThread, callFrame);
         }
     }
 }

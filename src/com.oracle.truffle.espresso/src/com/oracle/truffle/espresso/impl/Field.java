@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.impl.StableBoolean;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -247,8 +248,15 @@ public final class Field extends Member<Type> implements FieldRef {
         set((StaticObject) self, value);
     }
 
+    private final StableBoolean hasActiveBreakpoints = new StableBoolean(false);
+
     // array with maximum size 2, one access info and/or one modification info.
     private FieldBreakpointInfo[] infos = null;
+
+    @Override
+    public boolean hasActiveBreakpoint() {
+        return hasActiveBreakpoints.get();
+    }
 
     @Override
     public FieldBreakpointInfo[] getFieldBreakpointInfos() {
@@ -257,10 +265,17 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public void addFieldBreakpointInfo(FieldBreakpointInfo info) {
-        FieldBreakpointInfo[] temp = new FieldBreakpointInfo[infos.length + 1];
-        System.arraycopy(infos, 0, temp, 0, infos.length);
-        temp[infos.length] = info;
+        if (infos == null) {
+            infos = new FieldBreakpointInfo[] {info};
+            return;
+        }
+
+        int length = infos.length;
+        FieldBreakpointInfo[] temp = new FieldBreakpointInfo[length + 1];
+        System.arraycopy(infos, 0, temp, 0, length);
+        temp[length] = info;
         infos = temp;
+        hasActiveBreakpoints.set(true);
     }
 
     @Override
@@ -268,7 +283,10 @@ public final class Field extends Member<Type> implements FieldRef {
         // shrink the array to avoid null values
         switch (infos.length) {
             case 0: throw new RuntimeException("Field: " + getNameAsString() + " should contain field breakpoint info");
-            case 1: infos = null; return;
+            case 1:
+                infos = null;
+                hasActiveBreakpoints.set(false);
+                return;
             case 2:
                 FieldBreakpointInfo[] temp = new FieldBreakpointInfo[1];
                 FieldBreakpointInfo info = infos[0];

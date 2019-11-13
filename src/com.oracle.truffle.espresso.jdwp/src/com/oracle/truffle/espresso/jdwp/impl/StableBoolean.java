@@ -38,7 +38,7 @@ public final class StableBoolean {
     @CompilerDirectives.CompilationFinal
     private volatile boolean value;
 
-    StableBoolean(boolean initialValue) {
+    public StableBoolean(boolean initialValue) {
         this.value = initialValue;
         this.unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
     }
@@ -58,7 +58,7 @@ public final class StableBoolean {
      * @param value
      */
     @CompilerDirectives.TruffleBoundary
-    synchronized void set(boolean value) {
+    public synchronized void set(boolean value) {
         if (this.value != value) {
             this.value = value;
             Assumption old = this.unchanged;

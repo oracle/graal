@@ -22,45 +22,31 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+public class FieldBreakpointEvent {
 
-public class FieldBreakpointInfo extends AbstractBreakpointInfo implements BreakpointInfo {
+    private final FieldBreakpointInfo fieldBreakpointInfo;
+    private final Object receiver;
+    private final Object value;
 
-    private final KlassRef klass;
-    private final FieldRef field;
-    private boolean modificationBreakpoint;
-    private boolean accessBreakpoint;
-
-    public FieldBreakpointInfo(RequestFilter filter, KlassRef klassRef, FieldRef fieldRef) {
-        super(filter);
-        this.klass = klassRef;
-        this.field = fieldRef;
+    public FieldBreakpointEvent(FieldBreakpointInfo info, Object rec, Object val) {
+        this.fieldBreakpointInfo = info;
+        this.receiver = rec;
+        this.value = val;
     }
 
-    @Override
-    public KlassRef getKlass() {
-        return klass;
+    public FieldBreakpointEvent(FieldBreakpointInfo info, Object rec) {
+        this(info, rec, null);
     }
 
-    public FieldRef getField() {
-        return field;
+    public Object getValue() {
+        return value;
     }
 
-    public void setModificationBreakpoint() {
-        this.modificationBreakpoint = true;
+    public Object getReceiver() {
+        return receiver;
     }
 
-    public void setAccessBreakpoint() {
-        this.accessBreakpoint = true;
-    }
-
-    public boolean isModificationBreakpoint() {
-        return modificationBreakpoint;
-    }
-
-    public boolean isAccessBreakpoint() {
-        return accessBreakpoint;
+    public FieldBreakpointInfo getInfo() {
+        return fieldBreakpointInfo;
     }
 }

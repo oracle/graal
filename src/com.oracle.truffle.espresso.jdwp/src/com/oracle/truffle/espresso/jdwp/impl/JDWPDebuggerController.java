@@ -88,7 +88,7 @@ public class JDWPDebuggerController {
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
-    private HashMap<Object, FieldBreakpointInfo> fieldBreakpointExpected = new HashMap<>();
+    private HashMap<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
 
     private Ids<Object> ids;
     private Method suspendMethod;
@@ -351,8 +351,8 @@ public class JDWPDebuggerController {
         return options;
     }
 
-    public void prepareFieldBreakpoint(FieldBreakpointInfo info) {
-        fieldBreakpointExpected.put(Thread.currentThread(), info);
+    public void prepareFieldBreakpoint(FieldBreakpointEvent event) {
+        fieldBreakpointExpected.put(Thread.currentThread(), event);
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
@@ -446,12 +446,13 @@ public class JDWPDebuggerController {
             }
 
             // check if suspended for a field breakpoint
-            FieldBreakpointInfo info = fieldBreakpointExpected.remove(Thread.currentThread());
-            if (info != null) {
+            FieldBreakpointEvent fieldEvent = fieldBreakpointExpected.remove(Thread.currentThread());
+            if (fieldEvent != null) {
+                FieldBreakpointInfo info = fieldEvent.getInfo();
                 if (info.isAccessBreakpoint()) {
-                    VMEventListeners.getDefault().fieldAccessBreakpointHit(info, currentThread, callFrames[0]);
+                    VMEventListeners.getDefault().fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
                 } else if (info.isModificationBreakpoint()) {
-                    VMEventListeners.getDefault().fieldModificationBreakpointHit(info, currentThread, callFrames[0]);
+                    VMEventListeners.getDefault().fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
                 }
             }
 
