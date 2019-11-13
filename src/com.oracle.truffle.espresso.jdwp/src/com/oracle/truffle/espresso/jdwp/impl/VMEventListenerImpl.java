@@ -145,7 +145,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
         if (!fieldBreakpointsActive.get()) {
             return false;
@@ -166,7 +165,6 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
         if (!fieldBreakpointsActive.get()) {
             return false;
