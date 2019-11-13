@@ -81,6 +81,8 @@ import javax.tools.StandardLocation;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.java.compiler.JDTCompiler;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -129,7 +131,9 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                             } else {
                                 String providerImplBinName = generateProvider(annotatedElement);
                                 registrations.put(providerImplBinName, annotatedElement);
-                                generateProviderFile(providerImplBinName, providerServiceBinName, annotatedElement);
+                                if (shouldGenerateProviderFiles(annotatedElement)) {
+                                    generateProviderFile(providerImplBinName, providerServiceBinName, annotatedElement);
+                                }
                             }
                         }
                     }
@@ -327,6 +331,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), annotatedElements.get(0));
             }
         }
+    }
+
+    private static boolean shouldGenerateProviderFiles(Element currentElement) {
+        return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
 
     @SuppressWarnings("serial")
