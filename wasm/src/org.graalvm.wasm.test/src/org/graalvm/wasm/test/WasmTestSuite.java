@@ -73,6 +73,7 @@ import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
                 EmscriptenSuite.class,
+                WasmPolyglotTestSuite.class,
 })
 public class WasmTestSuite {
     @Test
