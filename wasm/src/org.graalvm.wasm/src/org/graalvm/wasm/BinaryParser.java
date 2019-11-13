@@ -293,7 +293,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readMemorySection() {
         int numMemories = readVectorLength();
-        Assert.assertIntLessOrEqual(module.symbolTable().tableCount() + numMemories, 1, "Can import or declare at most one memory per module.");
+        Assert.assertIntLessOrEqual(module.symbolTable().memoryCount() + numMemories, 1, "Can import or declare at most one memory per module.");
         // Since in the current version of WebAssembly supports at most one table instance per
         // module.
         // this loop should be executed at most once.
