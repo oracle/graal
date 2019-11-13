@@ -428,6 +428,7 @@ public final class NativeImageBuildServer {
             resetGlobalStateInLoggers();
             resetGlobalStateMXBeanLookup();
             resetResourceBundle();
+            resetJarFileFactoryCaches();
             resetGlobalStateInGraal();
             withGlobalStaticField("java.lang.ApplicationShutdownHooks", "hooks", f -> {
                 @SuppressWarnings("unchecked")
@@ -527,6 +528,11 @@ public final class NativeImageBuildServer {
 
     private static void resetResourceBundle() {
         withGlobalStaticField("java.util.ResourceBundle", "cacheList", list -> ((ConcurrentHashMap<?, ?>) list.get(null)).clear());
+    }
+
+    private static void resetJarFileFactoryCaches() {
+        withGlobalStaticField("sun.net.www.protocol.jar.JarFileFactory", "fileCache", list -> ((HashMap<?, ?>) list.get(null)).clear());
+        withGlobalStaticField("sun.net.www.protocol.jar.JarFileFactory", "urlCache", list -> ((HashMap<?, ?>) list.get(null)).clear());
     }
 
     private static ImageBuildTask loadCompilationTask(ArrayList<String> arguments, ClassLoader classLoader) {
