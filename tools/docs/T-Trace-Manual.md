@@ -444,21 +444,20 @@ let waitForRequire = function (event) {
 agent.on('source', waitForRequire, { roots: true });
 ```
 
-The script is slightly complicated. The problem is that **T-Trace** agents are
+The script solves an important problem: **T-Trace** agents are
 initialized as soon as possible and at that moment the `require` function isn't
-yet ready. As such the agent first waits for an invocation of a `function` with
-`require` argument, stores it and then waits for first user script to be loaded.
-Then it removes all the early probes using `agent.off` and invokes the actual 
+yet ready. As such the agent first attaches a listener on loaded scripts and when 
+the main user script is being loaded, it obtains its `process.mainModule.require` 
+function. Then it removes the probes using `agent.off` and invokes the actual 
 `initializeAgent` function to perform the real initialization while having 
 access to all the node modules. The script can be used as
 
 ```js
-$ node --experimental-options --js.print --agentscript=agent-require.js -e "print('OK')" 
+$ node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
 ```
 
-This initialization sequence is known to work on GraalVM's node `v12.10.0`.
-However, as it depends on internals of the node behavior, it may need to be
-adjusted for different node versions in the future.
+This initialization sequence is known to work on GraalVM's node `v12.10.0`
+launched with a main `yourScript.js` parameter.
 
 <!--
 
