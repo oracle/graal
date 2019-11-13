@@ -429,26 +429,19 @@ plain simple **T-Trace** scripts - one wants to use full power of `node`
 ecosystem including its modules. Here is a sample `agent-require.js` script that does it:
 
 ```js
-let waitForRequire = function(ctx, frame) {
-    if (frame.require) {
-        let require = frame.require;
-
-        let waitForUserScript = function (ev) {
-            if (ev.uri.startsWith("file://")) {
-                agent.off('source', waitForUserScript);
-                initializeAgent(require);
-            }
-        };
-        agent.on('source', waitForUserScript);
-        agent.off('enter', waitForRequire);
-    }
-};
-agent.on('enter', waitForRequire, { roots : true });
-
-function initializeAgent(require) {
+let initializeAgent = function (require) {
     let http = require("http");
     print(`${typeof http.createServer} http.createServer is available to the agent`);
 }
+
+let waitForRequire = function (event) {
+  if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
+    agent.off('source', waitForRequire);
+    initializeAgent(process.mainModule.require);
+  }
+};
+
+agent.on('source', waitForRequire, { roots: true });
 ```
 
 The script is slightly complicated. The problem is that **T-Trace** agents are
