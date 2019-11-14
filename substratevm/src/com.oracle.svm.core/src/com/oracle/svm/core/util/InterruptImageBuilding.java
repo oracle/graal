@@ -51,7 +51,7 @@ public class InterruptImageBuilding extends RuntimeException {
      */
     public InterruptImageBuilding(Throwable cause) {
         super(cause);
-        this.hasMessage = cause.getMessage() != null;
+        this.hasMessage = cause != null && cause.getMessage() != null;
     }
 
     /**
