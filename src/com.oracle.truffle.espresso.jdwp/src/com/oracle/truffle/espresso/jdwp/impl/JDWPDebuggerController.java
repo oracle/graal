@@ -368,6 +368,10 @@ public class JDWPDebuggerController {
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
+        public static final String DEBUG_VALUE_GET = "get";
+        public static final String DEBUG_STACK_FRAME_FIND_CURRENT_ROOT = "findCurrentRoot";
+        public static final String DEBUG_EXCEPTION_GET_RAW_EXCEPTION = "getRawException";
+
         @CompilerDirectives.CompilationFinal
         private boolean firstSuspensionCalled;
 
@@ -601,7 +605,7 @@ public class JDWPDebuggerController {
             // TODO(Gregersen) - hacked in with reflection currently
             // awaiting a proper API for this
             try {
-                java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod("get");
+                java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod(DEBUG_VALUE_GET);
                 getMethod.setAccessible(true);
                 return getMethod.invoke(value);
             } catch (Exception e) {
@@ -614,7 +618,7 @@ public class JDWPDebuggerController {
             // TODO(Gregersen) - hacked in with reflection currently
             // for now just use reflection to get the current root
             try {
-                java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod("findCurrentRoot");
+                java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
                 getRoot.setAccessible(true);
                 return (RootNode) getRoot.invoke(frame);
             } catch (Exception e) {
@@ -626,7 +630,7 @@ public class JDWPDebuggerController {
         private Throwable getRawException(DebugException exception) {
             // TODO(Gregersen) - hacked in with reflection currently
             try {
-                Method method = DebugException.class.getDeclaredMethod("getRawException");
+                Method method = DebugException.class.getDeclaredMethod(DEBUG_EXCEPTION_GET_RAW_EXCEPTION);
                 method.setAccessible(true);
                 return (Throwable) method.invoke(exception);
             } catch (Exception e) {
