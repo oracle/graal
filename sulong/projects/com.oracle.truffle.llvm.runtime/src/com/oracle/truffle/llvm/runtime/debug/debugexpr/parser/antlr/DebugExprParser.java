@@ -74,36 +74,20 @@ public class DebugExprParser {
     }
 
     public LLVMExpressionNode parse() throws DebugExprException {
-        // final ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-        // parser.errors.errorStream = new PrintStream(errorStream);
-        // parser.Parse();
-        // LLVMExpressionNode root = parser.GetASTRoot();
-        // if (parser.errors.count == 0) { // parsed correctly
-        // return root;
-        // } else {
-        // throw DebugExprException.create(root, errorStream.toString().replace("\n",
-        // "").replace("\r", ""));
-        // }
-
         lexer.removeErrorListeners();
         parser.removeErrorListeners();
+
         BailoutErrorListener listener = new BailoutErrorListener(asmSnippet);
         lexer.addErrorListener(listener);
         parser.addErrorListener(listener);
+
         parser.debugExpr();
-        // parser.snippet = asmSnippet;
-        // parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes,
-        // retOffsets);
-        // parser.inline_assembly();
-        // if (parser.root == null) {
-        // throw new IllegalStateException("no roots produced by inline assembly snippet");
-        // }
-        return parser.GetASTRoot();
-        /*
-         * return new LLVMExpressionNode() {
-         * 
-         * @Override public Object executeGeneric(VirtualFrame frame) { throw
-         * DebugExprException.create(this, "Not Yet Implemented: " + asmSnippet); } };
-         */
+        LLVMExpressionNode root = parser.GetASTRoot();
+
+        if (parser.getNumberOfSyntaxErrors() == 0) {
+            return root;
+        } else {
+            throw DebugExprException.create(root, listener.toString().replace("\n", "").replace("\r", ""));
+        }
     }
 }
