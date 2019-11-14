@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -221,6 +222,10 @@ public final class Target_java_lang_ClassLoader {
     public Target_java_lang_Module getUnnamedModule() {
         return DynamicHub.singleModuleReference.get();
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    private native Stream<Package> packages();
 }
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //

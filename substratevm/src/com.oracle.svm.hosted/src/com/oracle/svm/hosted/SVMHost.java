@@ -34,6 +34,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.graph.Node;
@@ -45,6 +47,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
@@ -266,7 +269,11 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        final DynamicHub dynamicHub = new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
+        }
+        return dynamicHub;
     }
 
     private boolean isAnonymousClass(Class<?> javaClass) {

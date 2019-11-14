@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
+
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(name = "getResourceAsStream")
@@ -84,6 +85,7 @@ public final class Target_java_lang_Module {
     public boolean canRead(Target_java_lang_Module other) {
         return true;
     }
+
 
     @Delete
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
