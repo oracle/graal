@@ -1231,6 +1231,19 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testRemoveSymbol() {
+        Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        Env env = ProxyLanguage.getCurrentContext().getEnv();
+        env.exportSymbol("symbol", env.asGuestValue(1));
+        assertTrue(c.getPolyglotBindings().hasMember("symbol"));
+        env.exportSymbol("symbol", null);
+        assertFalse(c.getPolyglotBindings().hasMember("symbol"));
+        c.close();
+    }
+
+    @Test
     public void testCreateContextDuringDispose() {
         AtomicBoolean contextOnFinalize = new AtomicBoolean(true);
         AtomicBoolean contextOnDispose = new AtomicBoolean(false);
