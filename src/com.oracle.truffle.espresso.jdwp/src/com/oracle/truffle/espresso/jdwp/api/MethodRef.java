@@ -120,4 +120,6 @@ public interface MethodRef {
      * @return true if a source file attribute is present, false otherwise
      */
     boolean hasSourceFileAttribute();
+
+    boolean isLastLine(long codeIndex);
 }

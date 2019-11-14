@@ -40,6 +40,8 @@ public final class LineNumberTable extends Attribute implements LineNumberTableR
 
     private final Entry[] entries;
 
+    private int lastLine = -1;
+
     public LineNumberTable(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
@@ -68,6 +70,17 @@ public final class LineNumberTable extends Attribute implements LineNumberTableR
             }
         }
         return -1;
+    }
+
+    public int getLastLine() {
+        if (lastLine != -1) {
+            return lastLine;
+        }
+        int max = -1;
+        for (Entry entry : entries) {
+            max = Math.max(max, entry.getLineNumber());
+        }
+        return max;
     }
 
     public static final class Entry implements EntryRef {

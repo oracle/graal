@@ -877,5 +877,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return invokeWithConversions(callee, args);
     }
 
+    @Override
+    public boolean isLastLine(long codeIndex) {
+        LineNumberTable table = getLineNumberTable();
+        int lastLine = table.getLastLine();
+        int lineAt = table.getLineNumber((int) codeIndex);
+        return lastLine == lineAt;
+    }
+
     //endregion jdwp-specific
 }

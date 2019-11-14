@@ -195,7 +195,16 @@ public class JDWPDebuggerController {
     public void stepOver(Object thread) {
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
-            susp.getEvent().prepareStepOver(STEP_CONFIG);
+            // check if we're at the last line in a method
+            // if so, we need to STEP_OUT to reach the caller
+            // location
+            JDWPCallFrame currentFrame = susp.getStackFrames()[0];
+            MethodRef method = (MethodRef) getContext().getIds().fromId((int) currentFrame.getMethodId());
+            if (method.isLastLine(currentFrame.getCodeIndex())) {
+                susp.getEvent().prepareStepOut(STEP_CONFIG);// .prepareStepOver(STEP_CONFIG);
+            } else {
+                susp.getEvent().prepareStepOver(STEP_CONFIG);
+            }
             susp.recordStep(DebuggerCommand.Kind.STEP_OVER);
         }
     }
