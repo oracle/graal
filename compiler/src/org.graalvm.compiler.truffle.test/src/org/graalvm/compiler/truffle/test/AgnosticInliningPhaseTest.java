@@ -48,7 +48,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -70,7 +69,6 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     @BeforeClass
     public static void before() {
-        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         agnosticInliningScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining, true);
         // ensure nothing is inlined so that we can observe the isInlinedNodes
         budgetScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleInliningInliningBudget, 1);
