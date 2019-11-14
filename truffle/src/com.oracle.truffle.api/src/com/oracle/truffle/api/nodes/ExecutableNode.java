@@ -64,10 +64,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 public abstract class ExecutableNode extends Node {
     /*
      * Since languages were singletons in the past, we cannot use the Env instance stored in
-     * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
+     * TruffleLanguage for languages that are not yet migrated. We use this polyglotEngine reference
      * instead for compatibility.
      */
-    @CompilationFinal Object sourceVM;
+    @CompilationFinal Object polyglotEngine;
     final TruffleLanguage<?> language;
     @CompilationFinal ReferenceCache referenceCache;
 
@@ -82,19 +82,19 @@ public abstract class ExecutableNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         this.language = language;
         if (this.language != null) {
-            this.sourceVM = NodeAccessor.ACCESSOR.engineSupport().getVMFromLanguageObject(NodeAccessor.ACCESSOR.languageSupport().getVMObject(this.language));
+            this.polyglotEngine = NodeAccessor.ACCESSOR.engineSupport().getPolyglotEngine(NodeAccessor.ACCESSOR.languageSupport().getPolyglotLanguageInstance(this.language));
         } else {
-            this.sourceVM = getCurrentVM();
+            this.polyglotEngine = getCurrentPolyglotEngine();
         }
         if (language != null && getLanguageInfo() == null) {
             throw new IllegalArgumentException("Truffle language instance is not initialized.");
         }
     }
 
-    private static Object getCurrentVM() {
+    private static Object getCurrentPolyglotEngine() {
         EngineSupport engine = NodeAccessor.ACCESSOR.engineSupport();
         if (engine != null) {
-            return engine.getCurrentVM();
+            return engine.getCurrentPolyglotEngine();
         } else {
             return null;
         }
@@ -163,9 +163,9 @@ public abstract class ExecutableNode extends Node {
         ReferenceCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, ReferenceCache next) {
             this.languageClass = languageClass;
             if (languageClass != null) {
-                this.languageReference = NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
+                this.languageReference = NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.polyglotEngine,
                                 executableNode.language, languageClass);
-                this.contextReference = NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
+                this.contextReference = NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.polyglotEngine,
                                 executableNode.language, languageClass);
             } else {
                 this.languageReference = null;
@@ -206,7 +206,7 @@ public abstract class ExecutableNode extends Node {
             if (current == null) {
                 this.referenceCache = new ReferenceCache(this, languageClass, null);
             } else {
-                if (sourceVM == null) {
+                if (polyglotEngine == null) {
                     this.referenceCache = GENERIC;
                 } else {
                     int count = 0;
