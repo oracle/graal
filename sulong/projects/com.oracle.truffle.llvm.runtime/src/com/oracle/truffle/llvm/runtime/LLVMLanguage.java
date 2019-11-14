@@ -229,16 +229,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    /*
-     * private ExecutableNode parseCoCoR(InlineParsingRequest request) { Iterable<Scope>
-     * globalScopes = findTopScopes(getCurrentContext(LLVMLanguage.class)); final DebugExprParser d
-     * = new DebugExprParser(this, request, globalScopes); try { return new
-     * DebugExprExecutableNode(d.parse()); } catch (DebugExprException | LLVMParserException e) { //
-     * error found during parsing return new ExecutableNode(this) {
-     * 
-     * @Override public Object execute(VirtualFrame frame) { return e.getMessage(); } }; }
-     */
-
     @Override
     protected boolean patchContext(LLVMContext context, Env newEnv) {
         boolean compatible = Configurations.areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions());
