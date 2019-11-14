@@ -123,12 +123,12 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
     }
 
     /**
-     * Registers a signal handler using sun.misc.SignalHandler. Unfortunately, using signals in java
+     * Registers a signal handler using sun.misc.SignalHandler. Unfortunately, using signals in Java
      * leads to some problems which are not resolved in our implementation yet.
      *
-     * One of this issue is, that signals are executed in an asynchronous way, which means raise()
-     * exits before the signal was handled. Another Issue is that Java already registered some
-     * signal handlers, which therefore cannot be used in sulong.
+     * One of these issues is that signals are executed in an asynchronous way which means raise()
+     * exits before the signal was handled. Another issue is that Java already registers some signal
+     * handlers, which therefore cannot be used in Sulong.
      *
      * Therefore, our implementation does not comply with the ANSI C standard and could lead to
      * timing issues when calling multiple signals in a defined sequence, or when a program has to
