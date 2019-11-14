@@ -61,5 +61,4 @@ public final class SourceCoverage {
     public RootCoverage[] getRoots() {
         return roots;
     }
-
 }
