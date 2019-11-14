@@ -150,10 +150,10 @@ public interface TruffleCompilerRuntime {
          * exit and every loop iteration. For example, a loop with 4 iterations and 2 loop exits
          * (exit1 and exit2, where exit1 is an early return inside a loop) leads to 4 copies of the
          * loop body and 4 copies of exit1 and 1 copy if exit2. After each exit all code until a
-         * return is duplicated per iteration. Beware of break statements inside loop since they
+         * return is duplicated per iteration. Beware of break statements inside loops since they
          * cause additional loop exits leading to code duplication along exit2.
          */
-        FULL_UNROL_UNTIL_RETURN,
+        FULL_UNROLL_UNTIL_RETURN,
         /**
          * Fully explode all loops. The loops must have a known finite number of iterations. If a
          * loop has multiple loop ends, they are not merged so that subsequent loop iterations are
