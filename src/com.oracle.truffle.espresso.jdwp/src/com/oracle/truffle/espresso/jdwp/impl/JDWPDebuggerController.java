@@ -51,7 +51,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
 
@@ -73,7 +75,7 @@ public class JDWPDebuggerController {
             case PACKET:
                 return debugLevel == Debug.PACKET || debugLevel == Debug.ALL;
             case ALL:
-                return debugLevel == Debug.ALL;
+                return debugLevel == Debug.ALL || debugLevel == Debug.THREAD || debugLevel == Debug.PACKET;
         }
         return false;
     }
@@ -388,6 +390,9 @@ public class JDWPDebuggerController {
 
             byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
 
+            // collect any events that need to be sent to the debugger once we're done here
+            List<Callable<Void>> jobs = new ArrayList<>();
+
             boolean hit = false;
             for (Breakpoint bp : event.getBreakpoints()) {
                 //System.out.println("BP at suspension point: " + bp.getLocationDescription());
@@ -399,14 +404,13 @@ public class JDWPDebuggerController {
                     // check if breakpoint request limited to a specific thread
                     Object thread = info.getThread();
                     if (thread == null || thread == currentThread) {
-                        if (!hit) {
-                            hit = true;
-                            // First hit, so we can increase the thread suspension.
-                            // Register the thread as suspended before sending the breakpoint hit event.
-                            // The debugger will verify thread status as part of registering if a breakpoint is hit
-                            ThreadSuspension.suspendThread(currentThread);
-                            VMEventListeners.getDefault().breakpointHit(info, currentThread);
-                        }
+                        jobs.add(new Callable<Void>() {
+                            @Override
+                            public Void call() {
+                                VMEventListeners.getDefault().breakpointHit(info, currentThread);
+                                return null;
+                            }
+                        });
                     }
                 } else if (info.isExceptionBreakpoint()) {
                     // get the specific exception type if any
@@ -432,11 +436,16 @@ public class JDWPDebuggerController {
                         }
                     }
                     if (hit) {
-                        ThreadSuspension.suspendThread(currentThread);
                         if (isDebug(Debug.THREAD)) {
-                            System.out.println("Breakpoint hit in thread: " + getThreadName(currentThread) + ", suspend count increased to: " + ThreadSuspension.getSuspensionCount(currentThread));
+                            System.out.println("Breakpoint hit in thread: " + getThreadName(currentThread));
                         }
-                        VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
+                        jobs.add(new Callable<Void>() {
+                            @Override
+                            public Void call() throws Exception {
+                                VMEventListeners.getDefault().exceptionThrown(info, currentThread, guestException, callFrames[0]);
+                                return null;
+                            }
+                        });
                     } else {
                         // don't suspend here
                         suspendedInfos.put(currentThread, null);
@@ -450,14 +459,26 @@ public class JDWPDebuggerController {
             if (fieldEvent != null) {
                 FieldBreakpointInfo info = fieldEvent.getInfo();
                 if (info.isAccessBreakpoint()) {
-                    VMEventListeners.getDefault().fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                    jobs.add(new Callable<Void>() {
+                        @Override
+                        public Void call() throws Exception {
+                            VMEventListeners.getDefault().fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                            return null;
+                        }
+                    });
                 } else if (info.isModificationBreakpoint()) {
-                    VMEventListeners.getDefault().fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                    jobs.add(new Callable<Void>() {
+                        @Override
+                        public Void call() throws Exception {
+                            VMEventListeners.getDefault().fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                            return null;
+                        }
+                    });
                 }
             }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(callFrames[0], currentThread, hit, suspendPolicy);
+            suspend(callFrames[0], currentThread, suspendPolicy, jobs);
         }
 
         private boolean matchLocation(Pattern[] positivePatterns, JDWPCallFrame callFrame) {
@@ -605,18 +626,21 @@ public class JDWPDebuggerController {
             }
         }
 
-        private void suspend(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended, byte suspendPolicy) {
+        private void suspend(JDWPCallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs) {
             if (isDebug(Debug.THREAD)) {
                 System.out.println("suspending from callback in thread: " + getThreadName(thread));
             }
             switch(suspendPolicy) {
                 case SuspendStrategy.NONE:
+                    runJobs(jobs);
                     break;
                 case SuspendStrategy.EVENT_THREAD:
                     if (isDebug(Debug.THREAD)) {
                         System.out.println("Suspend EVENT_THREAD");
                     }
-                    suspendEventThread(currentFrame, thread, alreadySuspended);
+                    ThreadSuspension.suspendThread(thread);
+                    runJobs(jobs);
+                    suspendEventThread(currentFrame, thread);
                     break;
                 case SuspendStrategy.ALL:
                     if (isDebug(Debug.THREAD)) {
@@ -634,19 +658,29 @@ public class JDWPDebuggerController {
                                     JDWPDebuggerController.this.suspend(activeThread);
                                 }
                             }
+                            // send any breakpoint events here, since now all threads that are expected to be suspended
+                            // have increased suspension count
+                            runJobs(jobs);
                         }
                     });
+                    ThreadSuspension.suspendThread(thread);
                     suspendThread.start();
-                    suspendEventThread(currentFrame, thread, alreadySuspended);
+                    suspendEventThread(currentFrame, thread);
                     break;
             }
         }
 
-        private void suspendEventThread(JDWPCallFrame currentFrame, Object thread, boolean alreadySuspended) {
-
-            if (!alreadySuspended) {
-                ThreadSuspension.suspendThread(thread);
+        private void runJobs(List<Callable<Void>> jobs) {
+            for (Callable<Void> job : jobs) {
+                try {
+                    job.call();
+                } catch (Exception e) {
+                    throw new RuntimeException("failed to send event to debugger", e);
+                }
             }
+        }
+
+        private void suspendEventThread(JDWPCallFrame currentFrame, Object thread) {
 
             if (isDebug(Debug.THREAD)) {
                 System.out.println("Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + ThreadSuspension.getSuspensionCount(thread));
@@ -681,23 +715,28 @@ public class JDWPDebuggerController {
 
         synchronized (lock) {
             try {
+                // in case a thread job is already posted on this thread
+                checkThreadJobsAndRun(thread);
                 lock.wait();
             } catch (InterruptedException e) {
                 throw new RuntimeException("not able to suspend thread: " + getThreadName(thread), e);
             }
         }
 
+        checkThreadJobsAndRun(thread);
+
+        if (isDebug(Debug.THREAD)) {
+            System.out.println("lock wakeup for thread: " + getThreadName(thread));
+        }
+    }
+
+    private void checkThreadJobsAndRun(Object thread) {
         if (threadJobs.containsKey(thread)) {
             // a thread job was posted on this thread
             // only wake up to perform the job a go back to sleep
             ThreadJob job = threadJobs.remove(thread);
             job.runJob();
             lockThread(thread);
-            return;
-        }
-
-        if (isDebug(Debug.THREAD)) {
-            System.out.println("lock wakeup for thread: " + getThreadName(thread));
         }
     }
 
