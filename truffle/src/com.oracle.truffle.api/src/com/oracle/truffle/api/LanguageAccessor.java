@@ -224,7 +224,7 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
-            TruffleStackTrace.addStackFrameInfo(callNode, e, root, frame);
+            TruffleStackTrace.addStackFrameInfo(callNode, root, e, frame);
         }
 
         @Override
