@@ -1134,7 +1134,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static String argumentTypesToString(Class<?>[] argTypes) {
-        return describeMethod("", argTypes, "");
+        return describeMethod("(", argTypes, ")");
     }
 
     @Substitute

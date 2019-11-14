@@ -192,8 +192,9 @@ public class Verifier {
         }
         Map<String, String> requiredCaps = componentInfo.getRequiredGraalValues();
         Map<String, String> graalCaps = localRegistry.getGraalCapabilities();
-
-        if (!isSilent() && feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(componentInfo), componentInfo.getName(), componentInfo.getVersionString())) {
+        boolean verbose = feedback.verboseOutput(null);
+        if (!isSilent() && verbose) {
+            feedback.verboseOutput("VERIFY_VerboseCheckRequirements", catalog.shortenComponentId(componentInfo), componentInfo.getName(), componentInfo.getVersionString());
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");

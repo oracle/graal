@@ -65,13 +65,14 @@ public class AgentObjectTest {
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] loadedScript = new String[5];
-            agentAPI.on("source", (ev) -> {
+            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
                 loadedScript[0] = ev.name();
                 loadedScript[1] = ev.characters();
                 loadedScript[2] = ev.language();
                 loadedScript[3] = ev.mimeType();
                 loadedScript[4] = ev.uri();
-            });
+            };
+            agentAPI.on("source", listener);
 
             Source sampleScript = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").mimeType("application/x-proxy-language").uri(new URI("http://app.test/data")).build();
             c.eval(sampleScript);
@@ -81,6 +82,15 @@ public class AgentObjectTest {
             assertEquals("language check", ProxyLanguage.ID, loadedScript[2]);
             assertEquals("mime type check", "application/x-proxy-language", loadedScript[3]);
             assertEquals("URI", "http://app.test/data", loadedScript[4]);
+
+            loadedScript[0] = null;
+
+            agentAPI.off("source", listener);
+
+            Source sampleScript2 = Source.newBuilder(ProxyLanguage.ID, "sample, code", "sample.px").mimeType("application/x-proxy-language").uri(new URI("http://app.test/data2")).build();
+            c.eval(sampleScript2);
+
+            assertNull("No new script load notified", loadedScript[0]);
         }
     }
 
@@ -121,7 +131,7 @@ public class AgentObjectTest {
 
             boolean[] program = {false};
             String[] functionName = {null};
-            agentAPI.on("enter", (ctx, frame) -> {
+            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
                 if (ctx.name().length() == 0) {
                     assertFalse("Program root is entered just once", program[0]);
                     program[0] = true;
@@ -129,7 +139,8 @@ public class AgentObjectTest {
                 }
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, AgentObjectFactory.createConfig(false, false, true, null));
+            };
+            agentAPI.on("enter", listener, AgentObjectFactory.createConfig(false, false, true, null));
 
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -146,6 +157,26 @@ public class AgentObjectTest {
 
             assertTrue("Program started", program[0]);
             assertEquals("Function foo has been called", "foo", functionName[0]);
+
+            agentAPI.off("enter", listener);
+            program[0] = false;
+            functionName[0] = null;
+
+            // @formatter:off
+            Source sampleScript2 = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n"
+                    + "  DEFINE(foo,\n"
+                    + "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n"
+                    + "  ),\n"
+                    + "  CALL(foo)\n"
+                    + ")",
+                    "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript2);
+
+            assertFalse("No listener notified", program[0]);
+            assertNull("No function entered", functionName[0]);
         }
     }
 

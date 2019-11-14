@@ -47,7 +47,7 @@ public class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     @Override
     public <T extends CodeInfo> boolean visitCode(T codeInfo) {
         int state = CodeInfoAccess.getState(codeInfo);
-        if (state == CodeInfo.STATE_PARTIALLY_FREED) {
+        if (state == CodeInfo.STATE_UNREACHABLE) {
             freeMemory(codeInfo);
         } else if (state == CodeInfo.STATE_READY_FOR_INVALIDATION) {
             // All objects that are accessed during invalidation must still be reachable.
@@ -58,7 +58,7 @@ public class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     }
 
     private static void freeMemory(CodeInfo codeInfo) {
-        boolean removed = RuntimeCodeInfoMemory.singleton().remove(codeInfo);
+        boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
         RuntimeCodeInfoAccess.releaseMethodInfoMemory(codeInfo);
     }

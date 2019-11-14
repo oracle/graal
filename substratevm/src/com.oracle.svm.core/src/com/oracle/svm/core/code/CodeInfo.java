@@ -50,4 +50,9 @@ public interface CodeInfo extends UntetheredCodeInfo {
      * Indicates that this {@link CodeInfo} object was invalidated and parts of its data were freed.
      */
     int STATE_PARTIALLY_FREED = STATE_READY_FOR_INVALIDATION + 1;
+    /**
+     * Indicates that a partially freed {@link CodeInfo} object is not reachable from the GC point
+     * of view.
+     */
+    int STATE_UNREACHABLE = STATE_PARTIALLY_FREED + 1;
 }

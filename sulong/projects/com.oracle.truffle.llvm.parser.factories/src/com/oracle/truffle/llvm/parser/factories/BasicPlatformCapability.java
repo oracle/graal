@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
@@ -59,6 +60,11 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
         super(cls);
         this.loadCxxLibraries = loadCxxLibraries;
+    }
+
+    @Override
+    public String getPolyglotMockLibrary() {
+        return "libpolyglot-mock." + NFIContextExtension.getNativeLibrarySuffix();
     }
 
     @Override
