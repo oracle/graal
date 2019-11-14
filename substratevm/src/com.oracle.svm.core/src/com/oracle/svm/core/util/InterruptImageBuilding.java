@@ -47,8 +47,7 @@ public class InterruptImageBuilding extends RuntimeException {
      * Print nothing upon exit.
      */
     public InterruptImageBuilding() {
-        super("");
-        hasMessage = false;
+        this((Throwable) null);
     }
 
     public Optional<String> getReason() {
