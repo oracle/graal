@@ -53,6 +53,15 @@ public class Signal {
     @CFunction
     public static native int kill(int pid, int sig);
 
+    @CConstant
+    public static native int SIG_BLOCK();
+
+    @CConstant
+    public static native int SIG_UNBLOCK();
+
+    @CConstant
+    public static native int SIG_SETMASK();
+
     @CFunction
     public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
 
