@@ -65,7 +65,13 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope agnosticInliningScope;
     private static TruffleCompilerOptions.TruffleOptionsOverrideScope budgetScope;
-    private final TruffleRuntime runtime = Truffle.getRuntime();
+    protected final TruffleRuntime runtime = Truffle.getRuntime();
+    protected final RootCallTarget dummy = runtime.createCallTarget(new RootNode(null) {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return null;
+        }
+    });
 
     @BeforeClass
     public static void before() {
@@ -82,13 +88,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     @Test
     public void testInInlinedNode() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        final RootCallTarget inner = runtime.createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        });
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(inner));
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(dummy));
         callTarget.call();
         final StructuredGraph graph = runLanguageAgnosticInliningPhase(callTarget);
         // Language agnostic inlining expects this particular pattern to be present in the graph
@@ -108,7 +108,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         }
     }
 
-    private StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         final TruffleInlining callNodeProvider = new TruffleInlining(callTarget, new NoInliningPolicy());
         final PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         final Class<?> partialEvaluatorClass = partialEvaluator.getClass().getSuperclass();
@@ -145,12 +145,12 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         return (ResolvedJavaMethod) rootForCallTarget.invoke(partialEvaluator, target);
     }
 
-    class CallsInnerNodeTwice extends RootNode {
+    protected class CallsInnerNodeTwice extends RootNode {
 
         @Child private OptimizedDirectCallNode callNode1;
         @Child private OptimizedDirectCallNode callNode2;
 
-        CallsInnerNodeTwice(RootCallTarget toCall) {
+        public CallsInnerNodeTwice(RootCallTarget toCall) {
             super(null);
             this.callNode1 = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
             this.callNode2 = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
@@ -159,7 +159,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             callNode1.call(frame.getArguments());
-            return callNode2.call(frame.getArguments());
+            return callNode2.call(12345);
         }
     }
 }
