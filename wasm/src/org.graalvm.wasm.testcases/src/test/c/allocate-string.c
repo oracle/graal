@@ -55,6 +55,6 @@ int main() {
     strcpy(dynamicMemory, "Long string of text.\n");
   }
 
-  printf("Name = %s\n", staticMemory);
-  printf("Description: %s\n", dynamicMemory);
+  printf("1st: %s\n", staticMemory);
+  printf("2nd: %s\n", dynamicMemory);
 }

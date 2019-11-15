@@ -114,7 +114,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         contextBuilder.option("engine.Compilation", "true");
         contextBuilder.option("engine.BackgroundCompilation", "true");
         contextBuilder.option("engine.CompileImmediately", "false");
-        contextBuilder.option("engine.Inlining", "true");
+        contextBuilder.option("engine.Inlining", "false");
         contextBuilder.option("engine.CompilationThreshold", "100");
         return contextBuilder.build();
     }
