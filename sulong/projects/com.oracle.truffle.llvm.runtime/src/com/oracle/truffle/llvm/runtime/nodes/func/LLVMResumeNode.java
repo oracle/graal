@@ -60,6 +60,11 @@ public abstract class LLVMResumeNode extends LLVMControlFlowNode {
     }
 
     @Override
+    public int[] getSuccessors() {
+        return new int[]{};
+    }
+
+    @Override
     public LLVMStatementNode getPhiNode(int successorIndex) {
         return null;
     }

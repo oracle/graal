@@ -51,8 +51,6 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "debug");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "trace");
 
-    private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
-
     private static final String BC_O0 = "O0.bc";
     private static final String BC_O1 = "O1.bc";
     private static final String BC_MEM2REG = "O0_MEM2REG.bc";
@@ -70,7 +68,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         if (!Platform.isAArch64()) {
             configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testStructures.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-            configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
             configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
             configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
@@ -85,7 +83,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
 
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
-        contextBuilder.option(OPTION_ENABLE_LVI, String.valueOf(true));
+        // use default
     }
 
     @Override

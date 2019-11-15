@@ -54,8 +54,6 @@ public abstract class LLVMLoopNode extends LLVMControlFlowNode {
 
     public abstract void executeLoop(VirtualFrame frame);
 
-    public abstract int[] getSuccessors();
-
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMLoopNodeWrapper(this, probe);
