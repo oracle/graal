@@ -781,7 +781,7 @@ public class NativeImageGenerator {
             return true;
         }
         if (NativeImageOptions.ExitAfterAnalysis.getValue()) {
-            throw new InterruptImageBuilding("interrupted image construction as ExitAfterAnalysis is set");
+            throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ExitAfterAnalysis, "+"));
         }
         return false;
     }
