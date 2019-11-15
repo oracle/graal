@@ -2444,11 +2444,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public Object executeRepeatingWithValue(VirtualFrame frame) {
         final TargetOffset offset = execute(contextReference().get(), frame);
+        if (offset.isZero()) {
+            return CONTINUE_LOOP_STATUS;
+        }
         return offset;
     }
 
-    @Override
-    public boolean shouldContinue(Object value) {
+    @SuppressWarnings("unused")
+    public static boolean shouldContinue(Object value) {
         // This is a trick to avoid the load of the value field.
         // In particular, we avoid:
         //

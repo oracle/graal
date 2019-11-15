@@ -55,7 +55,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public interface RepeatingNode extends NodeInterface {
-
     /**
      * A value indicating that the loop should be repeated.
      *
@@ -109,20 +108,5 @@ public interface RepeatingNode extends NodeInterface {
         } else {
             return BREAK_LOOP_STATUS;
         }
-    }
-
-    /**
-     * Checks if the value returned by this repeating node indicates that the loop should continue.
-     *
-     * By default, this method checks whether the value is equal to {@code CONTINUE_LOOP_STATUS},
-     * but it can be overridden in the implementations as required by the language semantics.
-     *
-     * @param value the value that was previously returned by {@code executeRepeatingWithValue}
-     * @return <code>true</code> if the loop should be continued for this value
-     *
-     * @since 20.0
-     */
-    default boolean shouldContinue(Object value) {
-        return value == CONTINUE_LOOP_STATUS;
     }
 }

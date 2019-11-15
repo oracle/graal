@@ -53,6 +53,10 @@ public final class TargetOffset {
         return value > 0;
     }
 
+    public boolean isZero() {
+        return value == 0;
+    }
+
     public boolean isMinusOne() {
         return value == -1;
     }
