@@ -389,6 +389,8 @@ public final class DebuggerSession implements Closeable {
     /**
      * Suspends the current or the next execution of a given thread. Will throw an
      * {@link IllegalStateException} if the session is already closed.
+     *
+     * @since 20.0
      */
     public void suspend(Thread t) {
         if (Debugger.TRACE) {
@@ -405,6 +407,8 @@ public final class DebuggerSession implements Closeable {
      * Suspends the current or the next execution on all threads. All new executing threads will
      * start suspended until {@link #resumeAll()} is called or the session is closed. Will throw an
      * {@link IllegalStateException} if the session is already closed.
+     *
+     * @since 20.0
      */
     public synchronized void suspendAll() {
         if (Debugger.TRACE) {
@@ -446,6 +450,8 @@ public final class DebuggerSession implements Closeable {
      * Resumes the execution on a given thread if it has not been suspended yet.
      *
      * @param t the thread to resume
+     *
+     * @since 20.0
      */
     public synchronized void resume(Thread t) {
         if (Debugger.TRACE) {
