@@ -306,7 +306,8 @@ public abstract class TypeFlow<T> {
 
     private boolean addObserver(BigBang bb, TypeFlow<?> observer, boolean triggerUpdate, boolean registerObservees) {
         if (doAddObserver(bb, observer, registerObservees)) {
-            if (triggerUpdate) {
+            /* Only trigger an observer update if this flow has a non-empty state. */
+            if (triggerUpdate && !this.state.isEmpty()) {
                 /*
                  * Notify the observer after registering. This flow might have already reached a
                  * fixed point and might never notify its observers otherwise.
