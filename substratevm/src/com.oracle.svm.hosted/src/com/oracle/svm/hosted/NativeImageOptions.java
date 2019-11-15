@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,12 +44,18 @@ public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Comma separated list of CPU features that will be used for image generation on the AMD64 platform. " +
-                    "Features SSE and SSE2 are enabled by default. Other available features are: " +
+    @Option(help = "Comma separated list of CPU features that will be used for image generation. " +
+                    "The specific options available are platform dependent. " +
+                    "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
                     "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
                     "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW", type = User)//
+                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW. " +
+                    "On AArch64, no features are enabled by default. Available features are: " +
+                    "FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
+                    "A53MAC, DMB_ATOMICS", type = User)//
     public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
+    //@Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
+    //public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
