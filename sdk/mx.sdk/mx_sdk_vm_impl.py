@@ -403,6 +403,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/README.html',
                         exclude_base + '/THIRDPARTYLICENSEREADME.txt',
                         exclude_base + '/THIRDPARTYLICENSEREADME-JAVAFX.txt',
+                        exclude_base + '/THIRD_PARTY_README',
                         exclude_base + '/release',
                         exclude_base + '/bin/jvisualvm',
                         exclude_base + '/bin/jvisualvm.exe',
@@ -413,6 +414,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/lib/missioncontrol',
                     ] if mx.get_os() == 'darwin' else [])
                 })
+                if exists(join(exclude_base, "THIRD_PARTY_README")):
+                    _add(layout, "THIRD_PARTY_README_JDK" if base_dir == '.' else base_dir + '/THIRD_PARTY_README_JDK', "file:" + exclude_base + "/THIRD_PARTY_README")
             else:
                 # TODO(GR-8329): add exclusions
                 _add(layout, self.jdk_base + '/', {
