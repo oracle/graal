@@ -4166,9 +4166,13 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private JavaMethod lookupMethod(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
-        JavaMethod result = constantPool.lookupMethod(cpi, opcode);
+        JavaMethod result = lookupMethodInPool(cpi, opcode);
         assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : unresolvedMethodAssertionMessage(result);
         return result;
+    }
+
+    protected JavaMethod lookupMethodInPool(int cpi, int opcode) {
+        return constantPool.lookupMethod(cpi, opcode);
     }
 
     protected JavaField lookupField(int cpi, int opcode) {
