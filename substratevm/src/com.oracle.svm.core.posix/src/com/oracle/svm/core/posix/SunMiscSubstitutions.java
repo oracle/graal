@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -146,6 +147,9 @@ final class Util_jdk_internal_misc_Signal {
         }
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = Signal.signal(sig, newDispatcher);
+        CIntPointer sigset = StackValue.get(CIntPointer.class);
+        sigset.write(1 << (sig - 1));
+        Signal.sigprocmask(Signal.SIG_UNBLOCK(), (Signal.sigset_tPointer) sigset, WordFactory.nullPointer());
         final long result = dispatcherToNativeH(oldDispatcher);
         return result;
     }
