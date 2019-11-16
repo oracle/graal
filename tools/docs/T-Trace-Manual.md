@@ -326,7 +326,7 @@ Ruby and create `source-tracing.rb` file:
 puts "Ruby: Initializing T-Trace script"
 
 agent.on('source', ->(ev) {
-    name = Truffle::Interop.read(ev, 'name')
+    name = ev[:name]
     puts "Ruby: observed loading of #{name}" 
 })
 
