@@ -314,7 +314,6 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         return (False, "Build outputs are up-to-date.")
 
     def clean(self, forBuild=False):
-        mx.log(forBuild)
         if forBuild:
             output_dir = self.subject.getOutputDir()
             for root, filename in self.subject.getProgramSources():
