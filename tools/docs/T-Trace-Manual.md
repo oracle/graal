@@ -124,7 +124,7 @@ and dumps the most frequent ones when the execution of your program is over:
 var map = new Map();
 
 function dumpHistogram() {
-    print("=== Histogram ===");
+    print("==== Histogram ====");
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -135,7 +135,7 @@ function dumpHistogram() {
         }
         if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
-    print("=================");
+    print("===================");
 }
 
 agent.on('enter', function(ev) {
