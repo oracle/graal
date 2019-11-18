@@ -434,11 +434,11 @@ public class RuntimeCodeInstaller {
     }
 
     protected void makeCodeMemoryReadOnly(Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryReadOnly((CodePointer) start, WordFactory.unsigned(size));
+        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
     }
 
     protected void makeDataSectionNX(Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryNX((CodePointer) start, WordFactory.unsigned(size));
+        RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
     }
 
     protected void releaseCodeMemory(Pointer start, long size) {

@@ -29,7 +29,7 @@ import java.util.EnumSet;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-public abstract class VirtualMemoryCommittedMemoryProvider implements CommittedMemoryProvider {
+public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
 
     @Override
     public boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {

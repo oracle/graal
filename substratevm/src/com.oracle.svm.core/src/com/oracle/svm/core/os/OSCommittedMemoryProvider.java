@@ -59,7 +59,7 @@ class OSCommittedMemoryProviderFeature implements Feature {
     }
 }
 
-public class OSCommittedMemoryProvider extends VirtualMemoryCommittedMemoryProvider {
+public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
     public OSCommittedMemoryProvider() {
     }
