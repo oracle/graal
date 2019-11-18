@@ -333,7 +333,6 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             result = nodeFactory.createAllocaArray(type, num, alignment);
         }
 
-        // TODO: handle location
         // we never want to step on allocations, only to actual assignments in the source
         final SourceInstrumentationStrategy intention;
         if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
