@@ -84,6 +84,7 @@ public class JDWPDebuggerController {
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private final JDWPInstrument instrument;
+    private TruffleLanguage.Env languageEnv;
     private Map<Object, Object> suspendLocks = new HashMap<>();
     private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private Map<Object, Integer> commandRequestIds = new HashMap<>();
@@ -101,15 +102,15 @@ public class JDWPDebuggerController {
         this.instrument = instrument;
     }
 
-    public void initialize(JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
+    public void initialize(TruffleLanguage.Env languageEnv, JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
         this.options = jdwpOptions;
+        this.languageEnv = languageEnv;
         if (!reconnect) {
             instrument.init(context);
         }
         this.ids = context.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
-        TruffleLanguage.Env languageEnv = context.getEnv();
         Debugger debugger = languageEnv.lookup(languageEnv.getInstruments().get("debugger"), Debugger.class);
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
@@ -124,6 +125,10 @@ public class JDWPDebuggerController {
         } catch (NoSuchMethodException e) {
             throw new RuntimeException("Unable to obtain thread suspend method", e);
         }
+    }
+
+    public void reInitialize(JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
+        initialize(languageEnv, jdwpOptions, context, reconnect);
     }
 
     public JDWPContext getContext() {

@@ -39,10 +39,10 @@ public final class JDWPContextImpl implements JDWPContext {
         this.ids = new Ids<>(StaticObject.NULL);
     }
 
-    public void jdwpInit() {
+    public void jdwpInit(TruffleLanguage.Env env) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (context.JDWPOptions != null) {
-            JDWPSetup.setup(context.JDWPOptions, this);
+            JDWPSetup.setup(env, context.JDWPOptions, this);
         }
     }
 
@@ -99,11 +99,6 @@ public final class JDWPContextImpl implements JDWPContext {
             return context.getRegistries().isClassLoader(loader);
         }
         return false;
-    }
-
-    @Override
-    public TruffleLanguage.Env getEnv() {
-        return context.getEnv();
     }
 
     @Override

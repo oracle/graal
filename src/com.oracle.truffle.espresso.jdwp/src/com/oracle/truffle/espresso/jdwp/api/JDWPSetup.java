@@ -32,9 +32,8 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
  */
 public class JDWPSetup {
 
-    public static void setup(JDWPOptions options, JDWPContext context) {
-        TruffleLanguage.Env env = context.getEnv();
+    public static void setup(TruffleLanguage.Env env, JDWPOptions options, JDWPContext context) {
         JDWPDebuggerController controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
-        controller.initialize(options, context, false);
+        controller.initialize(env, options, context, false);
     }
 }
