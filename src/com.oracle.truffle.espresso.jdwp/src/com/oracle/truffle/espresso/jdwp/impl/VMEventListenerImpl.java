@@ -193,7 +193,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldAccessSlowPath(FieldRef field, Object receiver) {
         for (FieldBreakpointInfo info : field.getFieldBreakpointInfos()) {
-            if (info.isModificationBreakpoint()) {
+            if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent(info, receiver));
                 debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
