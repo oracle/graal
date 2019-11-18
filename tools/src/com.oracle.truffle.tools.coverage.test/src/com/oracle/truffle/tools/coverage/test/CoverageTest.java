@@ -170,13 +170,13 @@ public final class CoverageTest {
             final SourceCoverage[] coverage = tracker.getCoverage();
             Assert.assertEquals(2, coverage.length);
             for (SourceCoverage sourceCoverage : coverage) {
-                if (sourceCoverage.getSource() == RootAndStatementInDifferentSources.rootSource) {
+                if (sourceCoverage.getSource().equals(RootAndStatementInDifferentSources.rootSource)) {
                     Assert.assertEquals(1, sourceCoverage.getRoots().length);
                     final RootCoverage rootCoverage = sourceCoverage.getRoots()[0];
                     Assert.assertTrue(rootCoverage.isCovered());
                     Assert.assertEquals(0, rootCoverage.getSectionCoverage().length);
                 }
-                if (sourceCoverage.getSource() == RootAndStatementInDifferentSources.statementSource) {
+                if (sourceCoverage.getSource().equals(RootAndStatementInDifferentSources.statementSource)) {
                     Assert.assertEquals(1, sourceCoverage.getRoots().length);
                     final RootCoverage rootCoverage = sourceCoverage.getRoots()[0];
                     Assert.assertFalse(rootCoverage.isCovered());
@@ -193,8 +193,8 @@ public final class CoverageTest {
     public static class RootAndStatementInDifferentSources extends ProxyLanguage {
 
         public static final String ID = "RootAndStatementInDifferentSources";
-        static com.oracle.truffle.api.source.Source rootSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in root", "root").build();
-        static com.oracle.truffle.api.source.Source statementSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in statement",
+        static final com.oracle.truffle.api.source.Source rootSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in root", "root").build();
+        static final com.oracle.truffle.api.source.Source statementSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in statement",
                         "statement").build();
 
         @Override
