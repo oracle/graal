@@ -20,36 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPVirtualMachine;
+import com.oracle.truffle.api.Truffle;
 
-public class EspressoVirtualMachine implements JDWPVirtualMachine {
-    public static final int SIZE = 8;
+public class JDWPVirtualMachineImpl implements JDWPVirtualMachine {
 
-    public static final String VM_Description = "Espresso 64-Bit VM";
-    public static final String vmVersion = System.getProperty("java.version");
-    public static final String vmName = "Espresso 64-Bit VM";
-
-    public int getSizeOfFieldRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfMethodRef() {
-        return SIZE;
-    }
-
-    public int getSizeofObjectRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfClassRef() {
-        return SIZE;
-    }
-
-    public int getSizeOfFrameRef() {
-        return SIZE;
-    }
+    public static final String VM_Description = Truffle.getRuntime().getName();
+    public static final String vmVersion = System.getProperty("java.vm.version");
+    public static final String vmName = System.getProperty("java.vm.name");
 
     @Override
     public String getVmDescription() {

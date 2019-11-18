@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.jdwp.impl;
 
 /**
  * A simple virtual machine interface used to retrieve basic
@@ -28,30 +28,42 @@ package com.oracle.truffle.espresso.jdwp.api;
  */
 public interface JDWPVirtualMachine {
 
+    int DEFAULT_SIZE = 8;
+
     /**
      * @return the number of bytes for representing a FieldRef.
      */
-    int getSizeOfFieldRef();
+    default int getSizeOfFieldRef() {
+        return DEFAULT_SIZE;
+    }
 
     /**
      * @return the number of bytes for representing a MethodRef.
      */
-    int getSizeOfMethodRef();
+    default int getSizeOfMethodRef(){
+        return DEFAULT_SIZE;
+    }
 
     /**
      * @return the number of bytes for representing a Object.
      */
-    int getSizeofObjectRef();
+    default int getSizeofObjectRef(){
+        return DEFAULT_SIZE;
+    }
 
     /**
      * @return the number of bytes for representing a class.
      */
-    int getSizeOfClassRef();
+    default int getSizeOfClassRef(){
+        return DEFAULT_SIZE;
+    }
 
     /**
      * @return the number of bytes for representing a frame.
      */
-    int getSizeOfFrameRef();
+    default int getSizeOfFrameRef(){
+        return DEFAULT_SIZE;
+    }
 
     /**
      * @return a description of the underlying VM.
