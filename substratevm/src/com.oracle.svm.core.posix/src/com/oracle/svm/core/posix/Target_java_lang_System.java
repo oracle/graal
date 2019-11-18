@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.linux;
+package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Time.gettimeofday;
-import static com.oracle.svm.core.posix.headers.linux.LinuxTime.CLOCK_MONOTONIC;
-import static com.oracle.svm.core.posix.headers.linux.LinuxTime.clock_gettime;
+import java.io.Console;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.headers.Time.timespec;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 @TargetClass(java.lang.System.class)
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 final class Target_java_lang_System {
 
-    @Substitute
-    @Uninterruptible(reason = "Does basic math after a simple system call")
-    private static long nanoTime() {
-        timespec timespec = StackValue.get(timespec.class);
-        if (clock_gettime(CLOCK_MONOTONIC(), timespec) == 0) {
-            return timespec.tv_sec() * 1_000_000_000L + timespec.tv_nsec();
-
-        } else {
-            /* High precision time is not available, fall back to low precision. */
-            timeval timeval = StackValue.get(timeval.class);
-            timezone timezone = WordFactory.nullPointer();
-            gettimeofday(timeval, timezone);
-            return timeval.tv_sec() * 1_000_000_000L + timeval.tv_usec() * 1_000L;
-        }
-    }
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    static volatile Console cons;
 
     @Substitute
-    public static String mapLibraryName(String libname) {
-        return "lib" + libname + ".so";
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long currentTimeMillis() {
+        timeval timeval = StackValue.get(timeval.class);
+        timezone timezone = WordFactory.nullPointer();
+        Time.gettimeofday(timeval, timezone);
+        return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
     }
-}
-
-/** Dummy class to have a class with the file's name. */
-public final class LinuxSubstitutions {
 }

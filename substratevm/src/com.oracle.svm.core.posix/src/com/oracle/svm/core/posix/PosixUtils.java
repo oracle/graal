@@ -38,8 +38,10 @@ import java.io.IOException;
 import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -129,7 +131,7 @@ public class PosixUtils {
         throw VMError.shouldNotReachHere("Unknown locale category: " + category);
     }
 
-    static String removeTrailingSlashes(String path) {
+    public static String removeTrailingSlashes(String path) {
         int p = path.length() - 1;
         while (p > 0 && path.charAt(p) == '/') {
             --p;
@@ -204,7 +206,7 @@ public class PosixUtils {
         return Util_java_io_FileDescriptor.toTarget(descriptor).fd;
     }
 
-    static void setFD(FileDescriptor descriptor, int fd) {
+    public static void setFD(FileDescriptor descriptor, int fd) {
         Util_java_io_FileDescriptor.toTarget(descriptor).fd = fd;
     }
 
@@ -227,7 +229,7 @@ public class PosixUtils {
         return result.length() != 0 ? result : defaultMsg;
     }
 
-    static void fileOpen(String path, FileDescriptor fd, int flags) throws FileNotFoundException {
+    public static void fileOpen(String path, FileDescriptor fd, int flags) throws FileNotFoundException {
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(removeTrailingSlashes(path))) {
             CCharPointer pathPtr = pathPin.get();
             int handle = open(pathPtr, flags, 0666);
@@ -239,7 +241,7 @@ public class PosixUtils {
         }
     }
 
-    static void fileClose(FileDescriptor fd) throws IOException {
+    public static void fileClose(FileDescriptor fd) throws IOException {
         int handle = getFD(fd);
         if (handle == -1) {
             return;
@@ -270,6 +272,23 @@ public class PosixUtils {
         return Unistd.getpid();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static final class ProcessNameProvider implements Function<TargetClass, String> {
+        @Override
+        public String apply(TargetClass annotation) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+                return "java.lang.UNIXProcess";
+            } else {
+                return "java.lang.ProcessImpl";
+            }
+        }
+    }
+
+    @TargetClass(classNameProvider = ProcessNameProvider.class)
+    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+    static final class Target_java_lang_UNIXProcess {
+        @Alias int pid;
+    }
     public static int getpid(Process process) {
         Target_java_lang_UNIXProcess instance = SubstrateUtil.cast(process, Target_java_lang_UNIXProcess.class);
         return instance.pid;
@@ -297,7 +316,7 @@ public class PosixUtils {
         return status;
     }
 
-    static int readSingle(FileDescriptor fd) throws IOException {
+    public static int readSingle(FileDescriptor fd) throws IOException {
         CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
         SignedWord nread = read(handle, retPtr, WordFactory.unsigned(1));
@@ -310,7 +329,7 @@ public class PosixUtils {
         return retPtr.read() & 0xFF;
     }
 
-    static int readBytes(byte[] b, int off, int len, FileDescriptor fd) throws IOException {
+    public static int readBytes(byte[] b, int off, int len, FileDescriptor fd) throws IOException {
         if (b == null) {
             throw new NullPointerException();
         } else if (PosixUtils.outOfBounds(off, len, b)) {
@@ -351,7 +370,7 @@ public class PosixUtils {
     }
 
     @SuppressWarnings("unused")
-    static void writeSingle(FileDescriptor fd, int b, boolean append) throws IOException {
+    public static void writeSingle(FileDescriptor fd, int b, boolean append) throws IOException {
         SignedWord n;
         int handle = getFD(fd);
         if (handle == -1) {
@@ -369,7 +388,7 @@ public class PosixUtils {
     }
 
     @SuppressWarnings("unused")
-    static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
+    public static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
         if (bytes == null) {
             throw new NullPointerException();
         } else if (PosixUtils.outOfBounds(off, len, bytes)) {
@@ -428,7 +447,7 @@ public class PosixUtils {
         return Unistd.fsync(fd) == 0;
     }
 
-    static int getFDHandle(FileDescriptor fd) throws IOException {
+    public static int getFDHandle(FileDescriptor fd) throws IOException {
         int handle = getFD(fd);
         if (handle == -1) {
             throw new IOException("Stream Closed");
@@ -443,7 +462,7 @@ public class PosixUtils {
     /**
      * From a given path, remove all {@code .} and {@code dir/..}.
      */
-    static String collapse(String path) {
+    public static String collapse(String path) {
         boolean absolute = path.charAt(0) == '/';
         String wpath = absolute ? path.substring(1) : path;
 
