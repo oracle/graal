@@ -272,4 +272,6 @@ public interface JDWPContext {
     JDWPCallFrame[] getStackTrace(Object thread);
 
     boolean isInstanceOf(Object object, KlassRef klass);
+
+    Object[] getTopLevelThreadGroups();
 }

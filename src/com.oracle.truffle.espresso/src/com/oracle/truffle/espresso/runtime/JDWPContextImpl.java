@@ -207,6 +207,11 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
+    public Object[] getTopLevelThreadGroups() {
+        return new Object[] {context.getSystemThreadGroup()};
+    }
+
+    @Override
     public int getArrayLength(Object array) {
         StaticObject staticObject = (StaticObject) array;
         return staticObject.length();

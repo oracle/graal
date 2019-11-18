@@ -238,6 +238,9 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.VirtualMachine.ALL_THREADS.ID:
                                 result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context);
                                 break;
+                            case JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.ID:
+                                result = JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.createReply(packet, context);
+                                break;
                             case JDWP.VirtualMachine.DISPOSE.ID:
                                 result = JDWP.VirtualMachine.DISPOSE.createReply(packet, controller);
                                 break;
@@ -261,6 +264,9 @@ public class DebuggerConnection implements JDWPCommands {
                                 break;
                             case JDWP.VirtualMachine.SET_DEFAULT_STRATUM.ID:
                                 result = JDWP.VirtualMachine.SET_DEFAULT_STRATUM.createReply(packet);
+                                break;
+                            case JDWP.VirtualMachine.ALL_CLASSES_WITH_GENERIC.ID:
+                                result = JDWP.VirtualMachine.ALL_CLASSES_WITH_GENERIC.createReply(packet, context);
                                 break;
                             case JDWP.VirtualMachine.INSTANCE_COUNTS.ID:
                                 result = JDWP.VirtualMachine.INSTANCE_COUNTS.createReply(packet);

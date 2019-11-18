@@ -93,6 +93,21 @@ class JDWP {
             }
         }
 
+        static class TOP_LEVEL_THREAD_GROUPS {
+            public static final int ID = 5;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                Object[] threadGroups = context.getTopLevelThreadGroups();
+                reply.writeInt(threadGroups.length);
+                for (Object threadGroup : threadGroups) {
+                    reply.writeLong(context.getIds().getIdAsLong(threadGroup));
+                }
+                return new JDWPResult(reply);
+            }
+        }
+
         static class DISPOSE {
             public static final int ID = 6;
 
@@ -229,6 +244,27 @@ class JDWP {
 
             static JDWPResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(JDWPErrorCodes.NOT_IMPLEMENTED);
+                return new JDWPResult(reply);
+            }
+        }
+
+        static class ALL_CLASSES_WITH_GENERIC {
+            public static final int ID = 20;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
+                reply.writeInt(allLoadedClasses.length);
+
+                for (KlassRef klass : allLoadedClasses) {
+                    reply.writeByte(TypeTag.getKind(klass));
+                    reply.writeLong(context.getIds().getIdAsLong(klass));
+                    reply.writeString(klass.getTypeAsString());
+                    reply.writeString(""); // TODO(Gregersen) - generic signature if any
+                    reply.writeInt(klass.getStatus());
+                }
+
                 return new JDWPResult(reply);
             }
         }
