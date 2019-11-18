@@ -46,9 +46,9 @@ import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -73,15 +73,15 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         }
     });
 
-    @BeforeClass
-    public static void before() {
+    @Before
+    public void before() {
         agnosticInliningScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining, true);
         // ensure nothing is inlined so that we can observe the isInlinedNodes
         budgetScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleInliningInliningBudget, 1);
     }
 
-    @AfterClass
-    public static void tearDown() {
+    @After
+    public void tearDown() {
         budgetScope.close();
         agnosticInliningScope.close();
     }
