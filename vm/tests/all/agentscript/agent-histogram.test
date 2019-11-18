@@ -1,0 +1,29 @@
+> cat >${TMP_DIR}/helloworld.js
+< function minusOne(n) {
+<   return n - 1;
+< }
+< function minusTwo(n) {
+<   return n - 2;
+< }
+< function fib(n) {
+<   if (n < 1) return 0;
+<   if (n < 2) return 1;
+<   else return fib(minusOne(n)) + fib(minusTwo(n));
+< }
+< print("Three is the result " + fib(4));
+> js --jvm --experimental-options --agentscript=agent-histogram.js ${TMP_DIR}/helloworld.js
+Three is the result 3
+==== Histogram ====
+  9 calls to fib
+  4 calls to minusOne
+  4 calls to minusTwo
+  1 calls to :program
+===================
+> js --experimental-options --agentscript=agent-histogram.js ${TMP_DIR}/helloworld.js
+Three is the result 3
+==== Histogram ====
+  9 calls to fib
+  4 calls to minusOne
+  4 calls to minusTwo
+  1 calls to :program
+===================
