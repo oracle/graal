@@ -55,9 +55,11 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
@@ -627,11 +629,15 @@ public abstract class PartialEvaluator {
         return decodingInvocationPlugins;
     }
 
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation").doc("Time spent in partial evaluation.");
+
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext,
                     PerformanceInformationHandler handler) {
         DebugContext debug = graph.getDebug();
-        agnosticInliningOrGraphPE(compilable, inliningDecision, graph, baseContext, tierContext);
+        try (DebugCloseable a = PartialEvaluationTimer.start(debug)) {
+            agnosticInliningOrGraphPE(compilable, inliningDecision, graph, baseContext, tierContext);
+        }
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
 
         graph.maybeCompress();
