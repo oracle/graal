@@ -53,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -906,7 +907,7 @@ public final class ProbeNode extends Node {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setSeenException();
                 }
-                if (binding.isLanguageBinding()) {
+                if (binding.isLanguageBinding() || t instanceof TruffleException) {
                     throw t;
                 } else {
                     CompilerDirectives.transferToInterpreter();

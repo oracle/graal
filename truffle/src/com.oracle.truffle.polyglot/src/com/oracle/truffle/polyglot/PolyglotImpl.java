@@ -67,6 +67,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.InteropException;
@@ -361,6 +362,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (HostException) e;
         } else if (e instanceof InteropException) {
             throw ((InteropException) e).raise();
+        } else if ((e instanceof RuntimeException) && (e instanceof TruffleException)) {
+            throw (RuntimeException) e;
         }
         try {
             return new HostException(e);
