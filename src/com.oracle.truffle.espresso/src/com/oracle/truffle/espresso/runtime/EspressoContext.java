@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
@@ -84,6 +85,7 @@ public final class EspressoContext {
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
     private boolean mainThreadCreated;
+    private JDWPContextImpl jdwpContext;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -192,7 +194,8 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        new JDWPContextImpl(this).jdwpInit(env);
+        jdwpContext = new JDWPContextImpl(this);
+        jdwpContext.jdwpInit(env);
         spawnVM();
         this.initialized = true;
         VMInitializedListeners.getDefault().fire();
@@ -575,6 +578,10 @@ public final class EspressoContext {
 
     public Object getSystemThreadGroup() {
         return systemThreadGroup;
+    }
+
+    public void prepareDispose() {
+        jdwpContext.finalizeContext();
     }
 
     // endregion Options

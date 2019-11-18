@@ -117,7 +117,7 @@ class JDWP {
                 return new JDWPResult(reply, Collections.singletonList(new Callable<Void>() {
                     @Override
                     public Void call() throws Exception {
-                        controller.disposeDebugger();
+                        controller.disposeDebugger(true);
                         return null;
                     }
                 }));

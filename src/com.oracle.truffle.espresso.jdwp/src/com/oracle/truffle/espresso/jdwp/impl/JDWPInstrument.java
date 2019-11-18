@@ -51,7 +51,7 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         this.env.registerService(controller);
     }
 
-    public void reset() {
+    public void reset(boolean prepareForReconnect) {
         // stop all running jdwp threads in an orderly fashion
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
@@ -85,16 +85,18 @@ public class JDWPInstrument extends TruffleInstrument implements Runnable {
         // resume all threads
         controller.resumeAll(true);
 
-        // replace the controller instance
-        JDWPOptions options = controller.getOptions();
-        controller = new JDWPController(this);
-        controller.reInitialize(options, context);
+        if (prepareForReconnect) {
+            // replace the controller instance
+            JDWPOptions options = controller.getOptions();
+            controller = new JDWPController(this);
+            controller.reInitialize(options, context);
 
-        // prepare to accept a new debugger connection
-        try {
-            doConnect();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to prepare for a new JDWP connection", e);
+            // prepare to accept a new debugger connection
+            try {
+                doConnect();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to prepare for a new JDWP connection", e);
+            }
         }
     }
 

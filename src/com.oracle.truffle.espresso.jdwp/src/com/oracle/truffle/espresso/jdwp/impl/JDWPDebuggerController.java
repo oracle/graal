@@ -348,11 +348,11 @@ public class JDWPDebuggerController {
         return lock;
     }
 
-    public void disposeDebugger() {
+    public void disposeDebugger(boolean prepareForReconnect) {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                instrument.reset();
+                instrument.reset(true);
             }
         }).start();
     }

@@ -46,6 +46,12 @@ public final class JDWPContextImpl implements JDWPContext {
         }
     }
 
+    public void finalizeContext() {
+        if (context.JDWPOptions != null) {
+            JDWPSetup.finalize(this);
+        }
+    }
+
     @Override
     public Ids<Object> getIds() {
         return ids;
