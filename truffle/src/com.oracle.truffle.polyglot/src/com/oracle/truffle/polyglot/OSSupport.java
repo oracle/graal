@@ -1,12 +1,21 @@
 package com.oracle.truffle.polyglot;
 
-public class OSSupport {
+class OSSupport {
+    public static boolean available;
+
     static {
         String supportLib = System.getProperty("truffle.ossupport.library");
-        if (supportLib == null) {
-            System.loadLibrary("ossupport");
-        } else {
-            System.load(supportLib);
+        try {
+            if (supportLib == null) {
+                System.loadLibrary("ossupport");
+                available = true;
+            } else {
+                System.load(supportLib);
+                available = true;
+            }
+        } catch (UnsatisfiedLinkError ule) {
+            // native OS support not available
+            available = false;
         }
     }
 
@@ -18,7 +27,7 @@ public class OSSupport {
      * This is a wrapper around getpriority(), which returns the nice value of the calling thread.
      * Do note that nice values behave inverse to the common understanding of priorities: a lower
      * nice value means higher priority.
-     * 
+     *
      * @return the nice value of the calling thread
      */
     public static native int getNativeThreadPriority();

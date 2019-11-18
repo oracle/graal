@@ -83,16 +83,21 @@ final class PolyglotThreadInfo {
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
         }
-        if (engine.deprioritze && !deprioritized) {
-            int nativePriority = OSSupport.getNativeThreadPriority();
-            getThread().setPriority(Thread.MIN_PRIORITY);
-            int lowerNativePriority = OSSupport.getNativeThreadPriority();
-            if (lowerNativePriority <= nativePriority) {
-                throw new RuntimeException("Can't lower scheduling priority for polyglot engine: before " + String.valueOf(nativePriority) + " after: " + String.valueOf(lowerNativePriority));
-            }
-            deprioritized = true;
+        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
+            lowerPriority();
         }
 
+    }
+
+    @TruffleBoundary
+    private void lowerPriority() {
+        int nativePriority = OSSupport.getNativeThreadPriority();
+        getThread().setPriority(Thread.MIN_PRIORITY);
+        int lowerNativePriority = OSSupport.getNativeThreadPriority();
+        if (lowerNativePriority <= nativePriority) {
+            throw new RuntimeException("Can't lower scheduling priority for polyglot engine: before " + String.valueOf(nativePriority) + " after: " + String.valueOf(lowerNativePriority));
+        }
+        deprioritized = true;
     }
 
     void resetTiming() {
@@ -147,7 +152,7 @@ final class PolyglotThreadInfo {
             this.lastEntered = 0;
             this.timeExecuted += getTime() - last;
         }
-        if (deprioritized && count == 0) {
+        if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
             getThread().setPriority(Thread.NORM_PRIORITY);
             deprioritized = false;
         }

@@ -169,7 +169,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                     Object logHandlerOrStream,
-                    HostAccess conf, boolean deprioritize) {
+                    HostAccess conf) {
         if (TruffleOptions.AOT) {
             EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
         }
@@ -191,7 +191,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
         if (impl == null) {
             impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, options, allowExperimentalOptions, useSystemProperties, contextClassLoader, boundEngine, messageInterceptor,
-                            logHandler, deprioritize);
+                            logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
