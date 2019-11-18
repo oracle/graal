@@ -41,3 +41,24 @@ void (*signal(int sig, void (*handler)(int)))(int) {
 
   return old_handler;
 }
+
+int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact) {
+  if (act->sa_flags & SA_SIGINFO) {
+    errno = ENOTSUP;
+    return -1;
+  }
+
+  /* reuse our implementation of signal() */
+  void (*old_handler)(int) = signal(sig, act->sa_handler);
+
+  if (old_handler == SIG_ERR) {
+    /* errno is already set from our signal() implementation */
+    return -1;
+  }
+
+  if (oact) {
+    oact->sa_handler = old_handler;
+  }
+
+  return 0;
+}
