@@ -39,6 +39,8 @@
 # SOFTWARE.
 #
 import mx
+import mx_sdk_vm
+import mx_truffle
 import mx_wasm_benchmark  # pylint: disable=unused-import
 
 import os
@@ -327,3 +329,39 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     os.remove(output_wasm.path)
         else:
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name="GraalWasm",
+    short_name="gwa",
+    dir_name="wasm",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=["Truffle"],
+    truffle_jars=["wasm:WASM"],
+    support_distributions=[],
+    launcher_configs=[
+        mx_sdk_vm.LanguageLauncherConfig(
+            destination="bin/<exe:wasm>",
+            jar_distributions=["wasm:WASM_LAUNCHER"],
+            main_class="org.graalvm.wasm.launcher.WasmLauncher",
+            build_args=[],
+            language="wasm",
+        ),
+    ],
+    installable=False,
+))
+
+
+@mx.command("mx", "wasm")
+def wasm(args):
+    """Run a WebAssembly program."""
+    mx.get_opts().jdk = "jvmci"
+    vmArgs, wasmArgs = mx.extract_VM_args(args)
+    path_args = mx_truffle._path_args([
+        "TRUFFLE_API",
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.launcher",
+    ])
+    mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs)
