@@ -78,6 +78,8 @@ public @interface ExplodeLoop {
          * loop body and 4 copies of exit1 and 1 copy if exit2. After each exit all code until a
          * return is duplicated per iteration. Beware of break statements inside loops since they
          * cause additional loop exits leading to code duplication along exit2.
+         *
+         * @since 20.0
          */
         FULL_UNROLL_UNTIL_RETURN,
         /**
