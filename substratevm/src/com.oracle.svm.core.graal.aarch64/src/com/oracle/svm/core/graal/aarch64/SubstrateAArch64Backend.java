@@ -245,7 +245,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             try (ScratchRegister scratch = masm.getScratchRegister()) {
                 Register tempRegister = scratch.getRegister();
                 masm.mov(tempRegister, VMThreads.StatusSupport.STATUS_IN_NATIVE);
-                masm.str(64, tempRegister,
+                masm.str(32, tempRegister,
                                 AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
             }
         }
