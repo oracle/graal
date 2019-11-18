@@ -38,8 +38,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import mx_benchmark
+
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
+
+class WasmBenchmarkVm(mx_benchmark.Vm):
+    """
+    This is a special kind of Wasm VM that expects the benchmark suite to provide
+    a JAR file that has each benchmark compiled to a native binary,
+    a JS program that runs the Wasm benchmark (generated e.g. with Emscripten),
+    and the set of files that are required by the GraalWasm test suite.
+    These files must be organized in a predefined structure,
+    so that the different VM implementations know where to look for them.
+
+    If a Wasm benchmark suite consists of benchmarks in the group 'x',
+    then the binaries of that benchmark must structured as follows:
+
+    - For GraalWasm: bench/x/{*.wasm, *.init, *.result, *.wat}
+    - For Node: bench/x/node/{*.wasm, *.js}
+    - For native binaries: bench/x/native/*
+    """
+    pass
+
+class GraalWasmBenchmarkVm(WasmBenchmarkVm):
+    pass
+
+class NodeWasmBenchmarkVm(WasmBenchmarkVm):
+    pass
+
+class NativeWasmBenchmarkVm(WasmBenchmarkVm):
+    pass
 
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):

@@ -80,6 +80,7 @@ To build these additional tests and benchmarks, you need to:
 1. Install the [Emscripten SDK]( https://github.com/emscripten-core/emsdk).
    We currently test against Emscripten 1.38.45.
 2. Set the `EMCC_DIR` variable to the `fastcomp/emscripten/` folder of the Emscripten SDK.
+2. Set the `GCC_DIR` variable to the path to your GCC binary folder (usually `/usr/bin`).
 3. Run the following Mx command:
 
 ```

@@ -307,6 +307,7 @@ suite = {
         "WASM_BENCHMARKS",
       ],
       "defaultBuild" : False,
+      "platformDependent" : True,
       "maven" : False,
       "testDistribution" : True,
     },

@@ -54,25 +54,35 @@ from mx_unittest import unittest
 _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
+gcc_dir = mx.get_env("GCC_DIR", None)
 wabt_dir = mx.get_env("WABT_DIR", None)
+
+NODE_BENCH_DIR = "node"
+NATIVE_BENCH_DIR = "native"
+
 
 #
 # Gate runners.
 #
 
+
 class GraalWasmDefaultTags:
     wasmtest = 'wasmtest'
+
 
 def _graal_wasm_gate_runner(args, tasks):
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"), "WasmTestSuite"])
 
+
 add_gate_runner(_suite, _graal_wasm_gate_runner)
+
 
 #
 # Project types.
 #
+
 
 benchmark_methods = [
     "_benchmarkWarmupCount",
@@ -81,6 +91,7 @@ benchmark_methods = [
     "_main",
 ]
 
+
 def remove_extension(filename):
     if filename.endswith(".c"):
         return filename[:-2]
@@ -88,6 +99,7 @@ def remove_extension(filename):
         return filename[:-4]
     else:
         mx.abort("Unknown extension: " + filename)
+
 
 class GraalWasmSourceFileProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, subDir, theLicense, **args):
@@ -128,10 +140,9 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             subdir = os.path.relpath(root, self.getSourceDir())
             subdirs.add(subdir)
             build_output_name = lambda ext: os.path.join(output_dir, subdir, remove_extension(filename) + ext)
-            yield build_output_name(".wasm")
-            if filename.endswith(".c"):
-                # C-compiled sources generate an initialization file.
-                yield build_output_name(".init")
+            node_build_output_name = lambda ext: os.path.join(output_dir, subdir, NODE_BENCH_DIR, remove_extension(filename) + ext)
+            native_build_output_name = lambda ext: os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, remove_extension(filename) + ext)
+
             result_path = os.path.join(root, remove_extension(filename) + ".result")
             # The result files may be optional in some cases.
             if os.path.isfile(result_path):
@@ -140,7 +151,19 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
             # Some benchmarks may specify custom options.
             if os.path.isfile(opts_path):
                 yield build_output_name(".opts")
+            # Textual WebAssembly file is included for convenience.
             yield build_output_name(".wat")
+            # A binary WebAssembly file contains the program.
+            yield build_output_name(".wasm")
+            if filename.endswith(".c"):
+                # C-compiled sources generate an initialization file.
+                yield build_output_name(".init")
+            if self.isBenchmarkProject():
+                # The JS file and the WebAssembly binary are used by Node.
+                yield node_build_output_name(".js")
+                yield node_build_output_name(".wasm")
+                # The raw binary is used to run the program directly.
+                yield native_build_output_name(mx.exe_suffix(""))
         for subdir in subdirs:
             yield os.path.join(output_dir, subdir, "wasm_test_index")
 
@@ -155,7 +178,9 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         return GraalWasmSourceFileTask(self, args, output_base)
 
     def isBenchmarkProject(self):
-        return self.includeset == "bench"
+        if hasattr(self, "includeset"):
+            return self.includeset == "bench"
+        return False
 
 
 class GraalWasmSourceFileTask(mx.ProjectBuildTask):
@@ -173,17 +198,21 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         if not emcc_dir:
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wasm.")
         emcc_cmd = os.path.join(emcc_dir, "emcc")
+        gcc_cmd = os.path.join(gcc_dir, "gcc")
         if mx.run([emcc_cmd, "-v"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the emcc version.")
+        if mx.run([gcc_cmd, "--version"], nonZeroIsFatal=False) != 0:
+            mx.abort("Could not check the gcc version.")
         if not wabt_dir:
             mx.abort("Set WABT_DIR if you want the binary to include .wat files.")
         mx.log("Building files from the source dir: " + source_dir)
-        flags = ["-O3", "-g2"]
+        cc_flags = ["-O3", "-g2"]
         include_flags = []
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
+        emcc_flags = cc_flags
         if self.project.isBenchmarkProject():
-            flags = flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
+            emcc_flags = emcc_flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
@@ -196,13 +225,19 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             timestampedOutput = mx.TimeStampFile(output_wasm_path)
             mustRebuild = timestampedSource.isNewerThan(timestampedOutput) or not timestampedOutput.exists()
 
+            # Step 1: build the .wasm binary.
             if mustRebuild:
                 if filename.endswith(".c"):
-                    # Step 1a: compile with the JS file.
+                    # Step 1a: compile with the JS file, and store as files for running Node, if necessary.
                     output_js_path = os.path.join(output_dir, subdir, basename + ".js")
-                    build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_js_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_js_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the JS output of " + filename + " with emcc.")
+                    if self.subject.isBenchmarkProject():
+                        node_dir = os.path.join(output_dir, subdir, NODE_BENCH_DIR)
+                        mx.ensure_dir_exists(node_dir)
+                        shutil.copyfile(output_js_path, os.path.join(node_dir, basename + ".js"))
+                        shutil.copyfile(output_wasm_path, os.path.join(node_dir, basename + ".wasm"))
 
                     # Step 1b: extract the relevant information out of the JS file, and record it into an initialization file.
                     init_info = self.extractInitialization(output_js_path)
@@ -210,7 +245,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                         f.write(init_info)
 
                     # Step 1c: compile to just a .wasm file, to avoid name mangling.
-                    build_cmd_line = [emcc_cmd] + flags + [source_path, "-o", output_wasm_path] + include_flags
+                    build_cmd_line = [emcc_cmd] + emcc_flags + [source_path, "-o", output_wasm_path] + include_flags
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
@@ -245,6 +280,17 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     # Step 4: copy the .wait file, for easier debugging.
                     wat_path = os.path.join(root, basename + ".wat")
                     shutil.copyfile(wat_path, output_wat_path)
+
+            # Step 5: if this is a benchmark project, create native binaries too.
+            if mustRebuild:
+                mx.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
+                if filename.endswith(".c"):
+                    output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
+                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags
+                    if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
+                        mx.abort("Could not build the native binary of " + filename + ".")
+                elif filename.endswith(".wat"):
+                    mx.warn("The .wat files are not translated to native binaries: " + filename)
 
             # Remember the source name.
             subdir_program_names[subdir].append(basename)
@@ -331,6 +377,10 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
             mx.rmtree(self.subject.output_dir(), ignore_errors=True)
 
 
+#
+# Launchers and other components.
+#
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name="GraalWasm",
@@ -352,6 +402,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     installable=False,
 ))
+
+
+#
+# Mx commands.
+#
 
 
 @mx.command("mx", "wasm")
