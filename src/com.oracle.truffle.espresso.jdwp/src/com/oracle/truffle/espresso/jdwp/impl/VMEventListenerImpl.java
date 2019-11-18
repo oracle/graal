@@ -50,6 +50,8 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
+    private int vmDeathRequestId;
+    private int vmStartRequestId;
 
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
 
@@ -414,6 +416,30 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
+    public void vmStarted() {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+        stream.writeByte(SuspendStrategy.NONE);
+        stream.writeInt(1);
+        stream.writeByte(RequestedJDWPEvents.VM_START);
+        stream.writeInt(vmStartRequestId != -1 ? vmStartRequestId : 0);
+        // using a new object (that will be GC'ed soon) as representation for the
+        // initial thread, which is the thread used to load early bootstrap/system classes
+        // during VM startup before the main thread is created.
+        stream.writeLong(context.getIds().getIdAsLong(new Object()));
+        connection.queuePacket(stream);
+    }
+
+    @Override
+    public void vmDied() {
+        PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
+        stream.writeByte(SuspendStrategy.NONE);
+        stream.writeInt(1);
+        stream.writeByte(RequestedJDWPEvents.VM_DEATH);
+        stream.writeInt(vmDeathRequestId != -1 ? vmDeathRequestId : 0);
+        connection.queuePacket(stream);
+    }
+
+    @Override
     public void addClassUnloadRequestId(int id) {
         // TODO(Gregersen) - not implemented yet
     }
@@ -426,5 +452,15 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public void addThreadDiedRequestId(int id) {
         this.threadDeathRequestId = id;
+    }
+
+    @Override
+    public void addVMDeathRequest(int id) {
+        this.vmStartRequestId = id;
+    }
+
+    @Override
+    public void addVMStartRequest(int id) {
+        this.vmDeathRequestId = id;
     }
 }

@@ -57,6 +57,18 @@ public class VMEventListeners {
         this.listener = vmEventListener;
     }
 
+    public void vmStarted() {
+        if (listener != null) {
+            listener.vmStarted();
+        }
+    }
+
+    public void vmDied() {
+        if (listener != null) {
+            listener.vmDied();
+        }
+    }
+
     /**
      * Fire a class prepare event on the listener.
      * @param klass the class that has just been prepared by the VM

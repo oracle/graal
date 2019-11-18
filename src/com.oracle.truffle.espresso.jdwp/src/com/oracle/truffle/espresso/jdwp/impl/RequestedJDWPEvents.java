@@ -140,6 +140,14 @@ public class RequestedJDWPEvents {
                 eventListener.addClassUnloadRequestId(packet.id);
                 reply = toReply(packet);
                 break;
+            case VM_START: // no debuggers should ask for this event
+                eventListener.addVMStartRequest(packet.id);
+                reply = toReply(packet);
+                break;
+            case VM_DEATH: // no debuggers should request this event
+                eventListener.addVMDeathRequest(packet.id);
+                reply = toReply(packet);
+                break;
             default:
                 System.out.println("unhandled event kind " + eventKind);
                 break;

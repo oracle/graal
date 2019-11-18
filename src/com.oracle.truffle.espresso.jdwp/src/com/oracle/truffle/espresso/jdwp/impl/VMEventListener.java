@@ -33,11 +33,16 @@ public interface VMEventListener {
     void classUnloaded(KlassRef klass);
     void threadStarted(Object thread);
     void threadDied(Object thread);
+    void vmStarted();
+    void vmDied();
+
     void breakpointHIt(BreakpointInfo info, Object currentThread);
 
     void addClassUnloadRequestId(int id);
     void addThreadStartedRequestId(int id);
     void addThreadDiedRequestId(int id);
+    void addVMStartRequest(int id);
+    void addVMDeathRequest(int id);
 
     Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
     void removeClassPrepareRequest(int requestId);
