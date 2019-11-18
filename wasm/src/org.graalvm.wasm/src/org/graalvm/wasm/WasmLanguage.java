@@ -69,12 +69,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final BinaryParser reader = new BinaryParser(this, module, data);
         reader.readModule();
         context.registerModule(module);
-        final WasmFunction startFunction = module.symbolTable().startFunction();
-        if (startFunction != null) {
-            return startFunction.resolveCallTarget();
-        } else {
-            return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(this));
-        }
+        return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(this));
     }
 
     @Override

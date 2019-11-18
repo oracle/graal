@@ -85,6 +85,17 @@ suite = {
       "license" : "UPL",
     },
 
+    "org.graalvm.wasm.launcher" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:LAUNCHER_COMMON",
+      ],
+      "checkstyle" : "org.graalvm.wasm",
+      "javaCompliance" : "1.8",
+      "license" : "UPL",
+    },
+
     "org.graalvm.wasm.utils" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -204,10 +215,15 @@ suite = {
     "WASM" : {
       "moduleName" : "org.graalvm.wasm",
       "subDir" : "src",
-      "dependencies" : ["org.graalvm.wasm"],
+      "mainClass" : "org.graalvm.wasm.launcher.WasmLauncher",
+      "dependencies" : [
+        "org.graalvm.wasm",
+        "org.graalvm.wasm.launcher",
+      ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
+        "sdk:LAUNCHER_COMMON",
       ],
       "maven" : {
         "artifactId" : "wasm",

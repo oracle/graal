@@ -152,6 +152,10 @@ class GraalWasmSourceFileProject(mx.ArchivableProject):
         output_base = self.get_output_base()
         return GraalWasmSourceFileTask(self, args, output_base)
 
+    def isBenchmarkProject(self):
+        return self.includeset == "bench"
+
+
 class GraalWasmSourceFileTask(mx.ProjectBuildTask):
     def __init__(self, project, args, output_base):
         self.output_base = output_base
@@ -176,8 +180,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         include_flags = []
         if hasattr(self.project, "includeset"):
             include_flags = ["-I", os.path.join(_suite.dir, "includes", self.project.includeset)]
-            if self.project.includeset == "bench":
-                flags = flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
+        if self.project.isBenchmarkProject():
+            flags = flags + ["-s", "EXPORTED_FUNCTIONS=" + str(benchmark_methods).replace("'", "\"") + ""]
         subdir_program_names = defaultdict(lambda: [])
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
