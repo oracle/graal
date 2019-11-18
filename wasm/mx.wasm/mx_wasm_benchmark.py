@@ -38,10 +38,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import mx
 import mx_benchmark
 
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
+from mx_benchmark import add_java_vm
+
+
+_suite = mx.suite("wasm")
+
 
 class WasmBenchmarkVm(mx_benchmark.Vm):
     """
@@ -57,18 +63,38 @@ class WasmBenchmarkVm(mx_benchmark.Vm):
 
     - For GraalWasm: bench/x/{*.wasm, *.init, *.result, *.wat}
     - For Node: bench/x/node/{*.wasm, *.js}
-    - For native binaries: bench/x/native/*
+    - For native binaries: bench/x/native/*<platform-specific-binary-extension>
     """
-    pass
+    def name(selfs):
+        return "wasm-benchmark"
 
-class GraalWasmBenchmarkVm(WasmBenchmarkVm):
-    pass
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        pass
+
 
 class NodeWasmBenchmarkVm(WasmBenchmarkVm):
-    pass
+    def config_name(self):
+        return "node"
+
+    def run(self, cwd, args):
+        mx.log(str(args))
+        mx.abort("!")
+        pass
+
 
 class NativeWasmBenchmarkVm(WasmBenchmarkVm):
-    pass
+    def config_name(self):
+        return "native"
+
+    def run(self, cwd, args):
+        mx.log(str(args))
+        mx.abort("!")
+        pass
+
+
+add_java_vm(NodeWasmBenchmarkVm(), suite=_suite, priority=1)
+add_java_vm(NativeWasmBenchmarkVm(), suite=_suite, priority=1)
+
 
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
