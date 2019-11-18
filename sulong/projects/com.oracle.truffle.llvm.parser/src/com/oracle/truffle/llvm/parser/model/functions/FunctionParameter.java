@@ -35,9 +35,9 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
-public final class FunctionParameter implements StackValue, ValueSymbol {
+public final class FunctionParameter implements SSAValue, ValueSymbol {
 
     private final Type type;
     private int frameIdentifier = -1;

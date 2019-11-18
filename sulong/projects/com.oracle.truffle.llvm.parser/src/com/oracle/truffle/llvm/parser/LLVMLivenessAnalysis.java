@@ -78,19 +78,19 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMLivenessAnalysis {
 
     private final FunctionDefinition functionDefinition;
 
-    private final StackValue[] frameSlots;
+    private final SSAValue[] frameSlots;
 
     private LLVMLivenessAnalysis(FunctionDefinition functionDefinition) {
         this.functionDefinition = functionDefinition;
 
         // collect all stack values
-        ArrayList<StackValue> slots = new ArrayList<>();
+        ArrayList<SSAValue> slots = new ArrayList<>();
         for (FunctionParameter param : functionDefinition.getParameters()) {
             param.setFrameIdentifier(slots.size());
             slots.add(param);
@@ -104,7 +104,7 @@ public final class LLVMLivenessAnalysis {
                 }
             }
         }
-        this.frameSlots = slots.toArray(new StackValue[slots.size()]);
+        this.frameSlots = slots.toArray(new SSAValue[slots.size()]);
     }
 
     public static LLVMLivenessAnalysisResult computeLiveness(Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition, PrintStream logLivenessStream) {
@@ -287,15 +287,15 @@ public final class LLVMLivenessAnalysis {
 
     public static final class NullerInformation implements Comparable<NullerInformation> {
 
-        private final StackValue identifier;
+        private final SSAValue identifier;
         private final int instructionIndex;
 
-        public NullerInformation(StackValue identifier, int instructionIndex) {
+        public NullerInformation(SSAValue identifier, int instructionIndex) {
             this.identifier = identifier;
             this.instructionIndex = instructionIndex;
         }
 
-        public StackValue getIdentifier() {
+        public SSAValue getIdentifier() {
             return identifier;
         }
 
@@ -388,8 +388,8 @@ public final class LLVMLivenessAnalysis {
     }
 
     private static int resolve(SymbolImpl symbol) {
-        if (symbol instanceof StackValue) {
-            int identifier = ((StackValue) symbol).getFrameIdentifier();
+        if (symbol instanceof SSAValue) {
+            int identifier = ((SSAValue) symbol).getFrameIdentifier();
             assert identifier >= 0;
             return identifier;
         }
@@ -661,20 +661,20 @@ public final class LLVMLivenessAnalysis {
      */
     public static class LLVMLivenessAnalysisResult {
 
-        private final StackValue[] frameSlots;
+        private final SSAValue[] frameSlots;
 
         private final ArrayList<NullerInformation>[] nullableWithinBlock;
         private final BitSet[] nullableBeforeBlock;
         private final BitSet[] nullableAfterBlock;
 
-        public LLVMLivenessAnalysisResult(StackValue[] frameSlots, ArrayList<NullerInformation>[] nullableWithinBlock, BitSet[] nullableBeforeBlock, BitSet[] nullableAfterBlock) {
+        public LLVMLivenessAnalysisResult(SSAValue[] frameSlots, ArrayList<NullerInformation>[] nullableWithinBlock, BitSet[] nullableBeforeBlock, BitSet[] nullableAfterBlock) {
             this.frameSlots = frameSlots;
             this.nullableWithinBlock = nullableWithinBlock;
             this.nullableBeforeBlock = nullableBeforeBlock;
             this.nullableAfterBlock = nullableAfterBlock;
         }
 
-        public StackValue[] getFrameSlots() {
+        public SSAValue[] getFrameSlots() {
             return frameSlots;
         }
 

@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
-public abstract class ValueInstruction extends Instruction implements StackValue, ValueSymbol {
+public abstract class ValueInstruction extends Instruction implements SSAValue, ValueSymbol {
 
     private final Type type;
     private int frameIdentifier = -1;

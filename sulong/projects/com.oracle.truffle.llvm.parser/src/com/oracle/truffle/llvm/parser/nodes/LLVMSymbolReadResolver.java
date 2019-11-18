@@ -86,7 +86,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class LLVMSymbolReadResolver {
@@ -414,7 +414,7 @@ public final class LLVMSymbolReadResolver {
             resolvedNode = nodeFactory.createLiteral(value, new PointerType(global.getType()));
         }
 
-        private void visitStackValue(StackValue value) {
+        private void visitStackValue(SSAValue value) {
             FrameSlot slot = frame.findFrameSlot(value.getFrameIdentifier());
             if (slot == null) {
                 slot = findOrAddFrameSlot(frame, value);
@@ -441,7 +441,7 @@ public final class LLVMSymbolReadResolver {
         this.dataLayout = dataLayout;
     }
 
-    public static FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, StackValue value) {
+    public static FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, SSAValue value) {
         FrameSlot slot = descriptor.findFrameSlot(value.getFrameIdentifier());
         if (slot == null) {
             slot = descriptor.findOrAddFrameSlot(value.getFrameIdentifier(), value, Type.getFrameSlotKind(value.getType()));

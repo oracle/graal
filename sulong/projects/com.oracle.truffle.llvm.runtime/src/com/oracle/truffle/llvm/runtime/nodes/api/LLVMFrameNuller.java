@@ -36,29 +36,24 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
+/**
+ * Nulls out the given set of frame slots after evaluating the given statement.
+ */
 public final class LLVMFrameNuller extends LLVMStatementNode {
 
     @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
 
-    @Child private LLVMStatementNode afterStatement;
+    @Child private LLVMStatementNode statement;
 
-    public LLVMFrameNuller(FrameSlot[] frameSlots, LLVMStatementNode afterStatement) {
+    public LLVMFrameNuller(FrameSlot[] frameSlots, LLVMStatementNode statement) {
         this.frameSlots = frameSlots;
-        this.afterStatement = afterStatement;
+        this.statement = statement;
     }
 
     @Override
     public NodeCost getCost() {
         // this node reduces the compile code size
         return NodeCost.NONE;
-    }
-
-    public LLVMStatementNode getAfterStatement() {
-        return afterStatement;
-    }
-
-    public FrameSlot[] getFrameSlots() {
-        return frameSlots;
     }
 
     @Override
@@ -69,8 +64,8 @@ public final class LLVMFrameNuller extends LLVMStatementNode {
     @Override
     @ExplodeLoop
     public void execute(VirtualFrame frame) {
-        if (afterStatement != null) {
-            afterStatement.execute(frame);
+        if (statement != null) {
+            statement.execute(frame);
         }
         for (int i = 0; i < frameSlots.length; i++) {
             LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlots[i]);

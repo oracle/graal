@@ -99,6 +99,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNuller;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -111,7 +113,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -138,10 +140,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final HashSet<Integer> notNullable;
 
     private final List<LLVMNode> instructionNodes;
-    private final List<StackValue> instructionTargets;
+    private final List<SSAValue> instructionTargets;
 
     // Liveness analysis info for the current instruction (which slots can be cleared afterwards).
-    private StackValue[] nullerInfo;
+    private SSAValue[] nullerInfo;
     private LLVMControlFlowNode controlFlowNode;
 
     private LLVMSourceLocation lastLocation;
@@ -185,7 +187,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 last--;
             }
             if (last < nullerInfos.size()) {
-                StackValue[] slots = new StackValue[nullerInfos.size() - last];
+                SSAValue[] slots = new SSAValue[nullerInfos.size() - last];
                 for (int i = slots.length - 1; i >= 0; i--) {
                     slots[i] = nullerInfos.get(last + i).getIdentifier();
                     nullerInfos.remove(last + i);
@@ -200,7 +202,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public LLVMStatementNode[] finish() {
         for (int i = 0; i < instructionNodes.size(); i++) {
             LLVMNode node = instructionNodes.get(i);
-            StackValue target = instructionTargets.get(i);
+            SSAValue target = instructionTargets.get(i);
             if (target == null) {
                 assert node instanceof LLVMStatementNode;
             } else {
@@ -211,10 +213,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return instructionNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
     }
 
-    private FrameSlot[] createNullerSlots(StackValue[] stackValues) {
+    private FrameSlot[] createNullerSlots(SSAValue[] stackValues) {
         if (stackValues != null) {
             int count = 0;
-            for (StackValue value : stackValues) {
+            for (SSAValue value : stackValues) {
                 if (value != null) {
                     count++;
                 }
@@ -222,7 +224,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             if (count > 0) {
                 int pos = 0;
                 FrameSlot[] result = new FrameSlot[count];
-                for (StackValue value : stackValues) {
+                for (SSAValue value : stackValues) {
                     if (value != null) {
                         result[pos++] = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, value);
                     }
@@ -253,8 +255,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
      */
     private LLVMExpressionNode resolveOptimized(SymbolImpl symbol, int excludeOtherIndex, SymbolImpl other, SymbolImpl... others) {
         if (optimizeFrameSlots && nullerInfo != null) {
-            if (symbol instanceof StackValue) {
-                if (symbol == other || notNullable.contains(((StackValue) symbol).getFrameIdentifier())) {
+            if (symbol instanceof SSAValue) {
+                if (symbol == other || notNullable.contains(((SSAValue) symbol).getFrameIdentifier())) {
                     return symbols.resolve(symbol);
                 }
                 for (int i = 0; i < others.length; i++) {
@@ -287,12 +289,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return resolveOptimized(symbol, -1, null, other);
     }
 
-    private LLVMExpressionNode extractNulledValue(StackValue slot) {
+    private LLVMExpressionNode extractNulledValue(SSAValue slot) {
         assert slot != null;
         if (instructionNodes.isEmpty()) {
             return null;
         }
-        StackValue target = instructionTargets.get(instructionTargets.size() - 1);
+        SSAValue target = instructionTargets.get(instructionTargets.size() - 1);
         if (target == slot) {
             LLVMExpressionNode expression = (LLVMExpressionNode) instructionNodes.get(instructionNodes.size() - 1);
             instructionNodes.remove(instructionNodes.size() - 1);
@@ -989,15 +991,15 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         nullerInfo = null;
         if (frameSlots != null) {
             if (instructionNodes.isEmpty()) {
-                instructionNodes.add(nodeFactory.createFrameNuller(frameSlots, (LLVMStatementNode) null));
+                instructionNodes.add(new LLVMFrameNuller(frameSlots, null));
                 instructionTargets.add(null);
             } else {
                 int index = instructionNodes.size() - 1;
                 LLVMNode node = instructionNodes.get(index);
                 if (node instanceof LLVMStatementNode) {
-                    node = nodeFactory.createFrameNuller(frameSlots, (LLVMStatementNode) node);
+                    node = new LLVMFrameNuller(frameSlots, (LLVMStatementNode) node);
                 } else {
-                    node = nodeFactory.createFrameNuller(frameSlots, (LLVMExpressionNode) node);
+                    node = new LLVMFrameNullerExpression(frameSlots, (LLVMExpressionNode) node);
                 }
                 instructionNodes.set(instructionNodes.size() - 1, node);
             }

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.base;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -39,7 +41,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -56,8 +57,8 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
 
-    public static LLVMBasicBlockNode createBasicBlockNode(LLVMContext context, LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
-        if (context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
+    public static LLVMBasicBlockNode createBasicBlockNode(OptionValues options, LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
+        if (options.get(SulongEngineOption.LAZY_PARSING)) {
             return new LazyBlock(statements, termInstruction, blockId, blockName);
         } else {
             return new InitializedBlock(statements, termInstruction, blockId, blockName);

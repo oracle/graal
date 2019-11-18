@@ -29,6 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -68,8 +75,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNuller;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -393,13 +398,6 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     protected DataLayout dataLayout;
@@ -711,18 +709,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMFrameNullerExpression createFrameNuller(FrameSlot[] slots, LLVMExpressionNode afterExpression) {
-        return new LLVMFrameNullerExpression(afterExpression, slots);
-    }
-
-    @Override
     public LLVMControlFlowNode createRetVoid() {
         return LLVMVoidReturnNodeGen.create();
-    }
-
-    @Override
-    public LLVMFrameNuller createFrameNuller(FrameSlot[] slots, LLVMStatementNode afterStatement) {
-        return new LLVMFrameNuller(slots, afterStatement);
     }
 
     @Override
@@ -1540,11 +1528,6 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMIVarBitStoreNodeGen.create(null, null);
         }
         throw new AssertionError(resolvedType);
-    }
-
-    @Override
-    public LLVMBasicBlockNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName) {
-        return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
     }
 
     @Override

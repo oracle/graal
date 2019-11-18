@@ -71,7 +71,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMRuntimeDebugInformation {
 
@@ -111,7 +111,7 @@ public final class LLVMRuntimeDebugInformation {
             this.isDeclaration = false;
         }
 
-        private void visitFrameValue(StackValue value) {
+        private void visitFrameValue(SSAValue value) {
             final LLVMFrameValueAccess valueAccess = CommonNodeFactory.createDebugFrameValue(value.getFrameIdentifier(), isDeclaration);
             context.getSourceContext().registerFrameValue(symbol, valueAccess);
             notNullableSlots.add(value.getFrameIdentifier());
@@ -198,7 +198,7 @@ public final class LLVMRuntimeDebugInformation {
                 final DbgDeclareInstruction dbg = local.getSingleDeclaration();
                 int identifier;
                 if (dbg.getValue() instanceof AllocateInstruction) {
-                    identifier = ((StackValue) dbg.getValue()).getFrameIdentifier();
+                    identifier = ((SSAValue) dbg.getValue()).getFrameIdentifier();
                 } else {
                     continue;
                 }

@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.runtime.types.symbols;
 
 /**
- * Stack values that can be referenced inside functions: parameters and instructions that generate
+ * SSA values that can be referenced inside functions: parameters and instructions that generate
  * values. The identifier will be initialized by the liveness analysis.
  */
-public interface StackValue extends Symbol {
+public interface SSAValue extends Symbol {
 
     int getFrameIdentifier();
 

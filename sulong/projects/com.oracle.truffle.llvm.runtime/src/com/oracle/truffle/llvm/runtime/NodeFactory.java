@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -95,10 +94,6 @@ public interface NodeFactory {
     LLVMExpressionNode createSimpleConstantNoArray(Object constant, Type instructionType);
 
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type);
-
-    LLVMExpressionNode createFrameNuller(FrameSlot[] slots, LLVMExpressionNode afterExpression);
-
-    LLVMStatementNode createFrameNuller(FrameSlot[] slots, LLVMStatementNode afterStatement);
 
     LLVMControlFlowNode createRetVoid();
 
@@ -167,8 +162,6 @@ public interface NodeFactory {
     LLVMExpressionNode createZeroNode(LLVMExpressionNode addressNode, int size);
 
     LLVMExpressionNode createStructureConstantNode(Type structureType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
-
-    LLVMBasicBlockNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
     LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, UniquesRegionAllocator uniquesRegionAllocator,
                     LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor);

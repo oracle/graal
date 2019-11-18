@@ -182,7 +182,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 instruction.accept(visitor);
             }
             LLVMStatementNode[] nodes = visitor.finish();
-            blockNodes.add(nodeFactory.createBasicBlockNode(nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
+            blockNodes.add(LLVMBasicBlockNode.createBasicBlockNode(options, nodes, visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
         }
 
         for (int j = 0; j < blockNodes.size(); j++) {
