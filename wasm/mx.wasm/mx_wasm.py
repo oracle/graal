@@ -277,7 +277,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     if mx.run([wasm2wat_cmd, "-o", output_wat_path, output_wasm_path], nonZeroIsFatal=False) != 0:
                         mx.abort("Could not compile .wat file for " + filename)
                 elif filename.endswith(".wat"):
-                    # Step 4: copy the .wait file, for easier debugging.
+                    # Step 4: copy the .wat file, for easier debugging.
                     wat_path = os.path.join(root, basename + ".wat")
                     shutil.copyfile(wat_path, output_wat_path)
 
