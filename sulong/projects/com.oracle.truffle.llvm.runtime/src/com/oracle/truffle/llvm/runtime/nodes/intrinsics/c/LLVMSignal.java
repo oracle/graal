@@ -76,7 +76,6 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             return setSignalHandler(context, decodedSignal.signal(), function);
         } catch (NoSuchElementException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            System.err.println(e.getMessage());
             return context.getSigErr();
         }
     }
