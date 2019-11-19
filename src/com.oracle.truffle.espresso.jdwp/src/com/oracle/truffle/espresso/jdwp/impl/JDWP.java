@@ -51,7 +51,7 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeString(vm.getVmDescription());
                 reply.writeInt(1);
-                reply.writeInt(6);
+                reply.writeInt(8);
                 reply.writeString(vm.getVmVersion());
                 reply.writeString(vm.getVmName());
                 return new JDWPResult(reply);
