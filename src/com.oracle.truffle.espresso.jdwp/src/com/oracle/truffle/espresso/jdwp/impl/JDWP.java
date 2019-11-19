@@ -1328,7 +1328,7 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                reply.writeString("threadGroup-1"); // TODO(Gregersen) - implement retrieving threadgroup name
+                reply.writeString("main");
                 return new JDWPResult(reply);
             }
         }
