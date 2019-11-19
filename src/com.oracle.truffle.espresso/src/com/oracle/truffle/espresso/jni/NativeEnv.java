@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -145,6 +146,9 @@ public abstract class NativeEnv {
         if (returnType.equals("long")) {
             return 0L;
         }
+        if (returnType.equals("StaticObject")) {
+            return 0L; // NULL handle
+        }
         return StaticObject.NULL;
     }
 
@@ -158,6 +162,29 @@ public abstract class NativeEnv {
             }
         }
         throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
+    }
+
+
+    public static String fromUTF8Ptr(@Word long rawBytesPtr) {
+        if (rawBytesPtr == 0) {
+            return null;
+        }
+        ByteBuffer buf = directByteBuffer(rawBytesPtr, Integer.MAX_VALUE);
+
+        int utfLen = 0;
+        while (buf.get() != 0) {
+            utfLen++;
+        }
+
+        byte[] bytes = new byte[utfLen];
+        buf.clear();
+        buf.get(bytes);
+        try {
+            return Utf8.toJavaString(bytes);
+        } catch (IOException e) {
+            // return StaticObject.NULL;
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
 }

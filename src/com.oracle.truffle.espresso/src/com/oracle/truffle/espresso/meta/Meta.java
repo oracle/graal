@@ -139,6 +139,8 @@ public final class Meta implements ContextAccess {
         Long_value = Long.lookupDeclaredField(Name.value, Type._long);
 
         String_value = String.lookupDeclaredField(Name.value, Type._char_array);
+        EspressoError.guarantee(String_value != null && Type._char_array.equals(String_value.getType()), "String.value must be a char[]");
+
         String_hash = String.lookupDeclaredField(Name.hash, Type._int);
         String_hashCode = String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
@@ -226,6 +228,8 @@ public final class Meta implements ContextAccess {
 
         ByteBuffer = knownKlass(Type.ByteBuffer);
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
+        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.lookupDeclaredMethod(Name.INIT, Signature._void_long_int);
 
         Thread = knownKlass(Type.Thread);
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
@@ -514,6 +518,8 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ByteBuffer;
     public final Method ByteBuffer_wrap;
+    public final ObjectKlass java_nio_DirectByteBuffer;
+    public final Method java_nio_DirectByteBuffer_init_long_int;
 
     public final ObjectKlass ThreadGroup;
     public final Method ThreadGroup_remove;
