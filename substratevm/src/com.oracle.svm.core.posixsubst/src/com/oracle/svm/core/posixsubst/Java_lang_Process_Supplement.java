@@ -48,18 +48,18 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Limits;
-import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.posixsubst.headers.Dirent;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Dirent.DIR;
 import com.oracle.svm.core.posixsubst.headers.Dirent.dirent;
 import com.oracle.svm.core.posixsubst.headers.Dirent.direntPointer;
+import com.oracle.svm.core.posixsubst.headers.Fcntl;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.UnistdNoTransitions;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})

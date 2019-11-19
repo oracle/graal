@@ -42,8 +42,6 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 //Checkstyle: stop
 
 /**
@@ -52,7 +50,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
  * We only include this class in the JNI implementation in order to add -lz to the link line.
  */
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 @CLibrary("z")
 public class ZLib {
     // extern uLong adler32 (uLong adler, const Bytef *buf, uInt len);

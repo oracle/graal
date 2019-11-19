@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -38,7 +38,7 @@ import org.graalvm.word.PointerBase;
 /**
  * Definitions manually translated from the C header file sys/stat.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Stat {
 
     @CConstant

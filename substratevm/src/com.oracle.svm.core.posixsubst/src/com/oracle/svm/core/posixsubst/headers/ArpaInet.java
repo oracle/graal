@@ -29,14 +29,12 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 /* Checkstyle: stop */
 
 /**
  * Contains the definitions from arpa/inet.h that we actually needed.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class ArpaInet {
 
     @CFunction

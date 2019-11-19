@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -33,8 +32,6 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -44,28 +41,21 @@ import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file pthread.h.
  */
 @CContext(PosixDirectives.class)
-@Platforms({DARWIN_JNI_AND_SUBSTITUTIONS.class, LINUX_JNI_AND_SUBSTITUTIONS.class})
 @CLibrary("pthread")
 public class Pthread {
-
-    /*
-     * The fields of the following structures are not exposed on purpose.
-     */
 
     public interface pthread_t extends OSThreadHandle, OSThreadId {
     }
 
     @CPointerTo(nameOfCType = "pthread_t")
     public interface pthread_tPointer extends PointerBase {
-
         pthread_t read();
-
     }
 
     @CStruct

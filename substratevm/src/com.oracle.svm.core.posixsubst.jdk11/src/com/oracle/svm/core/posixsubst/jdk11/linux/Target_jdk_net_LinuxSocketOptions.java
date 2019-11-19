@@ -24,17 +24,21 @@
  */
 package com.oracle.svm.core.posixsubst.jdk11.linux;
 
-import java.net.SocketException;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.SOL_TCP;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPCNT;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPIDLE;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPINTVL;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_QUICKACK;
+import static com.oracle.svm.core.posixsubst.headers.Socket.PF_INET;
+import static com.oracle.svm.core.posixsubst.headers.Socket.SOCK_STREAM;
+import static com.oracle.svm.core.posixsubst.headers.Socket.SOL_SOCKET;
+import static com.oracle.svm.core.posixsubst.headers.Socket.getsockopt;
+import static com.oracle.svm.core.posixsubst.headers.Socket.setsockopt;
+import static com.oracle.svm.core.posixsubst.headers.Socket.socket;
+import static com.oracle.svm.core.posixsubst.jdk11.linux.Util_jdk_net_LinuxSocketOptions.handleError;
+import static com.oracle.svm.core.posixsubst.jdk11.linux.Util_jdk_net_LinuxSocketOptions.socketOptionSupported;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.headers.Errno;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Socket;
-import com.oracle.svm.core.posixsubst.PosixJavaNetClose;
-import com.oracle.svm.core.posixsubst.headers.NetinetIn;
-import com.oracle.svm.core.posixsubst.headers.NetinetTcp;
+import java.net.SocketException;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -43,19 +47,15 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
-import static com.oracle.svm.core.posix.headers.Socket.PF_INET;
-import static com.oracle.svm.core.posix.headers.Socket.SOCK_STREAM;
-import static com.oracle.svm.core.posix.headers.Socket.SOL_SOCKET;
-import static com.oracle.svm.core.posix.headers.Socket.getsockopt;
-import static com.oracle.svm.core.posix.headers.Socket.setsockopt;
-import static com.oracle.svm.core.posix.headers.Socket.socket;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.SOL_TCP;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPCNT;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPIDLE;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPINTVL;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_QUICKACK;
-import static com.oracle.svm.core.posixsubst.jdk11.linux.Util_jdk_net_LinuxSocketOptions.handleError;
-import static com.oracle.svm.core.posixsubst.jdk11.linux.Util_jdk_net_LinuxSocketOptions.socketOptionSupported;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posixsubst.PosixJavaNetClose;
+import com.oracle.svm.core.posixsubst.headers.Errno;
+import com.oracle.svm.core.posixsubst.headers.NetinetIn;
+import com.oracle.svm.core.posixsubst.headers.NetinetTcp;
+import com.oracle.svm.core.posixsubst.headers.Socket;
 
 @TargetClass(className = "jdk.net.LinuxSocketOptions", onlyWith = JDK11OrLater.class)
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})

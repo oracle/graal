@@ -24,20 +24,17 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 @CContext(PosixDirectives.class)
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public class DarwinVirtualMemory {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
@@ -51,5 +48,4 @@ public class DarwinVirtualMemory {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int vm_deallocate(int targetTask, WordBase address, UnsignedWord size);
-
 }

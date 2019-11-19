@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.posixsubst.headers.linux.LinuxSched;
 
 @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.posixsubst.jdk11;
 
-import static com.oracle.svm.core.posix.headers.Unistd.write;
 import static com.oracle.svm.core.posixsubst.PosixJavaNIOSubstitutions.convertReturnVal;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.write;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -41,7 +41,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posixsubst.headers.Fcntl;
 import com.oracle.svm.core.posixsubst.headers.Statvfs;
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})

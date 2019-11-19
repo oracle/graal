@@ -30,13 +30,14 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
-/** Declarations of method from <sys/sysctl.h>. */
+// Checkstyle: stop
+
+/**
+ * Definitions manually translated from the C header file sys/sysctl.h.
+ */
 @CContext(PosixDirectives.class)
 public class Sysctl {
-    // { Allow names with underscores: Checkstyle: stop
 
     @CFunction
     public static native int sysctl(CIntPointer name, long nlen, PointerBase oldval, WordPointer oldlenp, PointerBase newval, long newlen);
-
-    // } Allow names with underscores: Checkstyle: resume
 }

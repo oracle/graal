@@ -31,10 +31,10 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.posix.headers.Stat.stat;
 import com.oracle.svm.core.posixsubst.headers.Dirent.DIR;
 import com.oracle.svm.core.posixsubst.headers.Dirent.dirent;
 import com.oracle.svm.core.posixsubst.headers.Dirent.direntPointer;
+import com.oracle.svm.core.posixsubst.headers.Stat.stat;
 
 //Checkstyle: stop
 
@@ -53,7 +53,7 @@ class DarwinInode64Suffix {
         private static native int readdir_r(DIR dirp, dirent entry, direntPointer result);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Stat.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Stat.class)
     static final class Target_com_oracle_svm_core_posix_headers_Stat {
         @Substitute
         @CFunction("stat$INODE64")

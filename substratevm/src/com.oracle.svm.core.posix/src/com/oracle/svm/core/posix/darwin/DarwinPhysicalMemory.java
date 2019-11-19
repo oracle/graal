@@ -24,27 +24,24 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 class DarwinPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
@@ -68,7 +65,7 @@ class DarwinPhysicalMemory extends PhysicalMemory {
             physicalMemorySizePointer.write(SizeOf.get(CLongPointer.class));
             final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, (WordPointer) physicalMemorySizePointer, WordFactory.nullPointer(), 0);
             if (sysctlResult != 0) {
-                Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(Errno.errno()).newline();
+                Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(CErrorNumber.getCErrorNumber()).newline();
                 VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
             /* Cache the value, races are idempotent. */

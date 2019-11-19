@@ -27,13 +27,11 @@ package com.oracle.svm.core.posix.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file pwd.h.
@@ -47,46 +45,9 @@ public class Pwd {
         CCharPointer pw_name();
 
         @CField
-        CCharPointer pw_passwd();
-
-        @CField
-        int pw_uid();
-
-        @CField
-        int pw_gid();
-
-        @CField
-        CCharPointer pw_gecos();
-
-        @CField
         CCharPointer pw_dir();
-
-        @CField
-        CCharPointer pw_shell();
     }
-
-    @CPointerTo(passwd.class)
-    public interface passwdPointer extends PointerBase {
-        passwd read();
-
-        void write(PointerBase value);
-    }
-
-    @CFunction
-    public static native void setpwent();
-
-    @CFunction
-    public static native passwd getpwent();
 
     @CFunction
     public static native passwd getpwuid(int __uid);
-
-    @CFunction
-    public static native passwd getpwnam(CCharPointer __name);
-
-    @CFunction
-    public static native int getpwuid_r(int __uid, passwd __resultbuf, CCharPointer __buffer, UnsignedWord __buflen, passwdPointer __result);
-
-    @CFunction
-    public static native int getpwnam_r(CCharPointer __name, passwd __resultbuf, CCharPointer __buffer, UnsignedWord __buflen, passwdPointer __result);
 }

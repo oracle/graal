@@ -35,8 +35,6 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 //Allow methods with non-standard names: Checkstyle: stop
 
 /*
@@ -44,7 +42,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
  */
 
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Poll {
 
     /* @formatter:off */

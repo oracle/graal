@@ -52,20 +52,20 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Ioctl;
 import com.oracle.svm.core.posixsubst.headers.NetinetIn;
 import com.oracle.svm.core.posixsubst.headers.NetinetTcp;
 import com.oracle.svm.core.posixsubst.headers.Poll;
 import com.oracle.svm.core.posixsubst.headers.Poll.pollfd;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
 //Allow methods with non-standard names: Checkstyle: stop

@@ -24,60 +24,59 @@
  */
 package com.oracle.svm.core.posixsubst;
 
+import static com.oracle.svm.core.CErrorNumber.getCErrorNumber;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
-import static com.oracle.svm.core.headers.Errno.EACCES;
-import static com.oracle.svm.core.headers.Errno.EEXIST;
-import static com.oracle.svm.core.headers.Errno.ENOENT;
-import static com.oracle.svm.core.headers.Errno.ENOTDIR;
-import static com.oracle.svm.core.headers.Errno.errno;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_APPEND;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_DSYNC;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_SYNC;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_TRUNC;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
-import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Limits.MAXPATHLEN;
 import static com.oracle.svm.core.posix.headers.Limits.PATH_MAX;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFCHR;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFDIR;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFIFO;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFMT;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFREG;
-import static com.oracle.svm.core.posix.headers.Stat.S_IFSOCK;
-import static com.oracle.svm.core.posix.headers.Stat.S_IRGRP;
-import static com.oracle.svm.core.posix.headers.Stat.S_IROTH;
-import static com.oracle.svm.core.posix.headers.Stat.S_IRUSR;
-import static com.oracle.svm.core.posix.headers.Stat.S_IWGRP;
-import static com.oracle.svm.core.posix.headers.Stat.S_IWOTH;
-import static com.oracle.svm.core.posix.headers.Stat.S_IWUSR;
-import static com.oracle.svm.core.posix.headers.Stat.S_IXGRP;
-import static com.oracle.svm.core.posix.headers.Stat.S_IXOTH;
-import static com.oracle.svm.core.posix.headers.Stat.S_IXUSR;
-import static com.oracle.svm.core.posix.headers.Stat.chmod;
-import static com.oracle.svm.core.posix.headers.Stat.fstat;
-import static com.oracle.svm.core.posix.headers.Stat.mkdir;
-import static com.oracle.svm.core.posix.headers.Stdio.remove;
-import static com.oracle.svm.core.posix.headers.Stdio.rename;
 import static com.oracle.svm.core.posix.headers.Stdlib.realpath;
-import static com.oracle.svm.core.posix.headers.Time.utimes;
-import static com.oracle.svm.core.posix.headers.Unistd.R_OK;
-import static com.oracle.svm.core.posix.headers.Unistd.SEEK_CUR;
-import static com.oracle.svm.core.posix.headers.Unistd.SEEK_END;
-import static com.oracle.svm.core.posix.headers.Unistd.SEEK_SET;
-import static com.oracle.svm.core.posix.headers.Unistd.W_OK;
-import static com.oracle.svm.core.posix.headers.Unistd.X_OK;
-import static com.oracle.svm.core.posix.headers.Unistd.access;
-import static com.oracle.svm.core.posix.headers.Unistd.close;
-import static com.oracle.svm.core.posix.headers.Unistd.ftruncate;
-import static com.oracle.svm.core.posix.headers.Unistd.lseek;
 import static com.oracle.svm.core.posixsubst.headers.Dirent.closedir;
 import static com.oracle.svm.core.posixsubst.headers.Dirent.opendir;
 import static com.oracle.svm.core.posixsubst.headers.Dirent.readdir_r;
+import static com.oracle.svm.core.posixsubst.headers.Errno.EACCES;
+import static com.oracle.svm.core.posixsubst.headers.Errno.EEXIST;
+import static com.oracle.svm.core.posixsubst.headers.Errno.ENOENT;
+import static com.oracle.svm.core.posixsubst.headers.Errno.ENOTDIR;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_APPEND;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_CREAT;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_DSYNC;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_RDONLY;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_RDWR;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_SYNC;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_TRUNC;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.O_WRONLY;
+import static com.oracle.svm.core.posixsubst.headers.Fcntl.open;
 import static com.oracle.svm.core.posixsubst.headers.Ioctl.FIONREAD;
 import static com.oracle.svm.core.posixsubst.headers.Ioctl.ioctl;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFCHR;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFDIR;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFIFO;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFMT;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFREG;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IFSOCK;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IRGRP;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IROTH;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IRUSR;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IWGRP;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IWOTH;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IWUSR;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IXGRP;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IXOTH;
+import static com.oracle.svm.core.posixsubst.headers.Stat.S_IXUSR;
+import static com.oracle.svm.core.posixsubst.headers.Stat.chmod;
+import static com.oracle.svm.core.posixsubst.headers.Stat.fstat;
+import static com.oracle.svm.core.posixsubst.headers.Stat.mkdir;
+import static com.oracle.svm.core.posixsubst.headers.Stdio.remove;
+import static com.oracle.svm.core.posixsubst.headers.Stdio.rename;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.R_OK;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.SEEK_CUR;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.SEEK_END;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.SEEK_SET;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.W_OK;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.X_OK;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.access;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.close;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.ftruncate;
+import static com.oracle.svm.core.posixsubst.headers.Unistd.lseek;
 
 import java.io.File;
 import java.io.FileDescriptor;
@@ -110,16 +109,17 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stat;
-import com.oracle.svm.core.posix.headers.Stat.stat;
 import com.oracle.svm.core.posix.headers.Time.timeval;
-import com.oracle.svm.core.posixsubst.headers.Statvfs;
-import com.oracle.svm.core.posixsubst.headers.Termios;
 import com.oracle.svm.core.posixsubst.headers.Dirent.DIR;
 import com.oracle.svm.core.posixsubst.headers.Dirent.dirent;
 import com.oracle.svm.core.posixsubst.headers.Dirent.direntPointer;
+import com.oracle.svm.core.posixsubst.headers.Stat;
+import com.oracle.svm.core.posixsubst.headers.Stat.stat;
+import com.oracle.svm.core.posixsubst.headers.Statvfs;
 import com.oracle.svm.core.posixsubst.headers.Statvfs.statvfs;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Termios;
+import com.oracle.svm.core.posixsubst.headers.Time;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.io.ExpiringCache")
@@ -240,7 +240,7 @@ final class Target_java_io_UnixFileSystem {
             CCharPointer pathPtr = pathPin.get();
             if (realpath(pathPtr, resolved).notEqual(WordFactory.zero())) {
                 // that worked, so return it
-                return PosixUtils.collapse(CTypeConversion.toJavaString(resolved));
+                return PosixSubstUtils.collapse(CTypeConversion.toJavaString(resolved));
             }
         }
 
@@ -265,7 +265,7 @@ final class Target_java_io_UnixFileSystem {
                 CCharPointer resolvedPartPtr = pathPin.get();
                 r = realpath(resolvedPartPtr, resolved);
             }
-            int errno = errno();
+            int errno = getCErrorNumber();
             if (r.notEqual(WordFactory.zero())) {
                 // the subpath has a canonical path
                 break;
@@ -286,10 +286,10 @@ final class Target_java_io_UnixFileSystem {
             if (rs.length() + 1 + unresolvedPart.length() > maxPathLen) {
                 throw PosixUtils.newIOExceptionWithLastError("Bad pathname");
             }
-            return PosixUtils.collapse(rs + "/" + unresolvedPart);
+            return PosixSubstUtils.collapse(rs + "/" + unresolvedPart);
         } else {
             // nothing resolved, so just return the original path
-            return PosixUtils.collapse(path);
+            return PosixSubstUtils.collapse(path);
         }
 
     }
@@ -392,7 +392,7 @@ final class Target_java_io_UnixFileSystem {
         if (path.equals("/")) {
             return false;
         } else {
-            try (CCharPointerHolder pathPin = CTypeConversion.toCString(PosixUtils.removeTrailingSlashes(path))) {
+            try (CCharPointerHolder pathPin = CTypeConversion.toCString(PosixSubstUtils.removeTrailingSlashes(path))) {
                 CCharPointer pathPtr = pathPin.get();
                 fd = open(pathPtr, O_RDWR() | O_CREAT(), 0666);
             }
@@ -438,7 +438,7 @@ final class Target_java_io_UnixFileSystem {
                 last.set_tv_sec(time / 1000);
                 last.set_tv_usec((time % 1000) * 1000);
 
-                if (utimes(pathPtr, timeval) == 0) {
+                if (Time.utimes(pathPtr, timeval) == 0) {
                     return true;
                 }
             }
@@ -455,28 +455,28 @@ final class Target_java_io_FileInputStream {
 
     @Substitute
     private int readBytes(byte[] b, int off, int len) throws IOException {
-        return PosixUtils.readBytes(b, off, len, fd);
+        return PosixSubstUtils.readBytes(b, off, len, fd);
     }
 
     @Substitute
     private void open(String name) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, fd, O_RDONLY());
+        PosixSubstUtils.fileOpen(name, fd, O_RDONLY());
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(fd);
+        PosixSubstUtils.fileClose(fd);
     }
 
     @Substitute
     public int read() throws IOException {
-        return PosixUtils.readSingle(fd);
+        return PosixSubstUtils.readSingle(fd);
     }
 
     @Substitute
     public int available() throws IOException {
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
 
         SignedWord ret = WordFactory.zero();
         boolean av = false;
@@ -521,7 +521,7 @@ final class Target_java_io_FileInputStream {
     public long skip(long n) throws IOException {
         SignedWord cur = WordFactory.zero();
         SignedWord end = WordFactory.zero();
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
             throw PosixUtils.newIOExceptionWithLastError("Seek error");
@@ -554,23 +554,23 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
+        PosixSubstUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
     private void open(String name, boolean append) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
+        PosixSubstUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
+        PosixSubstUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
     }
 
     @Substitute
     private void write(int b, boolean append) throws IOException {
-        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
+        PosixSubstUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
     }
 }
 
@@ -589,27 +589,27 @@ final class Target_java_io_RandomAccessFile {
 
     @Substitute
     public int read() throws IOException {
-        return PosixUtils.readSingle(fd);
+        return PosixSubstUtils.readSingle(fd);
     }
 
     @Substitute
     private int readBytes(byte[] b, int off, int len) throws IOException {
-        return PosixUtils.readBytes(b, off, len, fd);
+        return PosixSubstUtils.readBytes(b, off, len, fd);
     }
 
     @Substitute
     public void write(int b) throws IOException {
-        PosixUtils.writeSingle(fd, b, false);
+        PosixSubstUtils.writeSingle(fd, b, false);
     }
 
     @Substitute
     private void writeBytes(byte[] b, int off, int len) throws IOException {
-        PosixUtils.writeBytes(fd, b, off, len, false);
+        PosixSubstUtils.writeBytes(fd, b, off, len, false);
     }
 
     @Substitute
     private void seek(long pos) throws IOException {
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
         if (pos < 0L) {
             throw PosixUtils.newIOExceptionWithLastError("Negative seek offset");
         } else if (lseek(handle, WordFactory.signed(pos), SEEK_SET()).equal(WordFactory.signed(-1))) {
@@ -621,7 +621,7 @@ final class Target_java_io_RandomAccessFile {
     @Substitute
     public long getFilePointer() throws IOException {
         SignedWord ret;
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
         if ((ret = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
             throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         }
@@ -642,20 +642,20 @@ final class Target_java_io_RandomAccessFile {
                 flags |= O_DSYNC();
             }
         }
-        PosixUtils.fileOpen(name, fd, flags);
+        PosixSubstUtils.fileOpen(name, fd, flags);
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(fd);
+        PosixSubstUtils.fileClose(fd);
     }
 
     @Substitute
     public long length() throws IOException {
         SignedWord cur = WordFactory.zero();
         SignedWord end = WordFactory.zero();
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
             throw PosixUtils.newIOExceptionWithLastError("Seek failed");
@@ -670,7 +670,7 @@ final class Target_java_io_RandomAccessFile {
     @Substitute
     public void setLength(long newLength) throws IOException {
         SignedWord cur;
-        int handle = PosixUtils.getFDHandle(fd);
+        int handle = PosixSubstUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
             throw PosixUtils.newIOExceptionWithLastError("setLength failed");

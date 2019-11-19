@@ -29,14 +29,12 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 //Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file sys/ioctl.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Ioctl {
 
     @CConstant

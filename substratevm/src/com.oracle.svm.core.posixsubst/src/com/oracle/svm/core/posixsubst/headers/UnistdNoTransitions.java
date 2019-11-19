@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -34,6 +34,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 // Checkstyle: stop
 
@@ -41,7 +42,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * Variants of {@link Unistd} functions that can be used from {@link Uninterruptible} methods
  * because they have {@link Transition#NO_TRANSITION} set.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class UnistdNoTransitions {
 
     @CFunction(transition = Transition.NO_TRANSITION)

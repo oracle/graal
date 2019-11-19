@@ -34,10 +34,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class NetIfDl {
     /* { Do not format quoted code: @formatter:off */
     /* { Allow non-standard names: Checkstyle: stop */

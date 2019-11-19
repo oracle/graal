@@ -24,25 +24,11 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.headers.Errno.errno;
-import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
-import static com.oracle.svm.core.posix.headers.Fcntl.open;
-import static com.oracle.svm.core.posix.headers.Unistd.close;
-import static com.oracle.svm.core.posix.headers.Unistd.dup2;
-import static com.oracle.svm.core.posix.headers.Unistd.read;
-import static com.oracle.svm.core.posix.headers.Unistd.write;
-
 import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.SyncFailedException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -50,31 +36,24 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.headers.Errno;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public class PosixUtils {
 
     static String setLocale(String category, String locale) {
@@ -83,7 +62,7 @@ public class PosixUtils {
         return setLocale(intCategory, locale);
     }
 
-    public static String setLocale(int category, String locale) {
+    private static String setLocale(int category, String locale) {
         if (locale == null) {
             CCharPointer cstrResult = Locale.setlocale(category, WordFactory.nullPointer());
             return CTypeConversion.toJavaString(cstrResult);
@@ -112,7 +91,7 @@ public class PosixUtils {
             case "LC_MESSAGES":
                 return Locale.LC_MESSAGES();
         }
-        if (Platform.includedIn(DeprecatedPlatform.LINUX_SUBSTITUTION.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
             switch (category) {
                 case "LC_PAPER":
                     return Locale.LC_PAPER();
@@ -128,96 +107,31 @@ public class PosixUtils {
                     return Locale.LC_IDENTIFICATION();
             }
         }
-        throw VMError.shouldNotReachHere("Unknown locale category: " + category);
-    }
-
-    public static String removeTrailingSlashes(String path) {
-        int p = path.length() - 1;
-        while (p > 0 && path.charAt(p) == '/') {
-            --p;
-        }
-        return p > 0 ? path.substring(0, p + 1) : path;
+        throw new IllegalArgumentException("Unknown locale category: " + category);
     }
 
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
 
         @Alias int fd;
-
-        /* jdk/src/solaris/native/java/io/FileDescriptor_md.c */
-        // 53 JNIEXPORT void JNICALL
-        // 54 Java_java_io_FileDescriptor_sync(JNIEnv *env, jobject this) {
-        @Substitute
-        public /* native */ void sync() throws SyncFailedException {
-            // 55 FD fd = THIS_FD(this);
-            // 56 if (IO_Sync(fd) == -1) {
-            if (Unistd.fsync(fd) == -1) {
-                // 57 JNU_ThrowByName(env, "java/io/SyncFailedException", "sync failed");
-                throw new SyncFailedException("sync failed");
-            }
-        }
-
-        @Substitute //
-        @TargetElement(onlyWith = JDK11OrLater.class) //
-        @SuppressWarnings({"unused"})
-        /* { Do not re-format commented out C code.  @formatter:off */
-        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
-        // 72  JNIEXPORT jboolean JNICALL
-        // 73  Java_java_io_FileDescriptor_getAppend(JNIEnv *env, jclass fdClass, jint fd) {
-        private static /* native */ boolean getAppend(int fd) {
-            // 74      int flags = fcntl(fd, F_GETFL);
-            int flags = Fcntl.fcntl(fd, Fcntl.F_GETFL());
-            // 75      return ((flags & O_APPEND) == 0) ? JNI_FALSE : JNI_TRUE;
-            return ((flags & Fcntl.O_APPEND()) == 0) ? false : true;
-        }
-        /* } Do not re-format commented out C code. @formatter:on */
-
-        @Substitute //
-        @TargetElement(onlyWith = JDK11OrLater.class) //
-        @SuppressWarnings({"unused", "static-method"})
-        /* { Do not re-format commented out C code.  @formatter:off */
-        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
-        // 78  // instance method close0 for FileDescriptor
-        // 79  JNIEXPORT void JNICALL
-        // 80  Java_java_io_FileDescriptor_close0(JNIEnv *env, jobject this) {
-        private /* native */ void close0() throws IOException {
-            // 81      fileDescriptorClose(env, this);
-            PosixUtils.fileClose(Util_java_io_FileDescriptor.fromTarget(this));
-        }
-    }
-
-    static final class Util_java_io_FileDescriptor {
-
-        /** Cast from Target class to Java class. */
-        @SuppressFBWarnings(value = "BC", justification = "Cast from @TargetClass")
-        static java.io.FileDescriptor fromTarget(Target_java_io_FileDescriptor tjifd) {
-            return java.io.FileDescriptor.class.cast(tjifd);
-        }
-
-        /** Cast from Java class to Target class. */
-        @SuppressFBWarnings(value = "BC", justification = "Cast to @TargetClass")
-        static Target_java_io_FileDescriptor toTarget(java.io.FileDescriptor jifd) {
-            return Target_java_io_FileDescriptor.class.cast(jifd);
-        }
-
     }
 
     public static int getFD(FileDescriptor descriptor) {
-        return Util_java_io_FileDescriptor.toTarget(descriptor).fd;
+        return SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd;
     }
 
     public static void setFD(FileDescriptor descriptor, int fd) {
-        Util_java_io_FileDescriptor.toTarget(descriptor).fd = fd;
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
     /** Return the error string for the last error, or a default message. */
     public static String lastErrorString(String defaultMsg) {
-        int errno = Errno.errno();
+        int errno = CErrorNumber.getCErrorNumber();
         return errorString(errno, defaultMsg);
     }
 
     public static IOException newIOExceptionWithLastError(String defaultMsg) {
-        return new IOException(PosixUtils.lastErrorString(defaultMsg));
+        return new IOException(lastErrorString(defaultMsg));
     }
 
     /** Return the error string for the given error number, or a default message. */
@@ -229,51 +143,12 @@ public class PosixUtils {
         return result.length() != 0 ? result : defaultMsg;
     }
 
-    public static void fileOpen(String path, FileDescriptor fd, int flags) throws FileNotFoundException {
-        try (CCharPointerHolder pathPin = CTypeConversion.toCString(removeTrailingSlashes(path))) {
-            CCharPointer pathPtr = pathPin.get();
-            int handle = open(pathPtr, flags, 0666);
-            if (handle >= 0) {
-                setFD(fd, handle);
-            } else {
-                throw new FileNotFoundException(path);
-            }
-        }
-    }
-
-    public static void fileClose(FileDescriptor fd) throws IOException {
-        int handle = getFD(fd);
-        if (handle == -1) {
-            return;
-        }
-        setFD(fd, -1);
-
-        // Do not close file descriptors 0, 1, 2. Instead, redirect to /dev/null.
-        if (handle >= 0 && handle <= 2) {
-            int devnull;
-
-            try (CCharPointerHolder pathPin = CTypeConversion.toCString("/dev/null")) {
-                CCharPointer pathPtr = pathPin.get();
-                devnull = open(pathPtr, O_WRONLY(), 0);
-            }
-            if (devnull < 0) {
-                setFD(fd, handle);
-                throw PosixUtils.newIOExceptionWithLastError("open /dev/null failed");
-            } else {
-                dup2(devnull, handle);
-                close(devnull);
-            }
-        } else if (close(handle) == -1) {
-            throw PosixUtils.newIOExceptionWithLastError("close failed");
-        }
-    }
-
     public static int getpid() {
         return Unistd.getpid();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static final class ProcessNameProvider implements Function<TargetClass, String> {
+    private static final class ProcessNameProvider implements Function<TargetClass, String> {
         @Override
         public String apply(TargetClass annotation) {
             if (JavaVersionUtil.JAVA_SPEC <= 8) {
@@ -285,10 +160,10 @@ public class PosixUtils {
     }
 
     @TargetClass(classNameProvider = ProcessNameProvider.class)
-    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
-    static final class Target_java_lang_UNIXProcess {
+    private static final class Target_java_lang_UNIXProcess {
         @Alias int pid;
     }
+
     public static int getpid(Process process) {
         Target_java_lang_UNIXProcess instance = SubstrateUtil.cast(process, Target_java_lang_UNIXProcess.class);
         return instance.pid;
@@ -297,9 +172,9 @@ public class PosixUtils {
     public static int waitForProcessExit(int ppid) {
         CIntPointer statusptr = StackValue.get(CIntPointer.class);
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
-            if (Errno.errno() == Errno.ECHILD()) {
+            if (CErrorNumber.getCErrorNumber() == Errno.ECHILD()) {
                 return 0;
-            } else if (Errno.errno() == Errno.EINTR()) {
+            } else if (CErrorNumber.getCErrorNumber() == Errno.EINTR()) {
                 break;
             } else {
                 return -1;
@@ -314,108 +189,6 @@ public class PosixUtils {
             return 0x80 + Wait.WTERMSIG(status);
         }
         return status;
-    }
-
-    public static int readSingle(FileDescriptor fd) throws IOException {
-        CCharPointer retPtr = StackValue.get(CCharPointer.class);
-        int handle = PosixUtils.getFDHandle(fd);
-        SignedWord nread = read(handle, retPtr, WordFactory.unsigned(1));
-        if (nread.equal(0)) {
-            // EOF
-            return -1;
-        } else if (nread.equal(-1)) {
-            throw PosixUtils.newIOExceptionWithLastError("Read error");
-        }
-        return retPtr.read() & 0xFF;
-    }
-
-    public static int readBytes(byte[] b, int off, int len, FileDescriptor fd) throws IOException {
-        if (b == null) {
-            throw new NullPointerException();
-        } else if (PosixUtils.outOfBounds(off, len, b)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len == 0) {
-            return 0;
-        }
-
-        SignedWord nread;
-        CCharPointer buf = LibC.malloc(WordFactory.unsigned(len));
-        try {
-            if (buf.equal(WordFactory.zero())) {
-                throw new OutOfMemoryError();
-            }
-
-            int handle = getFDHandle(fd);
-            nread = read(handle, buf, WordFactory.unsigned(len));
-            if (nread.greaterThan(0)) {
-                /*
-                 * We do not read directly into the (pinned) result array because read can block,
-                 * and that could lead to object pinned for an unexpectedly long time.
-                 */
-                try (PinnedObject pin = PinnedObject.create(b)) {
-                    LibC.memcpy(pin.addressOfArrayElement(off), buf, (UnsignedWord) nread);
-                }
-            } else if (nread.equal(-1)) {
-                throw PosixUtils.newIOExceptionWithLastError("Read error");
-            } else {
-                // EOF
-                nread = WordFactory.signed(-1);
-            }
-        } finally {
-            LibC.free(buf);
-        }
-
-        return (int) nread.rawValue();
-    }
-
-    @SuppressWarnings("unused")
-    public static void writeSingle(FileDescriptor fd, int b, boolean append) throws IOException {
-        SignedWord n;
-        int handle = getFD(fd);
-        if (handle == -1) {
-            throw new IOException("Stream Closed");
-        }
-
-        CCharPointer bufPtr = StackValue.get(CCharPointer.class);
-        bufPtr.write((byte) b);
-        // the append parameter is disregarded
-        n = write(handle, bufPtr, WordFactory.unsigned(1));
-
-        if (n.equal(-1)) {
-            throw PosixUtils.newIOExceptionWithLastError("Write error");
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
-        if (bytes == null) {
-            throw new NullPointerException();
-        } else if (PosixUtils.outOfBounds(off, len, bytes)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len == 0) {
-            return;
-        }
-
-        try (PinnedObject bytesPin = PinnedObject.create(bytes)) {
-            CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
-            UnsignedWord curLen = WordFactory.unsigned(len);
-            while (curLen.notEqual(0)) {
-                int fd = getFD(descriptor);
-                if (fd == -1) {
-                    throw new IOException("Stream Closed");
-                }
-
-                SignedWord n = write(fd, curBuf, curLen);
-
-                if (n.equal(-1)) {
-                    throw PosixUtils.newIOExceptionWithLastError("Write error");
-                }
-                curBuf = curBuf.addressOf(n);
-                curLen = curLen.subtract((UnsignedWord) n);
-            }
-        }
     }
 
     /**
@@ -442,58 +215,9 @@ public class PosixUtils {
         return true;
     }
 
-    static boolean flush(FileDescriptor descriptor) {
+    public static boolean flush(FileDescriptor descriptor) {
         int fd = getFD(descriptor);
         return Unistd.fsync(fd) == 0;
-    }
-
-    public static int getFDHandle(FileDescriptor fd) throws IOException {
-        int handle = getFD(fd);
-        if (handle == -1) {
-            throw new IOException("Stream Closed");
-        }
-        return handle;
-    }
-
-    static boolean outOfBounds(int off, int len, byte[] array) {
-        return off < 0 || len < 0 || array.length - off < len;
-    }
-
-    /**
-     * From a given path, remove all {@code .} and {@code dir/..}.
-     */
-    public static String collapse(String path) {
-        boolean absolute = path.charAt(0) == '/';
-        String wpath = absolute ? path.substring(1) : path;
-
-        // split the path and remove unnecessary elements
-        List<String> parts = new ArrayList<>();
-        int pos = 0;
-        int next;
-        do {
-            next = wpath.indexOf('/', pos);
-            String part = next != -1 ? wpath.substring(pos, next) : wpath.substring(pos);
-            if (part.length() > 0) {
-                if (part.equals(".")) {
-                    // ignore
-                } else if (part.equals("..")) {
-                    // omit this .. and the preceding part
-                    parts.remove(parts.size() - 1);
-                } else {
-                    parts.add(part);
-                }
-            }
-            pos = next + 1;
-        } while (next != -1);
-
-        // reassemble the path
-        StringBuilder rpath = new StringBuilder(absolute ? "/" : "");
-        for (String part : parts) {
-            rpath.append(part).append('/');
-        }
-        rpath.deleteCharAt(rpath.length() - 1);
-
-        return rpath.toString();
     }
 
     public static PointerBase dlopen(String file, int mode) {
@@ -540,8 +264,8 @@ public class PosixUtils {
         int readBytes = -1;
         if (readOffset < bufferLen) {
             do {
-                readBytes = (int) UnistdNoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
-            } while (readBytes == -1 && errno() == Errno.EINTR());
+                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
+            } while (readBytes == -1 && CErrorNumber.getCErrorNumber() == Errno.EINTR());
         }
         return readBytes;
     }

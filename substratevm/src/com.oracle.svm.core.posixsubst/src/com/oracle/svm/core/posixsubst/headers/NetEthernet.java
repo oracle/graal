@@ -27,9 +27,7 @@ package com.oracle.svm.core.posixsubst.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class NetEthernet {
     /* { Do not format quoted code: @formatter:off */
     /* { Allow non-standard names: Checkstyle: stop */

@@ -24,21 +24,21 @@
  */
 package com.oracle.svm.core.posixsubst.linux;
 
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.headers.Errno;
-import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posixsubst.PosixJavaNetClose;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Poll;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 
 /**
  * Translation of the mechanisms in /jdk8u-dev/jdk/src/solaris/native/java/net/linux_close.c that

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.ErrnoDirectives;
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 //Checkstyle: stop
@@ -41,7 +41,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * Definitions manually translated from the C header file sys/errno.h.
  */
-@CContext(ErrnoDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Errno {
 
     /** Operation not permitted. */
@@ -425,10 +425,14 @@ public class Errno {
      * appropriate implementation.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static native int errno();
+    public static int errno() {
+        return CErrorNumber.getCErrorNumber();
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static native void set_errno(int value);
+    public static void set_errno(int value) {
+        CErrorNumber.setCErrorNumber(value);
+    }
 
     /*
      * strerror() and strerror_r() are actually defined in string.h, but are probably always used

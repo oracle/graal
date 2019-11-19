@@ -33,14 +33,14 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posixsubst.headers.NetinetIn;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
 
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
 
 @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class DarwinNetinet6In6_var {
 
     @CStruct(addStructKeyword = true)

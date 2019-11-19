@@ -36,12 +36,12 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
 
 /* Allow underscores in names: Checkstyle: stop. */
 
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 public class DarwinEvent {
 

@@ -22,24 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.linux;
+package com.oracle.svm.core.posix.headers.darwin;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file sys/sendfile.h.
+ * Definitions manually translated from the C header file sys/stat.h.
  */
 @CContext(PosixDirectives.class)
-public class LinuxSendfile {
+public class DarwinStat {
 
-    @CFunction
-    public static native SignedWord sendfile(int out_fd, int in_fd, CLongPointer offset, UnsignedWord count);
+    @CStruct(addStructKeyword = true)
+    public interface stat extends PointerBase {
+    }
+
+    @CFunction("fstat$INODE64")
+    public static native int fstat(int fd, stat buf);
 }

@@ -42,13 +42,13 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posixsubst.PosixJavaNIOSubstitutions;
+import com.oracle.svm.core.posixsubst.headers.Errno;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.posixsubst.headers.linux.LinuxEPoll;
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})

@@ -26,8 +26,6 @@ package com.oracle.svm.core.posixsubst.darwin;
 
 import java.net.SocketException;
 
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -35,22 +33,24 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posixsubst.JavaNetNetworkInterface;
 import com.oracle.svm.core.posixsubst.JavaNetNetworkInterface.netif;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Ifaddrs;
 import com.oracle.svm.core.posixsubst.headers.Ioctl;
 import com.oracle.svm.core.posixsubst.headers.NetEthernet;
 import com.oracle.svm.core.posixsubst.headers.NetIf;
 import com.oracle.svm.core.posixsubst.headers.NetIfDl;
 import com.oracle.svm.core.posixsubst.headers.NetinetIn;
+import com.oracle.svm.core.posixsubst.headers.Socket;
 import com.oracle.svm.core.posixsubst.headers.darwin.DarwinNetinet6In6_var;
 
 /* { Do not format quoted code: @formatter:off */

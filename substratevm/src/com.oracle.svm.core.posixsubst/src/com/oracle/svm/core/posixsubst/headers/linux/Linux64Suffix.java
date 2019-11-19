@@ -40,13 +40,13 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Stat.stat;
-import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posixsubst.headers.Dirent.DIR;
 import com.oracle.svm.core.posixsubst.headers.Dirent.dirent;
 import com.oracle.svm.core.posixsubst.headers.Dirent.direntPointer;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
+import com.oracle.svm.core.posixsubst.headers.Stat.stat;
 import com.oracle.svm.core.posixsubst.headers.Statvfs.statvfs;
+import com.oracle.svm.core.posixsubst.headers.Stdio.FILE;
 
 //Checkstyle: stop
 
@@ -56,7 +56,7 @@ class Linux64Suffix {
     @TargetClass(com.oracle.svm.core.posixsubst.headers.Dirent.dirent.class)
     @Substitute
     @CStruct(addStructKeyword = true)
-    @CContext(PosixDirectives.class)
+    @CContext(PosixSubstDirectives.class)
     interface dirent64 extends PointerBase {
         @KeepOriginal
         long d_ino();
@@ -76,10 +76,10 @@ class Linux64Suffix {
         private static native int readdir_r_no_transition(DIR dirp, dirent entry, direntPointer result);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Fcntl.flock.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Fcntl.flock.class)
     @Substitute
     @CStruct(addStructKeyword = true)
-    @CContext(PosixDirectives.class)
+    @CContext(PosixSubstDirectives.class)
     interface flock64 extends PointerBase {
         @KeepOriginal
         short l_type();
@@ -112,8 +112,8 @@ class Linux64Suffix {
         void set_l_pid(int value);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Fcntl.class)
-    @CContext(PosixDirectives.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Fcntl.class)
+    @CContext(PosixSubstDirectives.class)
     static final class Target_com_oracle_svm_core_posix_headers_Fcntl {
         @Substitute
         @CConstant("F_SETLK64")
@@ -135,7 +135,7 @@ class Linux64Suffix {
     @TargetClass(com.oracle.svm.core.posix.headers.Resource.rlimit.class)
     @Substitute
     @CStruct(addStructKeyword = true)
-    @CContext(PosixDirectives.class)
+    @CContext(PosixSubstDirectives.class)
     interface rlimit64 extends PointerBase {
         @KeepOriginal
         UnsignedWord rlim_cur();
@@ -161,10 +161,10 @@ class Linux64Suffix {
         private static native int setrlimit(int resource, rlimit64 rlimits);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Stat.stat.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Stat.stat.class)
     @Substitute
     @CStruct(addStructKeyword = true)
-    @CContext(PosixDirectives.class)
+    @CContext(PosixSubstDirectives.class)
     interface stat64 extends PointerBase {
         @KeepOriginal
         long st_dev();
@@ -206,7 +206,7 @@ class Linux64Suffix {
         long st_ctime();
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Stat.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Stat.class)
     static final class Target_com_oracle_svm_core_posix_headers_Stat {
         @Substitute
         @CFunction("stat64")
@@ -228,7 +228,7 @@ class Linux64Suffix {
     @TargetClass(statvfs.class)
     @Substitute
     @CStruct(addStructKeyword = true)
-    @CContext(PosixDirectives.class)
+    @CContext(PosixSubstDirectives.class)
     interface statvfs64 extends PointerBase {
         @KeepOriginal
         long f_bsize();
@@ -275,14 +275,14 @@ class Linux64Suffix {
         private static native int fstatvfs(int fildes, statvfs buf);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Stdio.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Stdio.class)
     static final class Target_com_oracle_svm_core_posix_headers_Stdio {
         @Substitute
         @CFunction("fopen64")
         private static native FILE fopen(CCharPointer filename, CCharPointer modes);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Unistd.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.Unistd.class)
     static final class Target_com_oracle_svm_core_posix_headers_Unistd {
         @Substitute
         @CFunction("pread64")
@@ -297,7 +297,7 @@ class Linux64Suffix {
         private static native int ftruncate(int fd, long length);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.linux.LinuxSendfile.class)
+    @TargetClass(com.oracle.svm.core.posixsubst.headers.linux.LinuxSendfile.class)
     static final class Target_com_oracle_svm_core_posix_headers_linux_LinuxSendfile {
         @Substitute
         @CFunction("sendfile64")

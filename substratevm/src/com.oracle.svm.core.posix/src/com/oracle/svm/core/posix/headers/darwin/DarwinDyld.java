@@ -24,24 +24,21 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
-// { Allow names with underscores: Checkstyle: stop
+// Checkstyle: stop
 
-/** Declarations of method from </mach-o/dyld.h>. */
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
+/**
+ * Definitions manually translated from the C header file mach-o/dyld.h.
+ */
 @CContext(PosixDirectives.class)
 public class DarwinDyld {
 
     @CFunction
     public static native int _NSGetExecutablePath(CCharPointer buf, CIntPointer bufsize);
-
 }
-// } Allow names with underscores: Checkstyle: resume
