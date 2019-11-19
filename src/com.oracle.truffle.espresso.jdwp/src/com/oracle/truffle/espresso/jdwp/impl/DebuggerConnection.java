@@ -287,6 +287,9 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.ReferenceType.SOURCE_FILE.ID:
                                 result = JDWP.ReferenceType.SOURCE_FILE.createReply(packet, context);
                                 break;
+                            case JDWP.ReferenceType.STATUS.ID:
+                                result = JDWP.ReferenceType.STATUS.createReply(packet, context);
+                                break;
                             case JDWP.ReferenceType.INTERFACES.ID:
                                 result = JDWP.ReferenceType.INTERFACES.createReply(packet, context);
                                 break;

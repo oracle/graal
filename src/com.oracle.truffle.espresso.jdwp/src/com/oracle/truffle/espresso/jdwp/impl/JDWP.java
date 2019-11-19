@@ -369,6 +369,27 @@ class JDWP {
             }
         }
 
+        static class STATUS {
+            public static final int ID = 9;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long klassRef = input.readLong();
+                KlassRef klass = verifyRefType(klassRef, reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                reply.writeInt(klass.getStatus());
+                return new JDWPResult(reply);
+            }
+
+        }
+
+
         static class INTERFACES {
             public static final int ID = 10;
 
