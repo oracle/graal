@@ -51,6 +51,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.espresso.jni.JNIHandles;
+import com.oracle.truffle.espresso.jni.Word;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
@@ -117,13 +120,19 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
  */
 public final class VM extends NativeEnv implements ContextAccess {
 
+    private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
+
     private final TruffleObject initializeMokapotContext;
     private final TruffleObject disposeMokapotContext;
     private final TruffleObject getJavaVM;
 
     private final JniEnv jniEnv;
 
-    private long vmPtr;
+    public JNIHandles getHandles() {
+        return jniEnv.getHandles();
+    }
+
+    private @Word long vmPtr;
 
     // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
     // interface (libjvm).
@@ -193,9 +202,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         return jniEnv.getContext();
     }
 
-    public long getJavaVM() {
+    public @Word long getJavaVM() {
         try {
-            return (long) InteropLibrary.getFactory().getUncached().execute(getJavaVM);
+            return UNCACHED.asLong(UNCACHED.execute(getJavaVM));
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("getJavaVM failed");
         }
@@ -226,7 +235,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
                 // System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
-                return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
+                return (TruffleObject) UNCACHED.execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
@@ -275,7 +284,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public void JVM_ArrayCopy(@SuppressWarnings("unused") Object ignored, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+    public void JVM_ArrayCopy(@SuppressWarnings("unused") @Host(Class/* <System> */.class) StaticObject ignored,
+                    @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         try {
             if (src.isArray() && dest.isArray()) {
                 System.arraycopy((src).unwrap(), srcPos, dest.unwrap(), destPos, length);
@@ -450,7 +460,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThread(long penvPtr, long argsPtr) {
+    public static int AttachCurrentThread(@Word long penvPtr, @Word long argsPtr) {
         System.err.println("AttachCurrentThread!!! " + penvPtr + " " + Thread.currentThread());
         EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
         return JniEnv.JNI_OK;
@@ -478,7 +488,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @SuppressWarnings("unused")
     @VmImpl
-    public int GetEnv(long vmPtr_, long envPtr, int version) {
+    public int GetEnv(@Word long vmPtr_, @Word long envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
         LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();
         buf.put(jniEnv.getNativePointer());
@@ -487,7 +497,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @SuppressWarnings("unused")
     @VmImpl
-    public static int AttachCurrentThreadAsDaemon(long penvPtr, long argsPtr) {
+    public static int AttachCurrentThreadAsDaemon(@Word long penvPtr, @Word long argsPtr) {
         return JniEnv.JNI_OK;
     }
 
@@ -588,62 +598,62 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") Object unused, StaticObject jcpool) {
+    public static int JVM_ConstantPoolGetSize(@SuppressWarnings("unused") StaticObject unused, StaticObject jcpool) {
         return jcpool.getMirrorKlass().getConstantPool().length();
     }
 
     @VmImpl
     @JniImpl
-    public static @Host(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+    public static @Host(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") StaticObject unused, @Host(Object.class) StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.CLASS);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedKlassAt(null, index).mirror();
     }
 
     @VmImpl
     @JniImpl
-    public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+    public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") StaticObject unused, @Host(Object.class) StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.DOUBLE);
         return jcpool.getMirrorKlass().getConstantPool().doubleAt(index);
     }
 
     @VmImpl
     @JniImpl
-    public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+    public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") StaticObject unused, @Host(Object.class) StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.FLOAT);
         return jcpool.getMirrorKlass().getConstantPool().floatAt(index);
     }
 
     @VmImpl
     @JniImpl
-    public static @Host(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+    public static @Host(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") StaticObject unused, @Host(Object.class) StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.STRING);
         return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedStringAt(index);
     }
 
     @VmImpl
     @JniImpl
-    public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+    public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") StaticObject unused, StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.UTF8);
         return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().symbolAt(index).toString());
     }
 
     @VmImpl
     @JniImpl
-    public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+    public static int JVM_ConstantPoolGetIntAt(@SuppressWarnings("unused") StaticObject unused, StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.INTEGER);
         return jcpool.getMirrorKlass().getConstantPool().intAt(index);
     }
 
     @VmImpl
     @JniImpl
-    public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
+    public static long JVM_ConstantPoolGetLongAt(@SuppressWarnings("unused") StaticObject unused, StaticObject jcpool, int index) {
         checkTag(jcpool.getMirrorKlass().getConstantPool(), index, ConstantPool.Tag.LONG);
         return jcpool.getMirrorKlass().getConstantPool().longAt(index);
     }
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, long bufPtr, int len,
+    public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, @Word long bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd) {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
@@ -671,7 +681,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(Class.class) StaticObject JVM_DefineClassWithSource(String name, @Host(ClassLoader.class) StaticObject loader, long bufPtr, int len,
+    public @Host(Class.class) StaticObject JVM_DefineClassWithSource(String name, @Host(ClassLoader.class) StaticObject loader, @Word long bufPtr, int len,
                     @Host(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") String source) {
         // FIXME(peterssen): Source is ignored.
         return JVM_DefineClass(name, loader, bufPtr, len, pd);
@@ -694,7 +704,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region Library support
     @VmImpl
-    public long JVM_LoadLibrary(String name) {
+    public @Word long JVM_LoadLibrary(String name) {
         try {
             TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
@@ -708,13 +718,13 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public static void JVM_UnloadLibrary(@SuppressWarnings("unused") long handle) {
+    public static void JVM_UnloadLibrary(@SuppressWarnings("unused") @Word long handle) {
         // TODO(peterssen): Do unload the library.
         System.err.println("JVM_UnloadLibrary called but library was not unloaded!");
     }
 
     @VmImpl
-    public long JVM_FindLibraryEntry(long libHandle, String name) {
+    public @Word long JVM_FindLibraryEntry(@Word long libHandle, String name) {
         if (libHandle == 0) {
             System.err.println("JVM_FindLibraryEntry from default/global namespace (0): " + name);
             return 0L;
@@ -1264,11 +1274,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         return klass.mirror();
     }
 
-    public TruffleObject getLibrary(long handle) {
+    public TruffleObject getLibrary(@Word long handle) {
         return handle2Lib.get(handle);
     }
 
-    public TruffleObject getFunction(long handle) {
+    public TruffleObject getFunction(@Word long handle) {
         return handle2Sym.get(handle);
     }
 
