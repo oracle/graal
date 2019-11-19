@@ -29,7 +29,7 @@ suite = {
     "licenses": {
         "GPLv2": {
             "name": "GNU General Public License, version 2",
-            "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
+            "url": "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
         },
     },
     "defaultLicense": "GPLv2",
