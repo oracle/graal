@@ -49,7 +49,7 @@ public class Ids<T> {
     private final T nullObject;
 
     public Ids(T nullObject) {
-        getIdAsLong(nullObject);
+        objects[0] = new WeakReference<>(nullObject);
         this.nullObject = nullObject;
     }
 
@@ -59,6 +59,10 @@ public class Ids<T> {
      * @return the ID of the object
      */
     public long getIdAsLong(T object) {
+        if (object == null) {
+            System.out.println("Null object when getting ID");
+            return 0;
+        }
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
@@ -77,10 +81,13 @@ public class Ids<T> {
      * @return the object stored under the ID
      */
     public T fromId(int id) {
+        if (id == 0) {
+            return nullObject;
+        }
         WeakReference<T> ref = objects[id];
         T o = ref.get();
         if (o == null) {
-            return nullObject;
+            return null;
         } else {
             return o;
         }
