@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
-import java.util.ArrayDeque;
+import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -52,8 +52,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruc
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -94,7 +92,21 @@ public final class DebugInfoFunctionProcessor {
     public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource, LLVMContext context) {
         ImportsProcessor.process(scope.getMetadata(), context, cache);
         initSourceFunction(function, bitcodeSource);
-        function.accept((FunctionVisitor) new SymbolProcessor(function.getSourceFunction()));
+
+        for (InstructionBlock block : function.getBlocks()) {
+            List<Instruction> instructions = block.getInstructions();
+            for (int i = 0; i < instructions.size(); i++) {
+                Instruction instruction = instructions.get(i);
+                if (instruction instanceof VoidCallInstruction) {
+                    Instruction replacement = visit(function, (VoidCallInstruction) instruction);
+                    if (replacement != instruction) {
+                        instructions.set(i, replacement);
+                    }
+                } else {
+                    visitInstruction(instruction);
+                }
+            }
+        }
         scope.getMetadata().consumeLocals(new MetadataProcessor());
         for (SourceVariable local : function.getSourceFunction().getVariables()) {
             local.processFragments();
@@ -140,162 +152,118 @@ public final class DebugInfoFunctionProcessor {
         return MDExpression.EMPTY;
     }
 
-    private final class SymbolProcessor implements FunctionVisitor, InstructionVisitorAdapter {
-
-        private final SourceFunction function;
-        private final ArrayDeque<Integer> removeFromBlock = new ArrayDeque<>();
-
-        private int blockInstIndex = 0;
-        private DbgValueInstruction lastDbgValue = null;
-        private InstructionBlock currentBlock = null;
-
-        private SymbolProcessor(SourceFunction function) {
-            this.function = function;
-        }
-
-        @Override
-        public void visit(InstructionBlock block) {
-            currentBlock = block;
-            lastDbgValue = null;
-            for (blockInstIndex = 0; blockInstIndex < block.getInstructionCount(); blockInstIndex++) {
-                block.getInstruction(blockInstIndex).accept(this);
-            }
-            if (!removeFromBlock.isEmpty()) {
-                for (int i : removeFromBlock) {
-                    currentBlock.remove(i);
-                }
-                removeFromBlock.clear();
+    private void visitInstruction(Instruction instruction) {
+        final MDLocation loc = instruction.getDebugLocation();
+        if (loc != null) {
+            final LLVMSourceLocation scope = cache.buildLocation(loc);
+            if (scope != null) {
+                instruction.setSourceLocation(scope);
             }
         }
+    }
 
-        @Override
-        public void visitInstruction(Instruction instruction) {
-            final MDLocation loc = instruction.getDebugLocation();
-            if (loc != null) {
-                final LLVMSourceLocation scope = cache.buildLocation(loc);
-                if (scope != null) {
-                    instruction.setSourceLocation(scope);
-                }
+    private Instruction visit(FunctionDefinition function, VoidCallInstruction call) {
+        final SymbolImpl callTarget = call.getCallTarget();
+        if (callTarget instanceof FunctionDeclaration) {
+            switch (((FunctionDeclaration) callTarget).getName()) {
+                case LLVM_DBG_DECLARE_NAME:
+                    return handleDebugIntrinsic(function, call, true);
+
+                case LLVM_DBG_ADDR_NAME:
+                    // dbg.declare and dbg.addr have the same interface and, for our purposes,
+                    // the same semantics
+                    return handleDebugIntrinsic(function, call, true);
+
+                case LLVM_DBG_VALUE_NAME:
+                    return handleDebugIntrinsic(function, call, false);
+
+                case LLVM_DEBUGTRAP_NAME:
+                    return visitDebugTrap(call);
             }
         }
 
-        @Override
-        public void visit(VoidCallInstruction call) {
-            final SymbolImpl callTarget = call.getCallTarget();
-            if (callTarget instanceof FunctionDeclaration) {
-                switch (((FunctionDeclaration) callTarget).getName()) {
-                    case LLVM_DBG_DECLARE_NAME:
-                        handleDebugIntrinsic(call, true);
-                        return;
+        visitInstruction(call);
+        return call;
+    }
 
-                    case LLVM_DBG_ADDR_NAME:
-                        // dbg.declare and dbg.addr have the same interface and, for our purposes,
-                        // the same semantics
-                        handleDebugIntrinsic(call, true);
-                        return;
+    private Instruction visitDebugTrap(VoidCallInstruction call) {
+        DebugTrapInstruction trap = DebugTrapInstruction.create(call);
+        visitInstruction(trap);
+        return trap;
+    }
 
-                    case LLVM_DBG_VALUE_NAME:
-                        handleDebugIntrinsic(call, false);
-                        return;
+    private SourceVariable getVariable(FunctionDefinition function, VoidCallInstruction call, int index) {
+        final SymbolImpl varSymbol = getArg(call, index);
+        if (varSymbol instanceof MetadataSymbol) {
+            MDBaseNode mdLocal = ((MetadataSymbol) varSymbol).getNode();
 
-                    case LLVM_DEBUGTRAP_NAME:
-                        visitDebugTrap(call);
-                        return;
-                }
-            }
-
-            visitInstruction(call);
+            LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
+            return function.getSourceFunction().getLocal(symbol);
         }
 
-        private void visitDebugTrap(VoidCallInstruction call) {
-            final DebugTrapInstruction trap = DebugTrapInstruction.create(call);
-            currentBlock.set(blockInstIndex, trap);
-            visitInstruction(trap);
+        return null;
+    }
+
+    private Instruction handleDebugIntrinsic(FunctionDefinition function, VoidCallInstruction call, boolean isDeclaration) {
+        SymbolImpl value = getArg(call, LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+        if (value instanceof MetadataSymbol) {
+            value = MDSymbolExtractor.getSymbol(((MetadataSymbol) value).getNode());
         }
 
-        private SourceVariable getVariable(VoidCallInstruction call, int index) {
-            final SymbolImpl varSymbol = getArg(call, index);
-            if (varSymbol instanceof MetadataSymbol) {
-                final MDBaseNode mdLocal = ((MetadataSymbol) varSymbol).getNode();
+        if (value == null) {
+            // this may happen if llvm optimizations removed a variable
+            value = new NullConstant(MetaType.DEBUG);
+        }
 
-                final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
-                return function.getLocal(symbol);
-            }
+        int mdLocalArgIndex;
+        int mdExprArgIndex;
+        if (isDeclaration) {
+            mdLocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
+            mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
 
+        } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_NEW) {
+            mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_NEW;
+            mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_NEW;
+
+        } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
+            mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_OLD;
+            mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_OLD;
+
+        } else {
+            return call;
+        }
+
+        final SourceVariable variable = getVariable(function, call, mdLocalArgIndex);
+        if (variable == null) {
+            // invalid or unsupported debug information
+            // remove upper indices so we do not need to update the later ones
             return null;
         }
 
-        private void handleDebugIntrinsic(VoidCallInstruction call, boolean isDeclaration) {
-            SymbolImpl value = getArg(call, LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
-            if (value instanceof MetadataSymbol) {
-                value = MDSymbolExtractor.getSymbol(((MetadataSymbol) value).getNode());
-            }
+        final MDExpression expression = getExpression(call, mdExprArgIndex);
+        if (ValueFragment.describesFragment(expression)) {
+            variable.addFragment(ValueFragment.parse(expression));
+        } else {
+            variable.addFullDefinition();
+        }
 
-            if (value == null) {
-                // this may happen if llvm optimizations removed a variable
-                value = new NullConstant(MetaType.DEBUG);
-            }
+        if (isDeclaration) {
+            final DbgDeclareInstruction dbgDeclare = new DbgDeclareInstruction(value, variable, expression);
+            variable.addDeclaration(dbgDeclare);
+            return dbgDeclare;
 
-            int mdLocalArgIndex;
-            int mdExprArgIndex;
-            if (isDeclaration) {
-                mdLocalArgIndex = LLVM_DBG_DECLARE_LOCALREF_ARGINDEX;
-                mdExprArgIndex = LLVM_DBG_DECLARE_EXPR_ARGINDEX;
-
-            } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_NEW) {
-                mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_NEW;
-                mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_NEW;
-
-            } else if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
-                mdLocalArgIndex = LLVM_DBG_VALUE_LOCALREF_ARGINDEX_OLD;
-                mdExprArgIndex = LLVM_DBG_VALUE_EXPR_ARGINDEX_OLD;
-
-            } else {
-                return;
-            }
-
-            final SourceVariable variable = getVariable(call, mdLocalArgIndex);
-            if (variable == null) {
-                // invalid or unsupported debug information
-                // remove upper indices so we do not need to update the later ones
-                removeFromBlock.addFirst(blockInstIndex);
-                return;
-            }
-
-            final MDExpression expression = getExpression(call, mdExprArgIndex);
-            if (ValueFragment.describesFragment(expression)) {
-                variable.addFragment(ValueFragment.parse(expression));
-            } else {
-                variable.addFullDefinition();
-            }
-
-            if (isDeclaration) {
-                final DbgDeclareInstruction dbgDeclare = new DbgDeclareInstruction(value, variable, expression);
-                variable.addDeclaration(dbgDeclare);
-                currentBlock.set(blockInstIndex, dbgDeclare);
-
-            } else {
-                long index = 0;
-                if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
-                    final SymbolImpl indexSymbol = call.getArgument(LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD);
-                    final Long l = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indexSymbol);
-                    if (l != null) {
-                        index = l;
-                    }
-                }
-                final DbgValueInstruction dbgValue = new DbgValueInstruction(value, variable, index, expression);
-
-                if (dbgValue.equals(lastDbgValue)) {
-                    // at higher optimization levels llvm often duplicates the @llvm.dbg.value
-                    // intrinsic call, we remove it again to avoid unnecessary runtime overhead
-                    removeFromBlock.addFirst(blockInstIndex);
-
-                } else {
-                    variable.addValue(dbgValue);
-                    currentBlock.set(blockInstIndex, dbgValue);
-                    lastDbgValue = dbgValue;
+        } else {
+            long index = 0;
+            if (call.getArgumentCount() == LLVM_DBG_VALUE_LOCALREF_ARGSIZE_OLD) {
+                final SymbolImpl indexSymbol = call.getArgument(LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD);
+                final Long l = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indexSymbol);
+                if (l != null) {
+                    index = l;
                 }
             }
+            final DbgValueInstruction dbgValue = new DbgValueInstruction(value, variable, index, expression);
+            variable.addValue(dbgValue);
+            return dbgValue;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,45 +29,46 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
-public final class LLVMNodeSourceDescriptor {
+/**
+ * Nulls out the given set of frame slots after evaluating the given statement.
+ */
+public final class LLVMFrameNuller extends LLVMStatementNode {
 
-    private static final SourceSection DEFAULT_SOURCE_SECTION;
+    @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
 
-    static {
-        final Source source = Source.newBuilder("llvm", "LLVM IR", "<llvm ir>").mimeType("text/plain").build();
-        DEFAULT_SOURCE_SECTION = source.createUnavailableSection();
+    @Child private LLVMStatementNode statement;
+
+    public LLVMFrameNuller(FrameSlot[] frameSlots, LLVMStatementNode statement) {
+        this.frameSlots = frameSlots;
+        this.statement = statement;
     }
 
-    private LLVMSourceLocation sourceLocation;
-    private boolean hasStatementTag;
-
-    public LLVMSourceLocation getSourceLocation() {
-        return sourceLocation;
+    @Override
+    public NodeCost getCost() {
+        // this node reduces the compile code size
+        return NodeCost.NONE;
     }
 
-    public SourceSection getSourceSection() {
-        if (sourceLocation == null) {
-            return DEFAULT_SOURCE_SECTION;
+    @Override
+    public String toString() {
+        return getShortString("frameSlots");
+    }
+
+    @Override
+    @ExplodeLoop
+    public void execute(VirtualFrame frame) {
+        if (statement != null) {
+            statement.execute(frame);
         }
-        return sourceLocation.getSourceSection();
-    }
-
-    public boolean hasStatementTag() {
-        return hasStatementTag && sourceLocation != null;
-    }
-
-    public void setSourceLocation(LLVMSourceLocation sourceLocation) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.sourceLocation = sourceLocation;
-    }
-
-    public void setHasStatementTag(boolean hasStatementTag) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.hasStatementTag = hasStatementTag;
+        for (int i = 0; i < frameSlots.length; i++) {
+            LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlots[i]);
+        }
     }
 }

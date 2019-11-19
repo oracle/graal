@@ -68,6 +68,11 @@ public final class LLVMGlobal implements LLVMSymbol {
     }
 
     @Override
+    public String toString() {
+        return "(" + type + ")" + (library == null ? "" : library.getName() + "::") + name;
+    }
+
+    @Override
     public String getName() {
         return name;
     }

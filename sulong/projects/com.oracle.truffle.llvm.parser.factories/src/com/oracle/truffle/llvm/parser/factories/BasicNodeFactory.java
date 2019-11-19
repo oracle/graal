@@ -29,6 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -73,7 +80,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNuller;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
@@ -392,13 +398,6 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     protected DataLayout dataLayout;
@@ -707,11 +706,6 @@ public class BasicNodeFactory implements NodeFactory {
         } else {
             throw new AssertionError(llvmType + " not yet supported");
         }
-    }
-
-    @Override
-    public LLVMFrameNuller createFrameNuller(FrameSlot slot) {
-        return new LLVMFrameNuller(slot);
     }
 
     @Override
@@ -1430,7 +1424,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createAllocaArray(Type elementType, LLVMExpressionNode numElements, int alignment) {
         int byteSize = getByteSize(elementType);
-        return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, elementType);
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, elementType, numElements);
     }
 
     @Override
@@ -1538,13 +1532,12 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
+                    LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
-        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
-                        afterBlockNuller);
-        body.getOrCreateSourceDescriptor().setSourceLocation(location);
+        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]));
+        body.setSourceLocation(LLVMSourceLocation.orDefault(location));
         final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
-        functionRoot.getOrCreateSourceDescriptor().setSourceLocation(location);
+        functionRoot.setSourceLocation(LLVMSourceLocation.orDefault(location));
         return functionRoot;
     }
 

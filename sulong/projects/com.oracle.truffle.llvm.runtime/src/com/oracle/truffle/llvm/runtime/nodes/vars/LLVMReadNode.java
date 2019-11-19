@@ -49,7 +49,13 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     protected final FrameSlot slot;
 
     public LLVMReadNode(FrameSlot slot) {
+        assert slot != null;
         this.slot = slot;
+    }
+
+    @Override
+    public String toString() {
+        return getShortString("slot");
     }
 
     public abstract static class LLVMI1ReadNode extends LLVMReadNode {

@@ -40,7 +40,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
-    @Child ToPointer toPointer = ToPointer.create();
+
+    @Child private ToPointer toPointer = ToPointer.create();
 
     @Specialization(rewriteOn = ArrayIndexOutOfBoundsException.class)
     protected Object doIntrinsic(VirtualFrame frame, int index) {

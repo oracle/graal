@@ -37,35 +37,36 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class LLVMFrameNullerUtil {
     private LLVMFrameNullerUtil() {
+        // no instances
     }
 
-    public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot, boolean forceNulling) {
+    public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot) {
         CompilerAsserts.partialEvaluationConstant(frameSlot);
+        if (CompilerDirectives.inInterpreter()) {
+            // Nulling frame slots is only necessary in compiled code (otherwise, we would compute
+            // values that are only used in framestates). This code must NOT be moved to a separate
+            // method as it would cause endless deopts (the method or classes that are used within
+            // the method might be unresolved because they were never executed). For the same
+            // reason, we also must NOT use a switch statement.
+            return;
+        }
         FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
         if (kind == FrameSlotKind.Object) {
-            // object frame slots always need to be nulled (otherwise we would impact GC)
             frame.setObject(frameSlot, null);
-        } else if (CompilerDirectives.inCompiledCode() || forceNulling) {
-            // Nulling primitive frame slots is only necessary in compiled code (otherwise, we would
-            // compute values that are only used in framestates). This code must NOT be moved to a
-            // separate method as it would cause endless deopts (the method or classes that are used
-            // within the method might be unresolved because they were never executed). For the same
-            // reason, we also must NOT use a switch statement.
-            if (kind == FrameSlotKind.Boolean) {
-                frame.setBoolean(frameSlot, false);
-            } else if (kind == FrameSlotKind.Byte) {
-                frame.setByte(frameSlot, (byte) 0);
-            } else if (kind == FrameSlotKind.Int) {
-                frame.setInt(frameSlot, 0);
-            } else if (kind == FrameSlotKind.Long) {
-                frame.setLong(frameSlot, 0L);
-            } else if (kind == FrameSlotKind.Float) {
-                frame.setFloat(frameSlot, 0f);
-            } else if (kind == FrameSlotKind.Double) {
-                frame.setDouble(frameSlot, 0d);
-            } else {
-                throw new UnsupportedOperationException("unexpected frameslot kind");
-            }
+        } else if (kind == FrameSlotKind.Boolean) {
+            frame.setBoolean(frameSlot, false);
+        } else if (kind == FrameSlotKind.Byte) {
+            frame.setByte(frameSlot, (byte) 0);
+        } else if (kind == FrameSlotKind.Int) {
+            frame.setInt(frameSlot, 0);
+        } else if (kind == FrameSlotKind.Long) {
+            frame.setLong(frameSlot, 0L);
+        } else if (kind == FrameSlotKind.Float) {
+            frame.setFloat(frameSlot, 0f);
+        } else if (kind == FrameSlotKind.Double) {
+            frame.setDouble(frameSlot, 0d);
+        } else {
+            throw new UnsupportedOperationException("unexpected frameslot kind");
         }
     }
 }

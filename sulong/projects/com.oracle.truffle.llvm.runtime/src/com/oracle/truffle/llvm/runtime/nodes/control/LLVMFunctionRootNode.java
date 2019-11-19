@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -76,11 +77,13 @@ public final class LLVMFunctionRootNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private void nullStack(VirtualFrame frame) {
+        if (CompilerDirectives.inInterpreter()) {
+            // don't clear slots if we're running in the interpreter
+            return;
+        }
         for (FrameSlot frameSlot : frameSlotsToInitialize) {
-            // In LLVM IR, it is possible that SSA values are used *before* they are defined (so
-            // far, we only saw this for @llvm.dbg.value tail calls). So, even in such a case, it
-            // must be possible to read from the frame in a typed way.
-            LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot, true);
+            // avoids phis for the contents of the frame slots tag array
+            LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot);
         }
     }
 
