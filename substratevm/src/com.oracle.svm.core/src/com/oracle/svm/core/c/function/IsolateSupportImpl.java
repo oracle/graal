@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.c.function;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.WordFactory;
 
@@ -56,13 +57,16 @@ public final class IsolateSupportImpl implements IsolateSupport {
             throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
         }
 
-        CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
-        params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
-        params.setVersion(1);
+        try (CTypeConversion.CCharPointerHolder auxImagePath = CTypeConversion.toCString(parameters.getAuxiliaryImagePath())) {
+            CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
+            params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
+            params.setAuxiliaryImagePath(auxImagePath.get());
+            params.setVersion(2);
 
-        IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
-        throwOnError(CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr));
-        return isolateThreadPtr.read();
+            IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
+            throwOnError(CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr));
+            return isolateThreadPtr.read();
+        }
     }
 
     @Override

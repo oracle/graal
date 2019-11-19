@@ -88,6 +88,7 @@ public final class Isolates {
          */
         public static final class Builder {
             private UnsignedWord reservedAddressSpaceSize;
+            private String auxiliaryImagePath;
 
             /**
              * Creates a new builder with default values.
@@ -108,13 +109,24 @@ public final class Isolates {
             }
 
             /**
+             * Sets the file path to an auxiliary image which should be loaded in addition to the
+             * main image, or {@code null} if no such image should be loaded.
+             *
+             * @since 20.0
+             */
+            public Builder auxiliaryImagePath(String filePath) {
+                this.auxiliaryImagePath = filePath;
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath);
             }
         }
 
@@ -130,19 +142,30 @@ public final class Isolates {
         }
 
         private final UnsignedWord reservedAddressSpaceSize;
+        private final String auxiliaryImagePath;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
+            this.auxiliaryImagePath = auxiliaryImagePath;
         }
 
         /**
          * Returns the size in bytes for the reserved virtual address space of the new isolate.
-         * Returns a {@link CreateIsolateParameters} with all default values.
          *
          * @since 19.0
          */
         public UnsignedWord getReservedAddressSpaceSize() {
             return reservedAddressSpaceSize;
+        }
+
+        /**
+         * Returns the file path to an auxiliary image which should be loaded in addition to the
+         * main image, or {@code null} if no such image should be loaded.
+         *
+         * @since 20.0
+         */
+        public String getAuxiliaryImagePath() {
+            return auxiliaryImagePath;
         }
     }
 

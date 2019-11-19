@@ -27,5 +27,8 @@ struct __graal_create_isolate_params_t {
 
     /* Fields introduced in version 1 */
     __graal_uword  reserved_address_space_size; /* Size of address space to reserve */
+
+    /* Fields introduced in version 2 */
+    const char *auxiliary_image_path;   /* Path to an auxiliary image to load. */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
