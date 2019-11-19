@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <errno.h>
+#include <signal.h>
 
-#define ARR_LEN 1024
-char name[ARR_LEN];
+void (*__sulong_signal(int, void (*)(int)))(int);
 
-static void copy(char *to, char *from) {
-  strncpy(to, from, ARR_LEN - 10);
-  to[ARR_LEN - 10] = '\0';
+void (*signal(int sig, void (*handler)(int)))(int) {
+  void (*old_handler)(int) = __sulong_signal(sig, handler);
+
+  if (old_handler == SIG_ERR) {
+    errno = EINVAL;
+  }
+
+  return old_handler;
 }
 
-int main() {
-  copy(name, "(none)");
-  printf("%s\n", name);
+int sigaction(int sig, const struct sigaction *restrict act, struct sigaction *restrict oact) {
+  if (act->sa_flags & SA_SIGINFO) {
+    errno = ENOTSUP;
+    return -1;
+  }
 
-  char *buf = (char *)malloc(sizeof(char) * ARR_LEN);
-  copy(buf, "../some/path/that/is/a/bit/longer");
-  copy(name, buf);
-  printf("%s\n", name);
-  free(buf);
+  /* reuse our implementation of signal() */
+  void (*old_handler)(int) = signal(sig, act->sa_handler);
+
+  if (old_handler == SIG_ERR) {
+    /* errno is already set from our signal() implementation */
+    return -1;
+  }
+
+  if (oact) {
+    oact->sa_handler = old_handler;
+  }
 
   return 0;
 }

@@ -466,7 +466,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
 
     private static void registerAbortIntrinsics() {
         add("_gfortran_abort", (args, nodeFactory) -> LLVMAbortNodeGen.create());
-        add("signal", (args, nodeFactory) -> LLVMSignalNodeGen.create(args.get(1), args.get(2)));
+        add("__sulong_signal", (args, nodeFactory) -> LLVMSignalNodeGen.create(args.get(1), args.get(2)));
         add("syscall", "__syscall", (args, nodeFactory) -> LLVMSyscall.create(argumentsArray(args, 1, args.size() - 1)));
     }
 

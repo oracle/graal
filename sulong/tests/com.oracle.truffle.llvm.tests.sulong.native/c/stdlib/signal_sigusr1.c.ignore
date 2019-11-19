@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 
-#define ARR_LEN 1024
-char name[ARR_LEN];
-
-static void copy(char *to, char *from) {
-  strncpy(to, from, ARR_LEN - 10);
-  to[ARR_LEN - 10] = '\0';
+void handler(int signo) {
 }
 
-int main() {
-  copy(name, "(none)");
-  printf("%s\n", name);
+int main(void) {
+  void (*handler_p)(int) = signal(SIGUSR1, handler);
 
-  char *buf = (char *)malloc(sizeof(char) * ARR_LEN);
-  copy(buf, "../some/path/that/is/a/bit/longer");
-  copy(name, buf);
-  printf("%s\n", name);
-  free(buf);
+  if (handler_p == SIG_ERR) {
+    perror("signal() error");
+    return 1;
+  }
 
   return 0;
 }

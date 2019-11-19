@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <errno.h>
 
-#define ARR_LEN 1024
-char name[ARR_LEN];
-
-static void copy(char *to, char *from) {
-  strncpy(to, from, ARR_LEN - 10);
-  to[ARR_LEN - 10] = '\0';
+void old_style_handler_old(int signo) {
 }
 
-int main() {
-  copy(name, "(none)");
-  printf("%s\n", name);
+void old_style_handler_new(int signo) {
+}
 
-  char *buf = (char *)malloc(sizeof(char) * ARR_LEN);
-  copy(buf, "../some/path/that/is/a/bit/longer");
-  copy(name, buf);
-  printf("%s\n", name);
-  free(buf);
+int main(void) {
+  struct sigaction sa = { 0 };
+  sa.sa_handler = old_style_handler_old;
+  sigemptyset(&sa.sa_mask);
+  errno = 0;
+  if (sigaction(SIGINT, &sa, NULL) != 0) {
+    if (errno != EINVAL) {
+      return 1;
+    }
+    return 2;
+  }
+
+  sa.sa_handler = old_style_handler_new;
+  struct sigaction osa = { 0 };
+  errno = 0;
+  if (sigaction(SIGINT, &sa, &osa) != 0) {
+    if (errno != EINVAL) {
+      return 3;
+    }
+    return 4;
+  }
+  if (osa.sa_handler != old_style_handler_old) {
+    return 5;
+  }
+
+  /* unset handler */
+  sa.sa_handler = NULL;
+  errno = 0;
+  if (sigaction(SIGINT, &sa, &osa) != 0) {
+    if (errno != EINVAL) {
+      return 6;
+    }
+    return 7;
+  }
+  if (osa.sa_handler != old_style_handler_new) {
+    return 8;
+  }
 
   return 0;
 }

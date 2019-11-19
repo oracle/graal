@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/* Note: On this test, Sulong's lli and the native executable match,
+ *   but LLVM's lli behaves differently: when registering the first
+ *   signal handler, the old handler pointer returned is not NULL. In
+ *   general when dealing with signals, I've experienced strange
+ *   behavior (including crashes with stack traces) from LLVM's lli so
+ *   I would not worry too much about that.
+ */
+
+#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <errno.h>
 
-#define ARR_LEN 1024
-char name[ARR_LEN];
-
-static void copy(char *to, char *from) {
-  strncpy(to, from, ARR_LEN - 10);
-  to[ARR_LEN - 10] = '\0';
+void handler(int signo) {
 }
 
-int main() {
-  copy(name, "(none)");
-  printf("%s\n", name);
+/* because mac */
+#ifndef SIGRTMAX
+#define SIGRTMAX 128
+#endif
 
-  char *buf = (char *)malloc(sizeof(char) * ARR_LEN);
-  copy(buf, "../some/path/that/is/a/bit/longer");
-  copy(name, buf);
-  printf("%s\n", name);
-  free(buf);
+int main(void) {
+  errno = 0;
+  void (*handler_p)(int) = signal(SIGRTMAX + 1, handler);
+  if (handler_p == SIG_ERR) {
+    if (errno == 0) {
+      /* errno should be EINVAL */
+      return 1;
+    }
+  }
 
   return 0;
 }
