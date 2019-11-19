@@ -497,7 +497,7 @@ $ js --polyglot --experimental-options --agentscript=term.js seq.js
 Hello T-Trace!
 How
 great you are!
-        at <js> :=>(<eval>:3:75-97)
+        at <js> :=>(term.js:3:75-97)
         at <js> log(seq.js:1-3:18-36)
         at <js> :program(seq.js:7:74-83)
 ```
