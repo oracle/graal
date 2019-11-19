@@ -96,7 +96,19 @@ public final class CEntryPointErrors {
     @Description("Initialization the isolate failed.") //
     public static final int ISOLATE_INITIALIZATION_FAILED = 13;
 
-    static String getDescription(int code) {
+    @Description("Locating the auxiliary image file failed.") //
+    public static final int STAT_AUX_IMAGE_FAILED = 14;
+
+    @Description("Opening the located auxiliary image file failed.") //
+    public static final int OPEN_AUX_IMAGE_FAILED = 15;
+
+    @Description("Mapping the auxiliary image file into memory failed.") //
+    public static final int MAP_AUX_IMAGE_FAILED = 16;
+
+    @Description("Auxiliary images are not supported on this platform or edition.") //
+    public static final int AUX_IMAGE_UNSUPPORTED = 17;
+
+    public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {
             result = DESCRIPTIONS[code];
