@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
@@ -194,11 +193,12 @@ public final class EspressoContext {
 
     public void initializeContext() {
         assert !this.initialized;
-        jdwpContext = new JDWPContextImpl(this);
-        jdwpContext.jdwpInit(env);
         spawnVM();
         this.initialized = true;
-        VMInitializedListeners.getDefault().fire();
+        jdwpContext = new JDWPContextImpl(this);
+        jdwpContext.jdwpInit(env);
+        // send the VM start event to listeners, e.g. JDWP
+        VMEventListeners.getDefault().vmStarted();
         hostToGuestReferenceDrainThread.start();
     }
 
@@ -246,10 +246,6 @@ public final class EspressoContext {
                         Type.Method)) {
             initializeKnownClass(type);
         }
-
-        // send the VM start event to listeners, e.g. JDWP
-        // before the main thread is started
-        VMEventListeners.getDefault().vmStarted();
 
         createMainThread();
 
@@ -347,7 +343,7 @@ public final class EspressoContext {
      * HotSpot's implementation.
      */
     private void createMainThread() {
-        systemThreadGroup = meta.ThreadGroup.allocateInstance();
+        systemThreadGroup = getystemThreadGroup();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
                 .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.Thread.allocateInstance();
@@ -374,6 +370,13 @@ public final class EspressoContext {
 
         VMEventListeners.getDefault().threadStarted(mainThread);
         mainThreadCreated = true;
+    }
+
+    private StaticObject getystemThreadGroup() {
+        if (systemThreadGroup == null) {
+            systemThreadGroup = meta.ThreadGroup.allocateInstance();
+        }
+        return systemThreadGroup;
     }
 
     public void interruptActiveThreads() {
@@ -577,7 +580,7 @@ public final class EspressoContext {
     }
 
     public Object getSystemThreadGroup() {
-        return systemThreadGroup;
+        return getystemThreadGroup();
     }
 
     public void prepareDispose() {
