@@ -61,6 +61,7 @@ final class PolyglotThreadInfo {
     private volatile long lastEntered;
     private volatile long timeExecuted;
     private boolean deprioritized;
+    private static Boolean canLowerPriority = null;
 
     private static volatile ThreadMXBean threadBean;
 
@@ -79,25 +80,25 @@ final class PolyglotThreadInfo {
 
     void enter(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
+        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
+            lowerPriority();
+            deprioritized = true;
+        }
         int count = ++enteredCount;
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
-        }
-        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
-            lowerPriority();
         }
 
     }
 
     @TruffleBoundary
     private void lowerPriority() {
-        int nativePriority = OSSupport.getNativeThreadPriority();
         getThread().setPriority(Thread.MIN_PRIORITY);
-        int lowerNativePriority = OSSupport.getNativeThreadPriority();
-        if (lowerNativePriority <= nativePriority) {
-            throw new RuntimeException("Can't lower scheduling priority for polyglot engine: before " + String.valueOf(nativePriority) + " after: " + String.valueOf(lowerNativePriority));
-        }
-        deprioritized = true;
+    }
+
+    @TruffleBoundary
+    private void raisePriority() {
+        getThread().setPriority(Thread.NORM_PRIORITY);
     }
 
     void resetTiming() {
@@ -153,7 +154,7 @@ final class PolyglotThreadInfo {
             this.timeExecuted += getTime() - last;
         }
         if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
-            getThread().setPriority(Thread.NORM_PRIORITY);
+            raisePriority();
             deprioritized = false;
         }
 
@@ -171,5 +172,36 @@ final class PolyglotThreadInfo {
     @Override
     public String toString() {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
+    }
+
+    static boolean canLowerThreadPriority() {
+
+        class ThreadPriorityCheck extends Thread {
+            boolean canLower = false;
+
+            @Override
+            public void run() {
+                int nativePriority = OSSupport.getNativeThreadPriority();
+                setPriority(Thread.MIN_PRIORITY);
+                int lowerNativePriority = OSSupport.getNativeThreadPriority();
+                // native priorities are actually inverse (lower value -> higher priority)
+                if (lowerNativePriority > nativePriority) {
+                    canLower = true;
+                }
+            }
+
+        }
+        if (canLowerPriority == null) {
+            ThreadPriorityCheck tpc = new ThreadPriorityCheck();
+            tpc.start();
+            try {
+                tpc.join();
+            } catch (InterruptedException e) {
+                // should not happen
+                throw new HostException(e);
+            }
+            canLowerPriority = tpc.canLower;
+        }
+        return canLowerPriority;
     }
 }

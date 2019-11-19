@@ -1,7 +1,7 @@
 package com.oracle.truffle.polyglot;
 
 class OSSupport {
-    public static boolean available;
+    private static boolean available = false;
 
     static {
         String supportLib = System.getProperty("truffle.ossupport.library");
@@ -17,6 +17,10 @@ class OSSupport {
             // native OS support not available
             available = false;
         }
+    }
+
+    public static boolean isAvailable() {
+        return available;
     }
 
     public static native boolean canLowerThreadPriority();

@@ -1,6 +1,7 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <syscall.h>
 
 #include "com_oracle_truffle_polyglot_OSSupport.h"
 
@@ -31,7 +32,7 @@ JNIEXPORT jboolean JNICALL Java_com_oracle_truffle_polyglot_OSSupport_canRaiseTh
 
 JNIEXPORT jint JNICALL Java_com_oracle_truffle_polyglot_OSSupport_getNativeThreadPriority
   (JNIEnv *env, jclass c) {
-  	pid_t pid = getpid();
-  	int prio = getpriority(PRIO_PROCESS, pid);
+    pid_t tid = syscall(__NR_gettid);
+    int prio = getpriority(PRIO_PROCESS, tid);
   	return prio;
   }
