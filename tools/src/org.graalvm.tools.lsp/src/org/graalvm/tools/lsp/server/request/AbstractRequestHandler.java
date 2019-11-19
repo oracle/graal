@@ -48,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.tools.lsp.server.utils.DeclarationData;
 
 public abstract class AbstractRequestHandler {
 
@@ -63,7 +64,7 @@ public abstract class AbstractRequestHandler {
         this.contextAwareExecutor = contextAwareExecutor;
     }
 
-    public InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?>... tag) {
+    public final InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?>... tag) {
         if (surrogate != null) {
             SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
             if (sourceWrapper.isParsingSuccessful()) {
@@ -85,7 +86,7 @@ public abstract class AbstractRequestHandler {
         return null;
     }
 
-    protected <T> T getFutureResultOrHandleExceptions(Future<T> future) {
+    protected final <T> T getFutureResultOrHandleExceptions(Future<T> future) {
         try {
             return future.get();
         } catch (ExecutionException e) {
@@ -99,7 +100,7 @@ public abstract class AbstractRequestHandler {
         return null;
     }
 
-    protected LinkedList<Scope> getScopesOuterToInner(TextDocumentSurrogate surrogate, InstrumentableNode node) {
+    protected final LinkedList<Scope> getScopesOuterToInner(TextDocumentSurrogate surrogate, InstrumentableNode node) {
         List<CoverageData> coverageData = surrogate.getCoverageData(((Node) node).getSourceSection());
         VirtualFrame frame = null;
         if (coverageData != null) {
@@ -116,7 +117,11 @@ public abstract class AbstractRequestHandler {
         return scopesOuterToInner;
     }
 
-    protected SourcePredicateBuilder newDefaultSourcePredicateBuilder() {
+    protected final SourcePredicateBuilder newDefaultSourcePredicateBuilder() {
         return SourcePredicateBuilder.newBuilder().excludeInternal(env.getOptions()).newestSource(surrogateMap);
+    }
+
+    protected final DeclarationData getDeclarationData() {
+        return surrogateMap.getDeclarationData();
     }
 }

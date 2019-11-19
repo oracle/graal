@@ -78,11 +78,23 @@ public final class SourceUtils {
     }
 
     public static int zeroBasedLineToOneBasedLine(int line, Source source) {
-        if (source.getLineCount() < line) {
+        int lc = source.getLineCount();
+        if (lc <= line) {
             LOG.log(Level.WARNING, "Line is out of range: {0}", line);
+            return Math.max(1, lc);
         }
 
         return line + 1;
+    }
+
+    public static int zeroBasedColumnToOneBasedColumn(int oneBasedLine, int zeroBasedColumn, Source source) {
+        int lc = source.getLineLength(oneBasedLine);
+        if (lc <= zeroBasedColumn && zeroBasedColumn > 0) {
+            LOG.log(Level.WARNING, "Column is out of range: {0}", zeroBasedColumn);
+            return Math.max(1, lc);
+        }
+
+        return zeroBasedColumn + 1;
     }
 
     private static boolean endsWithNewline(Source source) {
@@ -114,6 +126,9 @@ public final class SourceUtils {
 
     public static SourceFix removeLastTextInsertion(TextDocumentSurrogate surrogate, int originalCharacter) {
         TextDocumentContentChangeEvent lastChange = surrogate.getLastChange();
+        if (lastChange == null) {
+            return null;
+        }
         Range range = lastChange.getRange();
         TextDocumentContentChangeEvent replacementEvent = TextDocumentContentChangeEvent.create("") //
                         .setRange(Range.create(range.getStart(), Position.create(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length()))) //

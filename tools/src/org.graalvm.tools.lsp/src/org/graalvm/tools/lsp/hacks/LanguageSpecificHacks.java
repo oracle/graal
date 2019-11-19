@@ -24,9 +24,6 @@
  */
 package org.graalvm.tools.lsp.hacks;
 
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-
 public final class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;
 
@@ -40,13 +37,4 @@ public final class LanguageSpecificHacks {
         return definitionSearchSymbol;
     }
 
-    public static Class<?>[] getSupportedTags(LanguageInfo langInfo) {
-        if (enableLanguageSpecificHacks) {
-            if ("R".equals(langInfo.getId())) {
-                // R supports no ExpressionTags in vm-1.0.0-rc7, but AnonymousBodyNode has a RootTag
-                return new Class<?>[]{StandardTags.RootTag.class};
-            }
-        }
-        return null;
-    }
 }

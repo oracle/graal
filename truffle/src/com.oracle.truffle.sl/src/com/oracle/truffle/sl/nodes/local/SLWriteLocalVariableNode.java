@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -58,6 +59,7 @@ import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
  */
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "declaration", type = Boolean.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     /**
@@ -65,6 +67,8 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * created by the Truffle DSL based on the {@link NodeField} annotation on the class.
      */
     protected abstract FrameSlot getSlot();
+
+    protected abstract boolean getDeclaration();
 
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
@@ -134,10 +138,10 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == WriteVariableTag.class || super.hasTag(tag);
+        return tag == WriteVariableTag.class || getDeclaration() && tag == DeclarationTag.class || super.hasTag(tag);
     }
 
     public Object getNodeObject() {
-        return new NodeObjectDescriptor(getSlot().getIdentifier().toString(), null);
+        return new NodeObjectDescriptor(getSlot().getIdentifier().toString(), "variable");
     }
 }

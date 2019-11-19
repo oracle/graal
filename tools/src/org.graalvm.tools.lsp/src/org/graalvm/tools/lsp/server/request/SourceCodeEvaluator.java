@@ -99,7 +99,6 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             LOG.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLanguageId(), surrogate.getUri()});
             callTarget = env.parse(sourceWrapper.getSource());
             LOG.log(Level.FINER, "Parsing done.");
-            surrogate.notifyParsingSuccessful(callTarget);
         } catch (Exception e) {
             if (e instanceof TruffleException) {
                 throw DiagnosticsNotification.create(surrogate.getUri(),
@@ -109,6 +108,8 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
                 // notification
                 throw new RuntimeException(e);
             }
+        } finally {
+            surrogate.notifyParsingDone(callTarget);
         }
 
         return callTarget;

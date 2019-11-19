@@ -27,19 +27,26 @@ package org.graalvm.tools.lsp.server.utils;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NodeLocationType;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 public final class NearestNode {
 
     private final Node nearestNode;
+    private final SourceSection sourceSection;
     private final NodeLocationType locationType;
 
-    public NearestNode(Node nearestNode, NodeLocationType locationType) {
+    public NearestNode(Node nearestNode, SourceSection sourceSection, NodeLocationType locationType) {
         this.nearestNode = nearestNode;
+        this.sourceSection = sourceSection;
         this.locationType = locationType;
     }
 
     public Node getNode() {
         return nearestNode;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     public NodeLocationType getLocationType() {

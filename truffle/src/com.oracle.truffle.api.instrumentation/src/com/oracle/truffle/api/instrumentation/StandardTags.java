@@ -278,21 +278,56 @@ public final class StandardTags {
          *
          * @since 20.0.0
          */
-        public static final String NAME = "name";
+        public static final String NAME = "declarationName";
 
         /**
-         * Property of the node object that contains kind of the declared element.
+         * Property of the node object that contains kind of the declared element. Like
+         * <code>Variable</code>, <code>Function</code>, <code>Module</code>, <code>Class</code>,
+         * <code>Method</code>, etc.
          *
          * @since 20.0.0
          */
-        public static final String KIND = "kind";
+        public static final String KIND = "declarationKind";
+
+        /**
+         * Type of this declaration. The value is a name of other declared element that represents
+         * type of this declared element.
+         *
+         * @since 20.0.0
+         */
+        public static final String TYPE = "declarationType";
+
+        /**
+         * Description of the declared language element.
+         *
+         * @since 20.0.0
+         */
+        public static final String DESCRIPTION = "declarationDescription";
+
+        /**
+         * Whether this declared element is deprecated. The value of this property is
+         * <code>true</code> or <code>false</code>.
+         *
+         * @since 20.0.0
+         */
+        public static final String DEPRECATED = "declarationDeprecated";
+
+        /**
+         * An optional section of the scope where this declared element is valid. An array of 4
+         * integers is expected: &lt;line:column, line:column&gt;, or an empty array for global
+         * scopes. When not defined, a default scope is created from the end of this node's
+         * SourceSection to the end of the instrumentable parent's SourceSection.
+         *
+         * @since 20.0.0
+         */
+        public static final String SCOPE_SECTION = "declarationScopeSection";
 
         /**
          * Property of the node object that contains the container name of the declared element.
          *
          * @since 20.0.0
          */
-        public static final String CONTAINER = "container";
+        public static final String CONTAINER = "declarationContainer";
 
         private DeclarationTag() {
             /* No instances */
@@ -324,7 +359,7 @@ public final class StandardTags {
          *
          * @since 20.0.0
          */
-        public static final String NAME = "name";
+        public static final String NAME = "readVariableName";
 
         private ReadVariableTag() {
             /* No instances */
@@ -356,7 +391,25 @@ public final class StandardTags {
          *
          * @since 20.0.0
          */
-        public static final String NAME = "name";
+        public static final String NAME = "writeVariableName";
+
+        /**
+         * Type of the variable after write operation. The value is a name of other declared element that represents
+         * type of this variable.
+         *
+         * @since 20.0.0
+         */
+        public static final String TYPE = "writeVariableType";
+
+        /**
+         * An optional section of the scope where the written variable of the given type is valid.
+         * An array of 4 integers is expected: &lt;line:column, line:column&gt;, or an empty array
+         * for global scopes. When not defined, a default scope is created from the end of this
+         * node's SourceSection to the end of the instrumentable parent's SourceSection.
+         *
+         * @since 20.0.0
+         */
+        public static final String SCOPE_SECTION = "writeVariableScopeSection";
 
         private WriteVariableTag() {
             /* No instances */

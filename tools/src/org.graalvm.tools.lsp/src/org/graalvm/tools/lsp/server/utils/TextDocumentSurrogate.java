@@ -33,13 +33,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
@@ -52,6 +65,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class TextDocumentSurrogate {
 
     private final TruffleFile truffleFile;
+    private final Env env;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
     private final Map<SourceSectionReference, List<CoverageData>> section2coverageData;
     private String editorText;
@@ -60,9 +74,12 @@ public final class TextDocumentSurrogate {
     private TextDocumentContentChangeEvent lastChange = null;
     private final List<String> completionTriggerCharacters;
     private final LanguageInfo languageInfo;
+    private final DeclarationData declarationData;
+    private EventBinding<LoadDeclarationListener> loadDeclarationBinding;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
         this.truffleFile = blueprint.truffleFile;
+        this.env = blueprint.env;
         this.section2coverageData = blueprint.section2coverageData;
         this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
         this.editorText = blueprint.editorText;
@@ -70,14 +87,17 @@ public final class TextDocumentSurrogate {
         this.lastChange = blueprint.lastChange;
         this.completionTriggerCharacters = blueprint.completionTriggerCharacters;
         this.languageInfo = blueprint.languageInfo;
+        this.declarationData = blueprint.declarationData;
     }
 
-    public TextDocumentSurrogate(final TruffleFile truffleFile, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
+    public TextDocumentSurrogate(final Env env, final TruffleFile truffleFile, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters, DeclarationData declarationData) {
         this.truffleFile = truffleFile;
+        this.env = env;
         this.completionTriggerCharacters = completionTriggerCharacters;
         this.section2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
         this.languageInfo = languageInfo;
+        this.declarationData = declarationData;
     }
 
     public URI getUri() {
@@ -217,14 +237,22 @@ public final class TextDocumentSurrogate {
     }
 
     public SourceWrapper prepareParsing() {
-        sourceWrapper = new SourceWrapper(buildSource());
+        Source source = buildSource();
+        declarationData.cleanDeclarations(source);
+        // TODO: Bug: Must include StatementTag to receive nodes tagged with DeclarationTag.
+        loadDeclarationBinding = env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().sourceIs(source).tagIs(StandardTags.DeclarationTag.class, StandardTags.WriteVariableTag.class, StandardTags.StatementTag.class).build(), new LoadDeclarationListener(), false);
+        sourceWrapper = new SourceWrapper(source);
         return sourceWrapper;
     }
 
-    public void notifyParsingSuccessful(CallTarget callTarget) {
-        sourceWrapper.setParsingSuccessful(true);
-        sourceWrapper.setCallTarget(callTarget);
-        changeEventsSinceLastSuccessfulParsing.clear();
+    public void notifyParsingDone(CallTarget callTarget) {
+        loadDeclarationBinding.dispose();
+        boolean successful = callTarget != null;
+        if (successful) {
+            sourceWrapper.setParsingSuccessful(true);
+            sourceWrapper.setCallTarget(callTarget);
+            changeEventsSinceLastSuccessfulParsing.clear();
+        }
     }
 
     public boolean isSourceCodeReadyForCodeCompletion() {
@@ -237,5 +265,112 @@ public final class TextDocumentSurrogate {
 
     public TextDocumentSurrogate copy() {
         return new TextDocumentSurrogate(this);
+    }
+
+    private final class LoadDeclarationListener implements LoadSourceSectionListener {
+
+        private final InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+
+        @Override
+        public void onLoad(LoadSourceSectionEvent event) {
+            InstrumentableNode inode = (InstrumentableNode) event.getNode();
+            Object declarationObject = inode.getNodeObject();
+            Set<Class<?>> tags = env.getInstrumenter().queryTags((Node) inode);
+            boolean declaration = tags.contains(StandardTags.DeclarationTag.class);
+            boolean writeVar = tags.contains(StandardTags.WriteVariableTag.class);
+            // TODO: Bug: Had to include StatementTag to receive nodes tagged with DeclarationTag.
+            if (declaration || writeVar) {
+                //System.err.println("HAVE DECLARATION!");
+            } else {
+                declarationObject = null;
+            }
+            if (declarationObject != null) {
+                assert interop.hasMembers(declarationObject) : declarationObject;
+                try {
+                    String name, kind, type, description;
+                    Boolean deprecation;
+                    SourceSection symbolSection = ((Node) inode).getSourceSection();
+                    int[] scopeSection;
+                    if (declaration) {
+                        name = (String) interop.readMember(declarationObject, StandardTags.DeclarationTag.NAME);
+                        kind = (String) interop.readMember(declarationObject, StandardTags.DeclarationTag.KIND);
+                        type = (String) readExisting(declarationObject, StandardTags.DeclarationTag.TYPE);
+                        description = (String) readExisting(declarationObject, StandardTags.DeclarationTag.DESCRIPTION);
+                        deprecation = (Boolean) readExisting(declarationObject, StandardTags.DeclarationTag.DEPRECATED);
+                        scopeSection = getSectionArray(readExisting(declarationObject, StandardTags.DeclarationTag.SCOPE_SECTION));
+                    } else if (writeVar) {
+                        name = (String) interop.readMember(declarationObject, StandardTags.WriteVariableTag.NAME);
+                        kind = "Variable";
+                        type = (String) readExisting(declarationObject, StandardTags.WriteVariableTag.TYPE);
+                        description = null;
+                        deprecation = false;
+                        scopeSection = getSectionArray(readExisting(declarationObject, StandardTags.WriteVariableTag.SCOPE_SECTION));
+                    } else {
+                        return;
+                    }
+                    if (scopeSection == null) {
+                        scopeSection = getDefaultScope(symbolSection, (Node) inode);
+                    }
+                    declarationData.addDeclaration(name, kind, type, description, deprecation, symbolSection, scopeSection);
+                } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+                    env.getLogger(TextDocumentSurrogate.class).log(Level.INFO, declarationObject.toString(), ex);
+                }
+            }
+        }
+
+        private Object readExisting(Object declarationObject, String member) {
+            if (interop.isMemberExisting(declarationObject, member)) {
+                try {
+                    return interop.readMember(declarationObject, member);
+                } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                    env.getLogger(TextDocumentSurrogate.class).log(Level.INFO, declarationObject.toString(), ex);
+                }
+            }
+            return null;
+        }
+
+        private int[] getSectionArray(Object arr) {
+            if (arr == null || !interop.hasArrayElements(arr)) {
+                return null;
+            }
+            int[] range;
+            try {
+                int size = (int) interop.getArraySize(arr);
+                range = new int[size];
+                for (int i = 0; i < size; i++) {
+                    range[i] = ((Number) interop.readArrayElement(arr, i)).intValue();
+                }
+            } catch (InvalidArrayIndexException | UnsupportedMessageException ex) {
+                env.getLogger(TextDocumentSurrogate.class).log(Level.INFO, arr.toString(), ex);
+                range = null;
+            }
+            return range;
+        }
+
+        private int[] getDefaultScope(SourceSection symbolSection, Node node) {
+            int[] scope = new int[4];
+            scope[0] = symbolSection.getStartLine();
+            scope[1] = symbolSection.getStartColumn();
+            Node parent = findInstrumentableParent(node);
+            if (parent != null) {
+                SourceSection pss = parent.getSourceSection();
+                scope[2] = pss.getEndLine();
+                scope[3] = pss.getEndColumn();
+            } else {
+                scope[2] = symbolSection.getSource().getLineCount();
+                scope[3] = symbolSection.getSource().getLineLength(scope[2]);
+            }
+            return scope;
+        }
+
+        private Node findInstrumentableParent(Node node) {
+            Node parent = node;
+            while ((parent = parent.getParent()) != null) {
+                if (parent instanceof InstrumentableNode && ((InstrumentableNode) parent).isInstrumentable() && parent.getSourceSection() != null) {
+                    return parent;
+                }
+            }
+            return null;
+        }
     }
 }

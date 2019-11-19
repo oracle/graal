@@ -41,6 +41,7 @@ public final class TextDocumentSurrogateMap {
     private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     private final Map<String, List<String>> langId2CompletionTriggerCharacters;
     private final Map<String, LanguageInfo> mimeType2LangInfo;
+    private final DeclarationData declarationData = new DeclarationData();
 
     public TextDocumentSurrogateMap(TruffleInstrument.Env env, Map<String, List<String>> langId2CompletionTriggerCharacters, Map<String, LanguageInfo> mimeType2LangInfo) {
         this.env = env;
@@ -58,14 +59,14 @@ public final class TextDocumentSurrogateMap {
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, LanguageInfo languageInfo) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId())));
+                        (anUri) -> new TextDocumentSurrogate(env, env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId()), declarationData));
     }
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, Supplier<LanguageInfo> languageInfoSupplier) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
                         (anUri) -> {
                             LanguageInfo languageInfo = languageInfoSupplier.get();
-                            return new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId()));
+                            return new TextDocumentSurrogate(env, env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId()), declarationData);
                         });
     }
 
@@ -95,5 +96,9 @@ public final class TextDocumentSurrogateMap {
             return source.equals(surrogate.getSource());
         }
         return false;
+    }
+
+    public DeclarationData getDeclarationData() {
+        return declarationData;
     }
 }

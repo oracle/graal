@@ -41,6 +41,8 @@
 package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag.KIND;
+import static com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag.NAME;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -78,7 +80,7 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        return index == 0 ? NodeObjectDescriptor.NAME : NodeObjectDescriptor.KIND;
+        return index == 0 ? NAME : KIND;
     }
 
     private int size() {

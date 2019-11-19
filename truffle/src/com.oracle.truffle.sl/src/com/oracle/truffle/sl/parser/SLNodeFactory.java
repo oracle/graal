@@ -448,12 +448,17 @@ public class SLNodeFactory {
         }
 
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(
+        boolean declaration;
+        FrameSlot frameSlot = frameDescriptor.findFrameSlot(name);
+        declaration = frameSlot == null;
+        if (declaration) {
+            frameSlot = frameDescriptor.addFrameSlot(
                         name,
                         argumentIndex,
                         FrameSlotKind.Illegal);
+        }
         lexicalScope.locals.put(name, frameSlot);
-        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
+        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, declaration);
 
         if (valueNode.hasSource()) {
             final int start = nameNode.getSourceCharIndex();
