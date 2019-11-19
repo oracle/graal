@@ -14,9 +14,9 @@ npm install -g vsce
 
 * Compile and package all extensions
 ```bash
-cd graalvm; npm install; vsce package
-cd graalvm-r; npm install; vsce package
-cd graalvm-ruby; npm install; vsce package
+for ext in "" -python -r -ruby -complete ; do
+   pushd graalvm${ext}; npm install; vsce package; popd;
+done
 ```
 
 Alternatively, invoke `mx build` to create a zip file distribution with all extensions contained.
@@ -25,11 +25,18 @@ Alternatively, invoke `mx build` to create a zip file distribution with all exte
 
 To install the GraalVM extensions into Visual Studio Code, take the following steps:
 
-* Install each package with `code --install-extension <extension.vsix>`
+* Install desired package one by one with `code --install-extension <extension.vsix>`
 ```bash
-code --install-extension graalvm-0.0.1.vsix
-code --install-extension graalvm-r-0.0.1.vsix
-code --install-extension graalvm-ruby-0.0.1.vsix
+code --install-extension graalvm/graalvm-*.vsix \
+     --install-extension graalvm-python/graalvm-python-*.vsix \
+     --install-extension graalvm-r/graalvm-r-*.vsix \
+     --install-extension graalvm-ruby/graalvm-ruby-*.vsix
+```
+
+Alternatively, you may want to install all-in-one extension that contains all of them, by issuing:
+
+```bash
+code --install-extension graalvm-complete/graalvm-complete-*.vsix
 ```
 
 ## License
