@@ -33,8 +33,6 @@ public final class JNIHandles {
     static class LocalHandles {
         private static final int INITIAL_NUMBER_OF_FRAMES = 4; // TODO(peterssen): Minimum to run
                                                                // HelloWorld?
-        private static final int MAX_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): Add
-                                                               // user-configurable flag.
 
         private StaticObject[] objects = new StaticObject[NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY];
         private int top = 1;
@@ -165,7 +163,7 @@ public final class JNIHandles {
 
             // TODO(peterssen): StaticObject check is cheaper here.
             if (obj instanceof WeakReference) {
-                Object referent = ((WeakReference) obj).get();
+                Object referent = ((WeakReference<?>) obj).get();
                 if (referent == null) { // referent is gone
                     return StaticObject.NULL;
                 }

@@ -36,7 +36,7 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Utils {
 
-    public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
+    public static NativeSimpleType kindToType(JavaKind kind) {
         switch (kind) {
             case Boolean:
                 return NativeSimpleType.SINT8; // ?

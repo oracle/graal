@@ -88,7 +88,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     static final int JNIWeakGlobalRefType = 3;
 
     // This is an arbitrary constant. The hard limit is defined by the host VM.
-    private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 14;
+    private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): User-configurable flag.
 
     private final EspressoContext context;
 
@@ -1812,7 +1812,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (isJni) {
             sb.append(NativeSimpleType.POINTER); // JNIEnv*
             sb.append(",");
-            sb.append(Utils.kindToType(JavaKind.Object, false)); // Receiver or class (for static
+            sb.append(Utils.kindToType(JavaKind.Object)); // Receiver or class (for static
             // methods).
             first = false;
         }
@@ -1823,10 +1823,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             } else {
                 first = false;
             }
-            sb.append(Utils.kindToType(kind, false));
+            sb.append(Utils.kindToType(kind));
         }
 
-        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature), false));
+        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature)));
         return sb.toString();
     }
 
@@ -2601,7 +2601,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * beyond the ensured capacity.
      */
     @JniImpl
-    public int EnsureLocalCapacity(int capacity) {
+    public static int EnsureLocalCapacity(int capacity) {
         if (capacity >= 0 &&
                         ((MAX_JNI_LOCAL_CAPACITY <= 0) || (capacity <= MAX_JNI_LOCAL_CAPACITY))) {
             return JNI_OK;

@@ -40,8 +40,9 @@ public final class Callback implements TruffleObject {
         this.function = function;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean isExecutable() {
+    boolean isExecutable() {
         return true;
     }
 
