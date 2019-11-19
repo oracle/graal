@@ -1042,7 +1042,7 @@ int __open(const char *path, int oflag, int mode) {
 }
 
 jint JVM_Open(const char *fname, jint flags, jint mode) {
-  NATIVE(JVM_OPEN);
+  NATIVE(JVM_Open);
   int result = __open(fname, flags, mode);
   if (result >= 0) {
     return result;

@@ -389,9 +389,14 @@ public final class InterpreterToVM implements ContextAccess {
      *
      * The following rules define the direct supertype relation among array types:
      *
-     * - If S and T are both reference types, then S[] >1 T[] iff S >1 T. - Object >1 Object[] -
-     * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
-     * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
+     * <ul>
+     * <li>If S and T are both reference types, then S[] >1 T[] iff S >1 T.
+     * <li>Object >1 Object[]
+     * <li>Cloneable >1 Object[]
+     * <li>java.io.Serializable >1 Object[]
+     * <li>If P is a primitive type, then: Object >1 P[] Cloneable >1 P[] java.io.Serializable >1
+     * P[]
+     * </ul>
      */
     public static boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {

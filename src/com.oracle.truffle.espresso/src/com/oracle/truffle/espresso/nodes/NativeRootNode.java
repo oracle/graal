@@ -69,7 +69,9 @@ public final class NativeRootNode extends EspressoMethodNode {
         } else {
             if (!Types.isPrimitive(espressoType)) {
                 assert arg instanceof StaticObject;
-                return (@Word long) env.getHandles().createLocal((StaticObject) arg); // return handle as word
+                return (@Word long) env.getHandles().createLocal((StaticObject) arg); // return
+                                                                                      // handle as
+                                                                                      // word
             }
             return arg;
         }
@@ -164,4 +166,3 @@ public final class NativeRootNode extends EspressoMethodNode {
         return result;
     }
 }
-

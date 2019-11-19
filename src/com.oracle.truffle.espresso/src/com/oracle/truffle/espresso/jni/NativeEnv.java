@@ -164,7 +164,6 @@ public abstract class NativeEnv {
         throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
     }
 
-
     public static String fromUTF8Ptr(@Word long rawBytesPtr) {
         if (rawBytesPtr == 0) {
             return null;

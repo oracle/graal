@@ -193,7 +193,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     public static NativeSimpleType classToType(String clazz, boolean javaToNative) {
         // TODO(peterssen): Allow native-sized words.
-        return classToNative.getOrDefault(clazz,  NativeSimpleType.SINT64 /* javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT */ );
+        return classToNative.getOrDefault(clazz, NativeSimpleType.SINT64);
     }
 
     @Override
