@@ -150,7 +150,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     public static class Options {
-        @Option(help = "Print a warning message and stack trace when CompilerAsserts.neverPartOfCompilation is reachable")//
+        @Option(help = "Check that CompilerAsserts.neverPartOfCompilation is not reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> TruffleCheckNeverPartOfCompilation = new HostedOptionKey<>(true);
 
         @Option(help = "Enforce that the Truffle runtime provides the only implementation of Frame")//
