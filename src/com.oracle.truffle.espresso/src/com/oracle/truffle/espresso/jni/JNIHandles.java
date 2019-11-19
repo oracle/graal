@@ -8,16 +8,21 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 // TODO(peterssen): Make (global handles) thread-safe. Add mechanism to "validate" local handles are not consumed by different threads.
 //  e.g. taint handle upper bits with thread id/hashcode.
-public class JNIHandles {
+/**
+ * JNI handles are divided in two categories: local and global.
+ * <ul>
+ * <li>All handles fit in an int
+ * <li>Positive ints represent local handles
+ * <li>0 is always NULL
+ * <li>Negative ints (except {@link Integer#MIN_VALUE}) represent global handles
+ * <li>{@link Integer#MIN_VALUE} is an invalid/poisoned handle
+ * </ul>
+ */
+public final class JNIHandles {
 
     JNIHandles() {
         globals = new GlobalHandles();
     }
-
-    // Local handles are positive ints
-    // 0 is NULL
-    // Negative (Except Integer.MIN_VALUE) handles are global handles
-    // Integer.MIN_VALUE is the invalid handle
 
     /**
      * Minimum available local handles according to specification: "Before it enters a native
@@ -27,7 +32,9 @@ public class JNIHandles {
 
     static class LocalHandles {
         private static final int INITIAL_NUMBER_OF_FRAMES = 4; // TODO(peterssen): Minimum to run
-                                                               // HelloWorld.
+                                                               // HelloWorld?
+        private static final int MAX_LOCAL_CAPACITY = 1 << 16; // TODO(peterssen): Add
+                                                               // user-configurable flag.
 
         private StaticObject[] objects = new StaticObject[NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY];
         private int top = 1;
@@ -61,6 +68,7 @@ public class JNIHandles {
             }
         }
 
+        // Not to confuse with EnsureLocalCapacity.
         public void ensureCapacity(int capacity) {
             if (top + capacity >= objects.length) {
                 Object[] oldArray = objects;
@@ -90,6 +98,11 @@ public class JNIHandles {
             top++;
             return index;
         }
+
+        public void deleteLocalRef(int handle) {
+            assert handle > 0;
+            objects[handle] = null;
+        }
     }
 
     public int nativeCallPrologue() {
@@ -102,7 +115,7 @@ public class JNIHandles {
 
     // TODO(peterssen): Use a free list to reclaim global unused slots, instead of growing forever.
     static class GlobalHandles {
-        Object[] objects;
+        Object[] objects = new Object[2];
         int top = 1;
 
         public boolean destroy(int index) {
@@ -121,8 +134,10 @@ public class JNIHandles {
                 objects = Arrays.copyOf(objects, 2 * objects.length);
             }
             assert top > 0;
-            objects[top++] = obj;
-            return top;
+
+            int handle = top++;
+            objects[handle] = obj;
+            return handle;
         }
 
         public int createWeakGlobal(StaticObject obj) {
@@ -136,7 +151,7 @@ public class JNIHandles {
             if (StaticObject.isNull(obj)) {
                 return 0; // NULL
             }
-            return create(obj);
+            return create((Object) obj);
         }
 
         StaticObject get(int index) {
@@ -159,6 +174,12 @@ public class JNIHandles {
 
             assert obj != null; // Can be StaticObject.NULL, at best.
             return (StaticObject) obj;
+        }
+
+        public int getObjectRefType(int handle) {
+            return objects[handle] instanceof WeakReference
+                            ? JniEnv.JNIWeakGlobalRefType
+                            : JniEnv.JNIGlobalRefType;
         }
     }
 
@@ -227,5 +248,44 @@ public class JNIHandles {
         int handle = -getGlobals().createWeakGlobal(obj);
         assert handle != Integer.MIN_VALUE;
         return handle;
+    }
+
+    public void deleteLocalRef(int handle) {
+        if (handle == 0) { // cannot delete null
+            return;
+        }
+        assert handle > 0;
+        getLocals().deleteLocalRef(handle);
+    }
+
+    public void deleteGlobalRef(int handle) {
+        if (handle == 0) {
+            return;
+        }
+        assert handle < 0;
+        getGlobals().destroy(-handle);
+    }
+
+    int getObjectRefType(int handle) {
+        if (handle < 0) {
+            return getGlobals().getObjectRefType(-handle);
+        }
+        if (handle > 0) {
+            return JniEnv.JNILocalRefType;
+        }
+        // 0 (NULL) is invalid
+        return JniEnv.JNIInvalidRefType;
+    }
+
+    public void popFramesIncluding(int frame) {
+        getLocals().popFramesIncluding(frame);
+    }
+
+    public int pushFrame(int capacity) {
+        return getLocals().pushFrame(capacity);
+    }
+
+    public int pushFrame() {
+        return pushFrame(NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY);
     }
 }
