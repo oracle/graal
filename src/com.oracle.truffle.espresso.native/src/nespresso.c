@@ -156,108 +156,14 @@ V(ReleaseStringCritical) \
 V(ExceptionCheck) \
 V(GetDirectBufferAddress) \
 V(GetDirectBufferCapacity) \
-V(GetObjectRefType)
-
-// Varargs
-#define NON_JAVA_IMPL(V) \
-V(NewDirectByteBuffer) \
-V(RegisterNatives) \
+V(GetObjectRefType) \
+V(IsSameObject) \
 V(NewGlobalRef) \
 V(DeleteGlobalRef) \
-V(RegisterNatives) \
-V(NewObject) \
-V(NewObjectV) \
-V(NewObjectA) \
-V(CallObjectMethod) \
-V(CallObjectMethodV) \
-V(CallObjectMethodA) \
-V(CallBooleanMethod) \
-V(CallBooleanMethodV) \
-V(CallBooleanMethodA) \
-V(CallByteMethod) \
-V(CallByteMethodV) \
-V(CallByteMethodA) \
-V(CallCharMethod) \
-V(CallCharMethodV) \
-V(CallCharMethodA) \
-V(CallShortMethod) \
-V(CallShortMethodV) \
-V(CallShortMethodA) \
-V(CallIntMethod) \
-V(CallIntMethodV) \
-V(CallIntMethodA) \
-V(CallLongMethod) \
-V(CallLongMethodV) \
-V(CallLongMethodA) \
-V(CallFloatMethod) \
-V(CallFloatMethodV) \
-V(CallFloatMethodA) \
-V(CallDoubleMethod) \
-V(CallDoubleMethodV) \
-V(CallDoubleMethodA) \
-V(CallVoidMethod) \
-V(CallVoidMethodV) \
-V(CallVoidMethodA) \
-V(CallStaticObjectMethod) \
-V(CallStaticObjectMethodV) \
-V(CallStaticObjectMethodA) \
-V(CallStaticBooleanMethod) \
-V(CallStaticBooleanMethodV) \
-V(CallStaticBooleanMethodA) \
-V(CallStaticByteMethod) \
-V(CallStaticByteMethodV) \
-V(CallStaticByteMethodA) \
-V(CallStaticCharMethod) \
-V(CallStaticCharMethodV) \
-V(CallStaticCharMethodA) \
-V(CallStaticShortMethod) \
-V(CallStaticShortMethodV) \
-V(CallStaticShortMethodA) \
-V(CallStaticIntMethod) \
-V(CallStaticIntMethodV) \
-V(CallStaticIntMethodA) \
-V(CallStaticLongMethod) \
-V(CallStaticLongMethodV) \
-V(CallStaticLongMethodA) \
-V(CallStaticFloatMethod) \
-V(CallStaticFloatMethodV) \
-V(CallStaticFloatMethodA) \
-V(CallStaticDoubleMethod) \
-V(CallStaticDoubleMethodV) \
-V(CallStaticDoubleMethodA) \
-V(CallStaticVoidMethod) \
-V(CallStaticVoidMethodV) \
-V(CallStaticVoidMethodA) \
-V(CallNonvirtualObjectMethod) \
-V(CallNonvirtualObjectMethodV) \
-V(CallNonvirtualObjectMethodA) \
-V(CallNonvirtualBooleanMethod) \
-V(CallNonvirtualBooleanMethodV) \
-V(CallNonvirtualBooleanMethodA) \
-V(CallNonvirtualByteMethod) \
-V(CallNonvirtualByteMethodV) \
-V(CallNonvirtualByteMethodA) \
-V(CallNonvirtualCharMethod) \
-V(CallNonvirtualCharMethodV) \
-V(CallNonvirtualCharMethodA) \
-V(CallNonvirtualShortMethod) \
-V(CallNonvirtualShortMethodV) \
-V(CallNonvirtualShortMethodA) \
-V(CallNonvirtualIntMethod) \
-V(CallNonvirtualIntMethodV) \
-V(CallNonvirtualIntMethodA) \
-V(CallNonvirtualLongMethod) \
-V(CallNonvirtualLongMethodV) \
-V(CallNonvirtualLongMethodA) \
-V(CallNonvirtualFloatMethod) \
-V(CallNonvirtualFloatMethodV) \
-V(CallNonvirtualFloatMethodA) \
-V(CallNonvirtualDoubleMethod) \
-V(CallNonvirtualDoubleMethodV) \
-V(CallNonvirtualDoubleMethodA) \
-V(CallNonvirtualVoidMethod) \
-V(CallNonvirtualVoidMethodV) \
-V(CallNonvirtualVoidMethodA)
+V(NewWeakGlobalRef) \
+V(DeleteWeakGlobalRef) \
+V(NewDirectByteBuffer)
+
 
 #define TYPE_LIST2(V)  \
   V(jobject, Object)   \
@@ -470,7 +376,6 @@ jobject pop_object(jlong ptr) {
 }
 
 struct NespressoEnv {
-  // TODO(peterssen): Add C++ env-less methods.
   #define CALL_METHOD(returnType, Type) \
     returnType (*Call##Type##MethodVarargs)(JNIEnv *env, jobject obj, jmethodID methodID, jlong varargs); \
     returnType (*CallStatic##Type##MethodVarargs)(JNIEnv *env, jobject clazz, jmethodID methodID, jlong varargs); \
@@ -583,15 +488,6 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
   V(NewObjectVarargs) \
   V(RegisterNative)
 
-// Spawn a "guest" direct byte buffer.
-// This ByteBuffer is set to BIG_ENDIAN by default.
-jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
-  jclass java_nio_DirectByteBuffer = (*env)->FindClass(env, "java/nio/DirectByteBuffer");
-  // TODO(peterssen): Cache class and constructor.
-  jmethodID constructor = (*env)->GetMethodID(env, java_nio_DirectByteBuffer, "<init>", "(JI)V");
-  // TODO(peterssen): Check narrowing conversion.
-  return (*env)->NewObject(env, java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
-}
 
 #define BRIDGE_METHOD_LIST(V) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD)) \
@@ -606,17 +502,8 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   V(NewObject) \
   V(NewObjectA) \
   V(NewObjectV) \
-  V(NewDirectByteBuffer) \
-  V(RegisterNatives) \
-  V(NewGlobalRef) \
-  V(DeleteGlobalRef) \
-  V(NewWeakGlobalRef) \
-  V(DeleteWeakGlobalRef) \
-  V(IsSameObject)
+  V(RegisterNatives)
 
-
-// Global state.
-static TruffleContext *truffle_ctx;
 
 jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
   struct VarargsV varargs = { .base = { .functions = &valist_functions } };
@@ -642,6 +529,7 @@ jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
+
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   jint ret = JNI_OK;
   for (jint i = 0; i < nMethods; ++i) {    
@@ -651,36 +539,6 @@ jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, 
     }
   }
   return ret;
-}
-
-jboolean IsSameObject(JNIEnv *env, jobject first, jobject second) {
-  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);  
-  return (jboolean) (*truffle_env)->isSameObject(truffle_env, (TruffleObject) first, (TruffleObject) second);
-}
-
-jobject NewGlobalRef(JNIEnv *env, jobject obj) {
-  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  return (jobject) (*truffle_env)->newObjectRef(truffle_env, (TruffleObject) obj);
-}
-
-void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
-  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  (*truffle_env)->releaseObjectRef(truffle_env, (TruffleObject) globalRef);
-}
-
-jobject NewWeakGlobalRef(JNIEnv *env, jobject obj) {
-  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  if (obj == NULL) {
-      return NULL;
-  }
-  return (jobject) (*truffle_env)->newWeakObjectRef(truffle_env, (TruffleObject) obj);
-}
-
-void DeleteWeakGlobalRef(JNIEnv *env, jobject globalRef) {
-  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  if (globalRef != NULL) {
-    (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
-  }
 }
 
 static void unset_function_error() {
@@ -702,23 +560,15 @@ jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
   
   jni_impl->reserved0 = nespresso_env;
 
-  // Global state.
-  truffle_ctx = (*truffle_env)->getTruffleContext(truffle_env);
-
-  // Fetch Java ... varargs methods.
-  void* fn_ptr = NULL;
+  // Fetch Java ... varargs methods.  
   #define INIT_VARARGS_METHOD__(fn_name) \
-    fn_ptr = fetch_by_name(#fn_name); \
-    (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-    *(void**)(&nespresso_env->fn_name) = fn_ptr;
+    *(void**)(&nespresso_env->fn_name) = fetch_by_name(#fn_name);
 
     VARARGS_METHOD_LIST(INIT_VARARGS_METHOD__)
   #undef INIT_VARARGS_METHOD__
 
   #define INIT__(fn_name) \
-    fn_ptr = fetch_by_name(#fn_name); \
-    (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-    jni_impl->fn_name = fn_ptr;
+    jni_impl->fn_name = fetch_by_name(#fn_name);
 
   JNI_FUNCTION_LIST(INIT__)
   #undef INIT__
@@ -768,8 +618,6 @@ void disposeNativeContext(TruffleEnv* truffle_env, jlong env_ptr) {
   *env = NULL;
 
   free(env);
-
-  truffle_ctx = NULL;
 }
 
 void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
