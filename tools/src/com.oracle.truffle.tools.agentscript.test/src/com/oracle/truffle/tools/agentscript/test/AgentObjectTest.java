@@ -24,13 +24,10 @@
  */
 package com.oracle.truffle.tools.agentscript.test;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.agentscript.AgentScript;
 import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -38,7 +35,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -47,7 +43,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Test;
 
 public class AgentObjectTest {
@@ -282,57 +277,6 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             assertEquals("10x2 expressions", 20, expressionCounter[0]);
-        }
-    }
-
-    @Test
-    public void onError() throws Exception {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        try (Context c = AgentObjectFactory.newContext(os, os)) {
-            Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
-            Assert.assertNotNull("Agent API obtained", agentAPI);
-
-            class TE extends RuntimeException implements TruffleException {
-                static final long serialVersionUID = 1L;
-
-                @Override
-                public String getMessage() {
-                    return "TE";
-                }
-
-                @Override
-                public Node getLocation() {
-                    return new InstrumentNode();
-                }
-            }
-
-            agentAPI.on("enter", (ev, frame) -> {
-                throw new TE();
-            }, AgentObjectFactory.createConfig(true, false, false, null));
-
-            // @formatter:off
-            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
-                "ROOT(\n" +
-                "  DEFINE(foo,\n" +
-                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
-                "  ),\n" +
-                "  CALL(foo)\n" +
-                ")",
-                "sample.px"
-            ).build();
-            // @formatter:on
-
-            try {
-                c.eval(sampleScript);
-                fail("Instrument throws an exception");
-            } catch (PolyglotException ex) {
-                assertEquals("TE", ex.getMessage());
-                assertEquals("INSTR", ex.getSourceLocation().getCharacters().toString());
-            }
-            if (os.toByteArray().length > 0) {
-                fail("Unexpected output: " + os.toString());
-            }
         }
     }
 
