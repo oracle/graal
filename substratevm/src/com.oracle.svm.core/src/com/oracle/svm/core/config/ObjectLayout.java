@@ -182,6 +182,7 @@ public class ObjectLayout {
     }
 
     public long getArraySize(JavaKind kind, int length) {
+        assert length >= 0;
         return alignUp(getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind)));
     }
 
