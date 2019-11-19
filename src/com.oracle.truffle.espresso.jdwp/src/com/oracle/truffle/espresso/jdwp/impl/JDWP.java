@@ -884,6 +884,10 @@ class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.PACKET)) {
+                    System.out.println("Invoke method through jdwp");
+                }
+
                 JDWPContext context = controller.getContext();
 
                 long objectId = input.readLong();
@@ -1155,7 +1159,12 @@ class JDWP {
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
-                reply.writeInt(ThreadSuspension.getSuspensionCount(thread) > 0 ? 1 : 0);
+                reply.writeInt(ThreadSuspension.getSuspensionCount(thread) > 0 ? 0x1 : 0x0);
+
+                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
+                    System.out.println("status command for thread: " + thread + ", status: " + threadStatus + ", suspended: " + (ThreadSuspension.getSuspensionCount(thread) > 0));
+                }
+
                 return new JDWPResult(reply, null);
             }
 
