@@ -400,7 +400,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        //System.out.println("Thread: " + thread + " started based on request: " + threadStartedRequestId) ;
+        JDWPLogger.log("sending thread started event for thread: " + context.getThreadName(thread), JDWPLogger.LogLevel.THREAD);
         connection.queuePacket(stream);
     }
 
@@ -446,11 +446,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void addThreadStartedRequestId(int id) {
+        JDWPLogger.log("Adding thread start listener", JDWPLogger.LogLevel.THREAD);
         this.threadStartedRequestId = id;
     }
 
     @Override
     public void addThreadDiedRequestId(int id) {
+        JDWPLogger.log("Adding thread death listener", JDWPLogger.LogLevel.THREAD);
         this.threadDeathRequestId = id;
     }
 

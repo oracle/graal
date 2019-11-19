@@ -86,6 +86,7 @@ class JDWP {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object[] allThreads = context.getAllGuestThreads();
                 reply.writeInt(allThreads.length);
+
                 for (Object t : allThreads) {
                     reply.writeLong(context.getIds().getIdAsLong(t));
                 }
@@ -142,9 +143,7 @@ class JDWP {
             public static final int ID = 8;
 
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("Suspend all packet");
-                }
+                JDWPLogger.log("Suspend all packet", JDWPLogger.LogLevel.THREAD);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
@@ -156,9 +155,8 @@ class JDWP {
             public static final int ID = 9;
 
             static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("Resume all packet");
-                }
+                JDWPLogger.log("Resume all packet", JDWPLogger.LogLevel.THREAD);
+
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
                 return new JDWPResult(reply);
@@ -884,9 +882,7 @@ class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.PACKET)) {
-                    System.out.println("Invoke method through jdwp");
-                }
+                JDWPLogger.log("Invoke method through jdwp", JDWPLogger.LogLevel.PACKET);
 
                 JDWPContext context = controller.getContext();
 
@@ -920,9 +916,8 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.PACKET)) {
-                    System.out.println("trying to invoke method: " + method.getNameAsString());
-                }
+                JDWPLogger.log("trying to invoke method: " + method.getNameAsString(), JDWPLogger.LogLevel.PACKET);
+
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1065,12 +1060,17 @@ class JDWP {
                 Object thread = verifyThread(threadId, reply, context);
 
                 if (thread == null) {
+                    JDWPLogger.log("null thread discovered with ID: " + threadId, JDWPLogger.LogLevel.THREAD);
+
                     return new JDWPResult(reply);
                 }
 
                 String threadName = context.getThreadName(thread);
 
                 reply.writeString(threadName);
+
+                JDWPLogger.log("thread name: " + threadName, JDWPLogger.LogLevel.THREAD);
+
                 return new JDWPResult(reply);
             }
         }
@@ -1089,9 +1089,8 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("suspend thread packet for thread: " + thread);
-                }
+                JDWPLogger.log("suspend thread packet for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                 controller.suspend(thread);
                 return new JDWPResult(reply);
             }
@@ -1111,9 +1110,8 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("resume thread packet for thread: " + thread);
-                }
+                JDWPLogger.log("resume thread packet for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                 controller.resume(thread, false);
                 return new JDWPResult(reply);
             }
@@ -1137,7 +1135,7 @@ class JDWP {
             public static final int JVMTI_THREAD_STATE_IN_NATIVE = 0x400000;
 
             public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK =
-                    JVMTI_THREAD_STATE_TERMINATED |
+                            JVMTI_THREAD_STATE_TERMINATED |
                             JVMTI_THREAD_STATE_ALIVE |
                             JVMTI_THREAD_STATE_RUNNABLE |
                             JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
@@ -1159,11 +1157,11 @@ class JDWP {
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
-                reply.writeInt(ThreadSuspension.getSuspensionCount(thread) > 0 ? 0x1 : 0x0);
+                int suspended = ThreadSuspension.getSuspensionCount(thread) > 0 ? 0x1 : 0x0;
+                reply.writeInt(suspended);
 
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("status command for thread: " + thread + ", status: " + threadStatus + ", suspended: " + (ThreadSuspension.getSuspensionCount(thread) > 0));
-                }
+                JDWPLogger.log("status command for thread: " + context.getThreadName(thread) + ", status: " + threadStatus + ", suspended: " + suspended, JDWPLogger.LogLevel.THREAD);
+
 
                 return new JDWPResult(reply, null);
             }
@@ -1231,14 +1229,22 @@ class JDWP {
                 int startFrame = input.readInt();
                 int length = input.readInt();
 
+                JDWPLogger.log("requesting frames for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+                JDWPLogger.log("startFrame requested: " + startFrame, JDWPLogger.LogLevel.THREAD);
+                JDWPLogger.log("Number of frames requested: " + length, JDWPLogger.LogLevel.THREAD);
+
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
 
                 if (suspendedInfo == null) {
+                    JDWPLogger.log("THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                     reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
                     return new JDWPResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
+                    JDWPLogger.log("Unknown suspension info for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                 }
 
@@ -1248,6 +1254,8 @@ class JDWP {
                     length = frames.length;
                 }
                 reply.writeInt(length);
+                JDWPLogger.log("returning " + length + " frames for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     JDWPCallFrame frame = frames[i];
@@ -1285,8 +1293,10 @@ class JDWP {
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                 }
-
+                int length = suspendedInfo.getStackFrames().length;
                 reply.writeInt(suspendedInfo.getStackFrames().length);
+                JDWPLogger.log("current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                 return new JDWPResult(reply);
             }
         }
@@ -1306,9 +1316,8 @@ class JDWP {
                 }
 
                 int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("suspension count: " + suspensionCount + " returned for thread: " + thread);
-                }
+                JDWPLogger.log("suspension count: " + suspensionCount + " returned for thread: " + thread, JDWPLogger.LogLevel.THREAD);
+
                 reply.writeInt(suspensionCount);
                 return new JDWPResult(reply);
             }
@@ -1322,9 +1331,8 @@ class JDWP {
             SuspendedInfo result = suspendedInfo;
             Thread hostThread = controller.getContext().getGuest2HostThread(thread);
             if (hostThread.getState() == Thread.State.RUNNABLE) {
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
-                }
+                JDWPLogger.log("Awaiting suspended info for thread " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+
                 long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
                 while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
                     try {
@@ -1336,9 +1344,7 @@ class JDWP {
                 }
             }
             if (result instanceof UnknownSuspendedInfo) {
-                if (JDWPDebuggerController.isDebug(JDWPDebuggerController.Debug.THREAD)) {
-                    System.out.println("Still no suspended info for thread " + controller.getContext().getThreadName(thread));
-                }
+                JDWPLogger.log("Still no suspended info for thread " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
             }
             return result;
         }
