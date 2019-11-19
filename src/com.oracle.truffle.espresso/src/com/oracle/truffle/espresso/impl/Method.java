@@ -325,13 +325,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return res;
     }
 
+    public static NativeSimpleType word() {
+        return NativeSimpleType.SINT64; // or SINT32
+    }
+
     private static String buildJniNativeSignature(Method method) {
         // Prepend JNIEnv*.
-        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.SINT64);
+        StringBuilder sb = new StringBuilder("(").append(word());
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Receiver for instance methods, class for static methods.
-        sb.append(", ").append(NativeSimpleType.NULLABLE);
+        sb.append(", ").append(word());
 
         int argCount = Signatures.parameterCount(signature, false);
         for (int i = 0; i < argCount; ++i) {

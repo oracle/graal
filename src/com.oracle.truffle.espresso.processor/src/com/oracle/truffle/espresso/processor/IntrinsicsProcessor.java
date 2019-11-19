@@ -104,7 +104,10 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
         if (isNonPrimitive) {
-            return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
+            if (!clazz.equals("StaticObject")) {
+                return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
+            }
+            return decl + castTo("env.getHandles().get(Math.toIntExact((long) " + obj + "))", clazz) + ";\n"; // genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
         }
         switch (clazz) {
             case "boolean":
@@ -132,7 +135,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             }
             str.append(ARG_NAME).append(i);
         }
-        str.append(");\n");
+        str.append(")"); // ;\n");
         return str.toString();
     }
 
