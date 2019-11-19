@@ -1468,10 +1468,21 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return instance;
     }
 
+    /**
+     * <h3>jstring NewStringUTF(JNIEnv *env, const char *bytes);</h3>
+     *
+     * Constructs a new java.lang.String object from an array of characters in modified UTF-8
+     * encoding.
+     *
+     * @param bytesPtr pointer to a modified UTF-8 string.
+     *
+     * @return a Java string object, or NULL if the string cannot be constructed.
+     *
+     * @throws OutOfMemoryError if the system runs out of memory.
+     */
     @JniImpl
-    public @Host(String.class) StaticObject NewStringUTF(String hostString) {
-        // FIXME(peterssen): This relies on TruffleNFI implicit char* -> String conversion that
-        // uses host NewStringUTF.
+    public @Host(String.class) StaticObject NewStringUTF(@Word long bytesPtr) {
+        String hostString = fromUTF8Ptr(bytesPtr);
         return getMeta().toGuestString(hostString);
     }
 
@@ -2375,5 +2386,231 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere("Field not found " + field);
     }
 
+    /**
+     * <h3>jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity);</h3>
+     *
+     * Allocates and returns a direct java.nio.ByteBuffer referring to the block of memory starting
+     * at the memory address address and extending capacity bytes.
+     *
+     * Native code that calls this function and returns the resulting byte-buffer object to
+     * Java-level code should ensure that the buffer refers to a valid region of memory that is
+     * accessible for reading and, if appropriate, writing. An attempt to access an invalid memory
+     * location from Java code will either return an arbitrary value, have no visible effect, or
+     * cause an unspecified exception to be thrown.
+     *
+     * @param address the starting address of the memory region (must not be NULL)
+     *
+     * @param capacity the size in bytes of the memory region (must be positive)
+     *
+     * @return a local reference to the newly-instantiated java.nio.ByteBuffer object. Returns NULL
+     *         if an exception occurs, or if JNI access to direct buffers is not supported by this
+     *         virtual machine.
+     * @throws OutOfMemoryError if allocation of the ByteBuffer object fails
+     */
+    @JniImpl
+    public @Host(typeName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Word long address, long capacity) {
+        Meta meta = getMeta();
+        StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance();
+        meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
+        return instance;
+    }
+
+    // region JNI handles
+
+    /**
+     * <h3>jobject NewGlobalRef(JNIEnv *env, jobject obj);</h3>
+     *
+     * Creates a new global reference to the object referred to by the obj argument. The
+     * <b>handle</b> argument may be a global or local reference. Global references must be
+     * explicitly disposed of by calling DeleteGlobalRef().
+     *
+     * @param handle a global or local reference.
+     * @return a global reference, or NULL if the system runs out of memory.
+     */
+    @JniImpl
+    public @Word long NewGlobalRef(@Word long handle) {
+        return getHandles().createGlobal(getHandles().get(Math.toIntExact(handle)));
+    }
+
+    /**
+     * <h3>void DeleteGlobalRef(JNIEnv *env, jobject globalRef);</h3>
+     *
+     * Deletes the global reference pointed to by globalRef.
+     *
+     * @param handle a global reference.
+     */
+    @JniImpl
+    public void DeleteGlobalRef(@Word long handle) {
+        getHandles().deleteGlobalRef(Math.toIntExact(handle));
+    }
+
+    /**
+     * <h3>void DeleteLocalRef(JNIEnv *env, jobject localRef);</h3>
+     *
+     * Deletes the local reference pointed to by localRef.
+     *
+     * <p>
+     * <b>Note:</b> JDK/JRE 1.1 provides the DeleteLocalRef function above so that programmers can
+     * manually delete local references. For example, if native code iterates through a potentially
+     * large array of objects and uses one element in each iteration, it is a good practice to
+     * delete the local reference to the no-longer-used array element before a new local reference
+     * is created in the next iteration.
+     *
+     * As of JDK/JRE 1.2 an additional set of functions are provided for local reference lifetime
+     * management. They are the four functions listed below.
+     *
+     * @param handle a local reference.
+     */
+    @JniImpl
+    public void DeleteLocalRef(@Word long handle) {
+        getHandles().deleteLocalRef(Math.toIntExact(handle));
+    }
+
+    /**
+     * <h3>jweak NewWeakGlobalRef(JNIEnv *env, jobject obj);</h3>
+     *
+     * Creates a new weak global reference. Returns NULL if obj refers to null, or if the VM runs
+     * out of memory. If the VM runs out of memory, an OutOfMemoryError will be thrown.
+     */
+    @JniImpl
+    public @Word long NewWeakGlobalRef(@Word long handle) {
+        return getHandles().createWeakGlobal(getHandles().get(Math.toIntExact(handle)));
+    }
+
+    /**
+     * <h3>void DeleteWeakGlobalRef(JNIEnv *env, jweak obj);</h3>
+     *
+     * Delete the VM resources needed for the given weak global reference.
+     */
+    @JniImpl
+    public void DeleteWeakGlobalRef(@Word long handle) {
+        getHandles().deleteGlobalRef(Math.toIntExact(handle));
+    }
+
+    /**
+     * <h3>jint PushLocalFrame(JNIEnv *env, jint capacity);</h3>
+     * <p>
+     * Creates a new local reference frame, in which at least a given number of local references can
+     * be created. Returns 0 on success, a negative number and a pending OutOfMemoryError on
+     * failure.
+     * <p>
+     * Note that local references already created in previous local frames are still valid in the
+     * current local frame.
+     */
+    @JniImpl
+    public int PushLocalFrame(int capacity) {
+        getHandles().pushFrame(capacity);
+        return JNI_OK;
+    }
+
+    /**
+     * <h3>jobject PopLocalFrame(JNIEnv *env, jobject result);</h3>
+     * <p>
+     * Pops off the current local reference frame, frees all the local references, and returns a
+     * local reference in the previous local reference frame for the given result object.
+     * <p>
+     * Pass NULL as result if you do not need to return a reference to the previous frame.
+     */
+    @JniImpl
+    public static @Host(Object.class) StaticObject PopLocalFrame(@Host(Object.class) StaticObject result) {
+        return result;
+    }
+
+    /**
+     * <h3>jboolean IsSameObject(JNIEnv *env, jobject ref1, jobject ref2);</h3>
+     *
+     * Tests whether two references refer to the same Java object.
+     *
+     * @param ref1 a Java object.
+     * @param ref2 a Java object.
+     *
+     * @return JNI_TRUE if ref1 and ref2 refer to the same Java object, or are both NULL; otherwise,
+     *         returns JNI_FALSE.
+     */
+    @JniImpl
+    public static boolean IsSameObject(@Host(Object.class) StaticObject ref1, @Host(Object.class) StaticObject ref2) {
+        return ref1 == ref2;
+    }
+
+    /**
+     * <h3>jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj);</h3>
+     *
+     * Returns the type of the object referred to by the obj argument. The argument obj can either
+     * be a local, global or weak global reference.
+     *
+     * <ul>
+     * <li>If the argument obj is a weak global reference type, the return will be
+     * {@link #JNIWeakGlobalRefType}.
+     *
+     * <li>If the argument obj is a global reference type, the return value will be
+     * {@link #JNIGlobalRefType}.
+     *
+     * <li>If the argument obj is a local reference type, the return will be
+     * {@link #JNILocalRefType}.
+     *
+     * <li>If the obj argument is not a valid reference, the return value for this function will be
+     * {@link #JNIInvalidRefType}.
+     * </ul>
+     *
+     *
+     * An invalid reference is a reference which is not a valid handle. That is, the obj pointer
+     * address does not point to a location in memory which has been allocated from one of the Ref
+     * creation functions or returned from a JNI function.
+     *
+     * As such, NULL would be an invalid reference and GetObjectRefType(env,NULL) would return
+     * JNIInvalidRefType.
+     *
+     * On the other hand, a null reference, which is a reference that points to a null, would return
+     * the type of reference that the null reference was originally created as.
+     *
+     * GetObjectRefType cannot be used on deleted references.
+     *
+     * Since references are typically implemented as pointers to memory data structures that can
+     * potentially be reused by any of the reference allocation services in the VM, once deleted, it
+     * is not specified what value the GetObjectRefType will return.
+     *
+     * @param handle a local, global or weak global reference.
+     *
+     * @return one of the following enumerated values defined as a <b>jobjectRefType</b>:
+     *         <ul>
+     *         <li>{@link #JNIInvalidRefType} = 0
+     *         <li>{@link #JNILocalRefType} = 1
+     *         <li>{@link #JNIGlobalRefType} = 2
+     *         <li>{@link #JNIWeakGlobalRefType} = 3
+     *         </ul>
+     */
+    @JniImpl
+    public /* C enum */ int GetObjectRefType(@Word long handle) {
+        return getHandles().getObjectRefType(Math.toIntExact(handle));
+    }
+
+    /**
+     * <h3>jint EnsureLocalCapacity(JNIEnv *env, jint capacity);</h3>
+     *
+     * Ensures that at least a given number of local references can be created in the current
+     * thread. Returns 0 on success; otherwise returns a negative number and throws an
+     * OutOfMemoryError.
+     *
+     * Before it enters a native method, the VM automatically ensures that at least 16 local
+     * references can be created.
+     *
+     * For backward compatibility, the VM allocates local references beyond the ensured capacity.
+     * (As a debugging support, the VM may give the user warnings that too many local references are
+     * being created. In the JDK, the programmer can supply the -verbose:jni command line option to
+     * turn on these messages.) The VM calls FatalError if no more local references can be created
+     * beyond the ensured capacity.
+     */
+    @JniImpl
+    public int EnsureLocalCapacity(int capacity) {
+        if (capacity >= 0 &&
+                        ((MAX_JNI_LOCAL_CAPACITY <= 0) || (capacity <= MAX_JNI_LOCAL_CAPACITY))) {
+            return JNI_OK;
+        } else {
+            return JNI_ERR;
+        }
+    }
+
+    // endregion JNI handles
+    
     // Checkstyle: resume method name check
 }
