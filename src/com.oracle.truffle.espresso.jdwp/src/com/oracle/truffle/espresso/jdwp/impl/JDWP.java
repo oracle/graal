@@ -296,7 +296,11 @@ class JDWP {
                 }
 
                 Object loader = klass.getDefiningClassLoader();
-                reply.writeLong(context.getIds().getIdAsLong(loader));
+                if (loader == null || loader == context.getNullObject()) { // system class loader
+                    reply.writeLong(0);
+                } else {
+                    reply.writeLong(context.getIds().getIdAsLong(loader));
+                }
                 return new JDWPResult(reply);
             }
         }
@@ -788,7 +792,6 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                // can be either a ClassObjectId or a StaticObject
                 KlassRef klassRef = context.getRefType(object);
 
                 reply.writeByte(TypeTag.getKind(klassRef));
@@ -1769,7 +1772,11 @@ class JDWP {
             case TagConstants.OBJECT:
             case TagConstants.STRING:
             case TagConstants.ARRAY:
-                reply.writeLong(context.getIds().getIdAsLong(value));
+                if (value == context.getNullObject()) {
+                    reply.writeLong(0);
+                } else {
+                    reply.writeLong(context.getIds().getIdAsLong(value));
+                }
                 break;
             default:
                 throw new RuntimeException("Should not reach here!");
