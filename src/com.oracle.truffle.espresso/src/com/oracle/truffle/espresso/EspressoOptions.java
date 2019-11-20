@@ -160,6 +160,7 @@ public final class EspressoOptions {
                             final String[] options = s.split(",");
                             String transport = null;
                             String address = null;
+                            String logLevel = null;
                             boolean server = false;
                             boolean suspend = true;
 
@@ -193,11 +194,14 @@ public final class EspressoOptions {
                                     case "suspend":
                                         suspend = yesOrNo(key, value);
                                         break;
+                                    case "logLevel":
+                                        logLevel = value;
+                                        break;
                                     default:
                                         throw new IllegalArgumentException("Invalid option -Xrunjdwp:" + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
                                 }
                             }
-                            return new JDWPOptions(transport, address, server, suspend);
+                            return new JDWPOptions(transport, address, server, suspend, logLevel);
                         }
                     });
 

@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 public class JDWPLogger {
 
-    public static final LogLevel LEVEL = LogLevel.ALL;
+    public static LogLevel LEVEL;
 
     public enum LogLevel {
         ALL,
@@ -33,6 +33,10 @@ public class JDWPLogger {
         IDS,
         STEPPING,
         NONE
+    }
+
+    public static void setupLogLevel(String level) {
+        LEVEL = level != null ? LogLevel.valueOf(level) : LogLevel.NONE;
     }
 
     private static boolean shouldLog(LogLevel level) {
