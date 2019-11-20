@@ -198,7 +198,7 @@ public final class EspressoContext {
         jdwpContext = new JDWPContextImpl(this);
         jdwpContext.jdwpInit(env);
         // send the VM start event to listeners, e.g. JDWP
-        VMEventListeners.getDefault().vmStarted();
+        VMEventListeners.getDefault().vmStarted(getMainThread());
         hostToGuestReferenceDrainThread.start();
     }
 
@@ -374,7 +374,6 @@ public final class EspressoContext {
 
     private StaticObject getMainThreadGroup() {
         if (mainThreadGroup == null) {
-            System.out.println("creating new thread group");
             mainThreadGroup = meta.ThreadGroup.allocateInstance();
         }
         return mainThreadGroup;
