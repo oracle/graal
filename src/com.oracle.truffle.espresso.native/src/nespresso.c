@@ -198,7 +198,7 @@ V(NewDirectByteBuffer)
 #define RETURN_jfloat(x) return x
 #define RETURN_jdouble(x) return x
 #define RETURN_jlong(x) return x
-#define RETURN_void(x) return 
+#define RETURN_void(x) return
 
 #define CONCAT_(X, Y) X ## Y
 #define RETURN(returnType) CONCAT_(RETURN_, returnType)
@@ -218,6 +218,7 @@ struct VarargsInterface {
   jdouble (*pop_double)(struct Varargs*);
   jlong (*pop_long)(struct Varargs*);
   jobject (*pop_object)(struct Varargs*);
+  void* (*pop_word)(struct Varargs*);
 };
 
 struct VarargsV {
@@ -230,162 +231,170 @@ struct VarargsA {
     jvalue* args;
 };
 
+// valist varargs impl
+
 static jboolean valist_pop_boolean(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jboolean) (va_arg(s->args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jboolean) (va_arg(v->args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
 }
 
 static jbyte valist_pop_byte(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jbyte) va_arg(s->args, jint);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jbyte) va_arg(v->args, jint);
 }
 
 static jchar valist_pop_char(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jchar) va_arg(s->args, jint);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jchar) va_arg(v->args, jint);
 }
 
 static jshort valist_pop_short(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jshort) va_arg(s->args, jint);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jshort) va_arg(v->args, jint);
 }
 
 static jint valist_pop_int(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jint) va_arg(s->args, jint);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jint) va_arg(v->args, jint);
 }
 
 static jfloat valist_pop_float(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jfloat) va_arg(s->args, jdouble);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jfloat) va_arg(v->args, jdouble);
 }
 
 static jdouble valist_pop_double(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jdouble) va_arg(s->args, jdouble);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jdouble) va_arg(v->args, jdouble);
 }
 
 static jlong valist_pop_long(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jlong) va_arg(s->args, jlong);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jlong) va_arg(v->args, jlong);
 }
 
 static jobject valist_pop_object(struct Varargs* varargs) {
-    struct VarargsV* s = (struct VarargsV*) varargs;
-    return (jobject) va_arg(s->args, jobject);  
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (jobject) va_arg(v->args, jobject);
 }
+
+static void* valist_pop_word(struct Varargs* varargs) {
+    struct VarargsV* v = (struct VarargsV*) varargs;
+    return (void*) va_arg(v->args, void*);
+}
+
+// jvalue* varargs impl
 
 static jboolean jvalues_pop_boolean(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->z;
-  
+    return a->args++->z;    
 }
+
 static jbyte jvalues_pop_byte(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->b;
-  
 }
+
 static jchar jvalues_pop_char(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->c;
-  
 }
+
 static jshort jvalues_pop_short(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->s;
-  
 }
+
 static jint jvalues_pop_int(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->i;
-  
 }
+
 static jfloat jvalues_pop_float(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->f;
-  
 }
+
 static jdouble jvalues_pop_double(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->d;
-  
+    return a->args++->d;    
 }
+
 static jlong jvalues_pop_long(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->j;
-  
 }
+
 static jobject jvalues_pop_object(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
     return a->args++->l;
-  
+}
+
+static void* jvalues_pop_word(struct Varargs* varargs) {
+    struct VarargsA* a = (struct VarargsA*) varargs;
+    return (void*) a->args++->l;
 }
 
 static const struct VarargsInterface valist_functions = {
-  valist_pop_boolean, valist_pop_byte, valist_pop_char, valist_pop_short, valist_pop_int, valist_pop_float, valist_pop_double, valist_pop_long, valist_pop_object
+  valist_pop_boolean, valist_pop_byte, valist_pop_char, valist_pop_short, valist_pop_int, valist_pop_float, valist_pop_double, valist_pop_long, valist_pop_object, valist_pop_word
 };
 
 static const struct VarargsInterface jvalues_functions = {
-  jvalues_pop_boolean, jvalues_pop_byte, jvalues_pop_char, jvalues_pop_short, jvalues_pop_int, jvalues_pop_float, jvalues_pop_double, jvalues_pop_long, jvalues_pop_object
+  jvalues_pop_boolean, jvalues_pop_byte, jvalues_pop_char, jvalues_pop_short, jvalues_pop_int, jvalues_pop_float, jvalues_pop_double, jvalues_pop_long, jvalues_pop_object, jvalues_pop_word
 };
 
 // Exported
-jboolean pop_boolean(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jboolean pop_boolean(struct Varargs* varargs) {
   return varargs->functions->pop_boolean(varargs);
 }
 
-jbyte pop_byte(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jbyte pop_byte(struct Varargs* varargs) {  
   return varargs->functions->pop_byte(varargs);
 }
 
-jchar pop_char(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jchar pop_char(struct Varargs* varargs) {  
   return varargs->functions->pop_char(varargs);
 }
 
-jshort pop_short(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jshort pop_short(struct Varargs* varargs) {  
   return varargs->functions->pop_short(varargs);
 }
 
-jint pop_int(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jint pop_int(struct Varargs* varargs) {  
   return varargs->functions->pop_int(varargs);
 }
 
-jfloat pop_float(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jfloat pop_float(struct Varargs* varargs) {  
   return varargs->functions->pop_float(varargs);
 }
 
-jdouble pop_double(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jdouble pop_double(struct Varargs* varargs) {  
   return varargs->functions->pop_double(varargs);
 }
 
-jlong pop_long(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jlong pop_long(struct Varargs* varargs) {
   return varargs->functions->pop_long(varargs);
 }
 
-jobject pop_object(jlong ptr) {
-  struct Varargs *varargs = (struct Varargs*) ptr;
+jobject pop_object(struct Varargs* varargs) {
   return varargs->functions->pop_object(varargs);
+}
+
+void* pop_word(struct Varargs* varargs) {
+  return varargs->functions->pop_word(varargs);
 }
 
 struct NespressoEnv {
   #define CALL_METHOD(returnType, Type) \
-    returnType (*Call##Type##MethodVarargs)(JNIEnv *env, jobject obj, jmethodID methodID, jlong varargs); \
-    returnType (*CallStatic##Type##MethodVarargs)(JNIEnv *env, jobject clazz, jmethodID methodID, jlong varargs); \
-    returnType (*CallNonvirtual##Type##MethodVarargs)(JNIEnv *env, jobject obj, jobject clazz, jmethodID methodID, jlong varargs);
+    returnType (*Call##Type##MethodVarargs)(JNIEnv *env, jobject obj, jmethodID methodID, void* varargs); \
+    returnType (*CallStatic##Type##MethodVarargs)(JNIEnv *env, jobject clazz, jmethodID methodID, void* varargs); \
+    returnType (*CallNonvirtual##Type##MethodVarargs)(JNIEnv *env, jobject obj, jobject clazz, jmethodID methodID, void* varargs);
 
   TYPE_LIST2(CALL_METHOD)
   #undef CALL_METHOD
 
   // NewObject varargs
-  jobject (*NewObjectVarargs)(JNIEnv *env, jclass clazz, jmethodID methodID, jlong varargs);
+  jobject (*NewObjectVarargs)(JNIEnv *env, jclass clazz, jmethodID methodID, void* varargs);
 
   // RegisterNative (single method)
   jint (*RegisterNative)(JNIEnv *env, jclass clazz, const char* name, const char* signature, void* closure);
@@ -396,14 +405,14 @@ returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_
   struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
-  VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, &varargs); \
   va_end(varargs.args); \
   RETURN(returnType)(result); \
 } \
 returnType Call##Type##MethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue *args) { \
   struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
-  VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...) { \
@@ -419,14 +428,14 @@ returnType CallStatic##Type##MethodV(JNIEnv *env, jclass clazz, jmethodID method
   struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
-  VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, &varargs); \
   va_end(varargs.args); \
   RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##MethodA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) { \
   struct VarargsA varargs = { .base = { .functions = &jvalues_functions } , .args = (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
-  VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodID, ...) { \
@@ -442,13 +451,13 @@ returnType CallNonvirtual##Type##MethodV(JNIEnv *env, jobject obj, jclass clazz,
   struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
   va_copy(varargs.args, args); \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
-  VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##MethodA(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, const jvalue *args) { \
   struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
-  VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, (jlong) &varargs); \
+  VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, &varargs); \
   RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##Method(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, ...) { \
@@ -509,7 +518,7 @@ jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) 
   struct VarargsV varargs = { .base = { .functions = &valist_functions } };
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   va_copy(varargs.args, args);
-  jobject result = nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
+  jobject result = nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
   va_end(varargs.args);
   return result;
 }
@@ -517,7 +526,7 @@ jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) 
 jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) {
   struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (jvalue*) args };
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
-  return nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
+  return nespresso_env->NewObjectVarargs(env, clazz, methodID, &varargs);
 }
 
 jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
@@ -528,11 +537,11 @@ jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
   return result;
 }
 
-jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
+jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {
 
   struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   jint ret = JNI_OK;
-  for (jint i = 0; i < nMethods; ++i) {    
+  for (jint i = 0; i < nMethods; ++i) {
     ret = nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
     if (ret != JNI_OK) {
         break;
@@ -546,7 +555,7 @@ static void unset_function_error() {
   exit(-1);
 }
 
-jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
@@ -557,10 +566,10 @@ jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
   }
 
   *env = jni_impl;
-  
+
   jni_impl->reserved0 = nespresso_env;
 
-  // Fetch Java ... varargs methods.  
+  // Fetch Java ... varargs methods.
   #define INIT_VARARGS_METHOD__(fn_name) \
     *(void**)(&nespresso_env->fn_name) = fetch_by_name(#fn_name);
 
@@ -580,11 +589,10 @@ jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
     BRIDGE_METHOD_LIST(INIT_NATIVE_METHOD__)
   #undef INIT_NATIVE_METHOD__
 
-  return (jlong) env;
+  return env;
 }
 
-void disposeNativeContext(TruffleEnv* truffle_env, jlong env_ptr) {
-  JNIEnv *env = (JNIEnv*) env_ptr;
+void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
