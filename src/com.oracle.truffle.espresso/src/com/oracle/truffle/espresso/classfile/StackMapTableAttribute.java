@@ -37,6 +37,7 @@ public class StackMapTableAttribute extends Attribute {
     }
 
     private final StackMapFrame[] entries;
+    private boolean truncated = false;
 
     public StackMapTableAttribute(Symbol<Symbol.Name> name, StackMapFrame[] entries) {
         super(name, null);
@@ -49,5 +50,13 @@ public class StackMapTableAttribute extends Attribute {
             sme.print(klass);
         }
         System.err.println("    }");
+    }
+
+    public boolean isTruncated() {
+        return truncated;
+    }
+
+    void setTruncated() {
+        this.truncated = true;
     }
 }

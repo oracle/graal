@@ -657,6 +657,12 @@ public final class MethodVerifier implements ContextAccess {
             stackFrames[BCI] = frame;
             previous = frame;
         }
+        // GR-19627 HotSpot's ad-hoc behavior: StackMapTable indices are range-checked first,
+        // possibly throwing VerifyError. Then, ClassFormatError is thrown if the attribute was
+        // truncated.
+        if (stackMapTableAttribute.isTruncated()) {
+            throw new ClassFormatError("Truncated StackMap attribute in " + getThisKlass() + "." + getMethodName());
+        }
     }
 
     /**

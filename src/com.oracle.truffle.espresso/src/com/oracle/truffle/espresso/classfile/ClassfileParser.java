@@ -1006,6 +1006,14 @@ public final class ClassfileParser {
                     throw classFormatError("Duplicate StackMapTable attribute");
                 }
                 codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
+                // GR-19627 HotSpot's ad-hoc behavior: Truncated StackMapTable attributes throws
+                // either VerifyError or ClassFormatError only if verified. Here the
+                // attribute is marked for the verifier.
+                int remaining = attributeSize - (stream.getPosition() - startPosition);
+                if (remaining > 0) {
+                    stream.skip(remaining);
+                    stackMapTable.setTruncated();
+                }
             } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
                 if (runtimeVisibleTypeAnnotations != null) {
                     throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
