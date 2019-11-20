@@ -46,6 +46,7 @@ import mx_wasm_benchmark  # pylint: disable=unused-import
 import os
 import re
 import shutil
+import stat
 
 from collections import defaultdict
 from mx_gate import Task, add_gate_runner
@@ -289,6 +290,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                     gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags
                     if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the native binary of " + filename + ".")
+                    os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
                 elif filename.endswith(".wat"):
                     mx.warn("The .wat files are not translated to native binaries: " + filename)
 
