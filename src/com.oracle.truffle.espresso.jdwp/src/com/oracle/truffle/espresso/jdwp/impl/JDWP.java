@@ -932,17 +932,21 @@ class JDWP {
                     ThreadJob.JobResult result = job.getResult();
 
                     if (result.getException() != null) {
+                        JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
                         reply.writeByte(TagConstants.OBJECT);
                         reply.writeLong(0);
                         reply.writeByte(TagConstants.OBJECT);
                         reply.writeLong(context.getIds().getIdAsLong(result.getException()));
                     } else {
                         Object value = context.toGuest(result.getResult());
-
                         if (value != null) {
                             byte tag = context.getTag(value);
+                            if (isBoxedPrimitive(value.getClass())) {
+                                // we have a host primitive value, so get the appropriate tag
+                                tag = TagConstants.getTagFromPrimitive(value);
+                                JDWPLogger.log("primitive tag: " + tag + " required for: " + value.getClass(), JDWPLogger.LogLevel.PACKET);
+                            }
                             writeValue(tag, value, reply, true, context);
-
                         } else { // return value is null
                             reply.writeByte(TagConstants.OBJECT);
                             reply.writeLong(0);
@@ -955,6 +959,10 @@ class JDWP {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
                 return new JDWPResult(reply);
+            }
+
+            private static boolean isBoxedPrimitive(Class<?> clazz) {
+                return Number.class.isAssignableFrom(clazz) || Character.class == clazz || Boolean.class == clazz;
             }
         }
 

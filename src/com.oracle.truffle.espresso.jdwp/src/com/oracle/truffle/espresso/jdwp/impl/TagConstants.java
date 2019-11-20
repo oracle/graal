@@ -52,4 +52,31 @@ public class TagConstants {
                 tag != CLASS_LOADER;
     }
 
+    public static byte getTagFromPrimitive(Object boxed) {
+        if (boxed instanceof Integer) {
+            return INT;
+        }
+        if (boxed instanceof Float) {
+            return FLOAT;
+        }
+        if (boxed instanceof Double) {
+            return DOUBLE;
+        }
+        if (boxed instanceof Long) {
+            return LONG;
+        }
+        if (boxed instanceof Byte) {
+            return BYTE;
+        }
+        if (boxed instanceof Short) {
+            return SHORT;
+        }
+        if (boxed instanceof Character) {
+            return CHAR;
+        }
+        if (boxed instanceof Boolean) {
+            return BOOLEAN;
+        }
+        throw new RuntimeException("boxed object: " + boxed.getClass() + " is not a primitive");
+    }
 }
