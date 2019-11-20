@@ -72,8 +72,6 @@ public class JDWPDebuggerController {
     private HashMap<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
 
     private Ids<Object> ids;
-    private Method suspendMethod;
-    private Method resumeMethod;
 
     // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
@@ -95,16 +93,6 @@ public class JDWPDebuggerController {
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
         debuggerSession.suspendNextExecution();
-
-        try {
-            suspendMethod = DebuggerSession.class.getDeclaredMethod("suspend", Thread.class);
-            suspendMethod.setAccessible(true);
-
-            resumeMethod = DebuggerSession.class.getDeclaredMethod("resume", Thread.class);
-            resumeMethod.setAccessible(true);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException("Unable to obtain thread suspend method", e);
-        }
     }
 
     public void reInitialize(JDWPOptions jdwpOptions, JDWPContext context) {
@@ -238,11 +226,9 @@ public class JDWPDebuggerController {
 
             if (!isStepping(thread)) {
                 if (!sessionClosed) {
-                    // TODO(Gregersen) - call method directly when it becomes available
                     try {
                         JDWPLogger.log("calling underlying resume method for thread: " + getThreadName(thread), JDWPLogger.LogLevel.THREAD);
-
-                        resumeMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
+                        debuggerSession.resume(getContext().getGuest2HostThread(thread));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
                     }
@@ -291,12 +277,9 @@ public class JDWPDebuggerController {
         }
 
         try {
+            JDWPLogger.log("State: " + getContext().getGuest2HostThread(thread).getState(), JDWPLogger.LogLevel.THREAD);
             JDWPLogger.log("calling underlying suspend method for thread: " + getThreadName(thread), JDWPLogger.LogLevel.THREAD);
-            Thread.State threadState = getContext().getGuest2HostThread(thread).getState();
-            JDWPLogger.log("State: " + threadState, JDWPLogger.LogLevel.THREAD);
-
-            // TODO(Gregersen) - call method directly when it becomes available
-            suspendMethod.invoke(debuggerSession, getContext().getGuest2HostThread(thread));
+            debuggerSession.suspend(getContext().getGuest2HostThread(thread));
 
             boolean suspended = ThreadSuspension.getSuspensionCount(thread) != 0;
             JDWPLogger.log("suspend success: " + suspended, JDWPLogger.LogLevel.THREAD);
