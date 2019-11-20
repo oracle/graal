@@ -1,0 +1,5 @@
+# mx --dy /vm --disable-polyglot graalvm-show
+
+DYNAMIC_IMPORTS=/vm
+COMPONENTS=Espresso
+DISABLE_POLYGLOT=true
