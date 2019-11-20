@@ -90,16 +90,7 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
     def post_process_command_line_args(self, args):
         return args
 
-    def parse_jar_suite_benchmark(self, args):
-        if "-cp" not in args:
-            mx.abort("Suite must specify -cp.")
-        classpath = args[args.index("-cp") + 1]
-        delimiter = ";" if mx.is_windows() else ":"
-        jars = classpath.split(delimiter)
-        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR)]), None)
-        if jar is None:
-            mx.abort("No " + BENCHMARK_JAR + " specified in the classpath.")
-
+    def parse_suite_benchmark(self, args):
         suite = next(iter([arg for arg in args if arg.endswith(SUITE_NAME_SUFFIX)]), None)
         if suite is None:
             mx.abort("Suite must specify a flag that ends with " + SUITE_NAME_SUFFIX)
@@ -112,6 +103,19 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         else:
             benchmark = benchmark[len(BENCHMARK_NAME_PREFIX):]
 
+        return suite, benchmark
+
+    def parse_jar_suite_benchmark(self, args):
+        if "-cp" not in args:
+            mx.abort("Suite must specify -cp.")
+        classpath = args[args.index("-cp") + 1]
+        delimiter = ";" if mx.is_windows() else ":"
+        jars = classpath.split(delimiter)
+        jar = next(iter([jar for jar in jars if jar.endswith(BENCHMARK_JAR)]), None)
+        if jar is None:
+            mx.abort("No " + BENCHMARK_JAR + " specified in the classpath.")
+
+        suite, benchmark = self.parse_suite_benchmark(args)
         return jar, suite, benchmark
 
     def extract_jar_to_tempdir(self, jar, mode, suite, benchmark):
@@ -123,7 +127,23 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         return tmp_dir
 
     def rules(self, output, benchmarks, bmSuiteArgs):
-        pass
+        suite, benchmark = self.parse_suite_benchmark(bmSuiteArgs)
+        return [
+            mx_benchmark.StdOutRule(
+                r"ops/sec = (?P<throughput>[0-9]+.[0-9]+)",
+                {
+                    "benchmark": suite + "/" + benchmark,
+                    "vm": self.config_name(),
+                    "metric.name": "throughput",
+                    "metric.value": ("<throughput>", float),
+                    "metric.unit": "ops/s",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "higher",
+                    "metric.iteration": 0,
+                }
+            )
+        ]
 
 
 class NodeWasmBenchmarkVm(WasmBenchmarkVm):
@@ -136,7 +156,7 @@ class NodeWasmBenchmarkVm(WasmBenchmarkVm):
         jar, suite, benchmark = self.parse_jar_suite_benchmark(args)
         tmp_dir = None
         try:
-            mode = "node"
+            mode = self.config_name()
             tmp_dir = self.extract_jar_to_tempdir(jar, mode, suite, benchmark)
             node_cmd = os.path.join(node_dir, mode)
             node_cmd_line = [node_cmd, os.path.join(tmp_dir, "bench", suite, mode, benchmark + ".js")]
@@ -156,7 +176,7 @@ class NativeWasmBenchmarkVm(WasmBenchmarkVm):
         jar, suite, benchmark = self.parse_jar_suite_benchmark(args)
         tmp_dir = None
         try:
-            mode = "native"
+            mode = self.config_name()
             tmp_dir = self.extract_jar_to_tempdir(jar, mode, suite, benchmark)
             binary_path = os.path.join(tmp_dir, "bench", suite, mode, mx.exe_suffix(benchmark))
             os.chmod(binary_path, stat.S_IRUSR | stat.S_IXUSR)
@@ -182,6 +202,18 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
     def subgroup(self):
         return "truffle"
+
+    def successPatterns(self):
+        return []
+
+    def isWasmBenchmarkVm(self, bmSuiteArgs):
+        jvm_config = bmSuiteArgs[bmSuiteArgs.index("--jvm-config") + 1]
+        return jvm_config == "node" or jvm_config == "native"
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        if self.isWasmBenchmarkVm(bmSuiteArgs):
+            return []
+        return super(WasmBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
 
 add_bm_suite(WasmBenchmarkSuite())
