@@ -29,21 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
@@ -62,81 +57,26 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
         return descriptor;
     }
 
+    public abstract boolean execute();
+
+    @SuppressWarnings("unused")
     @Specialization
     Object doAccess(
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached ReadDynamicObjectHelper helper) {
-        return helper.execute(context.getGlobalStorage(), descriptor);
+                    @Cached ReadDynamicObjectHelper helper,
+                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
+        return helper.execute(globals, descriptor);
     }
 
     abstract static class ReadDynamicObjectHelper extends LLVMNode {
 
-        protected abstract Object execute(DynamicObject object, LLVMGlobal descriptor);
+        protected abstract Object execute(LLVMPointer[] globals, LLVMGlobal descriptor);
 
-        /*
-         * Includes "dynamicObject" as a parameter so that Truffle DSL sees this as a dynamic check.
-         */
-        protected static boolean checkShape(@SuppressWarnings("unused") DynamicObject dynamicObject, DynamicObject cachedObject, Shape cachedShape) {
-            return cachedObject.getShape() == cachedShape;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(limit = "1", //
-                        guards = {
-                                        "dynamicObject == cachedDynamicObject",
-                                        "checkShape(dynamicObject, cachedDynamicObject, cachedShape)",
-                                        "loc.isAssumedFinal()",
-                        }, //
-                        assumptions = {
-                                        "layoutAssumption",
-                                        "finalAssumption"
-                        })
-        protected Object readDirectFinal(DynamicObject dynamicObject, LLVMGlobal descriptor,
-                        @Cached("dynamicObject") DynamicObject cachedDynamicObject,
-                        @Cached("dynamicObject.getShape()") Shape cachedShape,
-                        @Cached("cachedShape.getValidAssumption()") Assumption layoutAssumption,
-                        @Cached("cachedShape.getProperty(descriptor).getLocation()") Location loc,
-                        @Cached("loc.getFinalAssumption()") Assumption finalAssumption,
-                        @Cached("loc.get(dynamicObject)") Object cachedValue) {
+        @Specialization
+        protected Object readDirectFinal(LLVMPointer[] globals, LLVMGlobal descriptor) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
-            return cachedValue;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(limit = "3", //
-                        guards = {
-                                        "dynamicObject.getShape() == cachedShape",
-                        }, //
-                        assumptions = {
-                                        "layoutAssumption"
-                        }, //
-                        replaces = "readDirectFinal")
-        protected Object readDirect(DynamicObject dynamicObject, LLVMGlobal descriptor,
-                        @Cached("dynamicObject.getShape()") Shape cachedShape,
-                        @Cached("cachedShape.getValidAssumption()") Assumption layoutAssumption,
-                        @Cached("cachedShape.getProperty(descriptor).getLocation()") Location loc) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            return loc.get(dynamicObject, cachedShape);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {
-                        "object.getShape() == cachedShape",
-                        "!layoutAssumption.isValid()"
-        })
-        protected Object updateShapeAndRead(DynamicObject object, LLVMGlobal descriptor,
-                        @Cached("object.getShape()") Shape cachedShape,
-                        @Cached("cachedShape.getValidAssumption()") Assumption layoutAssumption,
-                        @Cached ReadDynamicObjectHelper nextNode) {
-            CompilerDirectives.transferToInterpreter();
-            object.updateShape();
-            return nextNode.execute(object, descriptor);
-        }
-
-        @TruffleBoundary
-        @Specialization(replaces = {"readDirect", "readDirectFinal", "updateShapeAndRead"})
-        protected Object readIndirect(DynamicObject dynamicObject, LLVMGlobal descriptor) {
-            return dynamicObject.get(descriptor);
+            int index = descriptor.getIndex();
+            return globals[index];
         }
     }
 }

@@ -65,14 +65,14 @@ public final class DefaultLoader extends Loader {
 
     @Override
     public void loadDefaults(LLVMContext context, Path internalLibraryPath) {
-        new Runner(context, this).loadDefaults(internalLibraryPath);
+        new Runner(context, this, context.getLanguage().getRunnerID()).loadDefaults(internalLibraryPath);
     }
 
     @Override
-    public CallTarget load(LLVMContext context, Source source) {
+    public CallTarget load(LLVMContext context, Source source, int id) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
-            return new Runner(context, this).parse(source);
+            return new Runner(context, this, id).parse(source);
         }
     }
 }

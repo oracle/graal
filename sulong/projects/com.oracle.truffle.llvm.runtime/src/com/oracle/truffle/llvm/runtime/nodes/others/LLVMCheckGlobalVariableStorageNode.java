@@ -29,62 +29,38 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMCheckGlobalVariableStorageNode extends LLVMNode {
 
-    private final LLVMGlobal descriptor;
+    public abstract boolean execute(LLVMGlobal descriptor);
 
-    public LLVMCheckGlobalVariableStorageNode(LLVMGlobal descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    public abstract boolean execute();
-
+    @SuppressWarnings("unused")
     @Specialization
-    boolean doCheck(
+    boolean doCheck(LLVMGlobal descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached CheckDynamicObjectHelper checkHelper) {
-        return checkHelper.execute(context.getGlobalStorage(), descriptor);
+                    @Cached CheckDynamicObjectHelper checkHelper,
+                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
+        return checkHelper.execute(globals, descriptor);
     }
 
     abstract static class CheckDynamicObjectHelper extends LLVMNode {
 
-        public abstract boolean execute(DynamicObject object, LLVMGlobal descriptor);
+        public abstract boolean execute(LLVMPointer[] globals, LLVMGlobal descriptor);
 
-        @SuppressWarnings("unused")
-        @Specialization(limit = "3", //
-                        guards = {
-                                        "dynamicObject.getShape() == cachedShape",
-                        }, //
-                        assumptions = {
-                                        "layoutAssumption"
-                        })
-        protected boolean checkDirect(DynamicObject dynamicObject, LLVMGlobal descriptor,
-                        @Cached("dynamicObject.getShape()") Shape cachedShape,
-                        @Cached("cachedShape.getValidAssumption()") Assumption layoutAssumption,
-                        @Cached("cachedShape.getProperty(descriptor)") Property property) {
+        @Specialization
+        protected boolean checkDirect(LLVMPointer[] globals, LLVMGlobal descriptor) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
-            return property == null ? false : true;
+            int index = descriptor.getIndex();
+            return globals[index] == null ? false : true;
         }
-
-        @TruffleBoundary
-        @Specialization(replaces = {"checkDirect"})
-        protected boolean checkIndirect(DynamicObject dynamicObject, LLVMGlobal descriptor) {
-            return dynamicObject.containsKey(descriptor);
-        }
-
     }
 }

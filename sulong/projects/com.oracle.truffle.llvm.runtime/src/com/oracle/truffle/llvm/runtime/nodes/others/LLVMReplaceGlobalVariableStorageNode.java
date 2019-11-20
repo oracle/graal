@@ -29,18 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -49,66 +42,34 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
 
-    private final LLVMGlobal descriptor;
+    public abstract void execute(LLVMPointer value, LLVMGlobal descriptor);
 
-    LLVMReplaceGlobalVariableStorageNode(LLVMGlobal descriptor) {
-        this.descriptor = descriptor;
-    }
-
-    public abstract void execute(LLVMPointer value);
-
+    @SuppressWarnings("unused")
     @Specialization
-    void doReplacee(LLVMPointer value,
+    void doReplacee(LLVMPointer value, LLVMGlobal descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached LLVMReplaceGlobalVariableStorageNode.ReplaceDynamicObjectHelper replaceHelper) {
-        DynamicObject global = context.getGlobalStorage();
-        synchronized (global) {
-            replaceHelper.execute(global, descriptor, value);
+                    @Cached LLVMReplaceGlobalVariableStorageNode.ReplaceDynamicObjectHelper replaceHelper,
+                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
+        synchronized (globals) {
+            replaceHelper.execute(globals, descriptor, value);
         }
     }
 
     abstract static class ReplaceDynamicObjectHelper extends LLVMNode {
 
-        public abstract void execute(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value);
+        public abstract void execute(LLVMPointer[] object, LLVMGlobal descriptor, LLVMPointer value);
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "3", //
-                        guards = {
-                                        "object.getShape() == cachedShape",
-                                        "loc != null",
-                                        "loc.canSet(value)"
-                        }, //
-                        assumptions = {
-                                        "layoutAssumption"
-
-                        })
-        protected void doDirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value,
-                        @Cached("object.getShape()") Shape cachedShape,
-                        @Cached("cachedShape.getValidAssumption()") Assumption layoutAssumption,
-                        @Cached("cachedShape.getProperty(descriptor).getLocation()") Location loc) {
+        @Specialization
+        protected void doDirect(LLVMPointer[] object, LLVMGlobal descriptor, LLVMPointer value) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
-                loc.set(object, value);
-            } catch (IncompatibleLocationException | FinalLocationException e) {
+                int index = descriptor.getIndex();
+                object[index] = value;
+            } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
-                // cannot happen due to guard
-                throw new RuntimeException("Location.canSet is inconsistent with Location.set");
+                throw new RuntimeException("Global replace is inconsistent.");
             }
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {
-                        "object.getShape().isValid()"
-        }, replaces = {"doDirect"})
-        protected static void doIndirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value) {
-            object.set(descriptor, value);
-        }
-
-        @Specialization(guards = "!object.getShape().isValid()")
-        protected static void updateIndirect(DynamicObject object, LLVMGlobal descriptor, LLVMPointer value) {
-            CompilerDirectives.transferToInterpreter();
-            object.updateShape();
-            doIndirect(object, descriptor, value);
         }
     }
 }

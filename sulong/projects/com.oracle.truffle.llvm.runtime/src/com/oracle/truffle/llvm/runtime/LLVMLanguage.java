@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.options.OptionDescriptors;
 
@@ -105,6 +106,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
+    private final AtomicInteger nextID = new AtomicInteger();
 
     @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Configuration activeConfiguration = null;
@@ -116,7 +118,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public abstract static class Loader implements LLVMCapability {
         public abstract void loadDefaults(LLVMContext context, Path internalLibraryPath);
 
-        public abstract CallTarget load(LLVMContext context, Source source);
+        public abstract CallTarget load(LLVMContext context, Source source, int id);
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
@@ -264,14 +266,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeContext(LLVMContext context) {
+        // TODO (PLi): The globals loaded by the context passed needs to be freed.
         LLVMMemory memory = getCapability(LLVMMemory.class);
         context.dispose(memory);
+    }
+
+    public int getRunnerID(){
+        return nextID.getAndIncrement();
     }
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
-        return getCapability(Loader.class).load(getContext(), source);
+        return getCapability(Loader.class).load(getContext(), source, nextID.getAndIncrement());
     }
 
     @Override

@@ -34,6 +34,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * This class is used to wrap global variables when they are added to debug scopes by the LLVM
@@ -44,10 +45,14 @@ public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject 
 
     private final LLVMGlobal descriptor;
     private final LLVMContext context;
+    private final LLVMPointer global;
 
     public LLVMDebugGlobalVariable(LLVMGlobal descriptor, LLVMContext context) {
         this.descriptor = descriptor;
         this.context = context;
+        LLVMPointer[] globals = context.findGlobal(descriptor.getID());
+        int index = descriptor.getIndex();
+        this.global = globals[index];
     }
 
     public LLVMGlobal getDescriptor() {
@@ -57,4 +62,6 @@ public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject 
     public LLVMContext getContext() {
         return context;
     }
+
+    public LLVMPointer getGlobal() { return global; }
 }

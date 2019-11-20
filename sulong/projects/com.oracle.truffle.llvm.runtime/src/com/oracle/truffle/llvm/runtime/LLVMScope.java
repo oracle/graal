@@ -76,6 +76,7 @@ public final class LLVMScope implements TruffleObject {
         throw new IllegalStateException("Unknown function: " + name);
     }
 
+    //TODO: AST sharing
     @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
@@ -85,6 +86,7 @@ public final class LLVMScope implements TruffleObject {
         throw new IllegalStateException("Unknown global: " + name);
     }
 
+    //TODO: AST sharing
     @TruffleBoundary
     public void register(LLVMSymbol symbol) {
         LLVMSymbol existing = symbols.get(symbol.getName());

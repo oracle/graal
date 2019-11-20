@@ -83,7 +83,7 @@ final class LLSourceMap {
             final SourceSection endSection = llSource.createSection(endLine);
             final int charLength = endSection.getCharEndIndex() - startCharIndex;
             final SourceSection totalSection = llSource.createSection(startCharIndex, charLength);
-            return LLVMSourceLocation.create(sourceMap.getGlobalScope(runtime.getFileScope()), LLVMSourceLocation.Kind.FUNCTION, name, new LLSourceSection(totalSection), null);
+            return LLVMSourceLocation.create(sourceMap.getGlobalScope(runtime.getFileScope(), runtime.getID()), LLVMSourceLocation.Kind.FUNCTION, name, new LLSourceSection(totalSection), null);
         }
     }
 
@@ -127,7 +127,7 @@ final class LLSourceMap {
         globals.add(name);
     }
 
-    private LLVMSourceLocation getGlobalScope(LLVMScope moduleScope) {
+    private LLVMSourceLocation getGlobalScope(LLVMScope moduleScope, int id) {
         if (globalScope == null) {
             globalScope = LLVMSourceLocation.createLLModule(llSource.getName(), llSource.createSection(0, llSource.getLength()));
         }
@@ -138,7 +138,9 @@ final class LLSourceMap {
                 if (actualSymbol != null && actualSymbol.isGlobalVariable()) {
                     globalScope.addGlobal(actualSymbol.asGlobalVariable());
                 } else {
-                    globalScope.addGlobal(LLVMGlobal.create(globalName + " (unavailable)", PointerType.VOID, null, true));
+                    LLVMGlobal global = LLVMGlobal.create(globalName + " (unavailable)", PointerType.VOID, null, true);
+                    global.setID(id);
+                    globalScope.addGlobal(global);
                 }
             }
             globals.clear();
