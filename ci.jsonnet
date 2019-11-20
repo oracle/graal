@@ -99,13 +99,13 @@
     timelimit: '15:00',
   },
 
-  local mx_espresso_svm(ee, args) = ['mx', '--env', 'espresso.svm'] + (if ee then ['--dy', '/substratevm-enterprise'] else []) + args,
+  local mx_espresso_svm(ee, args) = ['mx', '--env', (if ee then 'native-ee' else 'native-ce')] + args,
 
   local run_espresso_native(ee, args) = [
     ['set-export', 'GRAALVM_HOME', mx_espresso_svm(ee, ['graalvm-home'])],
-    ['set-export', 'ESPRESSO_NATIVE', '${GRAALVM_HOME}/bin/espresso'],
+    ['set-export', 'ESPRESSO', '${GRAALVM_HOME}/bin/espresso'],
     ['set-export', 'LD_DEBUG', 'unused'],
-    ['${ESPRESSO_NATIVE}'] + args,
+    ['${ESPRESSO}'] + args,
   ],
 
   local hello_world_args = ['-cp', 'mxbuild/dists/jdk1.8/espresso-playground.jar', 'com.oracle.truffle.espresso.playground.HelloWorld'],
