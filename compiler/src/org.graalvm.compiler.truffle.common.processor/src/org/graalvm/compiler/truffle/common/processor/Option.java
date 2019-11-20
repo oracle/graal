@@ -109,7 +109,8 @@ public class Option {
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental)."),
+            .help("Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).")
+            .deprecatedBy("LanguageAgnosticInlining"),
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")

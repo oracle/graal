@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

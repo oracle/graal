@@ -24,38 +24,38 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.BackgroundCompilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Compilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompileImmediately;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.CompileOnly;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Mode;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.MultiTier;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.ReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.Splitting;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingAllowForcedSplits;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingGrowthLimit;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.SplittingTraceEvents;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilation;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceCompilationDetails;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions.EngineModeEnum;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
