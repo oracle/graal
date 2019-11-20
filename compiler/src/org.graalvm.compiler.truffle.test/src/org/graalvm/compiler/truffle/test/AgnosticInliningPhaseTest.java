@@ -24,16 +24,30 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleAttachNode;
+import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.IsAttachedInlinedNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.NoInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -42,18 +56,12 @@ import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
@@ -78,6 +86,38 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     public void tearDown() {
         budgetScope.close();
         agnosticInliningScope.close();
+    }
+
+    @Test
+    public void testInInlinedNode() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(dummy));
+        callTarget.call();
+        final StructuredGraph graph = runLanguageAgnosticInliningPhase(callTarget);
+        // Language agnostic inlining expects this particular pattern to be present in the graph
+        Assert.assertEquals(2, graph.getNodes(CallSiteHandleNode.TYPE).count());
+        for (CallSiteHandleNode handleNode : graph.getNodes(CallSiteHandleNode.TYPE)) {
+            Assert.assertEquals(2, handleNode.usages().count());
+            for (Node usage : handleNode.usages()) {
+                if (usage instanceof IsAttachedInlinedNode) {
+                    final IsAttachedInlinedNode inlinedNode = (IsAttachedInlinedNode) usage;
+                    final Node equalsNode = inlinedNode.usages().first();
+                    Assert.assertTrue(equalsNode instanceof IntegerEqualsNode);
+                    final Node ifNode = equalsNode.usages().first();
+                    Assert.assertTrue(ifNode instanceof IfNode);
+                    final FixedNode invoke = ((IfNode) ifNode).falseSuccessor().next();
+                    Assert.assertTrue(invoke instanceof Invoke);
+                    final ValueNode callSiteAttach = ((Invoke) invoke).callTarget().arguments().get(1);
+                    Assert.assertTrue(callSiteAttach instanceof CallSiteHandleAttachNode);
+                    final ValueNode callSiteHandle = ((CallSiteHandleAttachNode) callSiteAttach).getToken();
+                    Assert.assertTrue(callSiteHandle instanceof CallSiteHandleNode);
+                    Assert.assertEquals(inlinedNode, callSiteHandle.usages().filter(IsAttachedInlinedNode.class).first());
+                } else if (usage instanceof CallSiteHandleAttachNode) {
+                    // expected, checked in true branch
+                } else {
+                    Assert.fail("Unknown usage");
+                }
+            }
+        }
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
