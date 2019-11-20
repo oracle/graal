@@ -353,6 +353,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         OptimizedAssumption.class,
                         CompilerDirectives.class,
                         GraalCompilerDirectives.class,
+                        InlineToken.class,
                         CompilerAsserts.class,
                         ExactMath.class,
                         ArrayUtils.class,

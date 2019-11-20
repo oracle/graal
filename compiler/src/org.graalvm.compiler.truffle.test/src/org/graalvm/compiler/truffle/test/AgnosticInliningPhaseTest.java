@@ -29,16 +29,11 @@ import java.lang.reflect.Method;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Cancellable;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.NoInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -47,7 +42,6 @@ import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -84,28 +78,6 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     public void tearDown() {
         budgetScope.close();
         agnosticInliningScope.close();
-    }
-
-    @Test
-    public void testInInlinedNode() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNodeTwice(dummy));
-        callTarget.call();
-        final StructuredGraph graph = runLanguageAgnosticInliningPhase(callTarget);
-        // Language agnostic inlining expects this particular pattern to be present in the graph
-        Assert.assertEquals(2, graph.getNodes(IsInlinedNode.TYPE).count());
-        for (IsInlinedNode isInlinedNode : graph.getNodes(IsInlinedNode.TYPE)) {
-            Assert.assertEquals(1, isInlinedNode.usages().count());
-            final Node equals = isInlinedNode.usages().first();
-            Assert.assertTrue(equals instanceof IntegerEqualsNode);
-            Assert.assertEquals(1, equals.usages().count());
-            final Node maybeIfNode = equals.usages().first();
-            Assert.assertTrue(maybeIfNode instanceof IfNode);
-            final IfNode ifnode = (IfNode) maybeIfNode;
-            final Node maybeInvoke = ifnode.falseSuccessor().next();
-            Assert.assertTrue(maybeInvoke instanceof InvokeWithExceptionNode);
-            final InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) maybeInvoke;
-            Assert.assertEquals("callBoundary", invoke.getTargetMethod().getName());
-        }
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {

@@ -30,12 +30,9 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -44,7 +41,6 @@ import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -62,23 +58,6 @@ final class GraphManager {
         this.partialEvaluator = partialEvaluator;
         this.rootIR = ir;
         this.callNodeProvider = callNodeProvider;
-    }
-
-    private static void handleIsInlinedNode(Invoke invoke) {
-        final Node predecessor = invoke.predecessor();
-        if (!(predecessor instanceof BeginNode)) {
-            return;
-        }
-        final Node maybeIfNode = predecessor.predecessor();
-        if (!(maybeIfNode instanceof IfNode)) {
-            return;
-        }
-        final LogicNode condition = ((IfNode) maybeIfNode).condition();
-        condition.inputs().forEach(node -> {
-            if (node instanceof IsInlinedNode) {
-                ((IsInlinedNode) node).inlined();
-            }
-        });
     }
 
     Entry get(CompilableTruffleAST truffleAST) {
@@ -106,7 +85,6 @@ final class GraphManager {
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
-        handleIsInlinedNode(invoke);
         final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
         return duplicates;

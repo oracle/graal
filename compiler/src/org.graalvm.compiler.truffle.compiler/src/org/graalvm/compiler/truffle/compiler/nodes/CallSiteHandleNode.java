@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,41 +30,20 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
-/**
- * This node is used by
- * {@link org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase
- * language-agnostic inlining} to differentiate between calls that were inlined (and thus do not
- * need any special handling code for the call) from those that were not. The
- * {@link org.graalvm.compiler.truffle.compiler.PartialEvaluator} removes all instances of this
- * class from the graph during the Truffle tier.
- *
- */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class IsInlinedNode extends ValueNode implements IterableNodeType {
-    public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
+public final class CallSiteHandleNode extends ValueNode implements IterableNodeType {
 
-    protected IsInlinedNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+    public static final NodeClass<CallSiteHandleNode> TYPE = NodeClass.create(CallSiteHandleNode.class);
+
+    protected CallSiteHandleNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Int));
     }
 
-    public static IsInlinedNode create() {
-        return new IsInlinedNode();
-    }
-
-    public void inlined() {
-        replaceWith(true);
-    }
-
-    public void notInlined() {
-        replaceWith(false);
-    }
-
-    private void replaceWith(boolean b) {
-        replaceAtUsagesAndDelete(graph().unique(ConstantNode.forBoolean(b)));
+    public static CallSiteHandleNode create() {
+        return new CallSiteHandleNode();
     }
 }
