@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.core.posixsubst.jdk11.darwin;
 
-import java.net.SocketException;
+import static com.oracle.svm.core.posixsubst.headers.NetinetIn.IPPROTO_TCP;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPALIVE;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPCNT;
+import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPINTVL;
+import static com.oracle.svm.core.posixsubst.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.handleError;
+import static com.oracle.svm.core.posixsubst.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.socketOptionSupported;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.headers.Errno;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Socket;
-import com.oracle.svm.core.posixsubst.PosixJavaNetClose;
+import java.net.SocketException;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -41,12 +40,13 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
-import static com.oracle.svm.core.posixsubst.headers.NetinetIn.IPPROTO_TCP;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPALIVE;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPCNT;
-import static com.oracle.svm.core.posixsubst.headers.NetinetTcp.TCP_KEEPINTVL;
-import static com.oracle.svm.core.posixsubst.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.handleError;
-import static com.oracle.svm.core.posixsubst.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.socketOptionSupported;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posixsubst.PosixJavaNetClose;
+import com.oracle.svm.core.posixsubst.headers.Errno;
+import com.oracle.svm.core.posixsubst.headers.Socket;
 
 @TargetClass(className = "jdk.net.MacOSXSocketOptions", onlyWith = JDK11OrLater.class)
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class})

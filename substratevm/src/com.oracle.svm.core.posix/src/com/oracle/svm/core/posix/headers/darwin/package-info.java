@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,44 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
+@Platforms({InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
+package com.oracle.svm.core.posix.headers.darwin;
 
-// Checkstyle: stop
-
-/**
- * Definitions manually translated from the C header file sys/uio.h.
- */
-@CContext(PosixDirectives.class)
-public class Uio {
-
-    /** Structure for scatter/gather I/O. */
-    @CStruct(addStructKeyword = true)
-    public interface iovec extends PointerBase {
-
-        @CField
-        PointerBase iov_base();
-
-        @CField
-        void iov_base(PointerBase value);
-
-        @CField
-        UnsignedWord iov_len();
-
-        @CField
-        void iov_len(UnsignedWord value);
-    }
-
-    @CFunction
-    public static native SignedWord readv(int fd, iovec iovec, int count);
-
-    @CFunction
-    public static native SignedWord writev(int fd, iovec iovec, int count);
-}
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;

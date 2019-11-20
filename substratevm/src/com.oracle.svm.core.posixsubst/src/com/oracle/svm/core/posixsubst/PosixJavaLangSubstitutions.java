@@ -54,7 +54,7 @@ import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
 
 @TargetClass(className = "java.lang.ProcessEnvironment")

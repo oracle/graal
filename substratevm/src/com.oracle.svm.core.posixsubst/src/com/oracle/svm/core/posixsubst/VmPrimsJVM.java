@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
-import com.oracle.svm.core.posix.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Socket;
 
 /** Native methods (and macros) from src/share/vm/prims/jvm.cpp translated to Java. */
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})

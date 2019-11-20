@@ -31,7 +31,6 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 
-import com.oracle.svm.core.util.Utf8;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platforms;
@@ -45,16 +44,17 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Socket;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.NetIf;
 import com.oracle.svm.core.posixsubst.headers.NetinetIn;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.core.util.Utf8;
 
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */

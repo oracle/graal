@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -41,14 +41,14 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.posix.headers.Uio.iovec;
+import com.oracle.svm.core.posixsubst.headers.Uio.iovec;
 
 // Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file sys/socket.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Socket {
 
     @CConstant

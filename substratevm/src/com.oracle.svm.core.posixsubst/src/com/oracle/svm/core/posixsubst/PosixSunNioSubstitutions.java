@@ -26,20 +26,20 @@ package com.oracle.svm.core.posixsubst;
 
 import java.io.IOException;
 
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Poll;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 
 /* Do not reformat commented-out code: @formatter:off */
 

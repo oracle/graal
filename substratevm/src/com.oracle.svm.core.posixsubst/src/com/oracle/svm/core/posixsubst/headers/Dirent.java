@@ -33,14 +33,12 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 //Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file dirent.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Dirent {
 
     @CStruct(addStructKeyword = true)

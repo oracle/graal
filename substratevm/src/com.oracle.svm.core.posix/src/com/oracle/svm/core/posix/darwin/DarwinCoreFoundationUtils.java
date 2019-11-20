@@ -25,14 +25,11 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public final class DarwinCoreFoundationUtils {
 
     private DarwinCoreFoundationUtils() {

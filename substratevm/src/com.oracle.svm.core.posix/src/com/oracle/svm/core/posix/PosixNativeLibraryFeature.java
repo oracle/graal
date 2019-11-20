@@ -37,10 +37,10 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -51,7 +51,6 @@ import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 class PosixNativeLibraryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -89,10 +88,10 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 }
                 rlp.set_rlim_cur(newValue);
                 if (Resource.setrlimit(Resource.RLIMIT_NOFILE(), rlp) != 0) {
-                    Log.log().string("setrlimit to increase file descriptor limit failed, errno ").signed(Errno.errno()).newline();
+                    Log.log().string("setrlimit to increase file descriptor limit failed, errno ").signed(CErrorNumber.getCErrorNumber()).newline();
                 }
             } else {
-                Log.log().string("getrlimit failed, errno ").signed(Errno.errno()).newline();
+                Log.log().string("getrlimit failed, errno ").signed(CErrorNumber.getCErrorNumber()).newline();
             }
         }
 
@@ -203,14 +202,11 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 return findBuiltinSymbol(name);
             }
             assert dlhandle.isNonNull();
-            try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-                return Dlfcn.dlsym(dlhandle, symbol.get());
-            }
+            return PosixUtils.dlsym(dlhandle, name);
         }
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(className = "java.io.UnixFileSystem")
 final class Target_java_io_UnixFileSystem_JNI {
     @Alias

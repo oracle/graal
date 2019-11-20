@@ -22,65 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file grp.h.
+ * Definitions manually translated from the C header file sys/uio.h.
  */
-@CContext(PosixDirectives.class)
-public class Grp {
+@CContext(PosixSubstDirectives.class)
+public class Uio {
+
+    /** Structure for scatter/gather I/O. */
     @CStruct(addStructKeyword = true)
-    public interface group extends PointerBase {
-        @CField
-        CCharPointer gr_name();
+    public interface iovec extends PointerBase {
 
         @CField
-        CCharPointer gr_passwd();
+        PointerBase iov_base();
 
         @CField
-        int gr_gid();
+        void iov_base(PointerBase value);
 
         @CField
-        CCharPointerPointer gr_mem();
-    }
+        UnsignedWord iov_len();
 
-    @CPointerTo(group.class)
-    public interface groupPointer extends PointerBase {
-        group read();
-
-        void write(PointerBase value);
+        @CField
+        void iov_len(UnsignedWord value);
     }
 
     @CFunction
-    public static native void setgrent();
+    public static native SignedWord readv(int fd, iovec iovec, int count);
 
     @CFunction
-    public static native void endgrent();
-
-    @CFunction
-    public static native group getgrent();
-
-    @CFunction
-    public static native group getgrgid(int gid);
-
-    @CFunction
-    public static native group getgrnam(CCharPointer name);
-
-    @CFunction
-    public static native int getgrgid_r(int gid, group resultbuf, CCharPointer buffer, UnsignedWord buflen, groupPointer result);
-
-    @CFunction
-    public static native int getgrnam_r(CCharPointer name, group resultbuf, CCharPointer buffer, UnsignedWord buflen, groupPointer result);
+    public static native SignedWord writev(int fd, iovec iovec, int count);
 }

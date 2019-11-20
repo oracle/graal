@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -36,9 +36,11 @@ import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AND_SUBSTITUTION
 import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.posix.headers.Signal;
+
 /** Definitions hand-translated from <spawn.h>. */
 @Platforms({DARWIN_JNI_AND_SUBSTITUTIONS.class, LINUX_JNI_AND_SUBSTITUTIONS.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Spawn {
     /* Allow lower-case type names: Checkstyle: stop. */
 

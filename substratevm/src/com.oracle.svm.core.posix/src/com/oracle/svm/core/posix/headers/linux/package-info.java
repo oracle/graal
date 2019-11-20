@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
+@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class})
+package com.oracle.svm.core.posix.headers.linux;
 
-/** Declarations of method from <sys/syscall.h>. */
-@CContext(PosixDirectives.class)
-public class Syscall {
-
-    @CFunction
-    public static native int syscall(int number);
-
-    @CFunction
-    public static native int syscall(int number, int arg1);
-
-    @CFunction
-    public static native int syscall(int number, int arg1, int arg2);
-
-    @CFunction
-    public static native int syscall(int number, int arg1, int arg2, int arg3);
-}
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;

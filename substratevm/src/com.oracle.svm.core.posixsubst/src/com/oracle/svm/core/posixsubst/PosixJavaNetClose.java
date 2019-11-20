@@ -37,11 +37,11 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
-import com.oracle.svm.core.posix.headers.Socket;
-import com.oracle.svm.core.posix.headers.Uio;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Poll;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Uio;
 
 /**
  * Interrupt blocking operations when a file descriptor is closed.

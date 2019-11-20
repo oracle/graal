@@ -33,12 +33,12 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Uio.iovec;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
+import com.oracle.svm.core.posixsubst.headers.Uio.iovec;
 
 //Checkstyle: stop
 
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 @Platforms(DeprecatedPlatform.DARWIN_SUBSTITUTION.class)
 public class DarwinSendfile {
 

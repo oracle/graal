@@ -31,12 +31,9 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
-import static com.oracle.svm.core.posix.headers.Fcntl.NoTransitions.open;
 import static com.oracle.svm.core.posix.headers.LibC.free;
 import static com.oracle.svm.core.posix.headers.LibC.malloc;
 import static com.oracle.svm.core.posix.headers.LibC.memcpy;
-import static com.oracle.svm.core.posix.headers.Stat.fstat_no_transition;
-import static com.oracle.svm.core.posix.headers.UnistdNoTransitions.close;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
@@ -46,13 +43,11 @@ import static org.graalvm.word.WordFactory.unsigned;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -73,13 +68,12 @@ import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stat;
-import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.linux.LinuxStat;
 
 import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -166,7 +160,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
              *
              * NOTE: we do not use /proc/self/exe because it breaks with some tools like Valgrind.
              */
-            int mapfd = open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
+            int mapfd = Fcntl.NoTransitions.open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
             if (mapfd == -1) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
@@ -175,25 +169,25 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             final CLongPointer offset = StackValue.get(CLongPointer.class);
             final CLongPointer inode = StackValue.get(CLongPointer.class);
             boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
-            close(mapfd);
+            Unistd.NoTransitions.close(mapfd);
             if (!found) {
                 free(buffer);
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            Stat.stat stat = StackValue.get(Stat.stat.class);
-            int opened = open(buffer, Fcntl.O_RDONLY(), 0);
+            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
+            int opened = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
             if (opened < 0) {
                 free(buffer);
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
-            if (fstat_no_transition(opened, stat) != 0) {
+            if (LinuxStat.NoTransitions.fstat64(opened, stat) != 0) {
                 free(buffer);
-                close(opened);
+                Unistd.NoTransitions.close(opened);
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             if (stat.st_ino() != inode.read()) {
                 boolean ignore = false;
-                int versionfd = open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
+                int versionfd = Fcntl.NoTransitions.open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
                 if (versionfd != -1) {
                     if (PosixUtils.readEntirely(versionfd, buffer, MAX_PATHLEN)) {
                         /*
@@ -203,11 +197,11 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                          */
                         ignore = LibC.strstr(buffer, PROC_VERSION_WSL_SUBSTRING.get()).isNonNull();
                     }
-                    close(versionfd);
+                    Unistd.NoTransitions.close(versionfd);
                 }
                 if (!ignore) {
                     free(buffer);
-                    close(opened);
+                    Unistd.NoTransitions.close(opened);
                     return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
                 }
             }
@@ -221,7 +215,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             if (previous.equal(fd)) {
                 fd = signed(opened);
             } else {
-                UnistdNoTransitions.close(opened);
+                Unistd.NoTransitions.close(opened);
                 fd = previous;
             }
         }

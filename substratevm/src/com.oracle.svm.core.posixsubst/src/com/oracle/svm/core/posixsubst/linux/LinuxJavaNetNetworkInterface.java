@@ -32,8 +32,6 @@ import java.net.SocketException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -43,28 +41,30 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Socket;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posixsubst.JavaNetNetworkInterface;
 import com.oracle.svm.core.posixsubst.headers.ArpaInet;
+import com.oracle.svm.core.posixsubst.headers.Errno;
 import com.oracle.svm.core.posixsubst.headers.Ioctl;
 import com.oracle.svm.core.posixsubst.headers.NetIf;
 import com.oracle.svm.core.posixsubst.headers.NetinetIn;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
+import com.oracle.svm.core.posixsubst.headers.Socket;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 
 /* { Do not format quoted code: @formatter:off */
 /* { Allow non-standard names: Checkstyle: stop */
 
 @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class LinuxJavaNetNetworkInterface {
 
     /** Register the implementation. */

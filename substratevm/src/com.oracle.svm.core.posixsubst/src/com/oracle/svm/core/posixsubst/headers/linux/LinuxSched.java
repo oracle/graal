@@ -32,9 +32,9 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
 
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class})
 public class LinuxSched {
     // Checkstyle: stop

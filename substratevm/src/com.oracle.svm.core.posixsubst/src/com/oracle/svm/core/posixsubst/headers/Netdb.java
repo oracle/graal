@@ -35,9 +35,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Socket;
-
 // Allow methods with non-standard names: Checkstyle: stop
 
 /*
@@ -45,7 +42,7 @@ import com.oracle.svm.core.posix.headers.Socket;
  */
 
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public final class Netdb {
 
     private Netdb() {

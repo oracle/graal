@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.posixsubst.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.PointerBase;
+
+//Checkstyle: stop
 
 /**
- * Contains definitions from sys/file.h that we need.
+ * Contains the definitions from stdio.h that we actually needed.
  */
-@CContext(PosixDirectives.class)
-public class File {
+@CContext(PosixSubstDirectives.class)
+public class Stdio {
+
+    public interface FILE extends PointerBase {
+    }
 
     @CFunction
-    public static native int flock(int fd, int operation);
+    public static native int rename(CCharPointer old, CCharPointer _new);
+
+    @CFunction
+    public static native int renameat(int oldfd, CCharPointer old, int newfd, CCharPointer _new);
+
+    @CConstant
+    public static native int EOF();
+
+    @CFunction
+    public static native FILE fopen(CCharPointer filename, CCharPointer modes);
+
+    @CFunction
+    public static native int fclose(FILE stream);
+
+    @CFunction
+    public static native int remove(CCharPointer path);
 }

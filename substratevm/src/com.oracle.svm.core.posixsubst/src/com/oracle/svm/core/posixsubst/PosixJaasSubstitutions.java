@@ -36,12 +36,12 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Pwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwd;
-import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Errno;
+import com.oracle.svm.core.posixsubst.headers.Pwd;
+import com.oracle.svm.core.posixsubst.headers.Pwd.passwd;
+import com.oracle.svm.core.posixsubst.headers.Pwd.passwdPointer;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 
 /**
  * Substitutions for the Java Authentication and Authorization Service (JAAS,

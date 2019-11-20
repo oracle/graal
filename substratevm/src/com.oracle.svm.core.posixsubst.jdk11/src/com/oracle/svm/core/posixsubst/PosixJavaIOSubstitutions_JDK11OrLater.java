@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.headers.Limits;
-import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posixsubst.headers.Unistd;
 
 /** Dummy class to have a class with the file's name. */
 public final class PosixJavaIOSubstitutions_JDK11OrLater {

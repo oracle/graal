@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
 
+@Platforms(Platform.WINDOWS.class)
+package com.oracle.svm.core.windows.headers;
+
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
-/* Allow underscores in names: Checkstyle: stop. */
-
-@CContext(PosixDirectives.class)
-public class Paths {
-
-    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
-    @CConstant
-    public static native String _PATH_VARTMP();
-}

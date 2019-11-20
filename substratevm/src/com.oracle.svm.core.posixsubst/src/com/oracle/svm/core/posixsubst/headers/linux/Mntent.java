@@ -33,15 +33,15 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Stdio.FILE;
+import com.oracle.svm.core.posixsubst.headers.PosixSubstDirectives;
+import com.oracle.svm.core.posixsubst.headers.Stdio.FILE;
 
 //Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file mntent.h.
  */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
 public class Mntent {
 

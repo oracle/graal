@@ -32,7 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file sys/mman.h.

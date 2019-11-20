@@ -23,7 +23,7 @@
  * questions.
  */
 
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
+@Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
 package com.oracle.svm.core.posixsubst.headers.darwin;
 
 import org.graalvm.nativeimage.Platforms;

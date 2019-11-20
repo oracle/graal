@@ -29,13 +29,11 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 //Allow methods with non-standard names: Checkstyle: stop
 
 /** The definitions I need, manually translated from the C header file. */
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class NetinetTcp {
 
     @CConstant

@@ -30,10 +30,8 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION.class, DeprecatedPlatform.LINUX_SUBSTITUTION.class})
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class SysParam {
 
     /*

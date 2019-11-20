@@ -33,10 +33,8 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-
 /** Definitions manually translated from the C header file termios.h. */
-@CContext(PosixDirectives.class)
+@CContext(PosixSubstDirectives.class)
 public class Termios {
     // { Allow names with all upper-case and underscores: Checkstyle: stop
 
