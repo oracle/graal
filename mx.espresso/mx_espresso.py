@@ -106,7 +106,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
 ))
 
-mx_sdk_vm.register_vm_config('espresso.svm', ['cmp', 'java', 'nfi', 'sdk', 'svm', 'tfl', 'tflm'], _suite)
 
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
@@ -114,3 +113,11 @@ mx.update_commands(_suite, {
     'espresso-meta': [_run_espresso_meta, ''],
     'espresso-playground': [_run_espresso_playground, ''],
 })
+
+# Build configs
+# pylint: disable=bad-whitespace
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'nfi', 'sdk', 'tfl'                                        ], _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'nfi', 'sdk', 'tfl', 'cmp'                                 ], _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee'                        ], _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm'         , 'tflm'], _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmee', 'tflm'], _suite, env_file='native-ee')
