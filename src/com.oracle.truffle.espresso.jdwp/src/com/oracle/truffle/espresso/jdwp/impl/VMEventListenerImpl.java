@@ -277,6 +277,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(info.getClassId());
         stream.writeLong(info.getMethodId());
         stream.writeLong(info.getBci());
+        JDWPLogger.log("Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy(), JDWPLogger.LogLevel.STEPPING);
         connection.queuePacket(stream);
     }
 

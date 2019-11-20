@@ -1157,7 +1157,7 @@ class JDWP {
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
-                int suspended = ThreadSuspension.getSuspensionCount(thread) > 0 ? 0x1 : 0x0;
+                int suspended = ThreadSuspension.getSuspensionCount(thread) > 0 ? 1 : 0;
                 reply.writeInt(suspended);
 
                 JDWPLogger.log("status command for thread: " + context.getThreadName(thread) + ", status: " + threadStatus + ", suspended: " + suspended, JDWPLogger.LogLevel.THREAD);
@@ -1237,15 +1237,18 @@ class JDWP {
 
                 if (suspendedInfo == null) {
                     JDWPLogger.log("THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
-
                     reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
                     return new JDWPResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
                     JDWPLogger.log("Unknown suspension info for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
-
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
+                    if (suspendedInfo instanceof UnknownSuspendedInfo) {
+                        // we can't return any frames for a not yet suspended thread
+                        reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
+                        return new JDWPResult(reply);
+                    }
                 }
 
                 JDWPCallFrame[] frames = suspendedInfo.getStackFrames();
@@ -1255,7 +1258,6 @@ class JDWP {
                 }
                 reply.writeInt(length);
                 JDWPLogger.log("returning " + length + " frames for thread: " + controller.getContext().getThreadName(thread), JDWPLogger.LogLevel.THREAD);
-
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     JDWPCallFrame frame = frames[i];
