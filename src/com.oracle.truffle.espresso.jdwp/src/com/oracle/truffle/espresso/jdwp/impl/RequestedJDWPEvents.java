@@ -103,6 +103,7 @@ public class RequestedJDWPEvents {
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 futures.add(callback.createExceptionBreakpoint(info));
+                JDWPLogger.log("Submitting new exception breakpoint", JDWPLogger.LogLevel.STEPPING);
                 reply = toReply(packet);
                 break;
             case CLASS_PREPARE:
@@ -110,6 +111,7 @@ public class RequestedJDWPEvents {
                 if (callable != null) {
                     futures.add(callable);
                 }
+                JDWPLogger.log("Class prepare request received", JDWPLogger.LogLevel.PACKET);
                 reply = toReply(packet);
                 break;
             case FIELD_ACCESS:
@@ -117,6 +119,8 @@ public class RequestedJDWPEvents {
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setAccessBreakpoint();
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                String location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
+                JDWPLogger.log("Submitting field access breakpoint: " + location, JDWPLogger.LogLevel.STEPPING);
                 eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
@@ -125,6 +129,8 @@ public class RequestedJDWPEvents {
                 fieldBreakpointInfo.addSuspendPolicy(suspendPolicy);
                 fieldBreakpointInfo.setModificationBreakpoint();
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
+                location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
+                JDWPLogger.log("Submitting field modification breakpoint: " + location, JDWPLogger.LogLevel.STEPPING);
                 eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
@@ -176,18 +182,22 @@ public class RequestedJDWPEvents {
                 break;
             case 3: // limit to specific thread
                 long threadId = input.readLong();
-                Object thread = context.getIds().fromId((int) threadId);
+                Object thread = ids.fromId((int) threadId);
                 filter.addThread(thread);
+                JDWPLogger.log("limiting to thread: " + context.getThreadName(thread), JDWPLogger.LogLevel.PACKET);
                 break;
             case 4:
                 long refTypeId = input.readLong();
-                filter.addRefTypeLimit((KlassRef) ids.fromId((int) refTypeId));
+                KlassRef klass = (KlassRef) ids.fromId((int) refTypeId);
+                filter.addRefTypeLimit(klass);
+                JDWPLogger.log("RefType limit: " + klass, JDWPLogger.LogLevel.PACKET);
                 break;
             case 5: // class positive pattern
                 String classPattern = input.readString();
                 try {
                     Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
                     filter.addPositivePattern(pattern);
+                    JDWPLogger.log("adding positive refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.PACKET);
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
                 }
@@ -197,6 +207,7 @@ public class RequestedJDWPEvents {
                 try {
                     Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
                     filter.addExcludePattern(pattern);
+                    JDWPLogger.log("adding negative refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.PACKET);
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
                 }
@@ -207,7 +218,7 @@ public class RequestedJDWPEvents {
                 long methodId = input.readLong();
                 long bci = input.readLong();
 
-                KlassRef klass = (KlassRef) ids.fromId((int) classId);
+                klass = (KlassRef) ids.fromId((int) classId);
                 String slashName = klass.getTypeAsString();
                 MethodRef method = (MethodRef) ids.fromId((int) methodId);
                 int line = method.BCItoLineNumber((int) bci);
@@ -219,31 +230,34 @@ public class RequestedJDWPEvents {
                 refTypeId = input.readLong();
                 klass = null;
                 if (refTypeId != 0) {
-                    klass = (KlassRef) context.getIds().fromId((int) refTypeId);
+                    klass = (KlassRef) ids.fromId((int) refTypeId);
                 }
 
                 boolean caught = input.readBoolean();
                 boolean unCaught = input.readBoolean();
                 ExceptionBreakpointInfo exceptionBreakpointInfo = new ExceptionBreakpointInfo(filter, klass, caught, unCaught);
                 filter.addBreakpointInfo(exceptionBreakpointInfo);
+                JDWPLogger.log("adding exception filter: caught=" + caught + ", uncaught=" + unCaught, JDWPLogger.LogLevel.PACKET);
                 break;
             case 9: // limit to specific field
                 refTypeId = input.readLong();
                 long fieldId = input.readLong();
-                klass = (KlassRef) context.getIds().fromId((int) refTypeId);
-                FieldRef field = (FieldRef) context.getIds().fromId((int) fieldId);
+                klass = (KlassRef) ids.fromId((int) refTypeId);
+                FieldRef field = (FieldRef) ids.fromId((int) fieldId);
 
                 FieldBreakpointInfo fieldBreakpointInfo = new FieldBreakpointInfo(filter, klass, field);
                 filter.addBreakpointInfo(fieldBreakpointInfo);
+                JDWPLogger.log("limiting to field: " + field.getNameAsString(), JDWPLogger.LogLevel.PACKET);
                 break;
             case 10:
                 filter.setStepping(true);
                 threadId = input.readLong();
-                thread = context.getIds().fromId((int) threadId);
+                thread = ids.fromId((int) threadId);
 
-                /*int size =*/ input.readInt();
-
+                int size = input.readInt();
                 int depth = input.readInt();
+
+                JDWPLogger.log("Step command: size= " + size + ", depth=" + depth, JDWPLogger.LogLevel.PACKET);
                 switch (depth) {
                     case SteppingConstants.INTO:
                         callback.stepInto(thread, filter.getRequestId());

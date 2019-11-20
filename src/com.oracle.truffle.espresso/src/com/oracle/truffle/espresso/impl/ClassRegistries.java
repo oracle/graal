@@ -75,12 +75,20 @@ public final class ClassRegistries {
 
     @TruffleBoundary
     public Klass[] getLoadedClassesByLoader(StaticObject classLoader) {
+        if (classLoader == StaticObject.NULL) {
+            return bootClassRegistry.classes.values().toArray(new Klass[0]);
+        }
         return registries.get(classLoader).getLoadedKlasses();
     }
 
     @TruffleBoundary
     public Klass[] findLoadedClassAny(Symbol<Type> type) {
         ArrayList<Klass> klasses = new ArrayList<>();
+        // look in boot class registry
+        if (bootClassRegistry.classes.containsKey(type)) {
+            klasses.add(bootClassRegistry.classes.get(type));
+        }
+        // continue search in all other registries
         for (ClassRegistry registry : registries.values()) {
             if (registry!= null && registry.classes != null && registry.classes.containsKey(type)) {
                 klasses.add(registry.classes.get(type));
@@ -92,6 +100,9 @@ public final class ClassRegistries {
     @TruffleBoundary
     public Klass[] getAllLoadedClasses() {
         ArrayList<Klass> list = new ArrayList<>();
+        // add classes from boot registry
+        list.addAll(bootClassRegistry.classes.values());
+        // add classes from all other registries
         for (ClassRegistry registry : registries.values()) {
             list.addAll(registry.classes.values());
         }

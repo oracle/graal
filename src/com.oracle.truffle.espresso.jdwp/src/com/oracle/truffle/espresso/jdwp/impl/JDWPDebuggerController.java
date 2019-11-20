@@ -83,9 +83,6 @@ public class JDWPDebuggerController {
     public void initialize(TruffleLanguage.Env languageEnv, JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
         this.options = jdwpOptions;
         this.languageEnv = languageEnv;
-        if (!reconnect) {
-            instrument.init(context);
-        }
         this.ids = context.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
@@ -93,6 +90,10 @@ public class JDWPDebuggerController {
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
         debuggerSession.suspendNextExecution();
+
+        if (!reconnect) {
+            instrument.init(context);
+        }
     }
 
     public void reInitialize(JDWPOptions jdwpOptions, JDWPContext context) {
@@ -174,7 +175,7 @@ public class JDWPDebuggerController {
             // if so, we need to STEP_OUT to reach the caller
             // location
             JDWPCallFrame currentFrame = susp.getStackFrames()[0];
-            MethodRef method = (MethodRef) getContext().getIds().fromId((int) currentFrame.getMethodId());
+            MethodRef method = (MethodRef) ids.fromId((int) currentFrame.getMethodId());
             if (method.isLastLine(currentFrame.getCodeIndex())) {
                 susp.getEvent().prepareStepOut(STEP_CONFIG);// .prepareStepOver(STEP_CONFIG);
             } else {
@@ -350,11 +351,11 @@ public class JDWPDebuggerController {
             }
 
             Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
-            JDWPLogger.log("Suspended at: " + event.getSourceSection().toString() + " in thread: " + getThreadName(currentThread), JDWPLogger.LogLevel.THREAD);
+            JDWPLogger.log("Suspended at: " + event.getSourceSection().toString() + " in thread: " + getThreadName(currentThread), JDWPLogger.LogLevel.STEPPING);
 
             if (commandRequestIds.get(currentThread) != null) {
                 if (checkExclusionFilters(event, currentThread)) {
-                    JDWPLogger.log("not suspending here: " + event.getSourceSection(), JDWPLogger.LogLevel.THREAD);
+                    JDWPLogger.log("not suspending here: " + event.getSourceSection(), JDWPLogger.LogLevel.STEPPING);
                     return;
                 }
             }
@@ -392,26 +393,27 @@ public class JDWPDebuggerController {
                     KlassRef klass = info.getKlass();
                     Throwable exception = getRawException(event.getException());
                     Object guestException = getContext().getGuestException(exception);
-
+                    JDWPLogger.log("checking exception breakpoint for exception: " + exception, JDWPLogger.LogLevel.STEPPING);
                     // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is completed
                     // Currently, the Truffle Debug API doesn't filter on type, so we end up here having to check
                     // also, the ignore count set on the breakpoint will not work properly due to this.
                     // we need to do a real type check here, since subclasses of the specified exception
                     // should also hit
                     if (klass == null || getContext().isInstanceOf(guestException, klass)) {
+                        JDWPLogger.log("Exception type matched the klass type: " + klass.getNameAsString(), JDWPLogger.LogLevel.STEPPING);
                         // check filters if we should not suspend
                         Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
                         // verify include patterns
-                        if (positivePatterns == null || matchLocation(positivePatterns, callFrames[0])) {
+                        if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
                             // verify exclude patterns
                             Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
-                            if (negativePatterns == null || !matchLocation(negativePatterns, callFrames[0])) {
+                            if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
                                 hit = true;
                             }
                         }
                     }
                     if (hit) {
-                        JDWPLogger.log("Breakpoint hit in thread: " + getThreadName(currentThread), JDWPLogger.LogLevel.THREAD);
+                        JDWPLogger.log("Breakpoint hit in thread: " + getThreadName(currentThread), JDWPLogger.LogLevel.STEPPING);
 
                         jobs.add(new Callable<Void>() {
                             @Override
@@ -455,11 +457,12 @@ public class JDWPDebuggerController {
             suspend(callFrames[0], currentThread, suspendPolicy, jobs);
         }
 
-        private boolean matchLocation(Pattern[] positivePatterns, JDWPCallFrame callFrame) {
-            KlassRef klass = (KlassRef) getContext().getIds().fromId((int) callFrame.getClassId());
+        private boolean matchLocation(Pattern[] patterns, JDWPCallFrame callFrame) {
+            KlassRef klass = (KlassRef) ids.fromId((int) callFrame.getClassId());
 
-            for (Pattern positivePattern : positivePatterns) {
-                if (positivePattern.pattern().matches(klass.getNameAsString().replace('/', '.')))
+            for (Pattern pattern : patterns) {
+                JDWPLogger.log("Matching klass: " + klass.getNameAsString() + " against pattern: " + pattern.pattern(), JDWPLogger.LogLevel.STEPPING);
+                if (pattern.pattern().matches(klass.getNameAsString().replace('/', '.')))
                     return true;
             }
             return false;
