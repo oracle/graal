@@ -696,6 +696,19 @@ public class BytecodeParser implements GraphBuilderContext {
                                         callee, n);
                     }
                 }
+            } else {
+                // root compiled intrinsic
+                int invalidBCIsInRootCompiledIntrinsic = 0;
+                for (Node n : parser.graph.getNewNodes(mark)) {
+                    if (n.isAlive() && n instanceof FrameState) {
+                        if (((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                            invalidBCIsInRootCompiledIntrinsic++;
+                        }
+                    }
+                    GraalError.guarantee(invalidBCIsInRootCompiledIntrinsic <= 1, "Root compiled intrinsic %s must at least produce 1 invalid BCI state, however %d where found.", parser.method,
+                                    invalidBCIsInRootCompiledIntrinsic);
+                }
+
             }
         }
 

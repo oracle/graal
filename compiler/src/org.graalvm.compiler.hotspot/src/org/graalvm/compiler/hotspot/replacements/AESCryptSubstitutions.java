@@ -69,27 +69,6 @@ public class AESCryptSubstitutions {
      */
     static final int AES_BLOCK_SIZE_IN_BYTES = 16;
 
-    static void encryptBlock(Word in, Word out, Pointer key) {
-        encryptBlockStub(ENCRYPT_BLOCK, in, out, key);
-    }
-
-    static void decryptBlock(Word in, Word out, Pointer key) {
-        decryptBlockStub(DECRYPT_BLOCK, in, out, key);
-    }
-
-    static void decryptBlockWithOriginalKey(Word in, Word out, Pointer key, Pointer originalKey) {
-        decryptBlockWithOriginalKeyStub(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, in, out, key, originalKey);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    public static native void decryptBlockWithOriginalKeyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer originalKey);
-
     @Fold
     static long kOffset(@Fold.InjectedParameter IntrinsicContext context) {
         return HotSpotReplacementsUtil.getFieldOffset(aesCryptType(context), "K");
@@ -145,14 +124,14 @@ public class AESCryptSubstitutions {
         Word inAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(in, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + inOffset));
         Word outAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(out, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + outOffset));
         if (encrypt) {
-            encryptBlock(inAddr, outAddr, kAddr);
+            encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
         } else {
             if (withOriginalKey) {
                 Object lastKeyObject = RawLoadNode.load(realReceiver, lastKeyOffset(INJECTED_INTRINSIC_CONTEXT), JavaKind.Object, LocationIdentity.any());
                 Pointer lastKeyAddr = Word.objectToTrackedPointer(lastKeyObject).add(getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte));
-                decryptBlockWithOriginalKey(inAddr, outAddr, kAddr, lastKeyAddr);
+                decryptBlockWithOriginalKeyStub(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, inAddr, outAddr, kAddr, lastKeyAddr);
             } else {
-                decryptBlock(inAddr, outAddr, kAddr);
+                decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
             }
         }
     }
@@ -166,4 +145,12 @@ public class AESCryptSubstitutions {
         }
     }
 
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void decryptBlockWithOriginalKeyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Pointer key, Pointer originalKey);
 }
