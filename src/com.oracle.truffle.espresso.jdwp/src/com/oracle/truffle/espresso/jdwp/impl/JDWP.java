@@ -194,6 +194,23 @@ class JDWP {
             }
         }
 
+        static class DISPOSE_OBJECTS {
+            public static final int ID = 14;
+
+            static JDWPResult createReply(Packet packet) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                // TODO(Gregersen) - currently, we don't free up IDs
+                int count = input.readInt();
+                for (int i = 0; i < count; i++) {
+                    long objectID = input.readLong();
+                    int refCount = input.readInt();
+                }
+                return new JDWPResult(reply);
+            }
+        }
+
         static class CAPABILITIES_NEW {
             public static final int ID = 17;
 
