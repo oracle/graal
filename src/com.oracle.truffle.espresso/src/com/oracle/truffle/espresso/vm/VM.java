@@ -33,6 +33,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -144,6 +145,21 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private @Word long vmPtr;
 
+    private Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
+        @Override
+        public Object call(Object... args) {
+            try {
+                return VM.this.lookupVmImpl((String) args[0]);
+            } catch (ClassCastException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Throwable e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+    });
+
     // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
     // interface (libjvm).
     // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
@@ -191,20 +207,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "getJavaVM",
                             "(env): sint64");
 
-            Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
-                @Override
-                public Object call(Object... args) {
-                    try {
-                        return VM.this.lookupVmImpl((String) args[0]);
-                    } catch (ClassCastException e) {
-                        throw EspressoError.shouldNotReachHere(e);
-                    } catch (RuntimeException e) {
-                        throw e;
-                    } catch (Throwable e) {
-                        throw EspressoError.shouldNotReachHere(e);
-                    }
-                }
-            });
             this.vmPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
 
             assert this.vmPtr != 0;
@@ -423,6 +425,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject currentThread = getMeta().getContext().getCurrentThread();
         try {
             Target_java_lang_Thread.fromRunnable(currentThread, getMeta(), (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
+            currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, self);
+            Target_java_lang_Thread.incrementThreadCounter(currentThread, getMeta().HIDDEN_THREAD_WAITED_COUNT);
             self.getLock().await(timeout);
         } catch (InterruptedException e) {
             Target_java_lang_Thread.setInterrupt(currentThread, false);
@@ -430,6 +434,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (IllegalMonitorStateException | IllegalArgumentException e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } finally {
+            currentThread.setHiddenField(getMeta().HIDDEN_THREAD_BLOCKED_OBJECT, null);
             Target_java_lang_Thread.toRunnable(currentThread, getMeta(), State.RUNNABLE);
         }
     }
@@ -1361,12 +1366,11 @@ public final class VM extends NativeEnv implements ContextAccess {
      *
      * @param array the array
      * @param index the index
+     * @throws NullPointerException If the specified object is null
+     * @throws IllegalArgumentException If the specified object is not an array
+     * @throws ArrayIndexOutOfBoundsException If the specified {@code index} argument is negative,
+     *             or if it is greater than or equal to the length of the specified array
      * @returns the (possibly wrapped) value of the indexed component in the specified array
-     * @exception NullPointerException If the specified object is null
-     * @exception IllegalArgumentException If the specified object is not an array
-     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
-     *                negative, or if it is greater than or equal to the length of the specified
-     *                array
      */
     @VmImpl
     @JniImpl
@@ -1604,7 +1608,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         return Runtime.getRuntime().availableProcessors();
     }
 
-
     @JniImpl
     @VmImpl
     public @Host(Class.class) StaticObject JVM_CurrentLoadedClass() {
@@ -1723,6 +1726,18 @@ public final class VM extends NativeEnv implements ContextAccess {
             systemLoader = systemLoader.getField(getMeta().ClassLoader_parent);
         }
         return false;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(Thread[].class) StaticObject JVM_GetAllThreads(@Host(Class.class) StaticObject unused) {
+        final StaticObject[] threads = getContext().getActiveThreads();
+        return getMeta().Thread.allocateArray(threads.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int index) {
+                return threads[index];
+            }
+        });
     }
 
     // region Management
@@ -1863,11 +1878,121 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.unimplemented("GetInputArguments");
     }
 
+    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds) {
+        assert threadIds.isArray();
+        int numThreads = threadIds.length();
+        for (int i = 0; i < numThreads; ++i) {
+            long tid = threadIds.<long[]> unwrap()[i];
+            if (tid <= 0) {
+                throw meta.throwExWithMessage(IllegalArgumentException.class, "Invalid thread ID entry");
+            }
+        }
+    }
+
+    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray) {
+        // check if the element of infoArray is of type ThreadInfo class
+        Klass component = infoArray.getKlass().getComponentType();
+        if (component == null || !meta.management_ThreadInfo.equals(component)) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "infoArray element type is not ThreadInfo class");
+        }
+    }
+
     @JniImpl
     @VmImpl
     public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray) {
+        Meta meta = getMeta();
+        if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
+            throw meta.throwEx(NullPointerException.class);
+        }
 
-        throw EspressoError.unimplemented();
+        if (maxDepth < -1) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "Invalid maxDepth");
+        }
+
+        validateThreadIdArray(meta, ids);
+        validateThreadInfoArray(meta, infoArray);
+
+        if (ids.length() != infoArray.length()) {
+            throw meta.throwExWithMessage(IllegalArgumentException.class, "The length of the given ThreadInfo array does not match the length of the given array of thread IDs");
+        }
+
+        Method init = meta.management_ThreadInfo.lookupDeclaredMethod(Name.INIT, getSignatures().makeRaw(/* returns */Type._void,
+                        /* t */ Type.Thread,
+                        /* state */ Type._int,
+                        /* lockObj */ Type.Object,
+                        /* lockOwner */Type.Thread,
+                        /* blockedCount */Type._long,
+                        /* blockedTime */Type._long,
+                        /* waitedCount */Type._long,
+                        /* waitedTime */Type._long,
+                        /* StackTraceElement[] */ Type.StackTraceElement_array));
+
+        StaticObject[] activeThreads = getContext().getActiveThreads();
+        StaticObject currentThread = getContext().getCurrentThread();
+        for (int i = 0; i < ids.length(); ++i) {
+            long id = getInterpreterToVM().getArrayLong(i, ids);
+            StaticObject thread = StaticObject.NULL;
+
+            for (int j = 0; j < activeThreads.length; ++j) {
+                if ((long) meta.Thread_tid.get(activeThreads[j]) == id) {
+                    thread = activeThreads[j];
+                    break;
+                }
+            }
+
+            if (StaticObject.isNull(thread)) {
+                getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
+            } else {
+
+                int threadStatus = thread.getIntField(meta.Thread_threadStatus);
+                StaticObject lockObj = StaticObject.NULL;
+                StaticObject lockOwner = StaticObject.NULL;
+                int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
+                if ((threadStatus & mask) != 0) {
+                    lockObj = (StaticObject) thread.getHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT);
+                    if (lockObj == null) {
+                        lockObj = StaticObject.NULL;
+                    }
+                    Thread hostOwner = lockObj.getOwner();
+                    if (hostOwner != null && hostOwner.isAlive()) {
+                        lockOwner = getContext().getGuestThreadFromHost(hostOwner);
+                        if (lockOwner == null) {
+                            lockOwner = StaticObject.NULL;
+                        }
+                    }
+                }
+
+                long blockedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_BLOCKED_COUNT);
+                long waitedCount = Target_java_lang_Thread.getThreadCounter(thread, meta.HIDDEN_THREAD_WAITED_COUNT);
+
+                StaticObject stackTrace;
+                if (maxDepth != 0 && thread == currentThread) {
+                    stackTrace = (StaticObject) getMeta().Throwable_getStackTrace.invokeDirect(getMeta().newThrowable());
+                    if (stackTrace.length() > maxDepth && maxDepth != -1) {
+                        StaticObject[] unwrapped = stackTrace.unwrap();
+                        unwrapped = Arrays.copyOf(unwrapped, maxDepth);
+                        stackTrace = StaticObject.wrap(unwrapped);
+                    }
+                } else {
+                    stackTrace = meta.StackTraceElement.allocateArray(0);
+                }
+
+                StaticObject threadInfo = meta.management_ThreadInfo.allocateInstance();
+                init.invokeDirect( /* this */ threadInfo,
+                                /* t */ thread,
+                                /* state */ threadStatus,
+                                /* lockObj */ lockObj,
+                                /* lockOwner */ lockOwner,
+                                /* blockedCount */ blockedCount,
+                                /* blockedTime */ -1L,
+                                /* waitedCount */ waitedCount,
+                                /* waitedTime */ -1L,
+                                /* StackTraceElement[] */ stackTrace);
+                getInterpreterToVM().setArrayObject(threadInfo, i, infoArray);
+            }
+        }
+
+        return 0; // always 0
     }
 
     @JniImpl
@@ -1878,7 +2003,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public @Host(Object[].class) StaticObject GetMemoryPools(Object mgr) {
+    public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused) {
         Klass memoryPoolMXBean = getMeta().loadKlass(Type.MemoryPoolMXBean, StaticObject.NULL);
         return memoryPoolMXBean.allocateArray(1, new IntFunction<StaticObject>() {
             @Override
@@ -1963,6 +2088,22 @@ public final class VM extends NativeEnv implements ContextAccess {
                 String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
                 String[] parts = processName.split("@");
                 return Long.parseLong(parts[0]);
+            case JMM_THREAD_DAEMON_COUNT:
+                int daemonCount = 0;
+                for (StaticObject t : getContext().getActiveThreads()) {
+                    if ((boolean) getMeta().Thread_daemon.get(t)) {
+                        ++daemonCount;
+                    }
+                }
+                return daemonCount;
+
+            case JMM_THREAD_PEAK_COUNT:
+                return getContext().getManagementStats().getThreadPeakCount();
+            case JMM_THREAD_LIVE_COUNT:
+                return getContext().getActiveThreads().length;
+
+            case JMM_THREAD_TOTAL_COUNT:
+                return getContext().getManagementStats().getThreadTotalCount();
         }
         throw EspressoError.unimplemented("GetLongAttribute " + att);
     }
@@ -2134,7 +2275,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
-    public @Host(Object[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
+    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers) {
         throw EspressoError.unimplemented();
     }
 

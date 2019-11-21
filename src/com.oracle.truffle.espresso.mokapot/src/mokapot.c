@@ -376,8 +376,8 @@ void JVM_DumpAllStacks(JNIEnv *env, jclass unused) {
 }
 
 jobjectArray JVM_GetAllThreads(JNIEnv *env, jclass dummy) {
-  UNIMPLEMENTED(JVM_GetAllThreads);
-  return NULL;
+  IMPLEMENTED(JVM_GetAllThreads);
+  return (*getEnv())->JVM_GetAllThreads(env, dummy);
 }
 
 void JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jstring name) {

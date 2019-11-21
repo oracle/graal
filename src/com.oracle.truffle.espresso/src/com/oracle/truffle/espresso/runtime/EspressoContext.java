@@ -137,6 +137,37 @@ public final class EspressoContext {
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
     }
 
+    public ManagementStats getManagementStats() {
+        return stats;
+    }
+
+    // region Management counters
+
+    public static class ManagementStats {
+        private int threadPeakCount;
+        private int threadTotalCount;
+
+        public int getThreadPeakCount() {
+            return threadPeakCount;
+        }
+
+        public void setThreadPeakCount(int threadPeakCount) {
+            this.threadPeakCount = threadPeakCount;
+        }
+
+        public int getThreadTotalCount() {
+            return threadTotalCount;
+        }
+
+        public void setThreadTotalCount(int threadTotalCount) {
+            this.threadTotalCount = threadTotalCount;
+        }
+    }
+
+    private ManagementStats stats = new ManagementStats();
+
+    // endregion Management counters
+
     public ClassRegistries getRegistries() {
         return registries;
     }
@@ -356,8 +387,6 @@ public final class EspressoContext {
 
         EspressoLogger.log(Level.FINE, "VM booted in {0} ms", System.currentTimeMillis() - ticks);
         initVMDoneMs = System.currentTimeMillis();
-
-        System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
     private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {

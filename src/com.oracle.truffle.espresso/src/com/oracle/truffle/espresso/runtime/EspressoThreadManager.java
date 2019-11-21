@@ -95,6 +95,13 @@ class EspressoThreadManager implements ContextAccess {
     }
 
     public void registerThread(Thread host, StaticObject guest) {
+
+        // FIXME(peterssen): Thread count must be atomic.
+        EspressoContext.ManagementStats stats = getContext().getManagementStats();
+        int threadCount = stats.getThreadTotalCount();
+        stats.setThreadTotalCount(threadCount + 1);
+        stats.setThreadPeakCount(Math.max(stats.getThreadPeakCount(), threadCount + 1));
+
         activeThreads.add(guest);
         if (finalizerThreadId == -1) {
             if (getMeta().FinalizerThread.isAssignableFrom(guest.getKlass())) {

@@ -190,6 +190,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
+        public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
@@ -233,6 +234,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> createMemoryPool = StaticSymbols.putName("createMemoryPool");
         public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
         public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
+        public static final Symbol<Name> tid = StaticSymbols.putName("tid");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -296,9 +298,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
         public static final Symbol<Name> HIDDEN_PROTECTION_DOMAIN = StaticSymbols.putName("0HIDDEN_PROTECTION_DOMAIN");
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
+        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
     }
 
     public static final class Type extends Descriptor {
+
 
         public static void init() {
             /* nop */
@@ -429,6 +435,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
 
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
+        public static final Symbol<Type> StackTraceElement_array = StaticSymbols.putType(StackTraceElement[].class);
 
         public static final Symbol<Type> Error = StaticSymbols.putType(Error.class);
         public static final Symbol<Type> NoSuchFieldError = StaticSymbols.putType(NoSuchFieldError.class);
@@ -494,6 +501,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.Class, Type.String, Type._boolean, Type.ClassLoader);
 
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.Throwable);
+        public static final Symbol<Signature> StackTraceElement_array = StaticSymbols.putSignature(Type.StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.String, Type.Throwable);
         public static final Symbol<Signature> _void_String = StaticSymbols.putSignature(Type._void, Type.String);
         public static final Symbol<Signature> Class_String = StaticSymbols.putSignature(Type.Class, Type.String);

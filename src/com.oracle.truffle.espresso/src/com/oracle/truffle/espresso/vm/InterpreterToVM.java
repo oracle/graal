@@ -194,9 +194,14 @@ public final class InterpreterToVM implements ContextAccess {
             Meta meta = obj.getKlass().getMeta();
             StaticObject thread = meta.getContext().getCurrentThread();
             Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
+            thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, obj);
+            Field blocked_count = meta.HIDDEN_THREAD_BLOCKED_COUNT;
+            Target_java_lang_Thread.incrementThreadCounter(thread, blocked_count);
             lock.lock();
+            thread.setHiddenField(meta.HIDDEN_THREAD_BLOCKED_OBJECT, null);
             Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
         }
+        obj.setOwner(Thread.currentThread());
     }
 
     @TruffleBoundary
@@ -209,6 +214,7 @@ public final class InterpreterToVM implements ContextAccess {
         }
         lock.unlock();
     }
+
     // endregion
 
     public static boolean getFieldBoolean(StaticObject obj, Field field) {
