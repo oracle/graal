@@ -1311,7 +1311,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def build(self):
         with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
-        vendor_info = {'vendor-version' : graalvm_vendor_version(get_final_graalvm_distribution())}
+        vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
         mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
@@ -1343,7 +1343,11 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def _config(self):
-        return ['include sources: {}'.format(_include_sources()), 'strip jars: {}'.format(mx.get_opts().strip_jars)]
+        return [
+            'include sources: {}'.format(_include_sources()),
+            'strip jars: {}'.format(mx.get_opts().strip_jars),
+            'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+        ]
 
     def _config_file(self):
         return self.subject.output_directory() + '.config'
