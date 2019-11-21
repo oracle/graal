@@ -392,6 +392,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
 # Launchers and other components.
 #
 
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name="GraalWasm",
@@ -411,7 +412,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             language="wasm",
         ),
     ],
-    installable=False,
+    installable=True,
 ))
 
 
