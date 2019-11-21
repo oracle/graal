@@ -107,8 +107,8 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
-import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.IsAttachedInlinedNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
@@ -211,10 +211,10 @@ public abstract class PartialEvaluator {
     }
 
     private static void removeInlineTokenNodes(StructuredGraph graph) {
-        for (IsAttachedInlinedNode node : graph.getNodes(IsAttachedInlinedNode.TYPE)) {
+        for (InlineDecisionNode node : graph.getNodes(InlineDecisionNode.TYPE)) {
             node.notInlined();
         }
-        for (CallSiteHandleAttachNode node : graph.getNodes(CallSiteHandleAttachNode.TYPE)) {
+        for (InlineDecisionAttachNode node : graph.getNodes(InlineDecisionAttachNode.TYPE)) {
             node.resolve();
         }
     }

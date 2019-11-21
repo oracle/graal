@@ -22,26 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.compiler.nodes;
 
-/**
- * Methods of this class are intrinsified to nodes used by Language agnostic inlining in order to
- * differentiate between inlinied and non-inlined call sites.
- */
-class InlineToken {
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ValueNode;
 
-    static int get() {
-        return 0xdeadbeef;
+import jdk.vm.ci.meta.JavaKind;
+
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+public final class InlineDecisionHandleNode extends ValueNode implements IterableNodeType {
+
+    public static final NodeClass<InlineDecisionHandleNode> TYPE = NodeClass.create(InlineDecisionHandleNode.class);
+
+    protected InlineDecisionHandleNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Int));
     }
 
-    @SuppressWarnings("unused")
-    public static Object[] attach(Object[] args, int token) {
-        return args;
+    public static InlineDecisionHandleNode create() {
+        return new InlineDecisionHandleNode();
     }
-
-    @SuppressWarnings("unused")
-    static boolean isAttachedInlined(int token) {
-        return false;
-    }
-
 }

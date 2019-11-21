@@ -30,20 +30,36 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class CallSiteHandleNode extends ValueNode implements IterableNodeType {
+public final class InlineDecisionNode extends ValueNode implements IterableNodeType {
 
-    public static final NodeClass<CallSiteHandleNode> TYPE = NodeClass.create(CallSiteHandleNode.class);
+    public static final NodeClass<InlineDecisionNode> TYPE = NodeClass.create(InlineDecisionNode.class);
+    // Used by the language agnostic inlining to locate this node from the Invoke
+    @SuppressWarnings("unused") @Input private ValueNode handle;
 
-    protected CallSiteHandleNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+    protected InlineDecisionNode(ValueNode handle) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this.handle = handle;
     }
 
-    public static CallSiteHandleNode create() {
-        return new CallSiteHandleNode();
+    public static InlineDecisionNode create(ValueNode handle) {
+        return new InlineDecisionNode(handle);
+    }
+
+    public void inlined() {
+        replaceWith(true);
+    }
+
+    public void notInlined() {
+        replaceWith(false);
+    }
+
+    private void replaceWith(boolean b) {
+        replaceAtUsagesAndDelete(graph().unique(ConstantNode.forBoolean(b)));
     }
 }

@@ -84,9 +84,9 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleNode;
-import org.graalvm.compiler.truffle.compiler.nodes.IsAttachedInlinedNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
@@ -198,26 +198,26 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerInlineTokenPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType inlinedTokenType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.InlineToken");
+        final ResolvedJavaType inlinedTokenType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.InlineHandle");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(inlinedTokenType));
         r.register0("get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Int, CallSiteHandleNode.create());
+                b.addPush(JavaKind.Int, InlineDecisionHandleNode.create());
                 return true;
             }
         });
         r.register1("isAttachedInlined", int.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode token) {
-                b.addPush(JavaKind.Boolean, IsAttachedInlinedNode.create(token));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode handle) {
+                b.addPush(JavaKind.Boolean, InlineDecisionNode.create(handle));
                 return true;
             }
         });
         r.register2("attach", Object[].class, int.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode token) {
-                b.addPush(JavaKind.Object, CallSiteHandleAttachNode.create(args, token));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode handle) {
+                b.addPush(JavaKind.Object, InlineDecisionAttachNode.create(args, handle));
                 return true;
             }
         });

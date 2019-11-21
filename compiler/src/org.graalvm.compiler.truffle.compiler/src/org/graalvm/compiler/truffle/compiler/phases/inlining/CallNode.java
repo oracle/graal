@@ -41,15 +41,14 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleNode;
-import org.graalvm.compiler.truffle.compiler.nodes.IsAttachedInlinedNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node {
@@ -269,20 +268,20 @@ public final class CallNode extends Node {
     private static void handleIsAttachedInlinedNode(Invoke invoke) {
         final NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
         final ValueNode argument = arguments.get(1);
-        if (!(argument instanceof CallSiteHandleAttachNode)) {
+        if (!(argument instanceof InlineDecisionAttachNode)) {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
-        final CallSiteHandleAttachNode attachNode = (CallSiteHandleAttachNode) argument;
-        final ValueNode token = attachNode.getToken();
-        if (!(token instanceof CallSiteHandleNode)) {
+        final InlineDecisionAttachNode attachNode = (InlineDecisionAttachNode) argument;
+        final ValueNode token = attachNode.getHandle();
+        if (!(token instanceof InlineDecisionHandleNode)) {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
         final Node maybeIsAttached = token.usages().first();
-        if (!(maybeIsAttached instanceof IsAttachedInlinedNode)) {
+        if (!(maybeIsAttached instanceof InlineDecisionNode)) {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
-        final IsAttachedInlinedNode isAttachedInlinedNode = (IsAttachedInlinedNode) maybeIsAttached;
-        isAttachedInlinedNode.inlined();
+        final InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeIsAttached;
+        inlineDecisionNode.inlined();
         attachNode.resolve();
     }
 

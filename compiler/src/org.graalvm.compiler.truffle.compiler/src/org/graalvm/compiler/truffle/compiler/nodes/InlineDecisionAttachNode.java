@@ -33,27 +33,27 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class CallSiteHandleAttachNode extends ValueNode implements IterableNodeType {
+public final class InlineDecisionAttachNode extends ValueNode implements IterableNodeType {
 
-    public static final NodeClass<CallSiteHandleAttachNode> TYPE = NodeClass.create(CallSiteHandleAttachNode.class);
+    public static final NodeClass<InlineDecisionAttachNode> TYPE = NodeClass.create(InlineDecisionAttachNode.class);
     @Input private ValueNode args;
-    @Input private ValueNode token;
+    @Input private ValueNode handle;
 
-    protected CallSiteHandleAttachNode(ValueNode args, ValueNode token) {
+    protected InlineDecisionAttachNode(ValueNode args, ValueNode handle) {
         super(TYPE, args.stamp(NodeView.DEFAULT));
         this.args = args;
-        this.token = token;
+        this.handle = handle;
     }
 
-    public static CallSiteHandleAttachNode create(ValueNode args, ValueNode token) {
-        return new CallSiteHandleAttachNode(args, token);
+    public static InlineDecisionAttachNode create(ValueNode args, ValueNode handle) {
+        return new InlineDecisionAttachNode(args, handle);
     }
 
     public void resolve() {
         replaceAtUsagesAndDelete(args);
     }
 
-    public ValueNode getToken() {
-        return token;
+    public ValueNode getHandle() {
+        return handle;
     }
 }
