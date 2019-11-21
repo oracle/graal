@@ -50,14 +50,14 @@ public final class InlineDecisionNode extends ValueNode implements IterableNodeT
 
     public static final NodeClass<InlineDecisionNode> TYPE = NodeClass.create(InlineDecisionNode.class);
     // Used by the language agnostic inlining to locate this node from the Invoke
-    @SuppressWarnings("unused") @Input private ValueNode handle;
+    @SuppressWarnings("unused") @Input private InlineDecisionHandleNode handle;
 
-    protected InlineDecisionNode(ValueNode handle) {
+    protected InlineDecisionNode(InlineDecisionHandleNode handle) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.handle = handle;
     }
 
-    public static InlineDecisionNode create(ValueNode handle) {
+    public static InlineDecisionNode create(InlineDecisionHandleNode handle) {
         return new InlineDecisionNode(handle);
     }
 

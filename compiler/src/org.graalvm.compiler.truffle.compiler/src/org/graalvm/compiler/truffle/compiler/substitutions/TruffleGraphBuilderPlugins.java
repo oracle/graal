@@ -210,14 +210,14 @@ public class TruffleGraphBuilderPlugins {
         r.register1("isAttachedInlined", int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode handle) {
-                b.addPush(JavaKind.Boolean, InlineDecisionNode.create(handle));
+                b.addPush(JavaKind.Boolean, InlineDecisionNode.create((InlineDecisionHandleNode) handle));
                 return true;
             }
         });
         r.register2("attach", Object[].class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode handle) {
-                b.addPush(JavaKind.Object, InlineDecisionAttachNode.create(args, handle));
+                b.addPush(JavaKind.Object, InlineDecisionAttachNode.create(args, (InlineDecisionHandleNode) handle));
                 return true;
             }
         });

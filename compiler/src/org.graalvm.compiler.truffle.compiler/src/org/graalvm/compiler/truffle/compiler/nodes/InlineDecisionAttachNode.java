@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 /**
- * {@see InlineDecisionHandleNode}
+ * See {@link InlineDecisionHandleNode}
  * Must be {@link #resolve() resolved} before actually performing the inlining.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
@@ -41,15 +41,15 @@ public final class InlineDecisionAttachNode extends ValueNode implements Iterabl
 
     public static final NodeClass<InlineDecisionAttachNode> TYPE = NodeClass.create(InlineDecisionAttachNode.class);
     @Input private ValueNode args;
-    @Input private ValueNode handle;
+    @Input private InlineDecisionHandleNode handle;
 
-    protected InlineDecisionAttachNode(ValueNode args, ValueNode handle) {
+    protected InlineDecisionAttachNode(ValueNode args, InlineDecisionHandleNode handle) {
         super(TYPE, args.stamp(NodeView.DEFAULT));
         this.args = args;
         this.handle = handle;
     }
 
-    public static InlineDecisionAttachNode create(ValueNode args, ValueNode handle) {
+    public static InlineDecisionAttachNode create(ValueNode args, InlineDecisionHandleNode handle) {
         return new InlineDecisionAttachNode(args, handle);
     }
 
