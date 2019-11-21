@@ -76,6 +76,7 @@ import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.replacements.HotSpotSerialWriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HubGetClassNode;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -188,6 +189,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected final HotSpotGraalRuntimeProvider runtime;
     protected final HotSpotRegistersProvider registers;
     protected final HotSpotConstantReflectionProvider constantReflection;
+    private final long referentFieldOffset;
+    private final ResolvedJavaType referenceType;
 
     protected InstanceOfSnippets.Templates instanceofSnippets;
     protected NewObjectSnippets.Templates newObjectSnippets;
@@ -212,6 +215,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
+        this.referenceType = metaAccess.lookupJavaType(Reference.class);
+        this.referentFieldOffset = HotSpotReplacementsUtil.getFieldOffset(referenceType, "referent");
     }
 
     @Override
@@ -563,11 +568,15 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     @Override
     protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
-        if (!(load instanceof GuardedUnsafeLoadNode) && !graph.getGuardsStage().allowsFloatingGuards() && addReadBarrier(load)) {
-            unsafeLoadSnippets.lower(load, tool);
-        } else {
-            super.lowerUnsafeLoadNode(load, tool);
+        if (!(load instanceof GuardedUnsafeLoadNode) && requiresReadBarrier(load)) {
+            if (!graph.getGuardsStage().allowsFloatingGuards()) {
+                unsafeLoadSnippets.lower(load, tool);
+            } else {
+                // defer the lowering until later
+            }
+            return;
         }
+        super.lowerUnsafeLoadNode(load, tool);
     }
 
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
@@ -720,11 +729,16 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         graph.replaceFixedWithFixed(node, foreignCallNode);
     }
 
-    private boolean addReadBarrier(RawLoadNode load) {
-        if (runtime.getVMConfig().useG1GC && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().getStackKind() == JavaKind.Object &&
+    private boolean requiresReadBarrier(RawLoadNode load) {
+        if (runtime.getVMConfig().useG1GC && load.object().getStackKind() == JavaKind.Object &&
                         load.accessKind() == JavaKind.Object && !StampTool.isPointerAlwaysNull(load.object())) {
+            if (load.offset().isJavaConstant() && referentFieldOffset != load.offset().asJavaConstant().asLong()) {
+                // Reading at a constant offset which is different than the referent field.
+                return false;
+            }
             ResolvedJavaType type = StampTool.typeOrNull(load.object());
-            if (type != null && !type.isArray()) {
+            if (type == null || type.isAssignableFrom(referenceType) || referenceType.isAssignableFrom(type)) {
+                // The object is a subtype or supertype of Reference
                 return true;
             }
         }
