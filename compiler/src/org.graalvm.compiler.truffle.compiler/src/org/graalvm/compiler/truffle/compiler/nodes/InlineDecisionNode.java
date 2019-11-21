@@ -35,6 +35,16 @@ import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Since SVM specializes behaviour on call sites, we need to differentiate the inlined call sites
+ * which should not contain this specialized code.
+ * 
+ * This node is a placeholder to be replaced with a {@code true} or {@code false} constant matching
+ * the corresponding inlining decision. The inlining decision is made on the invoke which is
+ * connected to this node with data flow through the {@link #handle} i.e. The handle is a
+ * {@link InlineDecisionHandleNode} whose other usage is a {@link InlineDecisionAttachNode} wrapping
+ * the arguments of the call whose inlining decision is guarded by this node.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class InlineDecisionNode extends ValueNode implements IterableNodeType {
 

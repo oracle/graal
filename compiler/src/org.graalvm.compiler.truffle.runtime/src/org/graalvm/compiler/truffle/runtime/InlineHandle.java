@@ -25,22 +25,57 @@
 package org.graalvm.compiler.truffle.runtime;
 
 /**
- * Methods of this class are intrinsified to nodes used by Language agnostic inlining in order to
- * differentiate between inlinied and non-inlined call sites.
- *
- * Since SVM overrides {@link OptimizedCallTarget#doInvoke(Object[])} to specialize behaviour on call sites
+ * Since SVM overrides {@link OptimizedCallTarget#doInvoke(Object[])} to specialize behaviour on
+ * call sites, we need to differentiate the inlined call sites which should not contain this
+ * specialized code. We do this by calling the {@link #isAttachedInlined(int)} method and, based on
+ * the result, calling either {@link OptimizedCallTarget#doInvoke(Object[])} (for non-inlined calls)
+ * or {@link OptimizedCallTarget#callBoundary(Object[])} (for inlined ones). The compiler, once an
+ * inlining decision about this call site is made, ensures the correct branch is reachable and the
+ * other one is dead code.
+ * 
+ * To allow the compiler to correctly substitute the call to {@link #isAttachedInlined(int)} we need
+ * to make a data-dependency between the call the {@link #isAttachedInlined(int)} and the call to
+ * {@link OptimizedCallTarget#callBoundary(Object[])} which is the point of inlining. For this we
+ * use the {@link #get()} and {@link #attach(Object[], int)} methods, first one as a data source and
+ * the other as a data sink (wrapping the arguments of the call to
+ * {@link OptimizedCallTarget#callBoundary(Object[])}.
  */
 class InlineHandle {
 
+    /**
+     * Returns a dummy value used to indicate to the compiler that there exists data flow
+     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}
+     *
+     * @return Dummy value. Further logic is handled by the compiler through intrinsification.
+     */
     static int get() {
         return 0xdeadbeef;
     }
 
+    /**
+     * Wraps the arguments to {@link OptimizedCallTarget#callBoundary(Object[])} ensuring data flow
+     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}
+     *
+     * @param args the arguments
+     * @param handle the value returned by {@link #get()}
+     * @return nothing. Further logic is handled by the compiler through intrinsification.
+     */
     @SuppressWarnings("unused")
-    public static Object[] attach(Object[] args, int handle) {
-        return args;
+    static Object[] attach(Object[] args, int handle) {
+        throw new IllegalStateException("Should never reach here. This method must be intrinsified.");
     }
 
+    /**
+     * Used to differentiate between inlined and non-inlined call sites. Is intrincified by the
+     * compiler to a node that will, after inlining decisions have been made, be replaced with
+     * {@code true} or {@code false}.
+     * 
+     * @param handle a data-dependency handle to the call used for inlining. The same value should
+     *            be used in the {@link #attach(Object[], int)} call wrapping the arguments of the
+     *            call.
+     * @return false, since the interpreted calls are never considered inlined. Further logic is
+     *         handled by the compiler through intrinsification.
+     */
     @SuppressWarnings("unused")
     static boolean isAttachedInlined(int handle) {
         return false;

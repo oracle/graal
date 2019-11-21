@@ -34,6 +34,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * {@see InlineDecisionHandleNode}
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class InlineDecisionHandleNode extends ValueNode implements IterableNodeType {
 

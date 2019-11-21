@@ -32,6 +32,10 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
+/**
+ * {@see InlineDecisionHandleNode}
+ * Must be {@link #resolve() resolved} before actually performing the inlining.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class InlineDecisionAttachNode extends ValueNode implements IterableNodeType {
 
