@@ -99,6 +99,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
@@ -106,7 +107,6 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
@@ -187,7 +187,7 @@ final class HotSpotToSVMEntryPoints {
     public static JString getCompilerConfigurationFactoryName(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         HotSpotToSVMScope<HotSpotToSVM.Id> scope = new HotSpotToSVMScope<>(GetCompilerConfigurationFactoryName, env);
         try (HotSpotToSVMScope<HotSpotToSVM.Id> s = scope) {
-            OptionValues options = TruffleCompilerOptions.getOptions();
+            OptionValues options = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
             CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
             String name = compilerConfigurationFactory.getName();
             scope.setObjectResult(createHSString(env, name));

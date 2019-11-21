@@ -229,6 +229,48 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraceDeoptimization = new OptionKey<>(false);
     */
 
+    //Compiler options
+    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
+
+    @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TracePerformanceWarnings = new OptionKey<>(false);
+
+    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
+
+    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.USER)
+    public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
+
+    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.USER)
+    public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
+
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.USER)
+    public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
+
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.USER)
+    public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
+
+    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> IntrinsifyFrameAccess = new OptionKey<>(true);
+
+    // Language agnostic inlining
+
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
+
+    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", category = OptionCategory.EXPERT)
+    public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
+
+    @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(50_000);
+
+    @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(50_000);
+
     // @formatter:on
 
 

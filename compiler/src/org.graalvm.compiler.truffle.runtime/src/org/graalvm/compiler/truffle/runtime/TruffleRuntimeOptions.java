@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.util.HashMap;
 import java.util.Map;

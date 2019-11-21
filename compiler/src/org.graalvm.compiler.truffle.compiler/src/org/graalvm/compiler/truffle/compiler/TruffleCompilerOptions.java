@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 
 import java.util.Map;
 
@@ -136,8 +136,8 @@ public final class TruffleCompilerOptions {
         /*
          * This is duplicated in TruffleRuntimeOptions#areTruffleCompilationExceptionsFatal.
          */
-        boolean compilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
-        boolean performanceWarningsAreFatal = TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+        boolean compilationExceptionsAreFatal = PolyglotCompilerOptionsScope.getValue(CompilationExceptionsAreFatal);
+        boolean performanceWarningsAreFatal = PolyglotCompilerOptionsScope.getValue(PerformanceWarningsAreFatal);
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 

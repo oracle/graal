@@ -30,10 +30,10 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.options.OptionValues;
 
 /**
  * Instruments {@link IfNode}s in the graph, by adding execution counters to the true and the false
@@ -78,7 +78,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite(OptionValues options) {
+    protected boolean instrumentPerInlineSite(org.graalvm.compiler.options.OptionValues options) {
         return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
     }
 
@@ -117,7 +117,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified(OptionValues options) {
+        public boolean isPrettified(org.graalvm.compiler.options.OptionValues options) {
             return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
         }
 

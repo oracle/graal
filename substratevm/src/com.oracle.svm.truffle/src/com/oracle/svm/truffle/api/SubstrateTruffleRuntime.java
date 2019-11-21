@@ -47,7 +47,7 @@ import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.Platform;

@@ -34,8 +34,8 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
@@ -47,7 +47,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         for (InliningPolicyProvider provider : services) {
             providers.add(provider);
         }
-        final String policy = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInliningPolicy);
+        final String policy = PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.InliningPolicy);
         POLICY_PROVIDER = policy.equals("") ? maxPriorityProvider(providers) : chosenProvider(providers, policy);
     }
 
@@ -77,10 +77,10 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        if (!TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleFunctionInlining)) {
+        if (!PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.Inlining)) {
             return;
         }
-        final InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, graph.getOptions());
+        final InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, PolyglotCompilerOptionsScope.getOptionValues());
         final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
         tree.dumpBasic("Before Inline", "");
         policy.run(tree);

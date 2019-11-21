@@ -32,12 +32,6 @@ import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.R
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleEnableInfopoints;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleExcludeAssertions;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.overrideOptions;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -94,7 +88,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.compiler.debug.TraceCompilationFailureListener;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
@@ -151,10 +144,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(runtime);
 
-        boolean needSourcePositions = TruffleCompilerOptions.getValue(TruffleEnableInfopoints) ||
-                        TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
+        OptionValues optionValues = runtime.getOptions(OptionValues.class);
+        boolean needSourcePositions = TruffleCompilerOptions.TruffleEnableInfopoints.getValue(optionValues) ||
+                        TruffleCompilerOptions.TruffleInstrumentBranches.getValue(optionValues) || TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(optionValues);
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions)).withBytecodeExceptionMode(
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.TruffleExcludeAssertions.getValue(optionValues)).withBytecodeExceptionMode(
                         BytecodeExceptionMode.ExplicitOnly);
 
         this.partialEvaluator = createPartialEvaluator();
@@ -222,15 +216,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     @SuppressWarnings("try")
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(options)) {
+        try (PolyglotCompilerOptionsScope optionsScope = PolyglotCompilerOptionsScope.open(options)) {
             final DebugContext debugContext;
-            final OptionValues optionValues = optionsScope.getOptions();
+            final OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
             if (compilation == null) {
-                debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
+                debugContext = DebugContext.create(debugContextOptionValues, DebugHandlersFactory.LOADER);
             } else {
                 TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
                 CompilableTruffleAST compilable = ident.getCompilable();
-                debugContext = createDebugContext(optionValues, ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                debugContext = createDebugContext(debugContextOptionValues, ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
             }
             return new TruffleDebugContextImpl(debugContext);
         }
@@ -254,10 +248,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
 
-        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(optionsMap)) {
+        try (PolyglotCompilerOptionsScope optionsScope = PolyglotCompilerOptionsScope.open(optionsMap)) {
             TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = compilationId.getCompilable();
-            final OptionValues optionValues = optionsScope.getOptions();
 
             boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
             if (usingCallersDebug) {
@@ -269,7 +262,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     notifyCompilableOfFailure(compilable, e);
                 }
             } else {
-                try (DebugContext graalDebug = createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                final OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
+                try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
                                 DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                     actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug);
                 } catch (Throwable e) {
@@ -334,10 +328,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         InstrumentPhase.Instrumentation ins = this.partialEvaluator.instrumentation;
         if (ins != null) {
             OptionValues options = TruffleCompilerOptions.getOptions();
-            if (getValue(TruffleInstrumentBranches) || getValue(TruffleInstrumentBoundaries)) {
+            if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries)) {
                 ins.dumpAccessTable(options);
-            }
         }
+    }
     }
 
     protected abstract DiagnosticsOutputDirectory getDebugOutputDirectory();

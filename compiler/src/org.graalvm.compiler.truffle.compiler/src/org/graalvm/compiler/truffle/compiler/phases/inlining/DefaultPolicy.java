@@ -26,10 +26,9 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 final class DefaultPolicy implements InliningPolicy {
 
@@ -68,7 +67,7 @@ final class DefaultPolicy implements InliningPolicy {
     }
 
     private void inline(CallTree tree) {
-        final int inliningBudget = TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues);
+        final int inliningBudget = PolyglotCompilerOptions.getValue(optionValues, PolyglotCompilerOptions.InliningInliningBudget);
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
@@ -84,7 +83,7 @@ final class DefaultPolicy implements InliningPolicy {
     }
 
     private void expand(CallTree tree) {
-        final int expansionBudget = TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues);
+        final int expansionBudget = PolyglotCompilerOptions.getValue(optionValues,PolyglotCompilerOptions.InliningExpansionBudget);
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
         while ((candidate = expandQueue.poll()) != null) {
@@ -95,7 +94,7 @@ final class DefaultPolicy implements InliningPolicy {
             if (expandedCount > expansionBudget) {
                 break;
             }
-            final Integer maximumRecursiveInliningValue = SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue(optionValues);
+            final Integer maximumRecursiveInliningValue = PolyglotCompilerOptions.getValue(optionValues, PolyglotCompilerOptions.InliningRecursionDepth);
             if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
                 continue;
             }

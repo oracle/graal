@@ -32,7 +32,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -76,7 +75,7 @@ public final class TraceCompilationFailureListener implements TruffleCompilerLis
     }
 
     private static boolean bailoutActionIsPrintOrGreater() {
-        OptionValues options = TruffleCompilerOptions.getOptions();
+        OptionValues options = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
         return CompilationBailoutAsFailure.getValue(options) && CompilationFailureAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
     }
 

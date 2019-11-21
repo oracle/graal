@@ -31,8 +31,8 @@ import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class CallTree extends Graph {
 
@@ -71,8 +71,8 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TraceTruffleInliningDetails);
-        if (TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInlining) || details) {
+        final Boolean details = PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.TraceInliningDetails);
+        if (PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
             traceRecursive(runtime, root, details, 0);

@@ -37,7 +37,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -84,7 +83,7 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @Override
     protected String initLazyCompilerConfigurationName() {
-        final OptionValues options = TruffleCompilerOptions.getOptions();
+        final OptionValues options = getOptions(OptionValues.class);
         String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
         CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options);
         return compilerConfigurationFactory.getName();
