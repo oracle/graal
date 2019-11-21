@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.image;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-@Platforms(value = Platform.HOSTED_ONLY.class)
 public interface ImageHeapObject {
     long getSize();
 
@@ -37,7 +33,7 @@ public interface ImageHeapObject {
 
     ImageHeapPartition getPartition();
 
-    void setOffsetInPartition(long size);
+    void setOffsetInPartition(long offset);
 
     long getOffsetInPartition();
 }

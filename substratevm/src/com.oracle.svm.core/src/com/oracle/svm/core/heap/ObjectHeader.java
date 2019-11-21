@@ -73,5 +73,6 @@ public abstract class ObjectHeader {
 
     public enum HeapKind {
         Unmanaged,
+        ImageHeap,
     }
 }

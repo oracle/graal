@@ -240,7 +240,6 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
         assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";

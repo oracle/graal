@@ -40,7 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
-import com.oracle.svm.core.genscavenge.hosted.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
@@ -66,7 +66,7 @@ public class HeapFeature implements GraalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
-        ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter());
+        ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), true));
     }
 
     @Override

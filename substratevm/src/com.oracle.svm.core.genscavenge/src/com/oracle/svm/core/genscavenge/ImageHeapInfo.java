@@ -25,8 +25,6 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -50,12 +48,10 @@ public class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstWritableReferenceObject;
     @UnknownObjectField(types = Object.class) public Object lastWritableReferenceObject;
 
-    @Platforms(value = Platform.HOSTED_ONLY.class)
     public ImageHeapInfo() {
     }
 
     @SuppressWarnings("hiding")
-    @Platforms(value = Platform.HOSTED_ONLY.class)
     public void initialize(Object firstReadOnlyPrimitiveObject, Object lastReadOnlyPrimitiveObject, Object firstReadOnlyReferenceObject, Object lastReadOnlyReferenceObject,
                     Object firstWritablePrimitiveObject, Object lastWritablePrimitiveObject, Object firstWritableReferenceObject, Object lastWritableReferenceObject) {
         this.firstReadOnlyPrimitiveObject = firstReadOnlyPrimitiveObject;
