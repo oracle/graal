@@ -32,7 +32,7 @@ package org.graalvm.compiler.truffle.runtime;
  * or {@link OptimizedCallTarget#callBoundary(Object[])} (for inlined ones). The compiler, once an
  * inlining decision about this call site is made, ensures the correct branch is reachable and the
  * other one is dead code.
- * 
+ *
  * To allow the compiler to correctly substitute the call to {@link #isAttachedInlined(int)} we need
  * to make a data-dependency between the call the {@link #isAttachedInlined(int)} and the call to
  * {@link OptimizedCallTarget#callBoundary(Object[])} which is the point of inlining. For this we
@@ -43,8 +43,8 @@ package org.graalvm.compiler.truffle.runtime;
 class InlineHandle {
 
     /**
-     * Returns a dummy value used to indicate to the compiler that there exists data flow
-     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}
+     * Returns a dummy value used to indicate to the compiler that there exists data flow between
+     * {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}.
      *
      * @return Dummy value. Further logic is handled by the compiler through intrinsification.
      */
@@ -54,7 +54,7 @@ class InlineHandle {
 
     /**
      * Wraps the arguments to {@link OptimizedCallTarget#callBoundary(Object[])} ensuring data flow
-     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}
+     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}.
      *
      * @param args the arguments
      * @param handle the value returned by {@link #get()}
@@ -69,7 +69,7 @@ class InlineHandle {
      * Used to differentiate between inlined and non-inlined call sites. Is intrincified by the
      * compiler to a node that will, after inlining decisions have been made, be replaced with
      * {@code true} or {@code false}.
-     * 
+     *
      * @param handle a data-dependency handle to the call used for inlining. The same value should
      *            be used in the {@link #attach(Object[], int)} call wrapping the arguments of the
      *            call.
