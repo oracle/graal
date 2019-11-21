@@ -300,7 +300,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
         ]
-        return launcher_args
+        return launcher_args + args
 
     def hosting_registry(self):
         return java_vm_registry
