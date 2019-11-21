@@ -83,7 +83,7 @@ public final class LLVMGlobal implements LLVMSymbol {
     }
 
     public int getID(){
-        assert index != -1;
+        assert id != -1;
         return id;
     }
 

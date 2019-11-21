@@ -212,7 +212,7 @@ final class Runner {
                         InitializeModuleNode[] initModules) {
             for (int i = 0; i < parserResults.size(); i++) {
                 LLVMParserResult res = parserResults.get(i);
-                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), runner.context, runner.id);
+                initSymbols[offset + i] = new InitializeSymbolsNode(res, res.getRuntime().getNodeFactory(), runner.id);
                 initModules[offset + i] = new InitializeModuleNode(runner, rootFrame, res);
             }
         }
@@ -284,6 +284,19 @@ final class Runner {
 
         return createLibraryCallTarget(source.getName(), parserResults, initializationOrder);
     }
+
+    /*abstract static class CheckGlobalNode extends LLVMNode {
+
+        abstract boolean execute(LLVMGlobal descriptor);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "descriptor == cachedDescriptor")
+        boolean doCached(LLVMGlobal descriptor,
+                         @Cached("descriptor") LLVMGlobal cachedDescriptor,
+                         @Cached("create()") LLVMCheckGlobalVariableStorageNode check) {
+            return check.execute(cachedDescriptor);
+        }
+    }*/
 
     private abstract static class AllocGlobalNode extends LLVMNode {
 
@@ -371,14 +384,17 @@ final class Runner {
 
         @Children final AllocGlobalNode[] allocGlobals;
 
-        private final LLVMPointer[] globals;
+        private LLVMPointer[] globals;
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
+        private final int id;
 
-        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, LLVMContext context, int id) {
+        InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory, int id) {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
             this.fileScope = res.getRuntime().getFileScope();
+            this.checkGlobals = LLVMCheckGlobalVariableStorageNodeGen.create();
+            this.id = id;
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -401,10 +417,7 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
-
             this.writeGlobals = LLVMWriteGlobalVariableStorageNodeGen.create();
-            this.globals = new LLVMPointer[this.allocGlobals.length];
-            context.registerGlobalMap(id, globals);
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {
@@ -414,6 +427,8 @@ final class Runner {
         public LLVMPointer execute(LLVMContext ctx) {
             LLVMPointer roBase = allocOrNull(allocRoSection);
             LLVMPointer rwBase = allocOrNull(allocRwSection);
+            globals = new LLVMPointer[this.allocGlobals.length + this.fileScope.values().size()];
+            ctx.registerGlobalMap(id, globals);
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
@@ -434,7 +449,6 @@ final class Runner {
             for (int i = 0; i < allocGlobals.length; i++) {
                 AllocGlobalNode allocGlobal = allocGlobals[i];
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
-                checkGlobals = LLVMCheckGlobalVariableStorageNodeGen.create();
                 descriptor.setIndex(i);
                 if (!checkGlobals.execute(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
@@ -450,11 +464,15 @@ final class Runner {
         private void bindUnresolvedSymbols(LLVMContext ctx) {
             NFIContextExtension nfiContextExtension = ctx.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+            int index = allocGlobals.length;
             synchronized (ctx) {
                 for (LLVMSymbol symbol : fileScope.values()) {
                     if (!symbol.isDefined()) {
                         if (symbol instanceof LLVMGlobal) {
                             LLVMGlobal global = (LLVMGlobal) symbol;
+                            global.setID(id);
+                            global.setIndex(index);
+                            index++;
                             bindGlobal(ctx, global, nfiContextExtension);
                         } else if (symbol instanceof LLVMFunctionDescriptor) {
                             LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
