@@ -7,12 +7,12 @@ EMSCRIPTEN_ROOT=$4
 NODE_JS=$5
 
 echo "import os" > $CONFIG_PATH
-echo "LLVM_ROOT=$CONFIG_PATH" >> $CONFIG_PATH
+echo "LLVM_ROOT=$LLVM_ROOT" >> $CONFIG_PATH
 echo "BINARYEN_ROOT=$BINARYEN_ROOT" >> $CONFIG_PATH
 echo "EMSCRIPTEN_ROOT=$EMSCRIPTEN_ROOT" >> $CONFIG_PATH
 echo "NODE_JS=$NODE_JS" >> $CONFIG_PATH
 
-echo "Generated Emscripten config file:"
+echo "Generated Emscripten config file at $CONFIG_PATH:"
 echo "--------"
 cat $CONFIG_PATH
 echo "--------"
