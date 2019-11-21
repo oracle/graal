@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -243,7 +244,8 @@ public class ServiceLoaderFeature implements Feature {
      */
     private static Collection<String> parseServiceResource(URL resourceURL) throws IOException {
         Collection<String> result = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), "utf-8"))) {
+        try (InputStream is = resourceURL.openStream();
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"))) {
             while (true) {
                 String line = reader.readLine();
                 if (line == null) {
