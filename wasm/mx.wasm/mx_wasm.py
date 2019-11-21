@@ -55,7 +55,7 @@ from mx_unittest import unittest
 _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
-gcc_dir = mx.get_env("GCC_DIR", None)
+gcc_dir = mx.get_env("GCC_DIR", "")
 wabt_dir = mx.get_env("WABT_DIR", None)
 
 NODE_BENCH_DIR = "node"
@@ -68,13 +68,22 @@ NATIVE_BENCH_DIR = "native"
 
 
 class GraalWasmDefaultTags:
+    buildall = 'buildall'
     wasmtest = 'wasmtest'
+    wasmextratest = 'wasmextratest'
 
 
 def _graal_wasm_gate_runner(args, tasks):
+    with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
+        if t:
+            mx.build(["--all"])
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"), "WasmTestSuite"])
+    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest]) as t:
+        if t:
+            unittest(["CSuite"])
+            unittest(["WatSuite"])
 
 
 add_gate_runner(_suite, _graal_wasm_gate_runner)

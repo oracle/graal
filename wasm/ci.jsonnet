@@ -49,6 +49,16 @@
           WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
         },
       },
+
+      emsdk: {
+        downloads+: {
+          EMSDK_DIR: {name: 'emsdk', version: '1.38.45', platformspecific: true},
+        },
+        environment+: {
+          EMCC_DIR: '$EMSDK_DIR/fastcomp/emscripten/',
+          NODE_DIR: '$EMSDK_DIR/node/12.9.1_64bit/',
+        },
+      },
   },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
@@ -77,10 +87,12 @@
   },
 
   local jdk8_gate_linux_wabt        = base.jdk8 + base.gate + base.linux + base.wabt,
+  local jdk8_gate_linux_wabt_emsdk  = base.jdk8 + base.gate + base.linux + base.wabt + base.emsdk,
   local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate + base.linux + base.eclipse + base.jdt,
 
   builds: [
-    jdk8_gate_linux_eclipse_jdt + gate_graalwasm       + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
-    jdk8_gate_linux_wabt        + gate_graalwasm_jvmci + {environment+: {GATE_TAGS: 'build,wasmtest'}}  + {name: 'gate-graalwasm-unittest-linux-amd64'},
+    jdk8_gate_linux_eclipse_jdt + gate_graalwasm       + {environment+: {GATE_TAGS: 'style,fullbuild'}}         + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
+    jdk8_gate_linux_wabt        + gate_graalwasm_jvmci + {environment+: {GATE_TAGS: 'build,wasmtest'}}          + {name: 'gate-graalwasm-unittest-linux-amd64'},
+    jdk8_gate_linux_wabt_emsdk  + gate_graalwasm_jvmci + {environment+: {GATE_TAGS: 'buildall,wasmextratest'}}  + {name: 'gate-graalwasm-extra-unittest-linux-amd64'},
   ],
 }
