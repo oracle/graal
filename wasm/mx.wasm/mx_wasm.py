@@ -368,7 +368,7 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
         if is_needed:
             return True, reason
 
-        tsNewestSource = mx.TimeStampFile.newest([os.path.join(root, file) for root, file in self.subject.getSources()])
+        tsNewestSource = mx.TimeStampFile.newest([os.path.join(root, f) for root, f in self.subject.getSources()])
         for result in self.subject.getResults():
             tsResult = mx.TimeStampFile(result)
             if tsResult.isOlderThan(tsNewestSource):
