@@ -41,12 +41,14 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleAttachNode;
+import org.graalvm.compiler.truffle.compiler.nodes.CallSiteHandleNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsAttachedInlinedNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -264,7 +266,6 @@ public final class CallNode extends Node {
         getCallTree().inlined++;
     }
 
-    // TODO: How defensive should I be here?
     private static void handleIsAttachedInlinedNode(Invoke invoke) {
         final NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
         final ValueNode argument = arguments.get(1);
@@ -272,7 +273,15 @@ public final class CallNode extends Node {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
         final CallSiteHandleAttachNode attachNode = (CallSiteHandleAttachNode) argument;
-        final IsAttachedInlinedNode isAttachedInlinedNode = (IsAttachedInlinedNode) attachNode.getToken().usages().first();
+        final ValueNode token = attachNode.getToken();
+        if (!(token instanceof CallSiteHandleNode)) {
+            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
+        }
+        final Node maybeIsAttached = token.usages().first();
+        if (!(maybeIsAttached instanceof IsAttachedInlinedNode)) {
+            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
+        }
+        final IsAttachedInlinedNode isAttachedInlinedNode = (IsAttachedInlinedNode) maybeIsAttached;
         isAttachedInlinedNode.inlined();
         attachNode.resolve();
     }
