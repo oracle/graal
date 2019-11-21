@@ -27,8 +27,8 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ENCODING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import java.util.Set;
 
@@ -117,7 +117,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                     replacements.maybeInitializeEncoder(debug.getOptions());
                     replacements.registerMethodSubstitution(msp);
                 }
-                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, StructuredGraph.AllowAssumptions.YES, cancellable, debug.getOptions());
+                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ENCODING, StructuredGraph.AllowAssumptions.YES, cancellable, debug.getOptions());
                 methodSubstitution.resetDebug(debug);
                 return methodSubstitution;
             }

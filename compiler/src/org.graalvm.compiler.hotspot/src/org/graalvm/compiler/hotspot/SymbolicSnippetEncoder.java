@@ -29,8 +29,8 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ENCODING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -508,7 +508,7 @@ public class SymbolicSnippetEncoder {
                 ResolvedJavaMethod original = plugin.getOriginalMethod(originalReplacements.getProviders().getMetaAccess());
                 registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, options);
                 if (!original.isNative()) {
-                    registerMethodSubstitution(plugin, original, ROOT_COMPILATION, options);
+                    registerMethodSubstitution(plugin, original, ENCODING, options);
                 }
             }
             preparedPlugins = plugins.size();
