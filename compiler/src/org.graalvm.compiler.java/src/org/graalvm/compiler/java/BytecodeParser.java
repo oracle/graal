@@ -722,9 +722,27 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
             if (invalidBCIsInRootCompiledIntrinsic > 1) {
+                int invalidBCIsToFind = invalidBCIsInRootCompiledIntrinsic;
                 List<ReturnNode> returns = parser.getGraph().getNodes(ReturnNode.TYPE).snapshot();
                 if (returns.size() > 1) {
-                    throw new GraalError("Root compiled intrinsic with invalid states has more than one return. This is prohibited. Intrinsic %s", parser.method);
+                    outer: for (ReturnNode ret : returns) {
+                        for (FixedNode f : GraphUtil.predecessorIterable(ret)) {
+                            if (f instanceof StateSplit) {
+                                StateSplit split = (StateSplit) f;
+                                if (split.hasSideEffect()) {
+                                    assert ((StateSplit) f).stateAfter() != null;
+                                    if (split.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                                        invalidBCIsToFind--;
+                                        continue outer;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    GraalError.guarantee(invalidBCIsToFind == 0, "Root compiled intrinsic with invalid states has more than one return. " +
+                                    "This is allowed, however one path down a sink has more than one state, this is prohibited. " +
+                                    "Intrinsic %s", parser.method);
+                    return;
                 }
                 ReturnNode ret = returns.get(0);
                 MergeNode merge = null;
@@ -738,7 +756,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (merge == null) {
                     throw new GraalError("Root compiled intrinsic with invalid state: Unexpected node between return and merge.");
                 }
-                int invalidBCIsToFind = invalidBCIsInRootCompiledIntrinsic;
                 //@formatter:off
                 GraalError.guarantee(invalidBCIsInRootCompiledIntrinsic <= merge.phiPredecessorCount() + 1 /* merge itself */,
                                 "Root compiled intrinsic with invalid states %s must at maximum produce (0,1 or if the last instruction is a merge |merge.predCount|" +

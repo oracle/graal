@@ -75,6 +75,14 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
         public static void splitEffectVoid(@SuppressWarnings("unused") int a) {
         }
 
+        public static int multiSplitEffectNoMerge(@SuppressWarnings("unused") int a) {
+            return 0;
+        }
+
+        public static int multiSplitEffectNoMergeInvalid(@SuppressWarnings("unused") int a) {
+            return 0;
+        }
+
         public static int splitEffectWrong(@SuppressWarnings("unused") int a) {
             return 0;
         }
@@ -127,6 +135,43 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
         }
 
         @MethodSubstitution
+        public static int multiSplitEffectNoMerge(int a) {
+            switch (a) {
+                case 1:
+                    GraalDirectives.sideEffect(a);
+                    return 3;
+                case 2:
+                    GraalDirectives.sideEffect(a);
+                    return 2;
+                case 3:
+                    GraalDirectives.sideEffect(a);
+                    return 1;
+                default:
+                    GraalDirectives.sideEffect(a);
+                    return 0;
+            }
+        }
+
+        @MethodSubstitution
+        public static int multiSplitEffectNoMergeInvalid(int a) {
+            switch (a) {
+                case 1:
+                    GraalDirectives.sideEffect(a);
+                    return 3;
+                case 2:
+                    GraalDirectives.sideEffect(a);
+                    return 2;
+                case 3:
+                    GraalDirectives.sideEffect(a);
+                    return 1;
+                default:
+                    GraalDirectives.sideEffect(a);
+                    GraalDirectives.sideEffect(a);
+                    return 0;
+            }
+        }
+
+        @MethodSubstitution
         public static int splitEffectWrong(int a) {
             int i;
             if (a > 0) {
@@ -161,6 +206,8 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
         r.registerMethodSubstitution(Substitutor.class, "sequentialEffectInvalidVoid", int.class);
         r.registerMethodSubstitution(Substitutor.class, "splitEffect", int.class);
         r.registerMethodSubstitution(Substitutor.class, "splitEffectVoid", int.class);
+        r.registerMethodSubstitution(Substitutor.class, "multiSplitEffectNoMerge", int.class);
+        r.registerMethodSubstitution(Substitutor.class, "multiSplitEffectNoMergeInvalid", int.class);
         r.registerMethodSubstitution(Substitutor.class, "splitEffectWrong", int.class);
         r.registerMethodSubstitution(Substitutor.class, "splitParitalIntrinsicExit", int.class);
         super.registerInvocationPlugins(invocationPlugins);
@@ -219,6 +266,10 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
         if (Substitutee.splitParitalIntrinsicExit(ValueFountain) == 42) {
             GraalDirectives.deoptimize();
         }
+    }
+
+    static void snippet08() {
+        Substitutee.multiSplitEffectNoMerge(ValueFountain);
     }
 
     StructuredGraph getGraph(String snippet) {
@@ -295,20 +346,26 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
     }
 
     @Test
+    public void test8() {
+        getGraph("snippet08");
+    }
+
+    @Test
     @SuppressWarnings("try")
     public void testRootCompiles() {
         ArrayList<ResolvedJavaMethod> intrinisicsWithoutErrors = new ArrayList<>();
         ArrayList<ResolvedJavaMethod> intrinisicsErrors = new ArrayList<>();
 
         intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "singleEffect"));
-        intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "singleEffect"));
         intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "splitEffect"));
         intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "splitEffectVoid"));
+        intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "multiSplitEffectNoMerge"));
         intrinisicsWithoutErrors.add(getResolvedJavaMethod(Substitutee.class, "splitParitalIntrinsicExit"));
 
         intrinisicsErrors.add(getResolvedJavaMethod(Substitutee.class, "sequentialEffectInvalid"));
         intrinisicsErrors.add(getResolvedJavaMethod(Substitutee.class, "sequentialEffectInvalidVoid"));
         intrinisicsErrors.add(getResolvedJavaMethod(Substitutee.class, "splitEffectWrong"));
+        intrinisicsErrors.add(getResolvedJavaMethod(Substitutee.class, "multiSplitEffectNoMergeInvalid"));
 
         for (ResolvedJavaMethod method : intrinisicsWithoutErrors) {
             StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, getDebugContext(), null);
