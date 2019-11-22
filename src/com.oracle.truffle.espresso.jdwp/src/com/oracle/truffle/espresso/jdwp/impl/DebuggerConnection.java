@@ -321,6 +321,9 @@ public class DebuggerConnection implements JDWPCommands {
                             case JDWP.ClassType.SET_VALUES.ID:
                                 result = JDWP.ClassType.SET_VALUES.createReply(packet, context);
                                 break;
+                            case JDWP.ClassType.INVOKE_METHOD.ID:
+                                result = JDWP.ClassType.INVOKE_METHOD.createReply(packet, controller);
+                                break;
                         }
                         break;
                     }

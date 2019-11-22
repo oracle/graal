@@ -274,4 +274,6 @@ public interface JDWPContext {
     boolean isInstanceOf(Object object, KlassRef klass);
 
     Object[] getTopLevelThreadGroups();
+
+    KlassRef getReflectedType(Object classObject);
 }

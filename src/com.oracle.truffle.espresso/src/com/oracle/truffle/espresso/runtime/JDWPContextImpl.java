@@ -9,7 +9,6 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPVirtualMachine;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.NullKlass;
-import com.oracle.truffle.espresso.jdwp.impl.ClassObjectId;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPVirtualMachineImpl;
@@ -27,6 +26,12 @@ import java.util.ArrayList;
 public final class JDWPContextImpl implements JDWPContext {
 
     public static final String JAVA_LANG_STRING = "Ljava/lang/String;";
+    public static final String JAVA_LANG_THREAD = "Ljava/lang/Thread;";
+    public static final String JAVA_LANG_CLASS = "Ljava/lang/Class;";
+    public static final String JAVA_LANG_CLASS_LOADER = "Ljava/lang/ClassLoader;";
+    public static final String JAVA_LANG_THREAD_GROUP = "Ljava/lang/ThreadGroup;";
+
+
     public static final NullKlass NULL_KLASS = new NullKlass();
 
     private final EspressoContext context;
@@ -172,8 +177,17 @@ public final class JDWPContextImpl implements JDWPContext {
                 return ((StaticObject) object).getKlass();
             }
         } else {
-            return ((ClassObjectId) object).getKlassRef();
+            throw new IllegalStateException("object " + object + " is not a static object");
         }
+    }
+
+    @Override
+    public KlassRef getReflectedType(Object classObject) {
+        if (classObject instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) classObject;
+            return (KlassRef) staticObject.getHiddenField(context.getMeta().HIDDEN_MIRROR_KLASS);
+        }
+        return null;
     }
 
     @Override
@@ -191,10 +205,25 @@ public final class JDWPContextImpl implements JDWPContext {
                     tag = TagConstants.STRING;
                 } else if (staticObject.getKlass().isArray()) {
                     tag = TagConstants.ARRAY;
+                } else if (JAVA_LANG_THREAD.equals(staticObject.getKlass().getType().toString())) {
+                    tag = TagConstants.THREAD;
+                } else if (JAVA_LANG_THREAD_GROUP.equals(staticObject.getKlass().getType().toString())) {
+                    tag = TagConstants.THREAD_GROUP;
+                } else if (staticObject.getKlass() == context.getMeta().Class) {
+                    System.out.println("Class object found for value!" + object);
+                    tag = TagConstants.CLASS_OBJECT;
+                } else if (JAVA_LANG_CLASS_LOADER.equals(staticObject.getKlass().getType().toString())) {
+                    tag = TagConstants.CLASS_LOADER;
                 }
+            } else if (isBoxedPrimitive(object.getClass())) {
+                tag = TagConstants.getTagFromPrimitive(object);
             }
         }
         return tag;
+    }
+
+    private static boolean isBoxedPrimitive(Class<?> clazz) {
+        return Number.class.isAssignableFrom(clazz) || Character.class == clazz || Boolean.class == clazz;
     }
 
     @Override

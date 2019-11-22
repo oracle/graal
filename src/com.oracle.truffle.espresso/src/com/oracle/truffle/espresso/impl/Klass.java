@@ -799,6 +799,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return isAssignableFrom((Klass) klass);
     }
 
+    @Override
+    public Object getKlassObject() {
+        return mirror();
+    }
+
     // endregion jdwp-specific
 
 }

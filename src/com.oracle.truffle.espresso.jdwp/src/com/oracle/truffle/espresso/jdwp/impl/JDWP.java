@@ -433,9 +433,6 @@ class JDWP {
             }
         }
 
-        // list which only purpose is to have hard references to created ClassObjectId objects
-        private static final List<ClassObjectId> classObjectIds = new ArrayList<>();
-
         static class CLASS_OBJECT {
             public static final int ID = 11;
 
@@ -450,10 +447,9 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                // wrap this in ClassIdObject
-                ClassObjectId id = new ClassObjectId(klass);
-                classObjectIds.add(id);
-                reply.writeLong(context.getIds().getIdAsLong(id));
+                Object classObject = klass.getKlassObject();
+
+                reply.writeLong(context.getIds().getIdAsLong(classObject));
                 return new JDWPResult(reply);
             }
         }
@@ -638,6 +634,82 @@ class JDWP {
                     Object value = readValue(tag, input, context);
                     context.setStaticFieldValue(field, value);
                 }
+                return new JDWPResult(reply);
+            }
+        }
+
+        static class INVOKE_METHOD {
+
+            public static final int ID = 3;
+
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                JDWPContext context = controller.getContext();
+
+                KlassRef klass = verifyRefType(input.readLong(), reply, context);
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                Object thread = verifyThread(input.readLong(), reply, context);
+                if (thread == null) {
+                    return new JDWPResult(reply);
+                }
+
+                MethodRef method = verifyMethodRef(input.readLong(), reply, context);
+                if (method == null) {
+                    return new JDWPResult(reply);
+                }
+
+                JDWPLogger.log("trying to invoke static method: " + method.getNameAsString(), JDWPLogger.LogLevel.PACKET);
+
+                int arguments = input.readInt();
+
+                Object[] args = new Object[arguments];
+                for (int i = 0; i < arguments; i++) {
+                    byte valueKind = input.readByte();
+                    args[i] = readValue(valueKind, input, context);
+                }
+
+                /*int invocationOptions =*/ input.readInt();
+                try {
+                    // we have to call the method in the correct thread, so post a
+                    // Callable to the controller and wait for the result to appear
+                    ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
+
+                        @Override
+                        public Object call() throws Exception {
+                            return method.invokeMethod(null, args);
+                        }
+                    });
+                    controller.postJobForThread(job);
+                    ThreadJob.JobResult result = job.getResult();
+
+                    if (result.getException() != null) {
+                        JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
+                        reply.writeByte(TagConstants.OBJECT);
+                        reply.writeLong(0);
+                        reply.writeByte(TagConstants.OBJECT);
+                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
+                    } else {
+                        Object value = context.toGuest(result.getResult());
+                        JDWPLogger.log("Got converted result from method invocation: " + value, JDWPLogger.LogLevel.PACKET);
+                        if (value != null) {
+                            byte tag = context.getTag(value);
+                            writeValue(tag, value, reply, true, context);
+                        } else { // return value is null
+                            reply.writeByte(TagConstants.OBJECT);
+                            reply.writeLong(0);
+                        }
+                        // no exception, so zero object ID
+                        reply.writeByte(TagConstants.OBJECT);
+                        reply.writeLong(0);
+                    }
+                } catch (Throwable t) {
+                    throw new RuntimeException("not able to invoke static method through jdwp", t);
+                }
+
                 return new JDWPResult(reply);
             }
         }
@@ -958,11 +1030,6 @@ class JDWP {
                         Object value = context.toGuest(result.getResult());
                         if (value != null) {
                             byte tag = context.getTag(value);
-                            if (isBoxedPrimitive(value.getClass())) {
-                                // we have a host primitive value, so get the appropriate tag
-                                tag = TagConstants.getTagFromPrimitive(value);
-                                JDWPLogger.log("primitive tag: " + tag + " required for: " + value.getClass(), JDWPLogger.LogLevel.PACKET);
-                            }
                             writeValue(tag, value, reply, true, context);
                         } else { // return value is null
                             reply.writeByte(TagConstants.OBJECT);
@@ -976,10 +1043,6 @@ class JDWP {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
                 return new JDWPResult(reply);
-            }
-
-            private static boolean isBoxedPrimitive(Class<?> clazz) {
-                return Number.class.isAssignableFrom(clazz) || Character.class == clazz || Boolean.class == clazz;
             }
         }
 
@@ -1711,10 +1774,16 @@ class JDWP {
 
                 long classObjectId = input.readLong();
 
-                ClassObjectId id = verifyClassObject(classObjectId, reply, context);
+                Object classObject = verifyClassObject(classObjectId, reply, context);
 
-                reply.writeByte(TypeTag.getKind(id.getKlassRef()));
-                reply.writeLong(context.getIds().getIdAsLong(id.getKlassRef()));
+                if (classObject == null) {
+                    return new JDWPResult(reply);
+                }
+
+                KlassRef klass = context.getReflectedType(classObject);
+
+                reply.writeByte(TypeTag.getKind(klass));
+                reply.writeLong(context.getIds().getIdAsLong(klass));
                 return new JDWPResult(reply);
             }
         }
@@ -1741,6 +1810,10 @@ class JDWP {
             case TagConstants.ARRAY:
             case TagConstants.STRING:
             case TagConstants.OBJECT:
+            case TagConstants.THREAD:
+            case TagConstants.THREAD_GROUP:
+            case TagConstants.CLASS_LOADER:
+            case TagConstants.CLASS_OBJECT:
                 return context.getIds().fromId((int) input.readLong());
             default:
                 throw new RuntimeException("Should not reach here!");
@@ -1814,6 +1887,10 @@ class JDWP {
             case TagConstants.OBJECT:
             case TagConstants.STRING:
             case TagConstants.ARRAY:
+            case TagConstants.THREAD:
+            case TagConstants.THREAD_GROUP:
+            case TagConstants.CLASS_OBJECT:
+            case TagConstants.CLASS_LOADER:
                 if (value == context.getNullObject()) {
                     reply.writeLong(0);
                 } else {
@@ -1946,14 +2023,14 @@ class JDWP {
         return (JDWPCallFrame) frame;
     }
 
-    private static ClassObjectId verifyClassObject(long classObjectId, PacketStream reply, JDWPContext context) {
+    private static Object verifyClassObject(long classObjectId, PacketStream reply, JDWPContext context) {
         Object object = context.getIds().fromId((int) classObjectId);
 
-        if (object == context.getNullObject() || !(object instanceof ClassObjectId)) {
+        if (object == context.getNullObject()) {
             reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
             return null;
         }
-        return (ClassObjectId) object;
+        return object;
     }
 }
 
