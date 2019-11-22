@@ -174,6 +174,7 @@ public @interface ExplodeLoop {
 
 }
 
+@SuppressFBWarnings("UC")
 class Snippets {
     // BEGIN: loopEndsExits
     int loopEndExits() {
