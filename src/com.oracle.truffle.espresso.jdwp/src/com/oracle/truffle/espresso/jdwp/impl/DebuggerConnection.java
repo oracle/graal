@@ -338,6 +338,14 @@ public class DebuggerConnection implements JDWPCommands {
                         }
                         break;
                     }
+                    case JDWP.InterfaceType.ID: {
+                        switch (packet.cmd) {
+                            case JDWP.InterfaceType.INVOKE_METHOD.ID:
+                                result = JDWP.InterfaceType.INVOKE_METHOD.createReply(packet, controller);
+                                break;
+                        }
+                        break;
+                    }
                     case JDWP.Methods.ID: {
                         switch (packet.cmd) {
                             case JDWP.Methods.LINE_TABLE.ID:
