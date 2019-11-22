@@ -330,6 +330,14 @@ public class DebuggerConnection implements JDWPCommands {
                         }
                         break;
                     }
+                    case JDWP.ArrayType.ID: {
+                        switch (packet.cmd) {
+                            case JDWP.ArrayType.NEW_INSTANCE.ID:
+                                result = JDWP.ArrayType.NEW_INSTANCE.createReply(packet, context);
+                                break;
+                        }
+                        break;
+                    }
                     case JDWP.Methods.ID: {
                         switch (packet.cmd) {
                             case JDWP.Methods.LINE_TABLE.ID:

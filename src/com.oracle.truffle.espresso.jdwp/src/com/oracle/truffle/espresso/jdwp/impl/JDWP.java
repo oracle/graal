@@ -793,6 +793,35 @@ class JDWP {
         }
     }
 
+    static class ArrayType {
+        public static final int ID = 4;
+
+        static class NEW_INSTANCE {
+            public static final int ID = 1;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                PacketStream input = new PacketStream(packet);
+
+                KlassRef klass = verifyRefType(input.readLong(), reply, context);
+
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                int length = input.readInt();
+                Object newArray = context.newArray(klass, length);
+
+                reply.writeByte(TagConstants.ARRAY);
+                reply.writeLong(context.getIds().getIdAsLong(newArray));
+
+                return new JDWPResult(reply);
+            }
+
+        }
+
+    }
+
     static class Methods {
         public static final int ID = 6;
 
@@ -1558,7 +1587,9 @@ class JDWP {
                     return new JDWPResult(reply);
                 }
 
-                reply.writeInt(context.getArrayLength(array));
+                int arrayLength = context.getArrayLength(array);
+
+                reply.writeInt(arrayLength);
                 return new JDWPResult(reply, null);
             }
         }
@@ -1606,14 +1637,13 @@ class JDWP {
 
                 Object array = verifyArray(arrayId, reply, context);
 
-                if (array == null || !verifyArrayLength(array, values, reply, context)) {
+                if (array == null || !verifyArrayLength(array, index + values, reply, context)) {
                     return new JDWPResult(reply);
                 }
 
                 byte tag = context.getTypeTag(array);
 
                 setArrayValues(context, input, index, values, array, tag);
-
                 return new JDWPResult(reply);
             }
 
@@ -2063,8 +2093,8 @@ class JDWP {
         return array;
     }
 
-    private static boolean verifyArrayLength(Object array, int length, PacketStream reply, JDWPContext context) {
-        if (!context.verifyArrayLength(array, length)) {
+    private static boolean verifyArrayLength(Object array, int maxIndex, PacketStream reply, JDWPContext context) {
+        if (!context.verifyArrayLength(array, maxIndex)) {
             reply.errorCode(JDWPErrorCodes.INVALID_LENGTH);
             return false;
         }
