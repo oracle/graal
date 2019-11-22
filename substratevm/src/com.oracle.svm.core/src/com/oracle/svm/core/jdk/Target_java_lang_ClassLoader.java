@@ -222,10 +222,6 @@ public final class Target_java_lang_ClassLoader {
     public Target_java_lang_Module getUnnamedModule() {
         return DynamicHub.singleModuleReference.get();
     }
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    private native Stream<Package> packages();
 }
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
