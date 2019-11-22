@@ -260,7 +260,7 @@ abstract class HostMethodDesc {
                 try {
                     return invokeHandle(methodHandle, receiver, arguments);
                 } catch (ClassCastException ex) {
-                    throw UnsupportedTypeException.create(arguments);
+                    throw UnsupportedTypeException.create(arguments, ex.getMessage());
                 }
             }
 
