@@ -46,7 +46,7 @@ from argparse import ArgumentParser
 import io
 import json
 import os
-from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
 import pprint
 import re
 import subprocess
@@ -374,6 +374,18 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _dest, 'link:{}'.format(_linkname), _component)
                     return _dest + basename(_target)
 
+        def _find_abs_links(root_dir):
+            abs_links = []
+            for root, _, files in os.walk(root_dir):
+                for _file in files:
+                    _abs_file = join(root, _file)
+                    if islink(_abs_file):
+                        _link_target = os.readlink(_abs_file)
+                        if isabs(_link_target):
+                            mx.warn("The base JDK contains an absolute link which will be excluded from the build: '{}' points to '{}'.".format(_abs_file, _link_target))
+                            abs_links.append(_abs_file)
+            return abs_links
+
         if is_graalvm:
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
@@ -394,10 +406,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             if _src_jdk_version == 8:
+                _abs_links = _find_abs_links(_src_jdk_dir)
                 _add(layout, base_dir, {
                     'source_type': 'file',
                     'path': _src_jdk_dir,
-                    'exclude': exclusion_list + [
+                    'exclude': exclusion_list + _abs_links + [
                         exclude_base + '/COPYRIGHT',
                         exclude_base + '/LICENSE',
                         exclude_base + '/README.html',
