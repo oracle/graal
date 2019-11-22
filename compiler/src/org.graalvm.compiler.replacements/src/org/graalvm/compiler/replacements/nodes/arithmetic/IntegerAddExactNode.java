@@ -42,12 +42,12 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  * Node representing an exact integer addition that will throw an {@link ArithmeticException} in
