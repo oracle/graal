@@ -67,13 +67,13 @@ public @interface ExplodeLoop {
      *
      * {@codesnippet loopEndsExits}
      *
-     * There are 4 kinds of loops (plus {@code MERGE_EXPLODE}, which is meant for bytecode
-     * interpreters), to configure two parameters.
+     * There are 4 loop explosion kinds (plus {@code MERGE_EXPLODE}, which is meant for bytecode
+     * interpreters), configurable by 2 parameters: UNROLL vs EXPLODE and UNTIL_RETURN vs not.
      *
      * <h2>UNROLL vs EXPLODE</h2>
      *
-     * The first parameter is whether to duplicate loop ends. UNROLL merges after each loop end and
-     * EXPLODE keeps exploding nested iterations like a tree.
+     * The first parameter specifies whether the partial evaluator should duplicate loop ends.
+     * UNROLL merges after each loop end and EXPLODE keeps exploding nested iterations like a tree.
      *
      * {@codesnippet unrollVsExplodeLoop}
      *
@@ -87,8 +87,8 @@ public @interface ExplodeLoop {
      *
      * <h2>UNTIL_RETURN</h2>
      *
-     * The second parameter is whether to duplicate loop exits. UNTIL_RETURN duplicates them,
-     * otherwise control flow is merged.
+     * The second parameter specifies whether the partial evaluator should duplicate loop exits.
+     * UNTIL_RETURN duplicates them, otherwise control flow is merged.
      *
      * {@codesnippet untilReturnLoop}
      *
@@ -181,17 +181,20 @@ class Snippets {
         for (int i = 0; i < 4; i++) {
             if (condition(i)) {
                 continue; // loop end
-            }
-
-            if (condition1(i)) {
-                break; // loop exit
+            } else if (condition1(i)) {
+                // loop exit (break)
+                state = 2;
+                break;
             } else if (condition2(i)) {
-                return i; // loop exit
+                // loop exit (return)
+                state = 3;
+                return state;
             } else {
-                state = i; // loop end
+                state = i;
+                // loop end
             }
         }
-        // loop exit
+        // loop exit (after last iteration)
         return state;
     }
     // END: loopEndsExits
@@ -200,7 +203,7 @@ class Snippets {
     @ExplodeLoop
     void unrollVsExplodeLoop() {
         int state = 1;
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i < 2; i++) {
             if (c(i, state)) {
                 state = 2;
             } else {
