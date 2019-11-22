@@ -126,7 +126,6 @@ public final class LLVMParser {
         assert !global.isExternal();
         // handle the file scope
         LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-        //TODO (PLi): add the id for the descriptor.
         descriptor.define(global.getType(), library);
         descriptor.setID(runtime.getID());
         runtime.getFileScope().register(descriptor);
@@ -135,6 +134,7 @@ public final class LLVMParser {
         if (global.isExported()) {
             LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(global.getName());
             if (exportedDescriptor == null) {
+                // TODO (PLi): working on the scope for global -- differ from define and declare.
                 runtime.getGlobalScope().register(descriptor);
             } else if (exportedDescriptor.isGlobalVariable()) {
                 importedSymbols.add(global.getName());

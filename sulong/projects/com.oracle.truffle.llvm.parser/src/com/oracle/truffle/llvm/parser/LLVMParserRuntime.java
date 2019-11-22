@@ -72,7 +72,9 @@ public final class LLVMParserRuntime {
         return nodeFactory;
     }
 
-    public int getID() {return bcID;}
+    public int getID() {
+        return bcID;
+    }
 
     public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {
         LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);

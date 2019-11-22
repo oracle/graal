@@ -47,9 +47,9 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
     @SuppressWarnings("unused")
     @Specialization
     void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
-                 @CachedContext(LLVMLanguage.class) LLVMContext context,
-                 @Cached WriteDynamicObjectHelper writeHelper,
-                 @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
+                    @Cached WriteDynamicObjectHelper writeHelper,
+                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
         synchronized (globals) {
             writeHelper.execute(globals, descriptor, pointer);
         }

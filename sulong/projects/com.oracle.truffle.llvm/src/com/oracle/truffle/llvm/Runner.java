@@ -286,18 +286,21 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), parserResults, initializationOrder);
     }
 
-    /*abstract static class CheckGlobalNode extends LLVMNode {
-
-        abstract boolean execute(LLVMGlobal descriptor);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "descriptor == cachedDescriptor")
-        boolean doCached(LLVMGlobal descriptor,
-                         @Cached("descriptor") LLVMGlobal cachedDescriptor,
-                         @Cached("create()") LLVMCheckGlobalVariableStorageNode check) {
-            return check.execute(cachedDescriptor);
-        }
-    }*/
+    /*
+     * abstract static class CheckGlobalNode extends LLVMNode {
+     * 
+     * abstract boolean execute(LLVMGlobal descriptor);
+     * 
+     * @SuppressWarnings("unused")
+     * 
+     * @Specialization(guards = "descriptor == cachedDescriptor") boolean doCached(LLVMGlobal
+     * descriptor,
+     * 
+     * @Cached("descriptor") LLVMGlobal cachedDescriptor,
+     * 
+     * @Cached("create()") LLVMCheckGlobalVariableStorageNode check) { return
+     * check.execute(cachedDescriptor); } }
+     */
 
     private abstract static class AllocGlobalNode extends LLVMNode {
 

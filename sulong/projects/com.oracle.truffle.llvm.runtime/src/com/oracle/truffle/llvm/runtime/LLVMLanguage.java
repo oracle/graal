@@ -271,7 +271,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         context.dispose(memory);
     }
 
-    public AtomicInteger getRawRunnerID(){
+    public AtomicInteger getRawRunnerID() {
         return nextID;
     }
 

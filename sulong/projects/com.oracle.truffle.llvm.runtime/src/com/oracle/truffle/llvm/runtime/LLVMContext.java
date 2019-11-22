@@ -132,9 +132,8 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    //private final DynamicObject globalStorage;
-    private final ConcurrentHashMap<Integer, LLVMPointer[]> globalStorage = new ConcurrentHashMap<>();
-
+    // private for storing the globals of each bcode file;
+    private LLVMPointer[][] globalStorage = new LLVMPointer[10][];
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -605,14 +604,22 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    @TruffleBoundary
     public LLVMPointer[] findGlobal(int id) {
-        return globalStorage.get(id);
+        return globalStorage[id];
     }
 
     @TruffleBoundary
-    public void registerGlobalMap(int id, LLVMPointer[] target) {
-        globalStorage.put(id, target);
+    public void registerGlobalMap(int index, LLVMPointer[] target) {
+        synchronized (globalStorage) {
+            if (index < globalStorage.length) {
+                globalStorage[index] = target;
+            } else {
+                LLVMPointer[][] temp = new LLVMPointer[index + 1][];
+                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
+                globalStorage = temp;
+                globalStorage[index] = target;
+            }
+        }
     }
 
     @TruffleBoundary

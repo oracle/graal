@@ -55,7 +55,6 @@ public final class LLVMGlobal implements LLVMSymbol {
     @CompilationFinal private int index;
     @CompilationFinal private int id;
 
-
     public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
         return new LLVMGlobal(name, type, sourceSymbol, readOnly);
     }
@@ -78,16 +77,16 @@ public final class LLVMGlobal implements LLVMSymbol {
         return index;
     }
 
-    public void setIndex(int index){
+    public void setIndex(int index) {
         this.index = index;
     }
 
-    public int getID(){
+    public int getID() {
         assert id != -1;
         return id;
     }
 
-    public void setID(int id){
+    public void setID(int id) {
         this.id = id;
     }
 
