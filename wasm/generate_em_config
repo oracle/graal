@@ -7,7 +7,7 @@ EMSCRIPTEN_ROOT=$4
 NODE_JS=$5
 
 printf "import os\n" > $CONFIG_PATH
-printf "\n" > $CONFIG_PATH
+printf "\n" >> $CONFIG_PATH
 printf "LLVM_ROOT=$LLVM_ROOT\n" >> $CONFIG_PATH
 printf "BINARYEN_ROOT=$BINARYEN_ROOT\n" >> $CONFIG_PATH
 printf "EMSCRIPTEN_ROOT=$EMSCRIPTEN_ROOT\n" >> $CONFIG_PATH
