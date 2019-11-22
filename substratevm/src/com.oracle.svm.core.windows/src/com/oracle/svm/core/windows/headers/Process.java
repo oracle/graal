@@ -46,11 +46,17 @@ import org.graalvm.word.PointerBase;
 @Platforms(Platform.WINDOWS.class)
 public class Process {
 
+    public static final int TOKEN_QUERY = 0x08;
+
     @CFunction
     public static native int _execv(CCharPointer path, CCharPointerPointer argv);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native WinBase.HANDLE GetCurrentProcess();
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int OpenProcessToken(WinBase.HANDLE pHandle, int desiredAccess,
+                    WinBase.LPHANDLE tokenHandle);
 
     @CFunction
     public static native WinBase.HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,

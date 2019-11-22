@@ -66,4 +66,10 @@ public class LibC {
 
     @CFunction(value = "_strdup", transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strdup(CCharPointer src);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native CCharPointer _wgetenv(CCharPointer varname);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int wcslen(CCharPointer varname);
 }
