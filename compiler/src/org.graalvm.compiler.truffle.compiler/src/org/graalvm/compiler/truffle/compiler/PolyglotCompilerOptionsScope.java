@@ -36,7 +36,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
-
 public final class PolyglotCompilerOptionsScope implements Closeable {
 
     private static ThreadLocal<PolyglotCompilerOptionsScope> currentScope = new ThreadLocal<>();
@@ -71,7 +70,7 @@ public final class PolyglotCompilerOptionsScope implements Closeable {
         return PolyglotCompilerOptions.getValue(getOptionValues(), optionKey);
     }
 
-    static PolyglotCompilerOptionsScope open (Map<String,Object> options) {
+    static PolyglotCompilerOptionsScope open(Map<String, Object> options) {
         PolyglotCompilerOptionsScope parent = currentScope.get();
         OptionValues values = convertToOptionValues(options);
         PolyglotCompilerOptionsScope newScope = new PolyglotCompilerOptionsScope(values, parent);
@@ -79,20 +78,20 @@ public final class PolyglotCompilerOptionsScope implements Closeable {
         return newScope;
     }
 
-    private static OptionValues convertToOptionValues(Map<String,Object> options) {
+    private static OptionValues convertToOptionValues(Map<String, Object> options) {
         EconomicMap<OptionKey<?>, Object> parsedOptions = EconomicMap.create(Equivalence.IDENTITY);
         OptionDescriptors descriptors = PolyglotCompilerOptions.getDescriptors();
         for (Map.Entry<String, Object> e : options.entrySet()) {
-                final OptionDescriptor descriptor = descriptors.get(e.getKey());
-                final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
-                if (k != null) {
-                    Object value = e.getValue();
-                    if (value.getClass() == String.class) {
-                        value = descriptor.getKey().getType().convert((String)e.getValue());
-                    }
-                    parsedOptions.put(k, value);
+            final OptionDescriptor descriptor = descriptors.get(e.getKey());
+            final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
+            if (k != null) {
+                Object value = e.getValue();
+                if (value.getClass() == String.class) {
+                    value = descriptor.getKey().getType().convert((String) e.getValue());
                 }
+                parsedOptions.put(k, value);
             }
+        }
         return new OptionValuesImpl(descriptors, parsedOptions);
     }
 }

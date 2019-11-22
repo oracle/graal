@@ -38,7 +38,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Instr
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentationTableSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumInlineNodeCount;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IntrinsifyFrameAccess;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInliningDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningPolicy;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionBudget;
@@ -46,10 +45,10 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlin
 
 public final class TruffleCompilerOptionsResolver implements OptionsResolver {
 
-    private static final EconomicMap<OptionKey<?>, Supplier<?>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
+    private static final EconomicMap<OptionKey<?>, CompilerOptionValueSupplier<?>> POLYGLOT_TO_COMPILER = initializePolyglotToGraalMapping();
 
-    private static EconomicMap<OptionKey<?>, Supplier<?>> initializePolyglotToGraalMapping() {
-        EconomicMap<OptionKey<?>,Supplier<?>> result = EconomicMap.create(Equivalence.IDENTITY);
+    private static EconomicMap<OptionKey<?>, CompilerOptionValueSupplier<?>> initializePolyglotToGraalMapping() {
+        EconomicMap<OptionKey<?>, CompilerOptionValueSupplier<?>> result = EconomicMap.create(Equivalence.IDENTITY);
         result.put(InlineAcrossTruffleBoundary, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary));
         result.put(TracePerformanceWarnings, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TraceTrufflePerformanceWarnings));
         result.put(PrintExpansionHistogram, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.PrintTruffleExpansionHistogram));
@@ -58,7 +57,6 @@ public final class TruffleCompilerOptionsResolver implements OptionsResolver {
         result.put(InstrumentationTableSize, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleInstrumentationTableSize));
         result.put(MaximumGraalNodeCount, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleMaximumGraalNodeCount));
         result.put(MaximumInlineNodeCount, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleMaximumInlineNodeCount));
-        result.put(IntrinsifyFrameAccess, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleIntrinsifyFrameAccess));
         result.put(TraceInliningDetails, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TraceTruffleInliningDetails));
         result.put(InliningPolicy, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleInliningPolicy));
         result.put(InliningExpansionBudget, new CompilerOptionValueSupplier<>(TruffleCompilerOptions.TruffleInliningExpansionBudget));
@@ -73,6 +71,12 @@ public final class TruffleCompilerOptionsResolver implements OptionsResolver {
     @SuppressWarnings("unchecked")
     public <T> Supplier<T> resolve(OptionKey<T> key) {
         return (Supplier<T>) POLYGLOT_TO_COMPILER.get(key);
+    }
+
+    @Override
+    public boolean hasBeenSet(OptionKey<?> key) {
+        // Not used
+        return false;
     }
 
     private static final class CompilerOptionValueSupplier<T> implements Supplier<T> {

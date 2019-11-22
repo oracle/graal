@@ -80,7 +80,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptions());
+                    optionValues = new OptionValuesImpl(engine, getOptions(), false);
                 }
             }
         }

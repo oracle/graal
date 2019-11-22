@@ -1266,7 +1266,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (callNode != null) {
                 callers.add(callNode);
             }
-            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, callers);
+            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(this, toDump, callers);
         }
     }
 

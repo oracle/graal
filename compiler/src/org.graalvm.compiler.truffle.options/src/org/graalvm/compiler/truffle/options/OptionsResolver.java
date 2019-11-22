@@ -31,5 +31,7 @@ import org.graalvm.options.OptionKey;
  * Resolver for values of legacy {@code TruffleRuntimeOptions} and {@code TruffleCompilerOptions}.
  */
 public interface OptionsResolver {
+    boolean hasBeenSet(OptionKey<?> key);
+
     <T> Supplier<T> resolve(OptionKey<T> key);
 }

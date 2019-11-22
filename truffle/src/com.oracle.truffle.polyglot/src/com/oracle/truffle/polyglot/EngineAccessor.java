@@ -91,6 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.options.OptionKey;
 
 final class EngineAccessor extends Accessor {
 
@@ -966,6 +967,14 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isIOAllowed() {
             return PolyglotEngineImpl.ALLOW_IO;
+        }
+
+        @Override
+        public String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey) {
+            if (!(optionValues instanceof OptionValuesImpl)) {
+                throw new IllegalArgumentException(String.format("Only %s is supported.", OptionValuesImpl.class.getName()));
+            }
+            return ((OptionValuesImpl) optionValues).getUnparsedOptionValue(optionKey);
         }
     }
 

@@ -72,13 +72,12 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
 import org.graalvm.options.OptionKey;
 
-
 public final class TruffleRuntimeOptionsResolver implements OptionsResolver {
 
-    private static final EconomicMap<OptionKey<?>, Supplier<?>> POLYGLOT_TO_RUNTIME = initializePolyglotToGraalMapping();
+    private static final EconomicMap<OptionKey<?>, RuntimeOptionValueSupplier<?>> POLYGLOT_TO_RUNTIME = initializePolyglotToGraalMapping();
 
-    private static EconomicMap<OptionKey<?>, Supplier<?>> initializePolyglotToGraalMapping() {
-        EconomicMap<OptionKey<?>,Supplier<?>> result = EconomicMap.create(Equivalence.IDENTITY);
+    private static EconomicMap<OptionKey<?>, RuntimeOptionValueSupplier<?>> initializePolyglotToGraalMapping() {
+        EconomicMap<OptionKey<?>, RuntimeOptionValueSupplier<?>> result = EconomicMap.create(Equivalence.IDENTITY);
         result.put(Compilation, new RuntimeOptionValueSupplier<>(SharedTruffleRuntimeOptions.TruffleCompilation));
         result.put(CompileOnly, new RuntimeOptionValueSupplier<>(SharedTruffleRuntimeOptions.TruffleCompileOnly));
         result.put(CompileImmediately, new RuntimeOptionValueSupplier<>(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
@@ -138,6 +137,12 @@ public final class TruffleRuntimeOptionsResolver implements OptionsResolver {
     @SuppressWarnings("unchecked")
     public <T> Supplier<T> resolve(OptionKey<T> key) {
         return (Supplier<T>) POLYGLOT_TO_RUNTIME.get(key);
+    }
+
+    @Override
+    public boolean hasBeenSet(OptionKey<?> key) {
+        RuntimeOptionValueSupplier<?> supplier = POLYGLOT_TO_RUNTIME.get(key);
+        return supplier == null ? false : TruffleRuntimeOptions.getOptions().hasBeenSet(supplier.optionKey);
     }
 
     private static final class RuntimeOptionValueSupplier<T> implements Supplier<T> {

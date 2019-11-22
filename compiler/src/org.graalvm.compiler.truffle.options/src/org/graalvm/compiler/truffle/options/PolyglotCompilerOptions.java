@@ -254,9 +254,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.USER)
     public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
 
-    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> IntrinsifyFrameAccess = new OptionKey<>(true);
-
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)
@@ -273,8 +270,8 @@ public final class PolyglotCompilerOptions {
 
     // @formatter:on
 
-
     private static volatile Iterable<OptionsResolver> resolvers;
+
     /**
      * Uses the --engine option if set, otherwise fallback on the -Dgraal option.
      */
@@ -290,6 +287,18 @@ public final class PolyglotCompilerOptions {
             }
         }
         return key.getDefaultValue();
+    }
+
+    public static <T> boolean hasBeenSet(OptionValues polyglotValues, OptionKey<T> key) {
+        if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
+            return true;
+        }
+        for (OptionsResolver resolver : lookupResolvers()) {
+            if (resolver.hasBeenSet(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Iterable<OptionsResolver> lookupResolvers() {

@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IntrinsifyFrameAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -83,7 +82,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
@@ -443,7 +442,7 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
-        if (PolyglotCompilerOptionsScope.getValue(IntrinsifyFrameAccess)) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleIntrinsifyFrameAccess)) {
             registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
@@ -557,7 +556,7 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode frame = receiver.get();
-                if (PolyglotCompilerOptionsScope.getValue(IntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
                     Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;

@@ -29,7 +29,6 @@ import java.util.PriorityQueue;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionValues;
 
-
 final class DefaultPolicy implements InliningPolicy {
 
     private static final int MAX_DEPTH = 15;
@@ -83,7 +82,7 @@ final class DefaultPolicy implements InliningPolicy {
     }
 
     private void expand(CallTree tree) {
-        final int expansionBudget = PolyglotCompilerOptions.getValue(optionValues,PolyglotCompilerOptions.InliningExpansionBudget);
+        final int expansionBudget = PolyglotCompilerOptions.getValue(optionValues, PolyglotCompilerOptions.InliningExpansionBudget);
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
         while ((candidate = expandQueue.poll()) != null) {

@@ -330,8 +330,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             OptionValues options = TruffleCompilerOptions.getOptions();
             if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries)) {
                 ins.dumpAccessTable(options);
+            }
         }
-    }
     }
 
     protected abstract DiagnosticsOutputDirectory getDebugOutputDirectory();

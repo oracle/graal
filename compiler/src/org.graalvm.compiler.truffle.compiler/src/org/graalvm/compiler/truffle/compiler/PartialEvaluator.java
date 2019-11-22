@@ -604,8 +604,10 @@ public abstract class PartialEvaluator {
         GraphBuilderConfiguration newConfig = config.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        boolean mustInstrumentBranches = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries);
-        return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TraceTrufflePerformanceWarnings));
+        boolean mustInstrumentBranches = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBranches) ||
+                        TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInstrumentBoundaries);
+        return newConfig.withNodeSourcePosition(
+                        newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.getValue(TruffleCompilerOptions.TraceTrufflePerformanceWarnings));
     }
 
     protected NodePlugin[] createNodePlugins(Plugins plugins) {
