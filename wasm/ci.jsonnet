@@ -22,9 +22,10 @@
         packages+: {
           binutils: '>=2.30',
           git: '>=1.8.3',
-          gcc: '>=4.9.1',
-          'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
+          gcc: '==8.3.0',
+          'gcc-build-essentials': '==8.3.0', # GCC 4.9.0 fails on cluster
           make: '>=3.83',
+          llvm: '==6.0.1',
         },
         capabilities+: ['linux', 'amd64'],
       },
