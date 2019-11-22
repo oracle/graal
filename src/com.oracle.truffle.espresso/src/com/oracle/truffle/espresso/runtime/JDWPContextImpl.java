@@ -210,7 +210,6 @@ public final class JDWPContextImpl implements JDWPContext {
                 } else if (JAVA_LANG_THREAD_GROUP.equals(staticObject.getKlass().getType().toString())) {
                     tag = TagConstants.THREAD_GROUP;
                 } else if (staticObject.getKlass() == context.getMeta().Class) {
-                    System.out.println("Class object found for value!" + object);
                     tag = TagConstants.CLASS_OBJECT;
                 } else if (JAVA_LANG_CLASS_LOADER.equals(staticObject.getKlass().getType().toString())) {
                     tag = TagConstants.CLASS_LOADER;
