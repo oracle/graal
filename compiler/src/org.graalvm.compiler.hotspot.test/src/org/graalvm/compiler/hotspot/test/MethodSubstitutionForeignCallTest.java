@@ -59,23 +59,23 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class ForeignCallTest extends GraalCompilerTest {
+public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
     public static final ForeignCallDescriptor TEST_CALL = new ForeignCallDescriptor("test", int.class, int.class);
 
     public static class A {
-        static void foo(@SuppressWarnings("unused") int phi) {
+        static void invalidConsecutiveForeignCall1(@SuppressWarnings("unused") int phi) {
 
         }
 
-        static void bar(@SuppressWarnings("unused") int phi) {
+        static void invalidConsecutiveForeignCall2(@SuppressWarnings("unused") int phi) {
 
         }
 
-        static void barReexecutable(@SuppressWarnings("unused") int phi) {
+        static void validConsecutiveForeignCallReexecutable(@SuppressWarnings("unused") int phi) {
 
         }
 
-        static void crep(@SuppressWarnings("unused") int phi) {
+        static void splitForeignCallInvalid(@SuppressWarnings("unused") int phi) {
 
         }
     }
@@ -84,41 +84,41 @@ public class ForeignCallTest extends GraalCompilerTest {
     public static class ASubstitutions {
 
         /*
-         * Invalid: two consecutive states, something can float in between something that is not a
-         * framestate.
+         * Invalid: two consecutive states, deopt could float in between.
          */
         @MethodSubstitution
-        static void foo(int phi) {
+        static void invalidConsecutiveForeignCall1(int phi) {
             testDeopt(phi);
             // invalid two consecutive calls
             testDeopt(phi);
         }
 
         /*
-         * Invalid: two consecutive states, something can float in between something that is not a
-         * framestate. Same applies for non-deopting framestates if they are not re-executable. If
-         * they are, we are good.
+         * Invalid: two consecutive states, deopt could float in between. Same applies for
+         * non-deopting framestates if they are not re-executable. If they are, we are good.
          */
         @MethodSubstitution
-        static void bar(int phi) {
+        static void invalidConsecutiveForeignCall2(int phi) {
             testNonDeopting(phi);
             testNonDeopting(phi);
         }
 
         /*
-         * Invalid: two consecutive states, something can float in between something that is not a
-         * framestate. Same applies for non-deopting framestates if they are not re-executable. If
-         * they are, we are good.
+         * Valid, the foreign calls are re-executable and non-deopting (thus completely side-effect
+         * free), they do not need a state.
          */
-
         @MethodSubstitution
-        static void barReexecutable(int phi) {
+        static void validConsecutiveForeignCallReexecutable(int phi) {
             testPureReexectuable(phi);
             testPureReexectuable(phi);
         }
 
+        /**
+         * Invalid: Splitting effect in a method substitution is allowed as long as it is just one
+         * effect per call. This is not the case here.
+         */
         @MethodSubstitution
-        static void crep(int phi) {
+        static void splitForeignCallInvalid(int phi) {
             if (SideEffect == 0) {
                 testDeopt(phi);
             } else {
@@ -144,7 +144,7 @@ public class ForeignCallTest extends GraalCompilerTest {
 
                     @Override
                     public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-                        return null;
+                        throw GraalError.shouldNotReachHere("Test code must not need this method");
                     }
 
                     @Override
@@ -177,7 +177,7 @@ public class ForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, ForeignCallTest.class, "testDeopt", int.class);
+        }, MethodSubstitutionForeignCallTest.class, "testDeopt", int.class);
         invocationPlugins.register(new InvocationPlugin() {
 
             @Override
@@ -191,7 +191,7 @@ public class ForeignCallTest extends GraalCompilerTest {
 
                     @Override
                     public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-                        return null;
+                        throw GraalError.shouldNotReachHere("Test code must not need this method");
                     }
 
                     @Override
@@ -224,7 +224,7 @@ public class ForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, ForeignCallTest.class, "testNonDeopting", int.class);
+        }, MethodSubstitutionForeignCallTest.class, "testNonDeopting", int.class);
         invocationPlugins.register(new InvocationPlugin() {
 
             @Override
@@ -238,7 +238,7 @@ public class ForeignCallTest extends GraalCompilerTest {
 
                     @Override
                     public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-                        return null;
+                        throw GraalError.shouldNotReachHere("Test code must not need this method");
                     }
 
                     @Override
@@ -271,13 +271,13 @@ public class ForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, ForeignCallTest.class, "testPureReexectuable", int.class);
+        }, MethodSubstitutionForeignCallTest.class, "testPureReexectuable", int.class);
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, A.class, getReplacements(), bytecodeProvider);
-        r.registerMethodSubstitution(ASubstitutions.class, "foo", int.class);
-        r.registerMethodSubstitution(ASubstitutions.class, "bar", int.class);
-        r.registerMethodSubstitution(ASubstitutions.class, "barReexecutable", int.class);
-        r.registerMethodSubstitution(ASubstitutions.class, "crep", int.class);
+        r.registerMethodSubstitution(ASubstitutions.class, "invalidConsecutiveForeignCall1", int.class);
+        r.registerMethodSubstitution(ASubstitutions.class, "invalidConsecutiveForeignCall2", int.class);
+        r.registerMethodSubstitution(ASubstitutions.class, "validConsecutiveForeignCallReexecutable", int.class);
+        r.registerMethodSubstitution(ASubstitutions.class, "splitForeignCallInvalid", int.class);
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -304,28 +304,28 @@ public class ForeignCallTest extends GraalCompilerTest {
     }
 
     public static void testSnippetInvalidSequential() {
-        A.foo(SideEffect);
+        A.invalidConsecutiveForeignCall1(SideEffect);
         if (SideEffect == 1) {
             GraalDirectives.deoptimize();
         }
     }
 
     public static void testNonDeoptingInvalid() {
-        A.bar(SideEffect);
+        A.invalidConsecutiveForeignCall2(SideEffect);
         if (SideEffect == 1) {
             GraalDirectives.deoptimize();
         }
     }
 
     public static void testNonDeoptingSplit() {
-        A.crep(SideEffect);
+        A.splitForeignCallInvalid(SideEffect);
         if (SideEffect == 1) {
             GraalDirectives.deoptimize();
         }
     }
 
     public static void testNonDeoptingReexectuable() {
-        A.barReexecutable(SideEffect);
+        A.validConsecutiveForeignCallReexecutable(SideEffect);
         if (SideEffect == 1) {
             GraalDirectives.deoptimize();
         }
@@ -342,7 +342,7 @@ public class ForeignCallTest extends GraalCompilerTest {
             s.getMidTier().apply(g, getDefaultMidTierContext());
             Assert.fail();
         } catch (Throwable t) {
-            if (t.getCause() instanceof GraalError && t.getMessage().contains("invalid framestate")) {
+            if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
             Assert.fail();
@@ -360,7 +360,7 @@ public class ForeignCallTest extends GraalCompilerTest {
             s.getMidTier().apply(g, getDefaultMidTierContext());
             Assert.fail();
         } catch (Throwable t) {
-            if (t.getCause() instanceof GraalError && t.getMessage().contains("invalid framestate")) {
+            if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
             Assert.fail();
@@ -378,7 +378,7 @@ public class ForeignCallTest extends GraalCompilerTest {
             s.getMidTier().apply(g, getDefaultMidTierContext());
             Assert.fail();
         } catch (Throwable t) {
-            if (t.getCause() instanceof GraalError && t.getMessage().contains("invalid framestate")) {
+            if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
             Assert.fail();

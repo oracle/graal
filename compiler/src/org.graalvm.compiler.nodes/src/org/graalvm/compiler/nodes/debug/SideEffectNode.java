@@ -38,6 +38,10 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * Debug node that can be used when an arbitrary side-effect and a
+ * {@link LocationIdentity#ANY_LOCATION} kill is needed.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, allowedUsageTypes = {InputType.Memory})
 public class SideEffectNode extends AbstractMemoryCheckpoint implements LIRLowerable, MemoryCheckpoint.Single {
     public static final NodeClass<SideEffectNode> TYPE = NodeClass.create(SideEffectNode.class);

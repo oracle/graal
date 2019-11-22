@@ -690,9 +690,10 @@ public class BytecodeParser implements GraphBuilderContext {
                         GraalError.guarantee(((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI,
                                         "Inlined call to intrinsic (callee %s) produced invalid framestate %s. " +
                                                         "Such framestates must never be used as deoptimizing targets, thus they cannot be part of a high-tier graph, " +
-                                                        "and must only be used after framestate assignment. A common error is the usage of foreign call nodes in method " +
-                                                        "substitutions, which can be avoided by replacing such calls with nodes that are snippet lowered after framestate " +
-                                                        "assignment (see FastNotifyNode.java for example).",
+                                                        "and must only be used after framestate assignment. A common error is invalid usage of foreign call nodes in method " +
+                                                        "substitutions, which can be avoided by ensuring such calls are either replaced with nodes that are snippet " +
+                                                        "lowered after framestate assignment (see FastNotifyNode.java for example) or by ensuring all foreign use the state after of the " +
+                                                        "original call instruction.",
                                         callee, n);
                     }
                 }
