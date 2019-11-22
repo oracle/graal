@@ -35,9 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -50,22 +47,15 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     protected final FrameSlot slot;
 
     protected LLVMWriteNode(FrameSlot slot) {
+        assert slot != null;
         this.slot = slot;
     }
 
     public abstract void executeWithTarget(VirtualFrame frame, Object value);
 
     @Override
-    public String getSourceDescription() {
-        LLVMBasicBlockNode basicBlock = NodeUtil.findParent(this, LLVMBasicBlockNode.class);
-        assert basicBlock != null : getParent().getClass();
-        LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
-        assert functionStartNode != null : basicBlock.getParent().getClass();
-        if (basicBlock.getBlockId() == 0) {
-            return String.format("assignment of %s in first basic block in function %s", slot.getIdentifier(), functionStartNode.getBcName());
-        } else {
-            return String.format("assignment of %s in basic block %s in function %s", slot.getIdentifier(), basicBlock.getBlockName(), functionStartNode.getBcName());
-        }
+    public String toString() {
+        return getShortString("slot");
     }
 
     public abstract static class LLVMWriteI1Node extends LLVMWriteNode {

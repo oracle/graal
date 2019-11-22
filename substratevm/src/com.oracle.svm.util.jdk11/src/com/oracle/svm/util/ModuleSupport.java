@@ -116,6 +116,24 @@ public final class ModuleSupport {
         }
     }
 
+    /**
+     * Exports and opens a single package {@code pkg} in the module named {@code name} to all
+     * unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
+        Optional<Module> value = ModuleLayer.boot().findModule(name);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(name);
+            }
+            return;
+        }
+        Module module = value.get();
+        Modules.addExportsToAllUnnamed(module, pkg);
+        Modules.addOpensToAllUnnamed(module, pkg);
+    }
+
     public static String getModuleName(Class<?> clazz) {
         return clazz.getModule().getName();
     }

@@ -96,6 +96,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='LLVM.org toolchain',
+    short_name='llp',
+    installable=True,
+    installable_id='llvm-toolchain',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
+    dependencies=[],
+    support_distributions=['LLVM_TOOLCHAIN']
+))
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     mx_sdk_vm_impl.mx_register_dynamic_suite_constituents(register_project, register_distribution)
 

@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMDebuggerScopeFactory {
 
@@ -84,13 +85,16 @@ public final class LLVMDebuggerScopeFactory {
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            final String identifier = String.valueOf(slot.getIdentifier());
-            Object slotValue = frame.getValue(slot);
-            if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
-                slotValue = "<unavailable>";
+            if (slot.getInfo() instanceof SSAValue) {
+                SSAValue stackValue = (SSAValue) slot.getInfo();
+                String identifier = stackValue.getName();
+                Object slotValue = frame.getValue(slot);
+                if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
+                    slotValue = "<unavailable>";
+                }
+                TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(stackValue.getType(), slotValue, dataLayout);
+                entries.add(convertIdentifier(identifier, context), value);
             }
-            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(slot.getInfo(), slotValue, dataLayout);
-            entries.add(convertIdentifier(identifier, context), value);
         }
 
         return entries;

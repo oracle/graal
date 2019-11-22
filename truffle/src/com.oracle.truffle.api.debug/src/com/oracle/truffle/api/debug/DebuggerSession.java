@@ -389,9 +389,10 @@ public final class DebuggerSession implements Closeable {
     /**
      * Suspends the current or the next execution of a given thread. Will throw an
      * {@link IllegalStateException} if the session is already closed.
+     *
+     * @since 20.0
      */
-    // TODO make part of public API as soon as PolyglotEngine is thread-safe
-    void suspend(Thread t) {
+    public void suspend(Thread t) {
         if (Debugger.TRACE) {
             trace("suspend thread %s ", t);
         }
@@ -406,9 +407,10 @@ public final class DebuggerSession implements Closeable {
      * Suspends the current or the next execution on all threads. All new executing threads will
      * start suspended until {@link #resumeAll()} is called or the session is closed. Will throw an
      * {@link IllegalStateException} if the session is already closed.
+     *
+     * @since 20.0
      */
-    // TODO make part of public API as soon as PolyglotEngine is thread-safe
-    synchronized void suspendAll() {
+    public synchronized void suspendAll() {
         if (Debugger.TRACE) {
             trace("suspend all threads");
         }
@@ -448,9 +450,10 @@ public final class DebuggerSession implements Closeable {
      * Resumes the execution on a given thread if it has not been suspended yet.
      *
      * @param t the thread to resume
+     *
+     * @since 20.0
      */
-    // TODO make part of public API as soon as PolyglotEngine is thread-safe
-    synchronized void resume(Thread t) {
+    public synchronized void resume(Thread t) {
         if (Debugger.TRACE) {
             trace("resume threads", t);
         }

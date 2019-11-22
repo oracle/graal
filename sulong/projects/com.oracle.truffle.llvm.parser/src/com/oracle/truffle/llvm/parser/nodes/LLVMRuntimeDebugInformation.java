@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.nodes;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -70,17 +71,18 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMRuntimeDebugInformation {
 
     private final FrameDescriptor frame;
     private final LLVMContext context;
-    private final List<FrameSlot> notNullableSlots;
+    private final HashSet<Integer> notNullableSlots;
     private final LLVMSymbolReadResolver symbols;
     private final boolean isEnabled;
     private final StaticValueAccessVisitor staticValueAccessVisitor;
 
-    public LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
+    public LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, HashSet<Integer> notNullableSlots, LLVMSymbolReadResolver symbols) {
         this.frame = frame;
         this.context = context;
         this.notNullableSlots = notNullableSlots;
@@ -109,12 +111,10 @@ public final class LLVMRuntimeDebugInformation {
             this.isDeclaration = false;
         }
 
-        private void visitFrameValue(String name) {
-            final FrameSlot slot = frame.findFrameSlot(name);
-            assert slot != null;
-            final LLVMFrameValueAccess valueAccess = CommonNodeFactory.createDebugFrameValue(slot, isDeclaration);
+        private void visitFrameValue(SSAValue value) {
+            final LLVMFrameValueAccess valueAccess = CommonNodeFactory.createDebugFrameValue(value.getFrameIdentifier(), isDeclaration);
             context.getSourceContext().registerFrameValue(symbol, valueAccess);
-            notNullableSlots.add(slot);
+            notNullableSlots.add(value.getFrameIdentifier());
             variable.addStaticValue();
         }
 
@@ -128,12 +128,12 @@ public final class LLVMRuntimeDebugInformation {
 
         @Override
         public void visitValueInstruction(ValueInstruction inst) {
-            visitFrameValue(inst.getName());
+            visitFrameValue(inst);
         }
 
         @Override
         public void visit(FunctionParameter param) {
-            visitFrameValue(param.getName());
+            visitFrameValue(param);
         }
 
         @Override
@@ -196,17 +196,16 @@ public final class LLVMRuntimeDebugInformation {
         for (SourceVariable local : fn.getSourceFunction().getVariables()) {
             if (local.isSingleDeclaration()) {
                 final DbgDeclareInstruction dbg = local.getSingleDeclaration();
-                FrameSlot frameSlot = null;
+                int identifier;
                 if (dbg.getValue() instanceof AllocateInstruction) {
-                    frameSlot = frame.findFrameSlot(((AllocateInstruction) dbg.getValue()).getName());
-                }
-                if (frameSlot == null) {
+                    identifier = ((SSAValue) dbg.getValue()).getFrameIdentifier();
+                } else {
                     continue;
                 }
 
                 final LLVMSourceSymbol symbol = local.getSymbol();
-                final LLVMFrameValueAccess alloc = CommonNodeFactory.createDebugFrameValue(frameSlot, true);
-                notNullableSlots.add(frameSlot);
+                final LLVMFrameValueAccess alloc = CommonNodeFactory.createDebugFrameValue(identifier, true);
+                notNullableSlots.add(identifier);
                 context.getSourceContext().registerFrameValue(symbol, alloc);
                 local.addStaticValue();
 

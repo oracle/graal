@@ -397,7 +397,16 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register2("castArrayFixedLength", Object[].class, int.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode length) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode args, ValueNode length) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+                if (args.isConstant()) {
+                    b.addPush(JavaKind.Object, args);
+                    return true;
+                }
+
                 b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp(NodeView.DEFAULT)));
                 return true;
             }

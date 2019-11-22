@@ -41,12 +41,11 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
-import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -135,29 +134,17 @@ public class PathExhibitor {
     }
 
     protected void findPathInBootImageHeap(final Object targetObject, PathElements result) {
-        // Look in each of the partitions of the heap.
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject, result);
-        findPathInBootImageHeap(targetObject, NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject, result);
-    }
+        Heap.getHeap().walkImageHeapObjects(new ObjectVisitor() {
+            @Override
+            public boolean visitObject(Object obj) {
+                if (!result.isSpaceAvailable()) {
+                    return false;
+                }
 
-    protected void findPathInBootImageHeap(final Object targetObject, final Object firstObject, final Object lastObject, PathElements result) {
-        if (firstObject == null || lastObject == null || !result.isSpaceAvailable()) {
-            return;
-        }
-        final Pointer targetPointer = Word.objectToUntrackedPointer(targetObject);
-        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        Pointer current = firstPointer;
-        while (current.belowOrEqual(lastPointer)) {
-            final Object bihObject = current.toObject();
-            bootImageHeapObjRefVisitor.initialize(current, targetPointer, result);
-            if (!InteriorObjRefWalker.walkObject(bihObject, bootImageHeapObjRefVisitor)) {
-                break;
+                bootImageHeapObjRefVisitor.initialize(obj, targetObject, result);
+                return InteriorObjRefWalker.walkObject(obj, bootImageHeapObjRefVisitor);
             }
-            current = LayoutEncoding.getObjectEnd(bihObject);
-        }
+        });
     }
 
     protected void findPathInHeap(final Object obj, PathElements result) {
@@ -274,19 +261,19 @@ public class PathExhibitor {
     }
 
     private static class BootImageHeapObjRefVisitor implements ObjectReferenceVisitor {
-
         // Lazily-initialized instance state.
-        protected Pointer targetPointer;
-        protected Pointer containerPointer;
+        protected Object target;
+        protected Object container;
         private PathElements result;
 
         protected BootImageHeapObjRefVisitor() {
         }
 
-        public void initialize(final Pointer container, final Pointer target, PathElements res) {
-            containerPointer = container;
-            targetPointer = target;
-            result = res;
+        @SuppressWarnings("hiding")
+        public void initialize(Object container, Object target, PathElements result) {
+            this.container = container;
+            this.target = target;
+            this.result = result;
         }
 
         @Override
@@ -294,11 +281,10 @@ public class PathExhibitor {
             if (objRef.isNull()) {
                 return true;
             }
-            final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-            if (referentPointer.equal(targetPointer)) {
-                final Object containerObject = containerPointer.toObject();
-                final UnsignedWord offset = objRef.subtract(containerPointer);
-                result.add(BootImageHeapElement.factory(containerObject, offset, referentPointer));
+            final Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
+            if (referent == target) {
+                final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
+                result.add(BootImageHeapElement.factory(container, offset));
                 return result.isSpaceAvailable();
             }
             return true;
@@ -469,8 +455,8 @@ public class PathExhibitor {
     /** A path element for a reference from the native image heap. */
     public static class BootImageHeapElement extends PathElement {
 
-        public static BootImageHeapElement factory(final Object base, final UnsignedWord offset, final Pointer field) {
-            return new BootImageHeapElement(base, offset, field);
+        public static BootImageHeapElement factory(final Object base, final UnsignedWord offset) {
+            return new BootImageHeapElement(base, offset);
         }
 
         @Override
@@ -484,21 +470,18 @@ public class PathExhibitor {
             log.string("[native image heap:");
             log.string("  object: ").object(base);
             log.string("  offset: ").unsigned(offset);
-            log.string("  field: ").hex(field);
             log.string("]");
             return log;
         }
 
-        protected BootImageHeapElement(final Object base, final UnsignedWord offset, final Pointer field) {
+        protected BootImageHeapElement(final Object base, final UnsignedWord offset) {
             this.base = base;
             this.offset = offset;
-            this.field = field;
         }
 
         // Immutable state.
         protected final Object base;
         protected final UnsignedWord offset;
-        protected final Pointer field;
     }
 
     /** A path element for a cyclic reference. */

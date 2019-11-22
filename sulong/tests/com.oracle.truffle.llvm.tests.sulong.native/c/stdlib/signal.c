@@ -27,12 +27,75 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <signal.h>
 
-void sig_handler(int signo) {
+/* Note: On this test, Sulong's lli and the native executable match,
+ *   but LLVM's lli behaves differently: when registering the first
+ *   signal handler, the old handler pointer returned is not NULL. In
+ *   general when dealing with signals, I've experienced strange
+ *   behavior (including crashes with stack traces) from LLVM's lli so
+ *   I would not worry too much about that.
+ */
+
+#include <signal.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+
+void old_handler(int signo) {
+}
+
+void new_handler(int signo) {
 }
 
 int main(void) {
-  signal(SIGINT, sig_handler);
+  errno = 0;
+  void (*handler_p)(int) = signal(SIGINT, old_handler);
+  if (handler_p == SIG_ERR) {
+    if (errno == 0) {
+      /* errno should be EINVAL */
+      return 1;
+    }
+    /* signal() failed */
+    return 2;
+  } else if (handler_p != NULL) {
+    /* handler_p should be NULL, there isn't a previous handler */
+    return 3;
+  }
+
+  errno = 0;
+  handler_p = signal(SIGINT, new_handler);
+  if (handler_p == SIG_ERR) {
+    if (errno == 0) {
+      /* errno should be EINVAL */
+      return 4;
+    }
+    /* second signal() failed */
+    return 5;
+  } else if (handler_p == NULL) {
+    /* second signal() returnd NULL instead of the old handler */
+    return 6;
+  } else if (handler_p != old_handler) {
+    /* second signal() did not return the old handler */
+    return 7;
+  }
+
+  /* unset handler */
+  errno = 0;
+  handler_p = signal(SIGINT, NULL);
+  if (handler_p == SIG_ERR) {
+    if (errno == 0) {
+      /* errno should be EINVAL */
+      return 8;
+    }
+    /* third signal() failed */
+    return 9;
+  } else if (handler_p == NULL) {
+    /* third signal() returned NULL instead of the new handler */
+    return 10;
+  } else if (handler_p != new_handler) {
+    /* third signal() did not return the new handler */
+    return 11;
+  }
+
   return 0;
 }

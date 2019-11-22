@@ -53,12 +53,19 @@ public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
     public abstract void execute(VirtualFrame frame);
 
     private static final class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
+
         @Child private LLVMStatementNode phi;
+
         private final int successor;
 
         private LLVMBrUnconditionalNodeImpl(int successor, LLVMStatementNode phi) {
             this.successor = successor;
             this.phi = phi;
+        }
+
+        @Override
+        public String toString() {
+            return getShortString("successor");
         }
 
         @Override

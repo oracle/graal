@@ -24,39 +24,13 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import com.oracle.svm.core.headers.Errno;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+// Checkstyle: stop
 
-//Checkstyle: stop
+public class LinuxErrno {
 
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
-class LinuxErrno {
-
-    @TargetClass(Errno.class)
-    static final class Target_com_oracle_svm_core_headers_Errno {
-
-        @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int errno() {
-            return Util_com_oracle_svm_core_headers_Errno.__errno_location().read();
-        }
-
-        @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void set_errno(int value) {
-            Util_com_oracle_svm_core_headers_Errno.__errno_location().write(value);
-        }
-    }
-
-    static final class Util_com_oracle_svm_core_headers_Errno {
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        static native CIntPointer __errno_location();
-    }
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native CIntPointer __errno_location();
 }

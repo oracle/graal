@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesReg
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
+
     private final UniquesRegionAllocator allocator;
 
     @CompilationFinal private FrameSlot stackPointer;

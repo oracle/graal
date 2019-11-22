@@ -761,7 +761,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Object receiver = guestValue;
         PolyglotValue cache = lazy.valueCache.get(receiver.getClass());
         if (cache == null) {
-            cache = lookupValueCache(guestValue);
+            Object prev = language.engine.enterIfNeeded(this.context);
+            try {
+                cache = lookupValueCache(guestValue);
+            } finally {
+                language.engine.leaveIfNeeded(prev, this.context);
+            }
         }
         return getAPIAccess().newValue(receiver, cache);
     }
@@ -800,14 +805,23 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             if (cachedClassLocal != Generic.class) {
                 if (cachedClassLocal == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = receiver.getClass();
-                    cache = languageContext.lazy.valueCache.get(receiver.getClass());
-                    if (cache == null) {
-                        cache = languageContext.lookupValueCache(receiver);
+                    if (languageContext.context.engine.boundEngine) {
+                        cachedClass = receiver.getClass();
+                        cache = languageContext.lazy.valueCache.get(receiver.getClass());
+                        if (cache == null) {
+                            cache = languageContext.lookupValueCache(receiver);
+                        }
+                        cachedContext = languageContext;
+                        cachedValue = cache;
+                        return apiAccess.newValue(receiver, cache);
+                    } else {
+                        // TODO this needs to be rewritten to cache that uses
+                        // InteropCodeCache and does not store the context in a node directly
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        cachedClass = Generic.class; // switch to generic
+                        cachedContext = null;
+                        cachedValue = null;
                     }
-                    cachedContext = languageContext;
-                    cachedValue = cache;
-                    return apiAccess.newValue(receiver, cache);
                 } else if (value.getClass() == cachedClassLocal && cachedContextLocal == languageContext) {
                     receiver = CompilerDirectives.inInterpreter() ? receiver : CompilerDirectives.castExact(receiver, cachedClassLocal);
                     cache = cachedValue;

@@ -322,7 +322,7 @@ public final class TruffleStackTrace extends Exception {
         }
     }
 
-    static void addStackFrameInfo(Node callNode, Throwable t, RootCallTarget root, Frame currentFrame) {
+    static void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, Frame currentFrame) {
         if (t instanceof ControlFlowException) {
             // control flow exceptions should never have to get a stack trace.
             return;
@@ -332,13 +332,36 @@ public final class TruffleStackTrace extends Exception {
             // those thrown by Value call targets. In any case, we do not want to attach a cause.
             return;
         }
+
+        boolean isTProfiled = CompilerDirectives.isPartialEvaluationConstant(t.getClass());
+        if (currentFrame != null && root.getRootNode().isCaptureFramesForTrace()) {
+            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, currentFrame.materialize());
+        } else {
+            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, null);
+        }
+    }
+
+    private static void callInnerAddStackFrameInfo(boolean isTProfiled, Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+        if (isTProfiled) {
+            innerAddStackFrameInfo(callNode, root, t, currentFrame);
+        } else {
+            innerAddStackFrameInfoBoundary(callNode, root, t, currentFrame);
+        }
+    }
+
+    @TruffleBoundary
+    private static void innerAddStackFrameInfoBoundary(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+        innerAddStackFrameInfo(callNode, root, t, currentFrame);
+    }
+
+    private static void innerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
         if (!(t instanceof TruffleException) || ((TruffleException) t).isInternalError()) {
             // capture as much information as possible for host and internal errors
             fillIn(t);
             return;
         }
 
-        int stackTraceElementLimit = t instanceof TruffleException ? ((TruffleException) t).getStackTraceElementLimit() : -1;
+        int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
 
         Throwable cause = t.getCause();
         LazyStackTrace lazy;
@@ -347,14 +370,14 @@ public final class TruffleStackTrace extends Exception {
         } else if (cause instanceof LazyStackTrace) {
             lazy = (LazyStackTrace) cause;
         } else {
-            addStackFrameInfoSlowPath(callNode, cause, root, currentFrame == null ? null : currentFrame.materialize(), stackTraceElementLimit);
+            addStackFrameInfoSlowPath(callNode, root, cause, currentFrame, stackTraceElementLimit);
             return;
         }
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
     @TruffleBoundary
-    private static void addStackFrameInfoSlowPath(Node callNode, Throwable t, RootCallTarget root, MaterializedFrame currentFrame, int stackTraceElementLimit) {
+    private static void addStackFrameInfoSlowPath(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int stackTraceElementLimit) {
         LazyStackTrace lazy = findImpl(t);
         if (lazy == null) {
             Throwable insertCause = findInsertCause(t);
@@ -367,13 +390,12 @@ public final class TruffleStackTrace extends Exception {
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
-    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, Frame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {
+    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {
         if (lazy.stackTrace == null) {
             if (stackTraceElementLimit >= 0 && lazy.frameCount >= stackTraceElementLimit) {
                 return;
             }
-            boolean captureFrames = root != null && root.getRootNode().isCaptureFramesForTrace();
-            lazy.current = new TracebackElement(lazy.current, callNode, root, captureFrames ? currentFrame.materialize() : null);
+            lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame);
             if (root != null && !root.getRootNode().isInternal()) {
                 lazy.frameCount++;
             }

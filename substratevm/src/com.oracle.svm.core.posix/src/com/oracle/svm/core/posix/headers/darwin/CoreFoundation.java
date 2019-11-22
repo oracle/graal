@@ -24,24 +24,21 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
- * Contains the definitions from CoreFoundation/CoreFoundation.h that we actually needed.
+ * Definitions manually translated from the C header file CoreFoundation/CoreFoundation.h.
  */
 @CContext(PosixDirectives.class)
 @CLibrary("-framework CoreFoundation")
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 public class CoreFoundation {
 
     public interface CFStringRef extends PointerBase {
@@ -51,28 +48,15 @@ public class CoreFoundation {
 
     }
 
-    /**
-     * Functions to create mutable strings. "maxLength", if not 0, is a hard bound on the length of
-     * the string. If 0, there is no limit on the length.
-     */
     @CFunction
     public static native CFMutableStringRef CFStringCreateMutable(PointerBase alloc, SignedWord maxLength);
 
     @CFunction
     public static native void CFStringAppendCharacters(CFMutableStringRef theString, PointerBase chars, SignedWord numChars);
 
-    /**
-     * Normalizes the string into the specified form as described in Unicode Technical Report #15.
-     * 
-     * @param theString The string which is to be normalized. If this parameter is not a valid
-     *            mutable CFString, the behavior is undefined.
-     * @param theForm The form into which the string is to be normalized. If this parameter is not a
-     *            valid CFStringNormalizationForm value, the behavior is undefined.
-     */
     @CFunction
     public static native void CFStringNormalize(CFMutableStringRef theString, SignedWord theForm);
 
-    /** Number of 16-bit Unicode characters in the string. */
     @CFunction
     public static native long CFStringGetLength(CFStringRef theString);
 

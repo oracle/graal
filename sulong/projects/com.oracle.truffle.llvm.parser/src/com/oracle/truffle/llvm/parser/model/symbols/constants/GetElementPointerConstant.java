@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
@@ -61,8 +57,8 @@ public final class GetElementPointerConstant extends AbstractConstant {
         return base;
     }
 
-    public List<SymbolImpl> getIndices() {
-        return Collections.unmodifiableList(Arrays.asList(indices));
+    public SymbolImpl[] getIndices() {
+        return indices;
     }
 
     public boolean isInbounds() {

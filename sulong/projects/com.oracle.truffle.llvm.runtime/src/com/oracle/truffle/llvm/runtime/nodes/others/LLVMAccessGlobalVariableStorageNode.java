@@ -53,6 +53,11 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
         this.descriptor = descriptor;
     }
 
+    @Override
+    public String toString() {
+        return getShortString("descriptor");
+    }
+
     public LLVMGlobal getDescriptor() {
         return descriptor;
     }

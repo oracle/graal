@@ -33,8 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,16 +43,24 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-@NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = Type.class, name = "symbolType")})
 public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
-    abstract int getSize();
-
-    abstract int getAlignment();
-
-    abstract Type getSymbolType();
+    protected final int size;
+    protected final int alignment;
+    protected final Type symbolType;
 
     @CompilationFinal private FrameSlot stackPointer;
+
+    public LLVMGetStackSpaceInstruction(int size, int alignment, Type symbolType) {
+        this.size = size;
+        this.alignment = alignment;
+        this.symbolType = symbolType;
+    }
+
+    @Override
+    public String toString() {
+        return getShortString("size", "alignment", "symbolType");
+    }
 
     protected FrameSlot getStackPointerSlot() {
         if (stackPointer == null) {
@@ -65,6 +71,10 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMGetStackForConstInstruction extends LLVMGetStackSpaceInstruction {
+
+        public LLVMGetStackForConstInstruction(int size, int alignment, Type symbolType) {
+            super(size, alignment, symbolType);
+        }
 
         @CompilationFinal(dimensions = 1) private Type[] types = null;
         @CompilationFinal(dimensions = 1) private int[] offsets = null;
@@ -93,37 +103,54 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
 
     public abstract static class LLVMAllocaConstInstruction extends LLVMGetStackForConstInstruction {
 
+        public LLVMAllocaConstInstruction(int size, int alignment, Type symbolType) {
+            super(size, alignment, symbolType);
+        }
+
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize(), getAlignment()));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size, alignment));
         }
     }
 
-    @NodeField(type = UniqueSlot.class, name = "uniqueSlot")
     public abstract static class LLVMGetUniqueStackSpaceInstruction extends LLVMGetStackForConstInstruction {
 
-        abstract UniqueSlot getUniqueSlot();
+        private final UniqueSlot uniqueSlot;
+
+        public LLVMGetUniqueStackSpaceInstruction(int size, int alignment, Type symbolType, UniqueSlot uniqueSlot) {
+            super(size, alignment, symbolType);
+            this.uniqueSlot = uniqueSlot;
+        }
+
+        @Override
+        public String toString() {
+            return getShortString("size", "alignment", "symbolType", "uniqueSlot");
+        }
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame) {
-            return LLVMNativePointer.create(getUniqueSlot().toPointer(frame, getStackPointerSlot()));
+            return LLVMNativePointer.create(uniqueSlot.toPointer(frame, getStackPointerSlot()));
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAllocaInstruction extends LLVMGetStackSpaceInstruction {
 
+        public LLVMAllocaInstruction(int size, int alignment, Type symbolType) {
+            super(size, alignment, symbolType);
+        }
+
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize() * (long) nr, getAlignment()));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size * (long) nr, alignment));
         }
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, long nr,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize() * nr, getAlignment()));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size * nr, alignment));
         }
     }
 }
