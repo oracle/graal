@@ -54,8 +54,6 @@ public class NativeImageOptions {
                     "FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
                     "A53MAC, DMB_ATOMICS", type = User)//
     public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
-    //@Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
-    //public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
