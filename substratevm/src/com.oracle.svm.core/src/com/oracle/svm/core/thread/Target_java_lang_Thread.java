@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -263,12 +265,18 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
         final boolean result = interrupted;
         if (clearInterrupted) {
             interrupted = false;
         }
         return result;
+    }
+
+    @Substitute
+    public boolean isInterrupted() {
+        return interrupted;
     }
 
     @Substitute
@@ -362,5 +370,16 @@ final class Target_java_lang_Thread {
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return JavaThreads.getAllStackTraces();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    private static void clearInterruptEvent() {
+        // In the JDK, this is a noop except on Windows
+        // The JDK resets the interrupt event used by Process.waitFor
+        // ResetEvent((HANDLE) JVM_GetThreadInterruptEvent());
+        // Our implementation in WindowsJavaThreads.java takes care
+        // of this ResetEvent.
+        VMError.unimplemented();
     }
 }

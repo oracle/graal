@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,7 +83,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 final class Target_java_lang_Object {
 
     @Substitute
-    @TargetElement(name = "registerNatives")
+    @TargetElement(name = "registerNatives", onlyWith = JDK11OrEarlier.class)
     private static void registerNativesSubst() {
         /* We reimplemented all native methods, so nothing to do. */
     }
@@ -732,6 +732,17 @@ final class Target_java_lang_Package {
         } else {
             return null;
         }
+    }
+}
+
+@TargetClass(java.lang.NullPointerException.class)
+final class Target_java_lang_NullPointerException {
+
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    @SuppressWarnings("static-method")
+    private String getExtendedNPEMessage() {
+        return null;
     }
 }
 

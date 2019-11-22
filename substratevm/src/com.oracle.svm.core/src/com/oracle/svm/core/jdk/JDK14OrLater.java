@@ -28,9 +28,9 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-public class JDK13OrLater implements BooleanSupplier {
+public class JDK14OrLater implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC >= 13;
+        return JavaVersionUtil.JAVA_SPEC >= 14;
     }
 }
