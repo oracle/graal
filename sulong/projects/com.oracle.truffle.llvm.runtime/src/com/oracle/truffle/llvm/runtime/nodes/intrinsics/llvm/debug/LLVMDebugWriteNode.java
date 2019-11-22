@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -40,13 +39,15 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-@NodeChild(value = "llvmValueRead", type = LLVMExpressionNode.class)
 public abstract class LLVMDebugWriteNode extends LLVMStatementNode {
+
+    @Child protected LLVMExpressionNode llvmValueRead;
 
     private final LLVMDebugBuilder builder;
 
-    protected LLVMDebugWriteNode(LLVMDebugBuilder builder) {
+    protected LLVMDebugWriteNode(LLVMDebugBuilder builder, LLVMExpressionNode llvmValueRead) {
         this.builder = builder;
+        this.llvmValueRead = llvmValueRead;
     }
 
     protected LLVMDebugValue.Builder createBuilder() {
@@ -57,33 +58,49 @@ public abstract class LLVMDebugWriteNode extends LLVMStatementNode {
 
         private final FrameSlot slot;
 
-        protected SimpleWriteNode(LLVMDebugBuilder builder, FrameSlot slot) {
-            super(builder);
+        protected SimpleWriteNode(LLVMDebugBuilder builder, FrameSlot slot, LLVMExpressionNode llvmValueRead) {
+            super(builder, llvmValueRead);
             this.slot = slot;
         }
 
-        @Specialization
-        protected void write(VirtualFrame frame, Object llvmValue,
+        @Specialization(rewriteOn = IllegalStateException.class)
+        protected void write(VirtualFrame frame,
                         @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+            Object llvmValue = llvmValueRead.executeGeneric(frame);
+            frame.setObject(slot, new LLVMDebugSimpleObjectBuilder(valueProcessor, llvmValue));
+        }
+
+        @Specialization
+        protected void writeFallback(VirtualFrame frame,
+                        @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+            Object llvmValue;
+            try {
+                llvmValue = llvmValueRead.executeGeneric(frame);
+            } catch (IllegalStateException e) {
+                llvmValue = null;
+            }
             frame.setObject(slot, new LLVMDebugSimpleObjectBuilder(valueProcessor, llvmValue));
         }
     }
 
-    @NodeChild(value = "containerRead", type = LLVMExpressionNode.class)
     public abstract static class AggregateWriteNode extends LLVMDebugWriteNode {
+
+        @Child private LLVMExpressionNode containerRead;
 
         private final int partIndex;
         @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] clearIndices;
 
-        protected AggregateWriteNode(LLVMDebugBuilder builder, int partIndex, int[] clearIndices) {
-            super(builder);
+        protected AggregateWriteNode(LLVMDebugBuilder builder, int partIndex, int[] clearIndices, LLVMExpressionNode containerRead, LLVMExpressionNode llvmValueRead) {
+            super(builder, llvmValueRead);
             this.partIndex = partIndex;
             this.clearIndices = clearIndices;
+            this.containerRead = containerRead;
         }
 
         @Specialization
-        protected void setPart(LLVMDebugAggregateObjectBuilder container, Object partLLVMValue,
-                        @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+        protected void setPart(VirtualFrame frame, @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+            Object partLLVMValue = llvmValueRead.executeGeneric(frame);
+            LLVMDebugAggregateObjectBuilder container = (LLVMDebugAggregateObjectBuilder) containerRead.executeGeneric(frame);
             container.setPart(partIndex, valueProcessor, partLLVMValue);
             clearIndices(container);
         }

@@ -69,10 +69,10 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
     public Object doDiv(VirtualFrame frame,
                     @Cached("getSizeInBytes()") int sizeInBytes) {
         try {
-            LLVM80BitFloat longDoubleA = aNode.executeLLVM80BitFloat(frame);
-            LLVM80BitFloat longDoubleB = bNode.executeLLVM80BitFloat(frame);
-            LLVM80BitFloat longDoubleC = cNode.executeLLVM80BitFloat(frame);
-            LLVM80BitFloat longDoubleD = dNode.executeLLVM80BitFloat(frame);
+            LLVM80BitFloat longDoubleA = (LLVM80BitFloat) aNode.executeGeneric(frame);
+            LLVM80BitFloat longDoubleB = (LLVM80BitFloat) bNode.executeGeneric(frame);
+            LLVM80BitFloat longDoubleC = (LLVM80BitFloat) cNode.executeGeneric(frame);
+            LLVM80BitFloat longDoubleD = (LLVM80BitFloat) dNode.executeGeneric(frame);
 
             double a = longDoubleA.getDoubleValue();
             double b = longDoubleB.getDoubleValue();
@@ -88,7 +88,7 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
             store.executeWithTarget(allocatedMemory.increment(sizeInBytes), LLVM80BitFloat.fromDouble(zImag));
 
             return allocatedMemory;
-        } catch (UnexpectedResultException e) {
+        } catch (UnexpectedResultException | ClassCastException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }

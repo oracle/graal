@@ -29,34 +29,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.headers.Errno;
-
-//Checkstyle: stop
+// Checkstyle: stop
 
 @Platforms(Platform.WINDOWS.class)
-class WindowsErrno {
+public class WindowsErrno {
 
-    @TargetClass(Errno.class)
-    static final class Target_com_oracle_svm_core_headers_Errno {
-
-        @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int errno() {
-            return Util_com_oracle_svm_core_headers_Errno._errno().read();
-        }
-
-        @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void set_errno(int value) {
-            Util_com_oracle_svm_core_headers_Errno._errno().write(value);
-        }
-    }
-
-    static final class Util_com_oracle_svm_core_headers_Errno {
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        static native CIntPointer _errno();
-    }
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native CIntPointer _errno();
 }

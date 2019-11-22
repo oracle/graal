@@ -28,9 +28,12 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.util.UserError;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateWordTypes extends WordTypes {
     public SubstrateWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
@@ -43,5 +46,15 @@ public final class SubstrateWordTypes extends WordTypes {
             return false; // handled by CInterfaceInvocationPlugin
         }
         return super.isWordOperation(targetMethod);
+    }
+
+    @Override
+    public ResolvedJavaMethod getWordOperation(ResolvedJavaMethod targetMethod, ResolvedJavaType callingContextType) {
+        ResolvedJavaMethod wordOperation = super.getWordOperation(targetMethod, callingContextType);
+        if (wordOperation == null) {
+            UserError.abort("Could not determine the implementation of word operation " + targetMethod.format("%H.%n(%p)" +
+                            ". Check the use of annotations in your Java/C interface type declarations."));
+        }
+        return wordOperation;
     }
 }

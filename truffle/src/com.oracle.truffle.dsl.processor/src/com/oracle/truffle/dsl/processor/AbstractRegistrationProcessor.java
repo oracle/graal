@@ -81,6 +81,8 @@ import javax.tools.StandardLocation;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.java.compiler.JDTCompiler;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -115,15 +117,24 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             if (supportedAnnotation == null) {
                 throw new IllegalStateException("Cannot resolve " + supportedAnnotations[0]);
             }
-            for (Element e : roundEnv.getElementsAnnotatedWith(supportedAnnotation)) {
-                AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e, supportedAnnotation.asType());
-                if (mirror != null && e.getKind() == ElementKind.CLASS) {
-                    if (validateRegistration(e, mirror)) {
-                        TypeElement annotatedElement = (TypeElement) e;
-                        if (requiresLegacyRegistration(annotatedElement)) {
-                            legacyRegistrations.add(annotatedElement);
-                        } else {
-                            registrations.put(generateProvider(annotatedElement), annotatedElement);
+            Set<? extends Element> annotatedElements = roundEnv.getElementsAnnotatedWith(supportedAnnotation);
+            if (!annotatedElements.isEmpty()) {
+                ProcessorContext context = ProcessorContext.getInstance();
+                String providerServiceBinName = processingEnv.getElementUtils().getBinaryName(context.getTypeElement(getProviderClass())).toString();
+                for (Element e : annotatedElements) {
+                    AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e, supportedAnnotation.asType());
+                    if (mirror != null && e.getKind() == ElementKind.CLASS) {
+                        if (validateRegistration(e, mirror)) {
+                            TypeElement annotatedElement = (TypeElement) e;
+                            if (requiresLegacyRegistration(annotatedElement)) {
+                                legacyRegistrations.add(annotatedElement);
+                            } else {
+                                String providerImplBinName = generateProvider(annotatedElement);
+                                registrations.put(providerImplBinName, annotatedElement);
+                                if (shouldGenerateProviderFiles(annotatedElement)) {
+                                    generateProviderFile(providerImplBinName, providerServiceBinName, annotatedElement);
+                                }
+                            }
                         }
                     }
                 }
@@ -238,6 +249,35 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return nameBuilder.toString();
     }
 
+    private void generateProviderFile(String providerClassName, String serviceClassName, Element... originatingElements) {
+        assert originatingElements.length > 0;
+        String filename = "META-INF/truffle-registrations/" + providerClassName;
+        try {
+            FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+            writer.println(serviceClassName);
+            writer.close();
+        } catch (IOException e) {
+            processingEnv.getMessager().printMessage(isBug367599(e) ? Kind.NOTE : Kind.ERROR, e.getMessage(), originatingElements[0]);
+        }
+    }
+
+    /**
+     * Determines if a given exception is (most likely) caused by
+     * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
+     */
+    private static boolean isBug367599(Throwable t) {
+        if (t instanceof FilerException) {
+            for (StackTraceElement ste : t.getStackTrace()) {
+                if (ste.toString().contains("org.eclipse.jdt.internal.apt.pluggable.core.filer.IdeFilerImpl.create")) {
+                    // See: https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599
+                    return true;
+                }
+            }
+        }
+        return t.getCause() != null && isBug367599(t.getCause());
+    }
+
     private void generateServicesRegistration(Map<String, ? extends TypeElement> providerFqns) {
         ProcessorContext context = ProcessorContext.getInstance();
         ProcessingEnvironment env = context.getEnvironment();
@@ -291,6 +331,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), annotatedElements.get(0));
             }
         }
+    }
+
+    private static boolean shouldGenerateProviderFiles(Element currentElement) {
+        return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
 
     @SuppressWarnings("serial")

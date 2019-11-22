@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.231.0",
+    "mxversion": "5.247.3",
     "name": "substratevm",
     "version" : "20.0.0",
     "release" : False,
@@ -142,26 +142,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.posix.jdk11": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core.jdk11",
-                "com.oracle.svm.core.posix"
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.perf",
-                    "jdk.internal.misc"
-                ],
-            },
-            "javaCompliance": "11+",
-            "overlayTarget" : "com.oracle.svm.core.posix",
-            "multiReleaseJarVersion": "11",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -260,6 +240,43 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+        },
+
+        "com.oracle.svm.core.posixsubst": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.posix",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.core.posixsubst.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.jdk11",
+                "com.oracle.svm.core.posixsubst"
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.perf",
+                    "jdk.internal.misc"
+                ],
+            },
+            "javaCompliance": "11+",
+            "overlayTarget" : "com.oracle.svm.core.posixsubst",
+            "multiReleaseJarVersion": "11",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
         },
 
         "com.oracle.svm.core.windows": {

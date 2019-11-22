@@ -28,9 +28,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -45,7 +43,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 class LinuxPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {

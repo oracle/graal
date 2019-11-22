@@ -29,11 +29,13 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
-/** Declarations of method from <locale.h>. */
+/**
+ * Declarations of method from the C header file locale.h.
+ */
 @CContext(PosixDirectives.class)
 public class Locale {
     @CConstant
@@ -57,27 +59,27 @@ public class Locale {
     @CConstant
     public static native int LC_MESSAGES();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_PAPER();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_NAME();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_ADDRESS();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
-    @Platforms(DeprecatedPlatform.LINUX_SUBSTITUTION.class)
+    @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
     @CConstant
     public static native int LC_IDENTIFICATION();
 

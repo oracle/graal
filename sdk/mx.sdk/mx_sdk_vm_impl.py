@@ -1606,12 +1606,6 @@ _known_missing_jars = {
     'TRUFFLE_DEBUG',
     'NANO_HTTPD',
     'NANO_HTTPD_WEBSERVER',
-    'JFFI',
-    'JNR_FFI',
-    'JNR_INVOKE',
-    'JFFI_NATIVE',
-    'JNR_POSIX',
-    'JNR_CONSTANTS',
     'JDK_TOOLS',
 }
 

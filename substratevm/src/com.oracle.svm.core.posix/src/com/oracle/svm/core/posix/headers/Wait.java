@@ -28,19 +28,13 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
+// Checkstyle: stop
+
 /**
- * Contains definitions from sys/wait.h that we need.
+ * Definitions manually translated from the C header sys/wait.h.
  */
 @CContext(PosixDirectives.class)
 public class Wait {
-    /* Allow lower-case type names: Checkstyle: stop. */
-
-    /*
-     * Operating system dependency: The C function returns a pid_t, which happens to be an int on
-     * both Darwin and Linux, but it does not have to be an int on all platforms.
-     */
-    @CFunction
-    public static native int wait(CIntPointer stat_loc);
 
     @CFunction
     public static native int waitpid(int pid, CIntPointer stat_loc, int options);
@@ -66,6 +60,4 @@ public class Wait {
     public static int WTERMSIG(int status) {
         return ((status) & 0x7F);
     }
-
-    /* Allow lower-case type names: Checkstyle: resume. */
 }

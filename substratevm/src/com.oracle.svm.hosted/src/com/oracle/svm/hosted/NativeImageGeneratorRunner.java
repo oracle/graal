@@ -321,8 +321,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             if (compilationExecutor != null) {
                 compilationExecutor.shutdownNow();
             }
-            e.getReason().ifPresent(NativeImageGeneratorRunner::info);
-            return 3;
+            if (e.getReason().isPresent()) {
+                NativeImageGeneratorRunner.info(e.getReason().get());
+                return 0;
+            } else {
+                /* InterruptImageBuilding without explicit reason is exit code 3 */
+                return 3;
+            }
         } catch (FallbackFeature.FallbackImageRequest e) {
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;

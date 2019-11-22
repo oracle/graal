@@ -105,6 +105,11 @@ public class NumUtil {
         return -0x80000000L <= x && x < 0x80000000L;
     }
 
+    public static byte safeToByte(int v) {
+        assert isByte(v);
+        return (byte) v;
+    }
+
     public static short safeToShort(int v) {
         assert isShort(v);
         return (short) v;

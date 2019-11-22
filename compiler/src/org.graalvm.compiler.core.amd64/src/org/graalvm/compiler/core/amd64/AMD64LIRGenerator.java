@@ -409,7 +409,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private static AVXSize getRegisterSize(Value a) {
+    protected static AVXSize getRegisterSize(Value a) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         if (kind.isXMM()) {
             return AVXKind.getRegisterSize(kind);

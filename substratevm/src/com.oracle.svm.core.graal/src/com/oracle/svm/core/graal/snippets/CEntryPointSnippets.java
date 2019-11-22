@@ -84,6 +84,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -253,6 +254,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget
     private static int initializeIsolate() {
+        if (!Heap.getHeap().initialize()) {
+            return CEntryPointErrors.UNSPECIFIED;
+        }
+
         boolean firstIsolate = false;
 
         final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();

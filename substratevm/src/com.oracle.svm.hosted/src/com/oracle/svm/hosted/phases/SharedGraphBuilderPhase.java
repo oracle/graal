@@ -46,6 +46,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -99,6 +100,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private boolean checkWordTypes() {
             return getWordTypes() != null;
+        }
+
+        @Override
+        protected JavaMethod lookupMethodInPool(int cpi, int opcode) {
+            JavaMethod result = super.lookupMethodInPool(cpi, opcode);
+            if (result == null) {
+                throw VMError.shouldNotReachHere("Discovered an unresolved calee while parsing " + method.asStackTraceElement(bci()) + '.');
+            }
+            return result;
         }
 
         @Override

@@ -145,6 +145,16 @@ public interface TruffleCompilerRuntime {
          */
         FULL_UNROLL,
         /**
+         * Like {@link #FULL_UNROLL}, but in addition loop unrolling duplicates loop exits in every
+         * iteration instead of merging them. Code after a loop exit is duplicated for every loop
+         * exit and every loop iteration. For example, a loop with 4 iterations and 2 loop exits
+         * (exit1 and exit2, where exit1 is an early return inside a loop) leads to 4 copies of the
+         * loop body and 4 copies of exit1 and 1 copy if exit2. After each exit all code until a
+         * return is duplicated per iteration. Beware of break statements inside loops since they
+         * cause additional loop exits leading to code duplication along exit2.
+         */
+        FULL_UNROLL_UNTIL_RETURN,
+        /**
          * Fully explode all loops. The loops must have a known finite number of iterations. If a
          * loop has multiple loop ends, they are not merged so that subsequent loop iterations are
          * processed multiple times. For example, a loop with 4 iterations and 2 loop ends leads to

@@ -943,9 +943,10 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Transforms a {@link TruffleObject receiver} to a value that represents a raw native pointer.
-     * After the transformation, the provided receiver returns true for {@link #isPointer(Object)}
-     * and can be unwrapped using the {@link #asPointer(Object)} message.
+     * Attempts to transform a {@link TruffleObject receiver} to a value that represents a raw
+     * native pointer. After a successful transformation, the provided receiver returns true for
+     * {@link #isPointer(Object)} and can be unwrapped using the {@link #asPointer(Object)} message.
+     * If transformation cannot be done {@link #isPointer(Object)} will keep returning false.
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)

@@ -149,11 +149,12 @@ public class RebuildImageCommand implements InstallerCommand {
     }
 
     public static Path findNativeImagePath(CommandInput input, Feedback feedback) {
+        Path baseDir = SystemUtils.getRuntimeBaseDir(input.getGraalHomePath());
         String toolRelativePath = feedback.l10n("REBUILD_ToolRelativePath");
         if (SystemUtils.isWindows()) {
             toolRelativePath += ".cmd";
         }
-        Path p = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(toolRelativePath));
+        Path p = baseDir.resolve(SystemUtils.fromCommonString(toolRelativePath));
         return (Files.isReadable(p) || Files.isExecutable(p)) ? p : null;
     }
 }

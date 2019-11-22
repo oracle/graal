@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -36,7 +34,6 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-@Platforms({InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
@@ -49,7 +46,6 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 }
 
-@Platforms({InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class DarwinStackOverflowSupportFeature implements Feature {
     @Override

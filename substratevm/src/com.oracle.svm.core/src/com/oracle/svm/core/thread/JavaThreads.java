@@ -263,6 +263,7 @@ public abstract class JavaThreads {
      */
     public static boolean ensureJavaThread(String name, ThreadGroup group, boolean asDaemon) {
         if (currentThread.get() == null) {
+            Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             assignJavaThread(JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon)), true);
             return true;
         }
@@ -329,7 +330,7 @@ public abstract class JavaThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
         assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
 
-        Heap.getHeap().disableAllocation(vmThread);
+        Heap.getHeap().detachThread(vmThread);
 
         // Detach ParkEvents for this thread, if any.
         final Thread thread = currentThread.get(vmThread);
@@ -482,6 +483,7 @@ public abstract class JavaThreads {
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
+        Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
         assignJavaThread(thread, false);
         ObjectHandles.getGlobal().destroy(threadHandle);
 

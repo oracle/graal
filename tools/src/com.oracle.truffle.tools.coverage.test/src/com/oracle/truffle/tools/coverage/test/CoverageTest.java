@@ -39,8 +39,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
 import com.oracle.truffle.tools.coverage.RootCoverage;
 import com.oracle.truffle.tools.coverage.SectionCoverage;
@@ -144,6 +158,106 @@ public final class CoverageTest {
             final SourceCoverage[] afterEnd = execInServiceAndGetCoverage(context, executorService, tracker);
             final SourceCoverage[] afterEnd2 = execInServiceAndGetCoverage(context, executorService, tracker);
             Assert.assertEquals(afterEnd[0].getRoots()[0].getCount(), afterEnd2[0].getRoots()[0].getCount());
+        }
+    }
+
+    @Test
+    public void testRootAndStatementInDifferentSources() {
+        try (Context c = Context.newBuilder(RootAndStatementInDifferentSources.ID).in(System.in).out(out).err(err).build();
+                        CoverageTracker tracker = CoverageInstrument.getTracker(c.getEngine())) {
+            tracker.start(new CoverageTracker.Config(SourceSectionFilter.ANY, false));
+            c.eval(RootAndStatementInDifferentSources.ID, "");
+            final SourceCoverage[] coverage = tracker.getCoverage();
+            Assert.assertEquals(2, coverage.length);
+            for (SourceCoverage sourceCoverage : coverage) {
+                if (sourceCoverage.getSource().equals(RootAndStatementInDifferentSources.rootSource)) {
+                    Assert.assertEquals(1, sourceCoverage.getRoots().length);
+                    final RootCoverage rootCoverage = sourceCoverage.getRoots()[0];
+                    Assert.assertTrue(rootCoverage.isCovered());
+                    Assert.assertEquals(0, rootCoverage.getSectionCoverage().length);
+                }
+                if (sourceCoverage.getSource().equals(RootAndStatementInDifferentSources.statementSource)) {
+                    Assert.assertEquals(1, sourceCoverage.getRoots().length);
+                    final RootCoverage rootCoverage = sourceCoverage.getRoots()[0];
+                    Assert.assertFalse(rootCoverage.isCovered());
+                    Assert.assertEquals(1, rootCoverage.getSectionCoverage().length);
+                    final SectionCoverage sectionCoverage = rootCoverage.getSectionCoverage()[0];
+                    Assert.assertTrue(sectionCoverage.isCovered());
+                }
+            }
+        }
+    }
+
+    @TruffleLanguage.Registration(id = RootAndStatementInDifferentSources.ID, name = "RootAndStatementInDifferentSources", version = "0")
+    @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
+    public static class RootAndStatementInDifferentSources extends ProxyLanguage {
+
+        public static final String ID = "RootAndStatementInDifferentSources";
+        static final com.oracle.truffle.api.source.Source rootSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in root", "root").build();
+        static final com.oracle.truffle.api.source.Source statementSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in statement",
+                        "statement").build();
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+                @Child SuperclassNode child = new TestRootNode(new TestStatementNode());
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return child.execute(frame);
+                }
+            });
+        }
+
+        @GenerateWrapper
+        static class SuperclassNode extends Node implements InstrumentableNode {
+
+            @Child SuperclassNode node;
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new SuperclassNodeWrapper(this, probe);
+            }
+
+            public Object execute(VirtualFrame frame) {
+                if (node == null) {
+                    return 1;
+                }
+                return node.execute(frame);
+            }
+        }
+
+        class TestRootNode extends SuperclassNode {
+            TestRootNode(TestStatementNode testStatementNode) {
+                node = testStatementNode;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return tag == StandardTags.RootTag.class;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return rootSource.createSection(1);
+            }
+        }
+
+        class TestStatementNode extends SuperclassNode {
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return tag == StandardTags.StatementTag.class;
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return statementSource.createSection(1);
+            }
         }
     }
 }

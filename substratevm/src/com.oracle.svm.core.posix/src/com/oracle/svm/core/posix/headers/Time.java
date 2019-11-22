@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
@@ -66,18 +65,6 @@ public class Time {
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int gettimeofday(timeval tv, timezone tz);
 
-    @CFunction
-    public static native int utimes(CCharPointer file, timeval tvp);
-
-    @CFunction
-    public static native int lutimes(CCharPointer file, timeval tvp);
-
-    @CFunction
-    public static native int futimes(int fd, timeval tvp);
-
-    @CFunction
-    public static native int futimesat(int fd, CCharPointer file, timeval tvp);
-
     @CStruct(addStructKeyword = true)
     public interface timespec extends PointerBase {
         @CField
@@ -92,11 +79,4 @@ public class Time {
         @CField
         void set_tv_nsec(long value);
     }
-
-    @CFunction
-    public static native long time(PointerBase timer);
-
-    @CFunction
-    public static native int nanosleep(timespec requested_time, timespec remaining);
-
 }
