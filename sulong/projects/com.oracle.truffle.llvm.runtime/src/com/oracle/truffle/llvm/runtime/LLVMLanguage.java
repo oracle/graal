@@ -106,7 +106,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    private final AtomicInteger nextID = new AtomicInteger();
+    private final AtomicInteger nextID = new AtomicInteger(0);
 
     @CompilationFinal private List<ContextExtension> contextExtensions;
     @CompilationFinal private Configuration activeConfiguration = null;
@@ -118,7 +118,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public abstract static class Loader implements LLVMCapability {
         public abstract void loadDefaults(LLVMContext context, Path internalLibraryPath);
 
-        public abstract CallTarget load(LLVMContext context, Source source, int id);
+        public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
     }
 
     public List<ContextExtension> getLanguageContextExtension() {
@@ -271,14 +271,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         context.dispose(memory);
     }
 
-    public int getRunnerID(){
-        return nextID.getAndIncrement();
+    public AtomicInteger getRawRunnerID(){
+        return nextID;
     }
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
-        return getCapability(Loader.class).load(getContext(), source, nextID.getAndIncrement());
+        return getCapability(Loader.class).load(getContext(), source, nextID);
     }
 
     @Override
