@@ -60,7 +60,7 @@ class JNIRegistrationSupport {
         nativeLibraries = nativelibraries;
     }
 
-    @SuppressWarnings({"unused","rawtypes"})
+    @SuppressWarnings({"unused", "rawtypes"})
     public void registerNativeLibrary(Providers providers, Plugins plugins, Class clazz, String methodname) {
         Registration systemRegistration = new Registration(plugins.getInvocationPlugins(), clazz);
         systemRegistration.register1(methodname, String.class, new InvocationPlugin() {
