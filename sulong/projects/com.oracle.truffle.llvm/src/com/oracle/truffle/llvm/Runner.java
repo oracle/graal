@@ -1073,11 +1073,11 @@ final class Runner {
         for (int i = 0; i < elemCount; i++) {
             final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
             final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
-            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
+            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(elementSize, elementType, globalVarAddress, iNode);
             final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
 
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
+            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
             final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};

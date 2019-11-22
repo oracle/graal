@@ -511,7 +511,7 @@ public final class LLVMSymbolReadResolver {
                 AggregateType aggregate = (AggregateType) currentType;
                 long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
                 currentType = aggregate.getElementType(1);
-                currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNodes[i], indexedTypeLength, currentType);
+                currentAddress = nodeFactory.createTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNodes[i]);
             } else {
                 // the index is a constant integer
                 AggregateType aggregate = (AggregateType) currentType;
@@ -529,7 +529,7 @@ public final class LLVMSymbolReadResolver {
                     } else {
                         throw new AssertionError(indexType);
                     }
-                    currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNode, addressOffset, currentType);
+                    currentAddress = nodeFactory.createTypedElementPointer(addressOffset, currentType, currentAddress, indexNode);
                 }
             }
         }
