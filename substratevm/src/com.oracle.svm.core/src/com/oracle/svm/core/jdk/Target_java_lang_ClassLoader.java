@@ -25,55 +25,119 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.KeepOriginal;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(ClassLoader.class)
-@Substitute
+@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
 @SuppressWarnings("static-method")
-public final class Target_java_lang_ClassLoader {
+final class Target_jdk_internal_loader_URLClassPath {
 
-    @Substitute //
-    private Target_java_lang_ClassLoader parent;
+    /* Reset fields that can store a Zip file via sun.misc.URLClassPath$JarLoader.jar. */
 
-    @Substitute @TargetElement(onlyWith = JDK11OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
+    private ArrayList<?> loaders;
+
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
+    private HashMap<String, ?> lmap;
+
+}
+
+@TargetClass(URLClassLoader.class)
+@SuppressWarnings("static-method")
+final class Target_java_net_URLClassLoader {
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = WeakHashMap.class)//
+    private WeakHashMap<Closeable, Void> closeables;
 
     @Substitute
-    public Target_java_lang_ClassLoader() {
-        parent = null;
+    private InputStream getResourceAsStream(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
     }
 
     @Substitute
-    public Target_java_lang_ClassLoader getParent() {
-        return parent;
+    @SuppressWarnings("unused")
+    protected Class<?> findClass(final String name) {
+        throw VMError.unsupportedFeature("Loading bytecodes.");
+    }
+}
+
+@TargetClass(className = "jdk.internal.loader.BuiltinClassLoader", onlyWith = JDK11OrLater.class)
+@SuppressWarnings("static-method")
+final class Target_jdk_internal_loader_BuiltinClassLoader {
+
+    @Substitute
+    public URL findResource(@SuppressWarnings("unused") String mn, String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
     }
 
     @Substitute
-    public Target_java_lang_ClassLoader(Target_java_lang_ClassLoader parent) {
-        this.parent = parent;
+    public URL findResource(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : Resources.createURL(name, arr.get(0));
     }
 
-    /*
-     * Substituting the whole class allows us to have fields of declared type ClassLoader, but still
-     * get an error if anyone tries to access a field or call a method on it that we have not
-     * explicitly substituted below.
-     */
+    @Substitute
+    public InputStream findResourceAsStream(@SuppressWarnings("unused") String mn, String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+    }
+
+    @Substitute
+    public Enumeration<URL> findResources(String name) {
+        List<byte[]> arr = Resources.get(name);
+        if (arr == null) {
+            return Collections.emptyEnumeration();
+        }
+        List<URL> res = new ArrayList<>(arr.size());
+        for (byte[] data : arr) {
+            res.add(Resources.createURL(name, data));
+        }
+        return Collections.enumeration(res);
+    }
+}
+
+@TargetClass(ClassLoader.class)
+@SuppressWarnings("static-method")
+final class Target_java_lang_ClassLoader {
+
+    @Alias //
+    private static ClassLoader scl;
+
+    @Substitute
+    public static ClassLoader getSystemClassLoader() {
+        VMError.guarantee(scl != null);
+        return scl;
+    }
+
+    @Delete
+    private static native void initSystemClassLoader();
+
+    @Substitute
+    private URL getResource(String name) {
+        return getSystemResource(name);
+    }
 
     @Substitute
     private InputStream getResourceAsStream(String name) {
@@ -81,14 +145,8 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
-    private static InputStream getSystemResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
-
-    @Substitute
-    private URL getResource(String name) {
-        return getSystemResource(name);
+    private Enumeration<URL> getResources(String name) {
+        return getSystemResources(name);
     }
 
     @Substitute
@@ -98,8 +156,9 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
-    private Enumeration<URL> getResources(String name) {
-        return getSystemResources(name);
+    private static InputStream getSystemResourceAsStream(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
     }
 
     @Substitute
@@ -116,11 +175,6 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
-    public static ClassLoader getSystemClassLoader() {
-        return SubstrateUtil.cast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
-    }
-
-    @Substitute
     @SuppressWarnings("unused")
     static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
         NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
@@ -131,15 +185,15 @@ public final class Target_java_lang_ClassLoader {
         return ClassForNameSupport.forName(name, false);
     }
 
+    @Delete
+    native Class<?> loadClass(String name, boolean resolve);
+
+    @Delete
+    native Class<?> findBootstrapClassOrNull(String name);
+
     @Substitute
     @SuppressWarnings("unused")
     static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    public static ClassLoader getPlatformClassLoader() {
-        return SubstrateUtil.cast(ClassLoaderSupport.getInstance().platformClassLoader, ClassLoader.class);
     }
 
     @Substitute //
@@ -170,12 +224,6 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    static ClassLoader getBuiltinPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getBuiltinPlatformClassLoader()");
-    }
-
-    @Substitute //
     @SuppressWarnings({"unused"})
     Object getClassLoadingLock(String className) {
         throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.getClassLoadingLock(String)");
@@ -201,19 +249,6 @@ public final class Target_java_lang_ClassLoader {
     public Package getDefinedPackage(String name) {
         throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
     }
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    public native Package definePackage(Class<?> clazz);
-
-    @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    public native Package definePackage(String name, Target_java_lang_Module module);
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    private native Package toPackage(String name, Target_java_lang_NamedPackage p, Target_java_lang_Module m);
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)
