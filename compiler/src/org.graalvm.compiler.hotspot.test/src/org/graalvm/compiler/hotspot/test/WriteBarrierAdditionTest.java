@@ -338,7 +338,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                         Assert.assertEquals(referentOffset(getMetaAccess()), constDisp.asLong());
                     }
                 }
-                Assert.assertEquals(HeapAccess.BarrierType.WEAK_FIELD, read.getBarrierType());
+                Assert.assertTrue(HeapAccess.BarrierType.WEAK_FIELD == read.getBarrierType() || HeapAccess.BarrierType.MAYBE_WEAK_FIELD == read.getBarrierType());
                 if (config.useG1GC) {
                     Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
                 }
