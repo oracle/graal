@@ -24,28 +24,40 @@
  */
 package org.graalvm.compiler.truffle.compiler.nodes;
 
-import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
 /**
- * See {@link InlineDecisionHandleNode}.
+ * See {@link InlineDecisionNode}. Must be {@link #resolve() resolved} before actually performing
+ * the inlining.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class InlineDecisionHandleNode extends ValueNode implements IterableNodeType {
+public final class InlineDecisionInjectNode extends ValueNode implements IterableNodeType {
 
-    public static final NodeClass<InlineDecisionHandleNode> TYPE = NodeClass.create(InlineDecisionHandleNode.class);
+    public static final NodeClass<InlineDecisionInjectNode> TYPE = NodeClass.create(InlineDecisionInjectNode.class);
+    @Input private ValueNode args;
+    @Input private InlineDecisionNode decision;
 
-    protected InlineDecisionHandleNode() {
-        super(TYPE, StampFactory.forKind(JavaKind.Int));
+    protected InlineDecisionInjectNode(ValueNode args, InlineDecisionNode decision) {
+        super(TYPE, args.stamp(NodeView.DEFAULT));
+        this.args = args;
+        this.decision = decision;
     }
 
-    public static InlineDecisionHandleNode create() {
-        return new InlineDecisionHandleNode();
+    public static InlineDecisionInjectNode create(ValueNode args, InlineDecisionNode decision) {
+        return new InlineDecisionInjectNode(args, decision);
+    }
+
+    public void resolve() {
+        replaceAtUsagesAndDelete(args);
+    }
+
+    public ValueNode getDecision() {
+        return decision;
     }
 }

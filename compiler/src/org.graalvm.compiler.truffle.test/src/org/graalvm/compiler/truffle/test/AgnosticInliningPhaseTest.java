@@ -24,14 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -45,8 +40,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.NoInliningPolicy;
@@ -60,8 +54,15 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
@@ -94,24 +95,19 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         callTarget.call();
         final StructuredGraph graph = runLanguageAgnosticInliningPhase(callTarget);
         // Language agnostic inlining expects this particular pattern to be present in the graph
-        Assert.assertEquals(2, graph.getNodes(InlineDecisionHandleNode.TYPE).count());
-        for (InlineDecisionHandleNode handleNode : graph.getNodes(InlineDecisionHandleNode.TYPE)) {
-            Assert.assertEquals(2, handleNode.usages().count());
-            for (Node usage : handleNode.usages()) {
-                if (usage instanceof InlineDecisionNode) {
-                    final InlineDecisionNode inlinedNode = (InlineDecisionNode) usage;
-                    final Node equalsNode = inlinedNode.usages().first();
-                    Assert.assertTrue(equalsNode instanceof IntegerEqualsNode);
-                    final Node ifNode = equalsNode.usages().first();
+        Assert.assertEquals(2, graph.getNodes(InlineDecisionNode.TYPE).count());
+        for (InlineDecisionNode decisionNode : graph.getNodes(InlineDecisionNode.TYPE)) {
+            Assert.assertEquals(2, decisionNode.usages().count());
+            for (Node usage : decisionNode.usages()) {
+                if (usage instanceof IntegerEqualsNode) {
+                    final Node ifNode = usage.usages().first();
                     Assert.assertTrue(ifNode instanceof IfNode);
                     final FixedNode invoke = ((IfNode) ifNode).falseSuccessor().next();
                     Assert.assertTrue(invoke instanceof Invoke);
-                    final ValueNode callSiteAttach = ((Invoke) invoke).callTarget().arguments().get(1);
-                    Assert.assertTrue(callSiteAttach instanceof InlineDecisionAttachNode);
-                    final ValueNode callSiteHandle = ((InlineDecisionAttachNode) callSiteAttach).getHandle();
-                    Assert.assertTrue(callSiteHandle instanceof InlineDecisionHandleNode);
-                    Assert.assertEquals(inlinedNode, callSiteHandle.usages().filter(InlineDecisionNode.class).first());
-                } else if (usage instanceof InlineDecisionAttachNode) {
+                    final ValueNode injectNode = ((Invoke) invoke).callTarget().arguments().get(1);
+                    Assert.assertTrue(injectNode instanceof InlineDecisionInjectNode);
+                    Assert.assertEquals(decisionNode, ((InlineDecisionInjectNode) injectNode).getDecision());
+                } else if (usage instanceof InlineDecisionInjectNode) {
                     // expected, checked in true branch
                 } else {
                     Assert.fail("Unknown usage");

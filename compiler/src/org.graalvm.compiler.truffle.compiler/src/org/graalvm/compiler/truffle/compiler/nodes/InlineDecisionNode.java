@@ -41,20 +41,17 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * This node is a placeholder to be replaced with a {@code true} or {@code false} constant matching
  * the corresponding inlining decision. The inlining decision is made on the invoke which is
- * connected to this node with data flow through the {@link #handle} i.e. The handle is a
- * {@link InlineDecisionHandleNode} whose other usage is a {@link InlineDecisionAttachNode} wrapping
- * the arguments of the call whose inlining decision is guarded by this node.
+ * connected to this node with data flow through i.e. the {@link InlineDecisionInjectNode} wrapping
+ * the arguments of the call whose inlining decision has this node as input.
  *
  * This is the expected situation in the graph.
  *
  * <pre>
- *     InlineDecisionHandleNode------------------
+ *     InlineDecisionNode------------------------
  *         |                                    |
- *     InlineDecisionNode   C(0)                |
- *         |                 |                  |
- *     IntegerEqualsNode------                  |
+ *     IntegerEqualsNode------C(0)              |
  *         |                                    |
- *     IfNode  ------------------         InlineDecisionAttachNode
+ *     IfNode  ------------------         InlineDecisionInjectNode
  *         |                    |               |
  *     BeginNode             BeginNode    MethodCallTargetNode
  *         |                    |               |
@@ -71,16 +68,13 @@ import jdk.vm.ci.meta.JavaKind;
 public final class InlineDecisionNode extends ValueNode implements IterableNodeType {
 
     public static final NodeClass<InlineDecisionNode> TYPE = NodeClass.create(InlineDecisionNode.class);
-    // Used by the language agnostic inlining to locate this node from the Invoke
-    @SuppressWarnings("unused") @Input private InlineDecisionHandleNode handle;
 
-    protected InlineDecisionNode(InlineDecisionHandleNode handle) {
+    protected InlineDecisionNode() {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
-        this.handle = handle;
     }
 
-    public static InlineDecisionNode create(InlineDecisionHandleNode handle) {
-        return new InlineDecisionNode(handle);
+    public static InlineDecisionNode create() {
+        return new InlineDecisionNode();
     }
 
     public void inlined() {

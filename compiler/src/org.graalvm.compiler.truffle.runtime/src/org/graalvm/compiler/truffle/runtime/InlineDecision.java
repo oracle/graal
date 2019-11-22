@@ -27,58 +27,42 @@ package org.graalvm.compiler.truffle.runtime;
 /**
  * Since SVM overrides {@link OptimizedCallTarget#doInvoke(Object[])} to specialize behaviour on
  * call sites, we need to differentiate the inlined call sites which should not contain this
- * specialized code. We do this by calling the {@link #isAttachedInlined(int)} method and, based on
- * the result, calling either {@link OptimizedCallTarget#doInvoke(Object[])} (for non-inlined calls)
- * or {@link OptimizedCallTarget#callBoundary(Object[])} (for inlined ones). The compiler, once an
+ * specialized code. We do this by calling the {@link #get()} method and, based on the result,
+ * calling either {@link OptimizedCallTarget#doInvoke(Object[])} (for non-inlined calls) or
+ * {@link OptimizedCallTarget#callBoundary(Object[])} (for inlined ones). The compiler, once an
  * inlining decision about this call site is made, ensures the correct branch is reachable and the
  * other one is dead code.
  *
- * To allow the compiler to correctly substitute the call to {@link #isAttachedInlined(int)} we need
- * to make a data-dependency between the call the {@link #isAttachedInlined(int)} and the call to
+ * To allow the compiler to correctly substitute the result of the call to {@link #get()} we need to
+ * make a data-dependency between the call to {@link #get()} and the call to
  * {@link OptimizedCallTarget#callBoundary(Object[])} which is the point of inlining. For this we
- * use the {@link #get()} and {@link #attach(Object[], int)} methods, first one as a data source and
- * the other as a data sink (wrapping the arguments of the call to
- * {@link OptimizedCallTarget#callBoundary(Object[])}.
+ * use the {@link #inject(Object[], boolean)} method, as a data sink (wrapping the arguments of the
+ * call to {@link OptimizedCallTarget#callBoundary(Object[])}.
  */
-class InlineHandle {
+class InlineDecision {
 
     /**
-     * Returns a dummy value used to indicate to the compiler that there exists data flow between
-     * {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}.
+     * Produces a placeholder value for the inlining decision yet to be made by the compiler.
      *
-     * @return Dummy value. Further logic is handled by the compiler through intrinsification.
+     * @return false, since the interpreted calls are never considered inlined. Further logic is
+     *         handled by the compiler through intrinsification.
      */
-    static int get() {
-        return 0xdeadbeef;
+    static boolean get() {
+        return false;
     }
 
     /**
      * Wraps the arguments to {@link OptimizedCallTarget#callBoundary(Object[])} ensuring data flow
-     * between {@link #attach(Object[], int)} and {@link #isAttachedInlined(int)}.
+     * between the inlining decision (produced by {@link #get()}) and the call who's argument are
+     * being wrapped.
      *
      * @param args the arguments
-     * @param handle the value returned by {@link #get()}
+     * @param decision the value returned by {@link #get()}, used to ensure a data dependency to the
+     *            inlining decision
      * @return nothing. Further logic is handled by the compiler through intrinsification.
      */
     @SuppressWarnings("unused")
-    static Object[] attach(Object[] args, int handle) {
+    static Object[] inject(Object[] args, boolean decision) {
         throw new IllegalStateException("Should never reach here. This method must be intrinsified.");
     }
-
-    /**
-     * Used to differentiate between inlined and non-inlined call sites. Is intrincified by the
-     * compiler to a node that will, after inlining decisions have been made, be replaced with
-     * {@code true} or {@code false}.
-     *
-     * @param handle a data-dependency handle to the call used for inlining. The same value should
-     *            be used in the {@link #attach(Object[], int)} call wrapping the arguments of the
-     *            call.
-     * @return false, since the interpreted calls are never considered inlined. Further logic is
-     *         handled by the compiler through intrinsification.
-     */
-    @SuppressWarnings("unused")
-    static boolean isAttachedInlined(int handle) {
-        return false;
-    }
-
 }

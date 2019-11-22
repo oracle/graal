@@ -338,9 +338,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             profileDirectCall(args);
             try {
-                final int handle = InlineHandle.get();
-                // Language agnostic inlining depends on this call to callBoundary to inline
-                Object result = InlineHandle.isAttachedInlined(handle) ? callBoundary(InlineHandle.attach(args, handle)) : doInvoke(args);
+                final boolean isInlined = InlineDecision.get();
+                // Language agnostic inlining depends on this call to callBoundary to inline, the
+                // isInlined value is passed in to crate a data dependency needed by the compiler
+                Object result = isInlined ? callBoundary(InlineDecision.inject(args, isInlined)) : doInvoke(args);
                 if (CompilerDirectives.inCompiledCode()) {
                     result = injectReturnValueProfile(result);
                 }

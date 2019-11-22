@@ -107,8 +107,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
@@ -215,11 +214,8 @@ public abstract class PartialEvaluator {
         for (InlineDecisionNode node : graph.getNodes(InlineDecisionNode.TYPE)) {
             node.notInlined();
         }
-        for (InlineDecisionAttachNode node : graph.getNodes(InlineDecisionAttachNode.TYPE)) {
+        for (InlineDecisionInjectNode node : graph.getNodes(InlineDecisionInjectNode.TYPE)) {
             node.resolve();
-        }
-        for (InlineDecisionHandleNode node : graph.getNodes(InlineDecisionHandleNode.TYPE)) {
-            node.safeDelete();
         }
     }
 

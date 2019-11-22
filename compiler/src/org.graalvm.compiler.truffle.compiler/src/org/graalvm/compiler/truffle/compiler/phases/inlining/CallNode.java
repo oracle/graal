@@ -46,8 +46,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionAttachNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionHandleNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
 import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -268,19 +267,15 @@ public final class CallNode extends Node {
     private static void handleIsAttachedInlinedNode(Invoke invoke) {
         final NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
         final ValueNode argument = arguments.get(1);
-        if (!(argument instanceof InlineDecisionAttachNode)) {
+        if (!(argument instanceof InlineDecisionInjectNode)) {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
-        final InlineDecisionAttachNode attachNode = (InlineDecisionAttachNode) argument;
-        final ValueNode token = attachNode.getHandle();
-        if (!(token instanceof InlineDecisionHandleNode)) {
+        final InlineDecisionInjectNode attachNode = (InlineDecisionInjectNode) argument;
+        final ValueNode maybeDecision = attachNode.getDecision();
+        if (!(maybeDecision instanceof InlineDecisionNode)) {
             GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
         }
-        final Node maybeIsAttached = token.usages().first();
-        if (!(maybeIsAttached instanceof InlineDecisionNode)) {
-            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
-        }
-        final InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeIsAttached;
+        final InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeDecision;
         inlineDecisionNode.inlined();
         attachNode.resolve();
     }
