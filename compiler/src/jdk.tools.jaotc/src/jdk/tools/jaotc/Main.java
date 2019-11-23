@@ -224,9 +224,9 @@ public final class Main {
                 System.gc();
             }
 
-            HotSpotGC graal_gc = runtime.getGarbageCollector();
-            int def = graal_gc.ordinal() + 1;
-            String name = "CollectedHeap::" + graal_gc.name();
+            HotSpotGC graalGC = runtime.getGarbageCollector();
+            int def = graalGC.ordinal() + 1;
+            String name = "CollectedHeap::" + graalGC.name();
             int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def);
 
             BinaryContainer binaryContainer = new BinaryContainer(graalOptions, graalHotSpotVMConfig, graphBuilderConfig, gc, JVM_VERSION);
