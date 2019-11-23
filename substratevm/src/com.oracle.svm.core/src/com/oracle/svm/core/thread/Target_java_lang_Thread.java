@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -45,7 +44,6 @@ import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.option.XOptions;
@@ -171,7 +169,7 @@ final class Target_java_lang_Thread {
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
         group = (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup;
         priority = Thread.NORM_PRIORITY;
-        contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
+        contextClassLoader = ClassLoader.getSystemClassLoader();
         blockerLock = new Object();
         daemon = asDaemon;
     }
