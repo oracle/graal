@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,16 +23,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-
-@CLibrary(value = "libchelper", requireStatic = true)
-public class LibCHelper {
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native CCharPointerPointer getEnviron();
-
-}
+typedef struct {
+  char fFP;
+  char fASIMD;
+  char fEVTSTRM;
+  char fAES;
+  char fPMULL;
+  char fSHA1;
+  char fSHA2;
+  char fCRC32;
+  char fLSE;
+  char fSTXRPREFETCH;
+  char fA53MAC;
+  char fDMBATOMICS;
+} CPUFeatures;
