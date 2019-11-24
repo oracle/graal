@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -132,6 +133,10 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
         }
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
+        if (isWindows()) {
+            /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_provider_NativeSeedGenerator");
+        }
     }
 
     private static void registerRandomAccessFileInitIDs(DuringAnalysisAccess a) {
