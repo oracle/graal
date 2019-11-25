@@ -15,7 +15,8 @@ virtual machine warmup.
 ## Basic usage
 
 Take this example Ruby program. It renders an ERB template. Every now and again
-another thread swaps the template.
+another thread swaps the template. After a few seconds a compilation will be
+attempted which will fail.
 
 ```ruby
 require 'erb'
@@ -29,6 +30,13 @@ Thread.new do
   end
 end
 
+Thread.new do
+  sleep 3 + rand(3)
+  loop do
+    Truffle::Graal.bailout 'demo compilation failure'
+  end
+end
+
 dev_null = File.open('/dev/null', 'w')
 
 loop do
@@ -37,10 +45,12 @@ loop do
 end
 ```
 
-Run with the `--thermometer` flag.
+Run with the `--thermometer` flag (we use
+`--vm.Dgraal.TruffleCompilationExceptionsAreThrown=true` to stop the
+compilation failure being re-tried).
 
 ```
-% ruby --thermometer demo.rb
+% ruby --vm.Dgraal.TruffleCompilationExceptionsAreThrown=true --thermometer demo.rb
 ```
 
 You'll see log lines like this:
@@ -91,7 +101,9 @@ set a per-thread flag to indicate whether they're compiled or not. A separate
 high-priority timer thread samples this flag.
 
 The indicator is set to `🥶` for a temperature `< 0.5`, `🤔` for `< 0.9`, and
-`😊` otherwise. If there was a deoptimization in the period, it is set to `🤮`.
+`😊` otherwise. If there was a deoptimization in the period, it is instead set
+to `🤮`. If there was a compilation error in the period, it is instead set to
+`😡`.
 
 The indicator isn't set higher than `🤔` if new code was loaded in the period.
 
@@ -115,6 +127,8 @@ single thread running most of the time.
 
 The sample flag is set for each guest-language method root, so a compilation
 unit may set it multiple times increasing overhead.
+
+Counters are `int` so may overflow during a very long running process.
 
 (The `#{'    ' * 10_000}` in the demo is there so code size can be seen to
 grow more easily.)

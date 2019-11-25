@@ -67,7 +67,9 @@ public final class CompilationStatusListener extends AbstractGraalTruffleRuntime
 
     @Override
     public synchronized void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        failures.getAndIncrement();
+        if (TraceCompilationListener.isPermanentFailure(bailout, permanentBailout)) {
+            failures.getAndIncrement();
+        }
     }
 
     @Override

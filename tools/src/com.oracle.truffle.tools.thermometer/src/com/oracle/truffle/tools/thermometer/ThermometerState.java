@@ -81,7 +81,9 @@ public class ThermometerState {
     }
 
     private String indicator(ThermometerState reference) {
-        if (reference != null && compilationState.getDeoptimizations() != reference.compilationState.getDeoptimizations()) {
+        if (reference != null && compilationState.getFailed() != reference.compilationState.getFailed()) {
+            return "😡";
+        } else if (reference != null && compilationState.getDeoptimizations() != reference.compilationState.getDeoptimizations()) {
             return "🤮";
         } else if (sampleReading < 0.5) {
             return "🥶";

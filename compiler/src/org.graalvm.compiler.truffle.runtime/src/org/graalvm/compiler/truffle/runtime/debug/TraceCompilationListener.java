@@ -190,7 +190,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
      * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
      *      boolean)
      */
-    private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+    public static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;
     }
 
