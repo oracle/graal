@@ -56,7 +56,60 @@ import java.lang.annotation.Target;
 public @interface ExplodeLoop {
 
     /**
-     * Controls behavior of {@link ExplodeLoop} annotation.
+     * Controls the behavior of the {@link ExplodeLoop} annotation.
+     *
+     * <h2>Terminology</h2>
+     *
+     * In the explanations below, the term <i>loop end</i> refers to control flow reaching the end
+     * of the loop body such as {@code continue} or a statement at the end of the loop body. The
+     * term <i>loop exit</i> refers to control flow exiting the loop, such as {@code return} or
+     * {@code break}. Example:
+     *
+     * {@codesnippet loopEndsExits}
+     *
+     * There are 4 loop explosion kinds (plus {@code MERGE_EXPLODE}, which is meant for bytecode
+     * interpreters), configurable by 2 parameters: UNROLL vs EXPLODE and UNTIL_RETURN vs not.
+     *
+     * <h2>UNROLL vs EXPLODE</h2>
+     *
+     * The first parameter specifies whether the partial evaluator should duplicate loop ends.
+     * UNROLL merges after each loop end and EXPLODE keeps exploding nested iterations like a tree.
+     *
+     * {@codesnippet unrollVsExplodeLoop}
+     *
+     * gets unrolled with {@code FULL_UNROLL} to:
+     *
+     * {@codesnippet unrollVsExplodeLoopUnrolled}
+     *
+     * and exploded with {@code FULL_EXPLODE} to:
+     *
+     * {@codesnippet unrollVsExplodeLoopExploded}
+     *
+     * <h2>UNTIL_RETURN</h2>
+     *
+     * The second parameter specifies whether the partial evaluator should duplicate loop exits.
+     * UNTIL_RETURN duplicates them, otherwise control flow is merged.
+     *
+     * {@codesnippet untilReturnLoop}
+     *
+     * is expanded with {@code FULL_UNROLL_UNTIL_RETURN} to:
+     *
+     * {@codesnippet untilReturn}
+     *
+     * while {@code FULL_UNROLL} merges loop exits:
+     *
+     * {@codesnippet notUntilReturn}
+     *
+     * <h3>break</h3>
+     *
+     * Note that {@code break} statements inside the loop will duplicate code after the loop since
+     * they add new loop exits:
+     *
+     * {@codesnippet breaksLoop}
+     *
+     * is expanded with {@code FULL_UNROLL_UNTIL_RETURN} to:
+     *
+     * {@codesnippet breaksLoopUnrollUntilReturn}
      *
      * @since 0.15
      */
@@ -74,10 +127,11 @@ public @interface ExplodeLoop {
          * Like {@link #FULL_UNROLL}, but in addition loop unrolling duplicates loop exits in every
          * iteration instead of merging them. Code after a loop exit is duplicated for every loop
          * exit and every loop iteration. For example, a loop with 4 iterations and 2 loop exits
-         * (exit1 and exit2, where exit1 is an early return inside a loop) leads to 4 copies of the
-         * loop body and 4 copies of exit1 and 1 copy if exit2. After each exit all code until a
-         * return is duplicated per iteration. Beware of break statements inside loops since they
-         * cause additional loop exits leading to code duplication along exit2.
+         * (exit1 and exit2, where exit1 is an early return inside a loop, such as
+         * {@link LoopExplosionKind untilReturnLoop()}) leads to 4 copies of the loop body and 4
+         * copies of exit1 and 1 copy of exit2. After each exit all code until a return is
+         * duplicated per iteration. Beware of break statements inside loops since they cause
+         * additional loop exits leading to code duplication along exit2.
          *
          * @since 20.0
          */
@@ -117,5 +171,196 @@ public @interface ExplodeLoop {
      * @since 0.15
      */
     LoopExplosionKind kind() default LoopExplosionKind.FULL_UNROLL;
+
+}
+
+@SuppressFBWarnings("UC")
+class Snippets {
+    // BEGIN: loopEndsExits
+    int loopEndExits() {
+        int state = -1;
+        for (int i = 0; i < 4; i++) {
+            if (condition(i)) {
+                continue; // loop end
+            } else if (condition1(i)) {
+                // loop exit (break)
+                state = 2;
+                break;
+            } else if (condition2(i)) {
+                // loop exit (return)
+                state = 3;
+                return state;
+            } else {
+                state = i;
+                // loop end
+            }
+        }
+        // loop exit (after last iteration)
+        return state;
+    }
+    // END: loopEndsExits
+
+    // BEGIN: unrollVsExplodeLoop
+    @ExplodeLoop
+    void unrollVsExplodeLoop() {
+        int state = 1;
+        for (int i = 0; i < 2; i++) {
+            if (c(i, state)) {
+                state = 2;
+            } else {
+                state = 3;
+            }
+        }
+    }
+    // END: unrollVsExplodeLoop
+
+    // BEGIN: unrollVsExplodeLoopUnrolled
+    void unrollVsExplodeLoopUnrolled() {
+        int state = 1;
+        if (c(0, 1)) {
+            state = 2;
+        } else {
+            state = 3;
+        }
+
+        if (c(1, state)) {
+            state = 2;
+        } else {
+            state = 3;
+        }
+    }
+    // END: unrollVsExplodeLoopUnrolled
+
+    // BEGIN: unrollVsExplodeLoopExploded
+    void unrollVsExplodeLoopExploded() {
+        int state = 1;
+        if (c(0, 1)) {
+            if (c(1, 2)) {
+                state = 2;
+            } else {
+                state = 3;
+            }
+        } else {
+            if (c(1, 3)) {
+                state = 2;
+            } else {
+                state = 3;
+            }
+        }
+    }
+    // END: unrollVsExplodeLoopExploded
+
+    // BEGIN: untilReturnLoop
+    @ExplodeLoop
+    int untilReturnLoop() {
+        for (int i = 0; i < 2; i++) {
+            if (condition(i)) {
+                // exit1
+                return f(i);
+            }
+        }
+        // exit2
+        return fallback();
+    }
+    // END: untilReturnLoop
+
+    // BEGIN: untilReturn
+    int untilReturn() {
+        if (condition(0)) {
+            return f(0);
+        }
+
+        if (condition(1)) {
+            return f(1);
+        }
+
+        return fallback();
+    }
+    // END: untilReturn
+
+    // BEGIN: notUntilReturn
+    int notUntilReturn() {
+        int i;
+        for (;;) {
+            if (condition(0)) {
+                i = 0;
+                break;
+            }
+
+            if (condition(1)) {
+                i = 1;
+                break;
+            }
+
+            return fallback();
+        }
+
+        return f(i);
+    }
+    // END: notUntilReturn
+
+    // BEGIN: breaksLoop
+    @ExplodeLoop
+    int breaksLoop() {
+        int state = -1;
+
+        for (int i = 0; i < 2; i++) {
+            if (condition1(i)) {
+                return f(i);
+            } else if (condition2(i)) {
+                state = i;
+                break;
+            }
+        }
+
+        return fallback(state);
+    }
+    // END: breaksLoop
+
+    // BEGIN: breaksLoopUnrollUntilReturn
+    int breaksLoopUnrollUntilReturn() {
+        if (condition1(0)) {
+            return f(0);
+        } else if (condition2(0)) {
+            return fallback(0);
+        }
+
+        if (condition1(1)) {
+            return f(1);
+        } else if (condition2(1)) {
+            return fallback(1);
+        }
+
+        return fallback(-1);
+    }
+    // END: breaksLoopUnrollUntilReturn
+
+    private boolean c(int i, int state) {
+        return i == state;
+    }
+
+    private boolean condition(int i) {
+        return i == 0;
+    }
+
+    private boolean condition1(int i) {
+        return i == 0;
+    }
+
+    private boolean condition2(int i) {
+        return i == 0;
+    }
+
+    private int f(int i) {
+        return i;
+    }
+
+    private int fallback() {
+        return -1;
+    }
+
+    private int fallback(int state) {
+        return state;
+    }
 
 }
