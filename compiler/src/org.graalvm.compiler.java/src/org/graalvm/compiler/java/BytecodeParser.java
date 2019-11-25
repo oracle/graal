@@ -698,22 +698,21 @@ public class BytecodeParser implements GraphBuilderContext {
                     }
                 }
             } else {
-                if (intrinsic != null && !intrinsic.isIntrinsicEncoding()) {
-                    /*
-                     * Special case root compiled method substitutions
-                     *
-                     * Root compiled intrinsics with self recursive calls (partial intrinsic exit)
-                     * must never produce more than one state except the start framestate since we
-                     * do not compile calls to the original method (or inline them) but deopt
-                     *
-                     * See ByteCodeParser::inline and search for compilationRoot
-                     */
-                    verifyIntrinsicRootCompileEffects();
-                }
+
+                /*
+                 * Special case root compiled method substitutions
+                 *
+                 * Root compiled intrinsics with self recursive calls (partial intrinsic exit) must
+                 * never produce more than one state except the start framestate since we do not
+                 * compile calls to the original method (or inline them) but deopt
+                 *
+                 * See ByteCodeParser::inline and search for compilationRoot
+                 */
+                assert intrinsic == null || intrinsic.isIntrinsicEncoding() || verifyIntrinsicRootCompileEffects();
             }
         }
 
-        private void verifyIntrinsicRootCompileEffects() {
+        private boolean verifyIntrinsicRootCompileEffects() {
             int invalidBCIsInRootCompiledIntrinsic = 0;
             for (Node n : parser.graph.getNewNodes(mark)) {
                 if (n instanceof FrameState) {
@@ -743,7 +742,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     GraalError.guarantee(invalidBCIsToFind == 0, "Root compiled intrinsic with invalid states has more than one return. " +
                                     "This is allowed, however one path down a sink has more than one state, this is prohibited. " +
                                     "Intrinsic %s", parser.method);
-                    return;
+                    return true;
                 }
                 ReturnNode ret = returns.get(0);
                 MergeNode merge = null;
@@ -791,6 +790,7 @@ public class BytecodeParser implements GraphBuilderContext {
                                     parser.method);
                 }
             }
+            return true;
         }
 
         private void updateSplitFrameState(StateSplit split, JavaKind returnKind, ValueNode returnValue) {
