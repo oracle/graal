@@ -607,17 +607,20 @@ public final class LLVMContext {
     public LLVMPointer[] findGlobal(int id) {
         return globalStorage[id];
     }
-
+    
     @TruffleBoundary
     public void registerGlobalMap(int index, LLVMPointer[] target) {
         synchronized (globalStorage) {
             if (index < globalStorage.length) {
                 globalStorage[index] = target;
             } else {
-                LLVMPointer[][] temp = new LLVMPointer[index + 1][];
-                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
-                globalStorage = temp;
-                globalStorage[index] = target;
+                int newLength = (index + 1) + ((index + 1) / 2);
+                LLVMPointer[][] temp = new LLVMPointer[newLength][];
+                synchronized (temp) {
+                    System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
+                    globalStorage = temp;
+                    globalStorage[index] = target;
+                }
             }
         }
     }
