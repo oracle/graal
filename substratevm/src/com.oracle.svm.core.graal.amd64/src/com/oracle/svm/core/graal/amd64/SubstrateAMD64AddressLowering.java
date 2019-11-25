@@ -70,6 +70,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
         addr.setBase(base);
         addr.setScale(scale);
+        addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());
         return true;
     }
