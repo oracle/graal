@@ -52,7 +52,9 @@ int collatz(int n) {
   return length;
 }
 
+int number = 127;
+
 int main() {
-  return collatz(127);
+  return collatz(number);
 }
 

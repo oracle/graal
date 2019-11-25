@@ -113,7 +113,7 @@ public final class WasmModule implements TruffleObject {
         if (globalIndex != null) {
             readGlobal(symbolTable, globalIndex);
         }
-        if (symbolTable.exportedMemory().equals(member)) {
+        if (member.equals(symbolTable.exportedMemory())) {
             return symbolTable.memory();
         }
         throw UnknownIdentifierException.create(member);
