@@ -1138,7 +1138,9 @@ public class NativeImageGenerator {
         }
 
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks);
+        final boolean arrayEqualsSubstitution = !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks,
+                        arrayEqualsSubstitution);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,

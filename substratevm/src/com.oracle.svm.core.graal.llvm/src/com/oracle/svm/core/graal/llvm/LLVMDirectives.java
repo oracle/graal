@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
 
@@ -40,5 +43,15 @@ public class LLVMDirectives implements CContext.Directives {
     @Override
     public List<String> getHeaderFiles() {
         return Collections.singletonList("<unwind.h>");
+    }
+
+    @Override
+    public List<String> getLibraries() {
+        List<String> libraries = new ArrayList<>();
+        libraries.add("m");
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class) && LLVMOptions.BitcodeOptimizations.getValue()) {
+            libraries.add("atomic");
+        }
+        return libraries;
     }
 }
