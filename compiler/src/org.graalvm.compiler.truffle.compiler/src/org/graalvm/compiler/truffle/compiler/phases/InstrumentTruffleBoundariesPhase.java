@@ -35,7 +35,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.options.OptionValues;
 
 /**
  * Instruments calls to {@code TruffleBoundary}-annotated methods in the graph, by adding execution
@@ -65,8 +64,8 @@ import org.graalvm.options.OptionValues;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        super(options, snippetReflection, instrumentation);
+    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(snippetReflection, instrumentation);
     }
 
     @Override

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -31,7 +33,6 @@ import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class CallTree extends Graph {
@@ -71,8 +72,8 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.TraceInliningDetails);
-        if (PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.TraceInlining) || details) {
+        final Boolean details = getPolyglotOptionValue(PolyglotCompilerOptions.TraceInliningDetails);
+        if (getPolyglotOptionValue(PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
             traceRecursive(runtime, root, details, 0);

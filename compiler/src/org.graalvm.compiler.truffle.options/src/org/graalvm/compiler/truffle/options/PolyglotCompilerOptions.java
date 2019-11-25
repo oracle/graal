@@ -31,12 +31,9 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
-import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
-import java.util.ServiceLoader;
-import java.util.function.Supplier;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -269,46 +266,6 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(50_000);
 
     // @formatter:on
-
-    private static volatile Iterable<OptionsResolver> resolvers;
-
-    /**
-     * Uses the --engine option if set, otherwise fallback on the -Dgraal option.
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> T getValue(OptionValues polyglotValues, OptionKey<T> key) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
-            return polyglotValues.get(key);
-        }
-        for (OptionsResolver resolver : lookupResolvers()) {
-            Supplier<T> valueSupplier = resolver.resolve(key);
-            if (valueSupplier != null) {
-                return valueSupplier.get();
-            }
-        }
-        return key.getDefaultValue();
-    }
-
-    public static <T> boolean hasBeenSet(OptionValues polyglotValues, OptionKey<T> key) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
-            return true;
-        }
-        for (OptionsResolver resolver : lookupResolvers()) {
-            if (resolver.hasBeenSet(key)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static Iterable<OptionsResolver> lookupResolvers() {
-        Iterable<OptionsResolver> result = resolvers;
-        if (result == null) {
-            result = ServiceLoader.load(OptionsResolver.class);
-            resolvers = result;
-        }
-        return result;
-    }
 
     public static OptionDescriptors getDescriptors() {
         return new PolyglotCompilerOptionsOptionDescriptors();

@@ -38,10 +38,12 @@ import org.graalvm.options.OptionValues;
 
 public final class PolyglotCompilerOptionsScope implements Closeable {
 
-    private static ThreadLocal<PolyglotCompilerOptionsScope> currentScope = new ThreadLocal<>();
+    private static class Lazy {
+        static final ThreadLocal<PolyglotCompilerOptionsScope> currentScope = new ThreadLocal<>();
+    }
 
     private final OptionValues optionValues;
-    private PolyglotCompilerOptionsScope parent;
+    private final PolyglotCompilerOptionsScope parent;
 
     private PolyglotCompilerOptionsScope(OptionValues optionValues, PolyglotCompilerOptionsScope parent) {
         Objects.requireNonNull(optionValues, "OptionValues must be non null.");
@@ -51,30 +53,26 @@ public final class PolyglotCompilerOptionsScope implements Closeable {
 
     @Override
     public void close() {
-        PolyglotCompilerOptionsScope current = currentScope.get();
+        PolyglotCompilerOptionsScope current = Lazy.currentScope.get();
         if (current != this) {
             throw new IllegalStateException("Unpaired close.");
         }
-        currentScope.set(current.parent);
+        Lazy.currentScope.set(current.parent);
     }
 
     public static OptionValues getOptionValues() {
-        PolyglotCompilerOptionsScope current = currentScope.get();
+        PolyglotCompilerOptionsScope current = Lazy.currentScope.get();
         if (current == null) {
             throw new IllegalStateException("Not entered in scope.");
         }
         return current.optionValues;
     }
 
-    public static <T> T getValue(OptionKey<T> optionKey) {
-        return PolyglotCompilerOptions.getValue(getOptionValues(), optionKey);
-    }
-
     static PolyglotCompilerOptionsScope open(Map<String, Object> options) {
-        PolyglotCompilerOptionsScope parent = currentScope.get();
+        PolyglotCompilerOptionsScope parent = Lazy.currentScope.get();
         OptionValues values = convertToOptionValues(options);
         PolyglotCompilerOptionsScope newScope = new PolyglotCompilerOptionsScope(values, parent);
-        currentScope.set(newScope);
+        Lazy.currentScope.set(newScope);
         return newScope;
     }
 

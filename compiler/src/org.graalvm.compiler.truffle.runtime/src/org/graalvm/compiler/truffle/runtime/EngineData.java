@@ -49,9 +49,9 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getPolyglotOptionValue;
 
 import java.util.function.Function;
 
@@ -121,30 +121,30 @@ public final class EngineData {
 
     void loadOptions(OptionValues options) {
         this.engineOptions = options;
-        this.splitting = getValue(options, Splitting) &&
-                        getValue(options, Mode) != EngineModeEnum.LATENCY;
-        this.splittingAllowForcedSplits = getValue(options, SplittingAllowForcedSplits);
-        this.splittingDumpDecisions = getValue(options, SplittingDumpDecisions);
-        this.splittingMaxCalleeSize = getValue(options, SplittingMaxCalleeSize);
-        this.splittingMaxPropagationDepth = getValue(options, SplittingMaxPropagationDepth);
-        this.splittingTraceEvents = getValue(options, SplittingTraceEvents);
-        this.traceSplittingSummary = getValue(options, TraceSplittingSummary);
-        this.splittingGrowthLimit = getValue(options, SplittingGrowthLimit);
-        this.splittingMaxNumberOfSplitNodes = getValue(options, SplittingMaxNumberOfSplitNodes);
+        this.splitting = getPolyglotOptionValue(options, Splitting) &&
+                        getPolyglotOptionValue(options, Mode) != EngineModeEnum.LATENCY;
+        this.splittingAllowForcedSplits = getPolyglotOptionValue(options, SplittingAllowForcedSplits);
+        this.splittingDumpDecisions = getPolyglotOptionValue(options, SplittingDumpDecisions);
+        this.splittingMaxCalleeSize = getPolyglotOptionValue(options, SplittingMaxCalleeSize);
+        this.splittingMaxPropagationDepth = getPolyglotOptionValue(options, SplittingMaxPropagationDepth);
+        this.splittingTraceEvents = getPolyglotOptionValue(options, SplittingTraceEvents);
+        this.traceSplittingSummary = getPolyglotOptionValue(options, TraceSplittingSummary);
+        this.splittingGrowthLimit = getPolyglotOptionValue(options, SplittingGrowthLimit);
+        this.splittingMaxNumberOfSplitNodes = getPolyglotOptionValue(options, SplittingMaxNumberOfSplitNodes);
 
         // compilation options
-        this.compilation = getValue(options, Compilation);
-        this.compileOnly = getValue(options, CompileOnly);
-        this.compileImmediately = getValue(options, CompileImmediately);
-        this.multiTier = getValue(options, MultiTier);
+        this.compilation = getPolyglotOptionValue(options, Compilation);
+        this.compileOnly = getPolyglotOptionValue(options, CompileOnly);
+        this.compileImmediately = getPolyglotOptionValue(options, CompileImmediately);
+        this.multiTier = getPolyglotOptionValue(options, MultiTier);
 
-        this.returnTypeSpeculation = getValue(options, ReturnTypeSpeculation);
-        this.argumentTypeSpeculation = getValue(options, ArgumentTypeSpeculation);
-        this.traceCompilation = getValue(options, TraceCompilation);
-        this.traceCompilationDetails = getValue(options, TraceCompilationDetails);
-        this.backgroundCompilation = getValue(options, BackgroundCompilation);
-        this.compilationExceptionsAreThrown = getValue(options, CompilationExceptionsAreThrown);
-        this.performanceWarningsAreFatal = getValue(options, PerformanceWarningsAreFatal);
+        this.returnTypeSpeculation = getPolyglotOptionValue(options, ReturnTypeSpeculation);
+        this.argumentTypeSpeculation = getPolyglotOptionValue(options, ArgumentTypeSpeculation);
+        this.traceCompilation = getPolyglotOptionValue(options, TraceCompilation);
+        this.traceCompilationDetails = getPolyglotOptionValue(options, TraceCompilationDetails);
+        this.backgroundCompilation = getPolyglotOptionValue(options, BackgroundCompilation);
+        this.compilationExceptionsAreThrown = getPolyglotOptionValue(options, CompilationExceptionsAreThrown);
+        this.performanceWarningsAreFatal = getPolyglotOptionValue(options, PerformanceWarningsAreFatal);
         this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
         this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
         this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
@@ -157,9 +157,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return Math.min(getValue(options, FirstTierMinInvokeThreshold), getValue(options, FirstTierCompilationThreshold));
+            return Math.min(getPolyglotOptionValue(options, FirstTierMinInvokeThreshold), getPolyglotOptionValue(options, FirstTierCompilationThreshold));
         } else {
-            return Math.min(getValue(options, MinInvokeThreshold), getValue(options, CompilationThreshold));
+            return Math.min(getPolyglotOptionValue(options, MinInvokeThreshold), getPolyglotOptionValue(options, CompilationThreshold));
         }
     }
 
@@ -168,9 +168,9 @@ public final class EngineData {
             return 0;
         }
         if (multiTier) {
-            return getValue(options, FirstTierCompilationThreshold);
+            return getPolyglotOptionValue(options, FirstTierCompilationThreshold);
         } else {
-            return getValue(options, CompilationThreshold);
+            return getPolyglotOptionValue(options, CompilationThreshold);
         }
     }
 

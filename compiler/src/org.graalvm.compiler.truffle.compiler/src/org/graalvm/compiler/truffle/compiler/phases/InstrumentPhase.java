@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
+
 import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -49,14 +51,12 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
@@ -90,8 +90,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     protected final MethodFilter[] methodFilter;
     protected final SnippetReflectionProvider snippetReflection;
 
-    public InstrumentPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        String filterValue = instrumentationFilter(options);
+    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        String filterValue = instrumentationFilter();
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
@@ -105,8 +105,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         return instrumentation;
     }
 
-    protected String instrumentationFilter(OptionValues options) {
-        return PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.InstrumentFilter);
+    protected String instrumentationFilter() {
+        return getPolyglotOptionValue(PolyglotCompilerOptions.InstrumentFilter);
     }
 
     protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,

@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
@@ -39,6 +40,49 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerThreads;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeBudget;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InvalidationReprofileCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LanguageAgnosticInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSR;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxNumberOfSplitNodes;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceAssumptions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationAST;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationCallTree;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationPolymorphism;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceInlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
 
 /**
  * Helpers to read and overwrite values of Truffle runtime options. The options themselves are
@@ -104,8 +148,8 @@ public final class TruffleRuntimeOptions {
 
         for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();
-            if (PolyglotCompilerOptions.hasBeenSet(values, key)) {
-                Object value = PolyglotCompilerOptions.getValue(values, key);
+            if (hasBeenSet(values, key)) {
+                Object value = TruffleRuntimeOptions.getPolyglotOptionValue(values, key);
                 if (!isPrimitiveType(value)) {
                     value = CompilerRuntimeAccessor.engineAccessor().getUnparsedOptionValue(values, key);
                 }
@@ -114,6 +158,29 @@ public final class TruffleRuntimeOptions {
         }
 
         return map;
+    }
+
+    /**
+     * Uses the --engine option if set, otherwise falls back on the -Dgraal option.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T getPolyglotOptionValue(OptionValues polyglotValues, OptionKey<T> polyglotOptionKey) {
+        if (polyglotValues != null && polyglotValues.hasBeenSet(polyglotOptionKey)) {
+            return polyglotValues.get(polyglotOptionKey);
+        }
+        OptionKey<T> runtimeOptionKey = (OptionKey<T>) POLYGLOT_TO_RUNTIME.get(polyglotOptionKey);
+        if (runtimeOptionKey != null) {
+            return getValue(runtimeOptionKey);
+        }
+        return polyglotOptionKey.getDefaultValue();
+    }
+
+    private static boolean hasBeenSet(OptionValues polyglotValues, OptionKey<?> polyglotOptionKey) {
+        if (polyglotValues != null && polyglotValues.hasBeenSet(polyglotOptionKey)) {
+            return true;
+        }
+        OptionKey<?> runtimeOptionKey = POLYGLOT_TO_RUNTIME.get(polyglotOptionKey);
+        return runtimeOptionKey == null ? false : getOptions().hasBeenSet(runtimeOptionKey);
     }
 
     private static boolean isPrimitiveType(Object value) {
@@ -195,5 +262,62 @@ public final class TruffleRuntimeOptions {
         boolean compilationExceptionsAreFatal = target.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal);
         boolean performanceWarningsAreFatal = target.getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal);
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
+    }
+
+    // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.
+    private static final EconomicMap<OptionKey<?>, OptionKey<?>> POLYGLOT_TO_RUNTIME = initializePolyglotToGraalMapping();
+
+    private static EconomicMap<OptionKey<?>, OptionKey<?>> initializePolyglotToGraalMapping() {
+        EconomicMap<OptionKey<?>, OptionKey<?>> result = EconomicMap.create(Equivalence.IDENTITY);
+        result.put(Compilation, SharedTruffleRuntimeOptions.TruffleCompilation);
+        result.put(CompileOnly, SharedTruffleRuntimeOptions.TruffleCompileOnly);
+        result.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
+        result.put(BackgroundCompilation, SharedTruffleRuntimeOptions.TruffleBackgroundCompilation);
+        result.put(CompilerThreads, SharedTruffleRuntimeOptions.TruffleCompilerThreads);
+        result.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
+        result.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
+        result.put(InvalidationReprofileCount, SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
+        result.put(ReplaceReprofileCount, SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
+        result.put(ArgumentTypeSpeculation, SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation);
+        result.put(ReturnTypeSpeculation, SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation);
+
+        result.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
+        result.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
+        result.put(FirstTierMinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
+
+        result.put(CompilationExceptionsArePrinted, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted);
+        result.put(CompilationExceptionsAreThrown, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
+        result.put(CompilationExceptionsAreFatal, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
+        result.put(PerformanceWarningsAreFatal, SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
+
+        result.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
+        result.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
+        result.put(TraceCompilationPolymorphism, SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism);
+        result.put(TraceCompilationAST, SharedTruffleRuntimeOptions.TraceTruffleCompilationAST);
+        result.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
+        result.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
+        result.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
+
+        result.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
+        result.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
+
+        result.put(Inlining, SharedTruffleRuntimeOptions.TruffleFunctionInlining);
+        result.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
+        result.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
+        result.put(LanguageAgnosticInlining, SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining);
+
+        result.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
+        result.put(SplittingMaxCalleeSize, SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
+        result.put(SplittingGrowthLimit, SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
+        result.put(SplittingMaxNumberOfSplitNodes, SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
+        result.put(SplittingMaxPropagationDepth, SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
+        result.put(TraceSplittingSummary, SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
+        result.put(SplittingTraceEvents, SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
+        result.put(SplittingDumpDecisions, SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
+        result.put(SplittingAllowForcedSplits, SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
+
+        result.put(OSR, SharedTruffleRuntimeOptions.TruffleOSR);
+        result.put(OSRCompilationThreshold, SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
+        return result;
     }
 }

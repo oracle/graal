@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+
 /**
  * Directives that influence the optimizations of the Truffle compiler.
  */

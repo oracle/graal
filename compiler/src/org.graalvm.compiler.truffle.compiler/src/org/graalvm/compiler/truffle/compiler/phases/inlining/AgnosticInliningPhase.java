@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
+
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -47,7 +49,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         for (InliningPolicyProvider provider : services) {
             providers.add(provider);
         }
-        final String policy = PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.InliningPolicy);
+        final String policy = getPolyglotOptionValue(PolyglotCompilerOptions.InliningPolicy);
         POLICY_PROVIDER = policy.equals("") ? maxPriorityProvider(providers) : chosenProvider(providers, policy);
     }
 
@@ -77,7 +79,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        if (!PolyglotCompilerOptionsScope.getValue(PolyglotCompilerOptions.Inlining)) {
+        if (!getPolyglotOptionValue(PolyglotCompilerOptions.Inlining)) {
             return;
         }
         final InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, PolyglotCompilerOptionsScope.getOptionValues());

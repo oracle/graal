@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.options.OptionValues;
 
 /**
  * Instruments {@link IfNode}s in the graph, by adding execution counters to the true and the false
@@ -57,8 +56,8 @@ import org.graalvm.options.OptionValues;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
-    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        super(options, snippetReflection, instrumentation);
+    public InstrumentBranchesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(snippetReflection, instrumentation);
     }
 
     @Override
