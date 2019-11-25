@@ -25,7 +25,7 @@
           gcc: '==8.3.0',
           'gcc-build-essentials': '==8.3.0', # GCC 4.9.0 fails on cluster
           make: '>=3.83',
-          llvm: '==6.0.1',
+          llvm: '==8.0.1',
           nodejs: '==8.9.4',
         },
         capabilities+: ['linux', 'amd64'],
@@ -97,7 +97,7 @@
         './generate_em_config',
         '$EM_CONFIG',
         '$EMSDK_DIR/myfastcomp/emscripten-fastcomp/bin/',
-        '$EMSDK_DIR/old-binaryen/',
+        '$EMSDK_DIR/myfastcomp/old-binaryen/',
         '$EMSDK_DIR/fastcomp/emscripten/',
         ['which', 'node'],
       ],
