@@ -269,6 +269,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         _layout_provenance = {}
 
+        self._post_build_warnings = []
+
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
             :type _layout: dict[str, list[str] | str]
@@ -382,7 +384,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     if islink(_abs_file):
                         _link_target = os.readlink(_abs_file)
                         if isabs(_link_target):
-                            mx.warn("The base JDK contains an absolute link which will be excluded from the build: '{}' points to '{}'.".format(_abs_file, _link_target))
+                            self._post_build_warnings.append("The base JDK contains an absolute link that has been excluded from the build: '{}' points to '{}'.".format(_abs_file, _link_target))
                             abs_links.append(_abs_file)
             return abs_links
 
@@ -621,6 +623,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         self.reset_user_group = True
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
+    def getBuildTask(self, args):
+        return BaseGraalVmLayoutDistributionTask(args, self)
+
     @staticmethod
     def _get_metadata(suites):
         """
@@ -659,6 +664,17 @@ GRAALVM_VERSION={version}""".format(
             _metadata += "\ncomponent_catalog={}".format(catalog)
 
         return _metadata
+
+
+class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+    def __init__(self, args, dist):
+        super(BaseGraalVmLayoutDistributionTask, self).__init__(args, dist)
+
+    def build(self):
+        assert isinstance(self.subject, BaseGraalVmLayoutDistribution)
+        super(BaseGraalVmLayoutDistributionTask, self).build()
+        for warning in self.subject._post_build_warnings:
+            mx.warn(warning, context=self)
 
 
 if mx.is_windows():
@@ -762,7 +778,7 @@ def _get_graalvm_configuration(base_name, stage1=False):
     return _graal_vm_configs_cache[key]
 
 
-class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
     def __init__(self, args, dist, root_link_name, home_link_name):
         self._root_link_path = join(_suite.dir, root_link_name)
         self._home_link_path = join(_suite.dir, home_link_name)
