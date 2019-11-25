@@ -79,7 +79,7 @@ You'll see log lines like this:
 
 ## Monitoring performance
 
-`--thermometer.IPS=test.rb:15` will install an iterations-per-second counter
+`--thermometer.IPS=test.rb:24` will install an iterations-per-second counter
 on any statements at this location. You should ensure there is just one
 statement at this location as each statement run will count as an iteration.
 
