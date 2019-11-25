@@ -31,12 +31,14 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationRe
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.*;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public final class CompilationStatusListener extends AbstractGraalTruffleRuntimeListener {
 
-    private int finished;
-    private int failures;
-    private int dequeues;
-    private int deoptimizations;
+    private AtomicInteger finished = new AtomicInteger();
+    private AtomicInteger failures = new AtomicInteger();
+    private AtomicInteger dequeues = new AtomicInteger();
+    private AtomicInteger deoptimizations = new AtomicInteger();
 
     private CompilationStatusListener(GraalTruffleRuntime runtime) {
         super(runtime);
@@ -49,38 +51,38 @@ public final class CompilationStatusListener extends AbstractGraalTruffleRuntime
 
     @Override
     public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        dequeues++;
+        dequeues.getAndIncrement();
     }
 
     @Override
     public synchronized void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         // We count invalidations as deoptimizations
-        deoptimizations++;
+        deoptimizations.getAndIncrement();
     }
 
     @Override
     public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        finished++;
+        finished.getAndIncrement();
     }
 
     @Override
     public synchronized void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        failures++;
+        failures.getAndIncrement();
     }
 
     @Override
     public synchronized void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        deoptimizations++;
+        deoptimizations.getAndIncrement();
     }
 
     public synchronized CompilationState sampleCompilationState() {
         return new CompilationStateImpl(
                 runtime.getCompilationQueueSize(),
                 runtime.getCompilationsRunning(),
-                finished,
-                failures,
-                dequeues,
-                deoptimizations);
+                finished.get(),
+                failures.get(),
+                dequeues.get(),
+                deoptimizations.get());
     }
 
 }
