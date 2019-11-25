@@ -80,7 +80,7 @@ final class ObjectPreview {
                 overflow = false;
                 while (propertyIterator.hasNext()) {
                     DebugValue property = propertyIterator.next();
-                    if (!property.isInternal()) {
+                    if (!property.isInternal() && !property.hasReadSideEffects() && property.isReadable()) {
                         if (properties.length() == OVERFLOW_LIMIT_PROPERTIES) {
                             overflow = true;
                             break;

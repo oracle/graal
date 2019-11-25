@@ -77,6 +77,10 @@ public class Handler extends URLStreamHandler {
         visitedURLs.clear();
     }
 
+    public static boolean isVisited(String u) {
+        return visitedURLs.contains(u);
+    }
+
     public static boolean isVisited(URL u) {
         return visitedURLs.contains(u.toString());
     }

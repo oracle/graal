@@ -52,6 +52,7 @@ import mx_testsuites
 
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+from mx_testsuites import GeneratedTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
@@ -261,7 +262,7 @@ def build_llvm_org(args=None):
     defaultBuildArgs = ['-p']
     if not args.no_warning_as_error:
         defaultBuildArgs += ['--warning-as-error']
-    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
 
 
 def clangformatcheck(args=None):
@@ -657,7 +658,7 @@ def findGCCProgram(gccProgram, optional=False):
         return installedProgram
 
 def findBundledLLVMProgram(llvm_program):
-    llvm_dist = 'SULONG_LLVM_ORG'
+    llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
@@ -967,19 +968,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='LLVM.org toolchain',
-    short_name='llp',
-    installable=True,
-    installable_id='llvm-toolchain',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
-    dependencies=[],
-    support_distributions=['sulong:SULONG_LLVM_ORG']
-))
-
 
 COPYRIGHT_HEADER_BSD = """\
 /*
@@ -1019,6 +1007,9 @@ COPYRIGHT_HEADER_BSD = """\
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
+
+def llirtestgen(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],

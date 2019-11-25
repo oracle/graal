@@ -1,6 +1,7 @@
 # GraalVM Ruby Support for VS Code
 
 A VS Code extension providing the basic support for editing and debugging Ruby programs running on [GraalVM Ruby](http://www.graalvm.org/docs/reference-manual/languages/ruby).
+The extension is Technology Preview.
 
 ## Features
 
@@ -25,4 +26,8 @@ For Ruby sources opened in editor, all the `Polyglot.eval(...)` calls are detect
 
 This extension depends on the following extensions:
 * [Ruby](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby) - Ruby language support.
-* [GraalVM](https://marketplace.visualstudio.com/items?itemName=OracleLabs.graalvm) - Basic support for GraalVM.
+* [GraalVM](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) - Basic support for GraalVM.
+
+## Privacy Policy
+
+Please read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.

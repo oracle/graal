@@ -234,7 +234,7 @@ public abstract class TruffleLanguage<C> {
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal LanguageInfo languageInfo;
     @CompilationFinal ContextReference<Object> reference;
-    @CompilationFinal Object vmObject; // PolyglotLanguageInstance
+    @CompilationFinal Object polyglotLanguageInstance;
 
     /**
      * Constructor to be called by subclasses.
@@ -1313,7 +1313,7 @@ public abstract class TruffleLanguage<C> {
      * @since 19.0
      */
     protected final String getLanguageHome() {
-        return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getEngineObject(languageInfo));
+        return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
     }
 
     /**
@@ -1327,7 +1327,7 @@ public abstract class TruffleLanguage<C> {
     public static final class Env {
 
         static final Object UNSET_CONTEXT = new Object();
-        final Object vmObject; // PolylgotLanguageContext
+        final Object polyglotLanguageContext; // PolylgotLanguageContext
         final TruffleLanguage<Object> spi;
         private final InputStream in;
         private final OutputStream err;
@@ -1348,9 +1348,10 @@ public abstract class TruffleLanguage<C> {
         volatile List<Object> languageServicesCollector;
 
         @SuppressWarnings("unchecked")
-        Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
+        Env(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options,
+                        String[] applicationArguments,
                         FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
-            this.vmObject = vmObject;
+            this.polyglotLanguageContext = polyglotLanguageContext;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
             this.err = err;
@@ -1363,8 +1364,8 @@ public abstract class TruffleLanguage<C> {
             this.internalFileSystemContext = new TruffleFile.FileSystemContext(internalFileSystem, fileTypeDetectors);
         }
 
-        Object getVMObject() {
-            return vmObject;
+        Object getPolyglotLanguageContext() {
+            return polyglotLanguageContext;
         }
 
         TruffleLanguage<Object> getSpi() {
@@ -1372,7 +1373,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         void checkDisposed() {
-            if (LanguageAccessor.engineAccess().isDisposed(vmObject)) {
+            if (LanguageAccessor.engineAccess().isDisposed(polyglotLanguageContext)) {
                 throw new IllegalStateException("Language environment is already disposed.");
             }
             if (!valid) {
@@ -1410,7 +1411,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.28
          */
         public boolean isCreateThreadAllowed() {
-            return LanguageAccessor.engineAccess().isCreateThreadAllowed(vmObject);
+            return LanguageAccessor.engineAccess().isCreateThreadAllowed(polyglotLanguageContext);
         }
 
         /**
@@ -1488,7 +1489,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group, long stackSize) {
-            return LanguageAccessor.engineAccess().createThread(vmObject, runnable, context != null ? context.impl : null, group, stackSize);
+            return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, context != null ? context.polyglotContext : null, group, stackSize);
         }
 
         /**
@@ -1518,7 +1519,7 @@ public abstract class TruffleLanguage<C> {
             if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
-            return LanguageAccessor.engineAccess().getPolyglotBindingsForLanguage(vmObject);
+            return LanguageAccessor.engineAccess().getPolyglotBindingsForLanguage(polyglotLanguageContext);
         }
 
         /**
@@ -1544,7 +1545,7 @@ public abstract class TruffleLanguage<C> {
             if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
-            return LanguageAccessor.engineAccess().importSymbol(vmObject, this, symbolName);
+            return LanguageAccessor.engineAccess().importSymbol(polyglotLanguageContext, this, symbolName);
         }
 
         /**
@@ -1572,7 +1573,7 @@ public abstract class TruffleLanguage<C> {
             if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
-            LanguageAccessor.engineAccess().exportSymbol(vmObject, symbolName, value);
+            LanguageAccessor.engineAccess().exportSymbol(polyglotLanguageContext, symbolName, value);
         }
 
         /**
@@ -1586,7 +1587,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isHostLookupAllowed() {
-            return LanguageAccessor.engineAccess().isHostAccessAllowed(vmObject, this);
+            return LanguageAccessor.engineAccess().isHostAccessAllowed(polyglotLanguageContext, this);
         }
 
         /**
@@ -1601,7 +1602,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public void addToHostClassPath(TruffleFile entry) {
             Objects.requireNonNull(entry);
-            LanguageAccessor.engineAccess().addToHostClassPath(vmObject, entry);
+            LanguageAccessor.engineAccess().addToHostClassPath(polyglotLanguageContext, entry);
         }
 
         /**
@@ -1616,7 +1617,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object lookupHostSymbol(String symbolName) {
-            return LanguageAccessor.engineAccess().lookupHostSymbol(vmObject, this, symbolName);
+            return LanguageAccessor.engineAccess().lookupHostSymbol(polyglotLanguageContext, this, symbolName);
         }
 
         /**
@@ -1663,7 +1664,7 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object asGuestValue(Object hostObject) {
-            return LanguageAccessor.engineAccess().toGuestValue(hostObject, vmObject);
+            return LanguageAccessor.engineAccess().toGuestValue(hostObject, polyglotLanguageContext);
         }
 
         /**
@@ -1682,7 +1683,7 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object asBoxedGuestValue(Object guestObject) {
-            return LanguageAccessor.engineAccess().asBoxedGuestValue(guestObject, vmObject);
+            return LanguageAccessor.engineAccess().asBoxedGuestValue(guestObject, polyglotLanguageContext);
         }
 
         /**
@@ -1710,7 +1711,7 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object findMetaObject(Object value) {
-            return LanguageAccessor.engineAccess().findMetaObjectForLanguage(vmObject, value);
+            return LanguageAccessor.engineAccess().findMetaObjectForLanguage(polyglotLanguageContext, value);
         }
 
         /**
@@ -1774,7 +1775,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object asHostSymbol(Class<?> symbolClass) {
-            return LanguageAccessor.engineAccess().asHostSymbol(vmObject, symbolClass);
+            return LanguageAccessor.engineAccess().asHostSymbol(polyglotLanguageContext, symbolClass);
         }
 
         /**
@@ -1785,7 +1786,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isNativeAccessAllowed() {
-            return LanguageAccessor.engineAccess().isNativeAccessAllowed(vmObject, this);
+            return LanguageAccessor.engineAccess().isNativeAccessAllowed(polyglotLanguageContext, this);
         }
 
         /**
@@ -1811,7 +1812,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPolyglotEvalAllowed() {
-            return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(vmObject);
+            return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext);
         }
 
         /**
@@ -1826,7 +1827,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPolyglotBindingsAccessAllowed() {
-            return LanguageAccessor.engineAccess().isPolyglotBindingsAccessAllowed(vmObject);
+            return LanguageAccessor.engineAccess().isPolyglotBindingsAccessAllowed(polyglotLanguageContext);
         }
 
         /**
@@ -1842,7 +1843,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public boolean isMimeTypeSupported(String mimeType) {
             checkDisposed();
-            return LanguageAccessor.engineAccess().isMimeTypeSupported(vmObject, mimeType);
+            return LanguageAccessor.engineAccess().isMimeTypeSupported(polyglotLanguageContext, mimeType);
         }
 
         /**
@@ -1855,7 +1856,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parse(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
         }
 
         /**
@@ -1891,7 +1892,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parseInternal(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
         }
 
         /**
@@ -1928,7 +1929,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parsePublic(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, false);
+            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, false);
         }
 
         /**
@@ -2035,7 +2036,7 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
             Objects.requireNonNull(language);
-            return LanguageAccessor.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
+            return LanguageAccessor.engineAccess().lookupService(polyglotLanguageContext, language, this.getSpi().languageInfo, type);
         }
 
         /**
@@ -2045,7 +2046,7 @@ public abstract class TruffleLanguage<C> {
         @Deprecated
         @TruffleBoundary
         public Map<String, LanguageInfo> getLanguages() {
-            return LanguageAccessor.engineAccess().getInternalLanguages(vmObject);
+            return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
         }
 
         /**
@@ -2061,7 +2062,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, LanguageInfo> getInternalLanguages() {
-            return LanguageAccessor.engineAccess().getInternalLanguages(vmObject);
+            return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
         }
 
         /**
@@ -2076,7 +2077,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, LanguageInfo> getPublicLanguages() {
-            return LanguageAccessor.engineAccess().getPublicLanguages(vmObject);
+            return LanguageAccessor.engineAccess().getPublicLanguages(polyglotLanguageContext);
         }
 
         /**
@@ -2088,7 +2089,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, InstrumentInfo> getInstruments() {
-            return LanguageAccessor.engineAccess().getInstruments(vmObject);
+            return LanguageAccessor.engineAccess().getInstruments(polyglotLanguageContext);
         }
 
         /**
@@ -2101,7 +2102,7 @@ public abstract class TruffleLanguage<C> {
          */
         public ZoneId getTimeZone() {
             checkDisposed();
-            return LanguageAccessor.engineAccess().getTimeZone(vmObject);
+            return LanguageAccessor.engineAccess().getTimeZone(polyglotLanguageContext);
         }
 
         /**
@@ -2126,7 +2127,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.30
          */
         public TruffleContext getContext() {
-            return LanguageAccessor.engineAccess().getPolyglotContext(vmObject);
+            return LanguageAccessor.engineAccess().getTruffleContext(polyglotLanguageContext);
         }
 
         /**
@@ -2140,7 +2141,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPreInitialization() {
-            return LanguageAccessor.engineAccess().inContextPreInitialization(vmObject);
+            return LanguageAccessor.engineAccess().inContextPreInitialization(polyglotLanguageContext);
         }
 
         /**
@@ -2392,7 +2393,7 @@ public abstract class TruffleLanguage<C> {
          * @since 19.1.0
          */
         public boolean isCreateProcessAllowed() {
-            return LanguageAccessor.engineAccess().isCreateProcessAllowed(vmObject);
+            return LanguageAccessor.engineAccess().isCreateProcessAllowed(polyglotLanguageContext);
         }
 
         /**
@@ -2409,7 +2410,7 @@ public abstract class TruffleLanguage<C> {
             }
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
-            return LanguageAccessor.ioAccess().createProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
+            return LanguageAccessor.ioAccess().createProcessBuilder(polyglotLanguageContext, fileSystemContext.fileSystem, cmd);
         }
 
         /**
@@ -2424,7 +2425,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, String> getEnvironment() {
-            return LanguageAccessor.engineAccess().getProcessEnvironment(vmObject);
+            return LanguageAccessor.engineAccess().getProcessEnvironment(polyglotLanguageContext);
         }
 
         /**

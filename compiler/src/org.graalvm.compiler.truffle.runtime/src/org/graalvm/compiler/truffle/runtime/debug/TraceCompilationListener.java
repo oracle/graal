@@ -61,24 +61,28 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
-            runtime.logEvent(0, "opt queued", target.toString(), target.getDebugProperties(null));
+        if (target.engine.traceCompilationDetails) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.putAll(target.getDebugProperties(null));
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+            runtime.logEvent(0, "opt queued", target.toString(), properties);
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilationDetails) {
             Map<String, Object> properties = new LinkedHashMap<>();
-            addSourceInfo(properties, source);
+            properties.putAll(target.getDebugProperties(null));
             properties.put("Reason", reason);
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
             runtime.logEvent(0, "opt unqueued", target.toString(), properties);
         }
     }
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
             }
@@ -88,25 +92,28 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target) {
-        if (target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilationDetails) {
             runtime.logEvent(0, "opt start", target.toString(), target.getDebugProperties(null));
         }
 
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             currentCompilation.set(new Times());
         }
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
-            runtime.logEvent(0, "opt deopt", target.toString(), target.getDebugProperties(null));
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.putAll(target.getDebugProperties(null));
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
+            runtime.logEvent(0, "opt deopt", target.toString(), properties);
         }
     }
 
     @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
-        if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
+        if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             final Times current = currentCompilation.get();
             current.timePartialEvaluationFinished = System.nanoTime();
             current.nodeCountPartialEval = graph.getNodeCount();
@@ -115,7 +122,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        if (!target.getOptionValue(TraceCompilation) && !target.getOptionValue(TraceCompilationDetails)) {
+        if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
 
@@ -149,7 +156,11 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         properties.put("DirectCallNodes", String.format("I %4d/D %4d", inlinedCalls, dispatchedCalls));
         properties.put("GraalNodes", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
         properties.put("CodeSize", result.getTargetCodeSize());
-        properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+        if (target.getCodeAddress() != 0) {
+            properties.put("CodeAddress", "0x" + Long.toHexString(target.getCodeAddress()));
+        } else {
+            properties.put("CodeAddress", "N/A");
+        }
         properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
 
         runtime.logEvent(0, "opt done", target.toString(), properties);
@@ -168,16 +179,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         if (target.getOptionValue(TraceCompilation) || target.getOptionValue(TraceCompilationDetails)) {
             Map<String, Object> properties = new LinkedHashMap<>();
-            addSourceInfo(properties, source);
+            properties.putAll(target.getDebugProperties(null));
             properties.put("Reason", reason);
+            properties.put("Source", formatSourceSection(target.getRootNode().getSourceSection()));
             runtime.logEvent(0, "opt invalidated", target.toString(), properties);
-        }
-    }
-
-    private static void addSourceInfo(Map<String, Object> properties, Object source) {
-        if (source != null) {
-            properties.put("SourceClass", source.getClass().getSimpleName());
-            properties.put("Source", source);
         }
     }
 

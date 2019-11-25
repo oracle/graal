@@ -47,6 +47,7 @@ import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
@@ -65,16 +66,17 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
+import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -83,7 +85,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
-    private static final Map<Collection<ClassLoader>, Map<String, LanguageCache>> runtimeCaches = new WeakHashMap<>();
+    private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
     private final String className;
     private final Set<String> mimeTypes;
@@ -180,7 +182,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
     }
 
-    private static Map<String, LanguageCache> loadLanguages(List<ClassLoader> classLoaders) {
+    private static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
@@ -194,10 +196,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static Map<String, LanguageCache> createLanguages(List<ClassLoader> loaders) {
+    private static Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (ClassLoader loader : loaders) {
-            Loader.load(loader, caches);
+        for (Supplier<ClassLoader> supplier : suppliers) {
+            Loader.load(supplier.get(), caches);
         }
         Map<String, LanguageCache> cacheToId = new HashMap<>();
         for (LanguageCache languageCache : caches) {
@@ -338,7 +340,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(createLanguages(Arrays.asList(imageClassLoader)));
+        nativeImageCache.putAll(createLanguages(Arrays.asList(new StrongClassLoaderSupplier(imageClassLoader))));
         nativeImageMimes.putAll(createMimes());
     }
 
@@ -492,7 +494,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * language since the Truffle API module descriptor only exports the packages to
                  * modules known at build time (such as the Graal module).
                  */
-                TruffleJDKServices.exportTo(loader, null);
+                EngineAccessor.JDKSERVICES.exportTo(loader, null);
             }
         }
 
@@ -517,7 +519,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             return resolvedId;
         }
 
-        static String getLanguageHomeFromURLConnection(URLConnection connection) {
+        static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
             if (connection instanceof JarURLConnection) {
                 /*
                  * The previous implementation used a `URL.getPath()`, but OS Windows is offended by
@@ -537,12 +539,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * `URI.toASCIIString()` all reserved and non-ASCII characters are percent-quoted.
                  */
                 try {
-                    Path path;
-                    path = Paths.get(((JarURLConnection) connection).getJarFileURL().toURI());
-                    Path parent = path.getParent();
-                    return parent != null ? parent.toString() : null;
-                } catch (URISyntaxException e) {
-                    assert false : "Could not resolve path.";
+                    URL url = ((JarURLConnection) connection).getJarFileURL();
+                    if ("file".equals(url.getProtocol())) {
+                        Path path = Paths.get(url.toURI());
+                        Path parent = path.getParent();
+                        return parent != null ? parent.toString() : null;
+                    }
+                } catch (URISyntaxException | FileSystemNotFoundException | IllegalArgumentException | SecurityException e) {
+                    assert false : "Cannot locate " + languageId + " language home due to " + e.getMessage();
                 }
             }
             return null;
@@ -599,7 +603,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
                 String languageHome = System.getProperty(id + ".home");
                 if (languageHome == null) {
-                    languageHome = getLanguageHomeFromURLConnection(connection);
+                    languageHome = getLanguageHomeFromURLConnection(id, connection);
                 }
                 String className = info.getProperty(prefix + "className");
                 String implementationName = info.getProperty(prefix + "implementationName");
@@ -819,7 +823,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         URL url = provider.getClass().getClassLoader().getResource(className.replace('.', '/') + ".class");
                         if (url != null) {
                             try {
-                                languageHome = getLanguageHomeFromURLConnection(url.openConnection());
+                                languageHome = getLanguageHomeFromURLConnection(id, url.openConnection());
                             } catch (IOException ioe) {
                             }
                         }

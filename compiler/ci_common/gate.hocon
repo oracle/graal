@@ -188,6 +188,13 @@ gateMathStubsListener: ${linux-amd64} {
   ]
 }
 
+gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
+  capabilities : ["linux", "amd64", "x82"]
+  notify_emails: [
+    "yudi.zheng@oracle.com"
+  ]
+}
+
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }

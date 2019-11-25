@@ -79,10 +79,13 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         protected LLVMI1Vector doI1VectorNative(LLVMNativePointer addr) {
             LLVMMemory memory = getLLVMMemoryCached();
             boolean[] vector = new boolean[getVectorLength()];
-            long currentPtr = addr.asNative();
-            for (int i = 0; i < vector.length; i++) {
-                vector[i] = memory.getI1(currentPtr);
-                currentPtr += I1_SIZE_IN_BYTES;
+            long basePtr = addr.asNative();
+            for (int byteOffset = 0; byteOffset < (vector.length / 8) + 1; byteOffset++) {
+                int b = memory.getI8(basePtr + byteOffset);
+                for (int bitOffset = 0; bitOffset < 8 && ((byteOffset * 8) + bitOffset) < vector.length; bitOffset++) {
+                    int mask = (1 << bitOffset) & 0xFF;
+                    vector[(byteOffset * 8) + bitOffset] = ((b & mask) >> bitOffset) == 1;
+                }
             }
             return LLVMI1Vector.create(vector);
         }

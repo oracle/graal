@@ -51,7 +51,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -251,8 +250,6 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract AbstractManagementImpl getManagementImpl();
 
-    public abstract Path findHome();
-
     public abstract static class AbstractManagementImpl {
 
         protected AbstractManagementImpl(AbstractPolyglotImpl engineImpl) {
@@ -440,8 +437,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract Map<String, Instrument> getInstruments();
 
         public abstract Map<String, Language> getLanguages();
-
-        public abstract String getVersion();
 
         public abstract OptionDescriptors getOptions();
 

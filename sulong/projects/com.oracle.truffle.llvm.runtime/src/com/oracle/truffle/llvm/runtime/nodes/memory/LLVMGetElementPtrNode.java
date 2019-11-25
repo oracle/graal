@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -100,6 +102,7 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         return LLVMPointerVector.create(result);
     }
 
+    @NodeInfo(cost = NodeCost.NONE) // only used as part of other operations
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
 
         public abstract LLVMPointer executeWithTarget(LLVMPointer addr, int val);

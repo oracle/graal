@@ -8,9 +8,9 @@ suite = {
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
-    "name" : "Truffle and Graal developers",
-    "email" : "graalvm-users@oss.oracle.com",
-    "organization" : "Graal",
+    "name" : "GraalVM Development",
+    "email" : "graalvm-dev@oss.oracle.com",
+    "organization" : "Oracle Corporation",
     "organizationUrl" : "http://www.graalvm.org/",
   },
   "scm" : {
@@ -184,38 +184,30 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
-    "LLVM_WRAPPER": {
-      "sha1" : "a990b2dba1c706f5c43c56fedfe70bad9a695852",
-      "sourceSha1" : "decbd95d46092fa9afaf2523b5b23d07ad7ad6bc",
-      "dependencies" : ["JAVACPP"],
-      "maven" : {
-        "groupId" : "org.bytedeco.javacpp-presets",
-        "artifactId" : "llvm",
-        "version" : "6.0.1-1.4.2",
-      },
+    "LLVM_WRAPPER_SHADOWED": {
+      "sha1" : "da7060d06661e3eab91a39d056dcfc0ab6dbd463",
+      "sourceSha1" : "577638c4b77c68cb8b4d83b5927e8c274fa9da19",
+      "dependencies" : ["JAVACPP_SHADOWED"],
+      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+      "urls": ["{urlbase}/llvm-wrapper-shadowed-6.0.1-1.4.2.jar"],
+      "sourceUrls": ["{urlbase}/llvm-wrapper-shadowed-6.0.1-1.4.2-sources.jar"],
       "license" : "GPLv2-CPE"
     },
-    "JAVACPP": {
-      "sha1" : "cfa6a0259d98bff5aa8d41ba11b4d1dad648fbaa",
-      "sourceSha1" : "fdb2d2c17f6b91cdd5421554396da8905f0dfed2",
-      "maven" : {
-        "groupId" : "org.bytedeco",
-        "artifactId" : "javacpp",
-        "version" : "1.4.2",
-      },
+    "JAVACPP_SHADOWED": {
+      "sha1" : "65d06cda74e69ef09df75eae8ebfd8f4f4d51ac1",
+      "sourceSha1" : "4f6b82e609ebc5cf46755284ca7c35ccf33c90d9",
+      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+      "urls": ["{urlbase}/javacpp-shadowed-1.4.2.jar"],
+      "sourceUrls": ["{urlbase}/javacpp-shadowed-1.4.2-src.zip"],
       "license" : "GPLv2-CPE"
     },
-    "LLVM_PLATFORM_SPECIFIC": {
+    "LLVM_PLATFORM_SPECIFIC_SHADOWED": {
+      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
       "os_arch": {
         "linux": {
           "amd64": {
-            "sha1": "344483aefa15147c121a8fb6fb35a2406768cc5c",
-            "maven": {
-              "groupId" : "org.bytedeco.javacpp-presets",
-              "artifactId" : "llvm",
-              "version" : "6.0.1-1.4.2",
-              "classifier": "linux-x86_64"
-            },
+            "sha1": "6331ce98012b3513742f426951d9e030d4fba427",
+            "urls": ["{urlbase}/llvm-platform-specific-shadowed-6.0.1-1.4.2_1-linux-x86_64.jar"],
           },
           "<others>": {
             "optional": True,
@@ -223,24 +215,8 @@ suite = {
         },
         "darwin": {
           "amd64": {
-            "sha1": "57bc74574104a9e0a2dc4d7a71ffcc5731909e57",
-            "maven": {
-              "groupId" : "org.bytedeco.javacpp-presets",
-              "artifactId" : "llvm",
-              "version" : "6.0.1-1.4.2",
-              "classifier": "macosx-x86_64"
-            }
-          },
-        },
-        "windows": {
-          "amd64": {
-            "sha1": "1fb48595e51b74c83886ec07b277ec914a757aaf",
-            "maven": {
-              "groupId" : "org.bytedeco.javacpp-presets",
-              "artifactId" : "llvm",
-              "version" : "6.0.1-1.4.2",
-              "classifier": "windows-x86_64"
-            },
+            "sha1": "6c0cdae4867cc700f7ebb16635bcbba658b6b819",
+            "urls": ["{urlbase}/llvm-platform-specific-shadowed-6.0.1-1.4.2-macosx-x86_64.jar"],
           },
         },
         "<others>": {
@@ -738,7 +714,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
-      "javaCompliance" : "8,13+",
+      "javaCompliance" : "8",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1566,8 +1542,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
-        "LLVM_WRAPPER",
-        "LLVM_PLATFORM_SPECIFIC",
+        "LLVM_WRAPPER_SHADOWED",
+        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2691,8 +2667,8 @@ suite = {
         "GRAAL",
       ],
       "exclude": [
-        "LLVM_WRAPPER",
-        "LLVM_PLATFORM_SPECIFIC",
+        "LLVM_WRAPPER_SHADOWED",
+        "LLVM_PLATFORM_SPECIFIC_SHADOWED",
       ],
       "maven" : False,
     }

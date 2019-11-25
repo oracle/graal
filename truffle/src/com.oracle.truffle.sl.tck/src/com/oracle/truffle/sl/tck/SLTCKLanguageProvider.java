@@ -277,8 +277,9 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     private static Source createSource(final String resourceName) throws IOException {
         int slashIndex = resourceName.lastIndexOf('/');
         String scriptName = slashIndex >= 0 ? resourceName.substring(slashIndex + 1) : resourceName;
-        final Reader in = new InputStreamReader(SLTCKLanguageProvider.class.getResourceAsStream(resourceName), "UTF-8");
-        return Source.newBuilder(ID, in, scriptName).build();
+        try (Reader in = new InputStreamReader(SLTCKLanguageProvider.class.getResourceAsStream(resourceName), "UTF-8")) {
+            return Source.newBuilder(ID, in, scriptName).build();
+        }
     }
 
     private static Value eval(final Context context, final String fncDecl, final String functionName) {

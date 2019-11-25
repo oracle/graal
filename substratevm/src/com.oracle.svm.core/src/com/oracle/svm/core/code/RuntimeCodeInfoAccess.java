@@ -154,8 +154,10 @@ public final class RuntimeCodeInfoAccess {
         impl.setCodeObserverHandles(NonmovableArrays.nullArray());
 
         releaseCodeMemory(impl.getCodeStart(), impl.getCodeSize());
-        impl.setCodeStart(WordFactory.nullPointer());
-        impl.setCodeSize(WordFactory.unsigned(0));
+        /*
+         * Note that we must not null-out any CodeInfo metadata as it can be accessed in a stack
+         * walk even when CodeInfo data is already partially freed.
+         */
         CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
     }
 

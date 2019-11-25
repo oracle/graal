@@ -190,8 +190,8 @@ public final class CoverageTracker implements AutoCloseable {
             final Source source = section.getSource();
             final Node node = loadedEvent.getNode();
             final RootNode rootNode = node.getRootNode();
-            final Map<SourceSection, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
-            final RootData rootData = perRootData.get(rootNode.getSourceSection());
+            final Map<SourceSection, RootData> perSourceData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
+            final RootData rootData = perSourceData.computeIfAbsent(rootNode.getSourceSection(), s -> new RootData(s, rootNode.getName()));
             rootData.loadedStatements.add(section);
         }
     }
@@ -275,8 +275,8 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private void instrumentLoadedStatements(Instrumenter instrumenter, SourceSectionFilter f) {
-        final SourceSectionFilter statemtnFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
-        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statemtnFilter, new LoadSourceSectionListener() {
+        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
+        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statementFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
                 addStatement(event);

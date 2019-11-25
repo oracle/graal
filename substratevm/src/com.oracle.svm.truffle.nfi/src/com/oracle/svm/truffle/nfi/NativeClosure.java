@@ -31,6 +31,8 @@ import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
@@ -159,8 +161,16 @@ final class NativeClosure {
         }
     }
 
+    static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class);
+
+    static class SetPendingExceptionHandler {
+        static void handle(Throwable t) {
+            pendingException.set(t);
+        }
+    }
+
     @SuppressWarnings("try")
-    @CEntryPoint
+    @CEntryPoint(exceptionHandler = SetPendingExceptionHandler.class)
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         try (ErrnoMirrorContext mirror = new ErrnoMirrorContext()) {
@@ -188,7 +198,7 @@ final class NativeClosure {
     }
 
     @SuppressWarnings("try")
-    @CEntryPoint
+    @CEntryPoint(exceptionHandler = SetPendingExceptionHandler.class)
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         try (ErrnoMirrorContext mirror = new ErrnoMirrorContext()) {
@@ -197,7 +207,7 @@ final class NativeClosure {
     }
 
     @SuppressWarnings("try")
-    @CEntryPoint
+    @CEntryPoint(exceptionHandler = SetPendingExceptionHandler.class)
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         try (ErrnoMirrorContext mirror = new ErrnoMirrorContext()) {
@@ -207,7 +217,7 @@ final class NativeClosure {
     }
 
     @SuppressWarnings("try")
-    @CEntryPoint
+    @CEntryPoint(exceptionHandler = SetPendingExceptionHandler.class)
     @CEntryPointOptions(prologue = EnterClosureDataIsolatePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         try (ErrnoMirrorContext mirror = new ErrnoMirrorContext()) {

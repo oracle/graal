@@ -270,8 +270,23 @@ public final class VMOperationControl {
 
     /** Check if it is okay for this thread to block. */
     public static void guaranteeOkayToBlock(String message) {
-        /* If the system is frozen at a safepoint, then it is not okay to block. */
-        if (isFrozen()) {
+        /*-
+         * No Java synchronization must be performed within a VMOperation. Otherwise, one of the
+         * following deadlocks could occur:
+         *
+         * a.
+         * - Thread A locks an object
+         * - Thread B executes a VMOperation that needs a safepoint.
+         * - Thread B tries to lock the same object and is blocked.
+         *
+         * b.
+         * - Thread A locks an object
+         * - Thread B executes a VMOperation that does NOT need a safepoint.
+         * - Thread B tries to lock the same object and is blocked.
+         * - Thread A allocates an object while still holding the lock. The allocation would need
+         * to execute a GC but the VM thread is blocked.
+         */
+        if (VMOperation.isInProgress()) {
             Log.log().string(message).newline();
             VMError.shouldNotReachHere("Should not reach here: Not okay to block.");
         }
@@ -282,6 +297,7 @@ public final class VMOperationControl {
      * always returns false if {@linkplain SubstrateOptions#MultiThreaded} is disabled as no
      * safepoints are needed in that case.
      */
+    @Uninterruptible(reason = "called from isolate setup code", mayBeInlined = true)
     public static boolean isFrozen() {
         boolean result = Safepoint.Master.singleton().isFrozen();
         assert !result || MultiThreaded.getValue();

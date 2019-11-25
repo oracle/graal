@@ -61,7 +61,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             build_args=[],
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
-            custom_bash_launcher="mx.vm/gu" if mx.is_windows() else None,
+            custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
         ),
     ],
 ))
@@ -73,27 +73,26 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
     short_name='gvm',
     dir_name='.',
     license_files=['LICENSE.txt'],
-    third_party_license_files=['3rd_party_licenses.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE.txt'],
     dependencies=[],
     support_distributions=['vm:VM_GRAALVM_SUPPORT'],
 ))
 
 
-if mx.get_os() == 'windows':
-    mx_sdk_vm.register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'gvm', 'ins', 'ats', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
-else:
-    mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
-    mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite, dist_name='ce-complete')
+# pylint: disable=line-too-long
+mx_sdk_vm.register_vm_config('ce', ['bjs', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite, dist_name='ce-complete')
 mx_sdk_vm.register_vm_config('ce-python', ['cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'nju', 'nic', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
-mx_sdk_vm.register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bnative-image', 'bnative-image-configure', 'bpolyglot',
-                                              'cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
+mx_sdk_vm.register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'gu', 'gvm', 'ins', 'ats', 'js', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite)
-mx_sdk_vm.register_vm_config('toolchain-only', ['tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'], _suite)
+mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'llp', 'slg', 'blli'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'tfl', 'tflm', 'gu', 'svm', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'], _suite, env_file=False)
+# pylint: enable=line-too-long
 
 if mx.get_os() == 'windows':
-    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm'], _suite, env_file=False)
+    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
 else:
     mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm'], _suite, env_file=False)
 
@@ -142,7 +141,7 @@ class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
                 if not os.path.lexists(dest):
                     return True, '{} does not exist'.format(dest)
                 link_file = mx.TimeStampFile(dest, False)
-                if link_file.isOlderThan(newestInput):
+                if newestInput and link_file.isOlderThan(newestInput):
                     return True, '{} is older than {}'.format(dest, newestInput)
                 if src != os.readlink(dest):
                     return True, '{} points to the wrong file'.format(dest)

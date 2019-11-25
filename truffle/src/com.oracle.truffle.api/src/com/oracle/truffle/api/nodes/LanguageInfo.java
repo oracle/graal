@@ -56,13 +56,13 @@ public final class LanguageInfo {
     private final String name;
     private final String version;
     private final Set<String> mimeTypes;
-    private final Object engineObject;
+    private final Object polyglotLanguage;
     private final String defaultMimeType;
     private final boolean internal;
     private final boolean interactive;
 
-    LanguageInfo(Object engineObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
-        this.engineObject = engineObject;
+    LanguageInfo(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
+        this.polyglotLanguage = polyglotLanguage;
         this.id = id;
         this.name = name;
         this.version = version;
@@ -125,8 +125,8 @@ public final class LanguageInfo {
         return mimeTypes;
     }
 
-    Object getEngineObject() {
-        return engineObject;
+    Object getPolyglotLanguage() {
+        return polyglotLanguage;
     }
 
     /**

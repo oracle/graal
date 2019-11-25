@@ -36,16 +36,12 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
-import static com.oracle.svm.core.posix.headers.Unistd._SC_PAGE_SIZE;
-import static com.oracle.svm.core.posix.headers.UnistdNoTransitions.sysconf;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -57,9 +53,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 class PosixVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -77,7 +73,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     public static UnsignedWord getPageSize() {
         Word value = CACHED_PAGE_SIZE.get().read();
         if (value.equal(WordFactory.zero())) {
-            long queried = sysconf(_SC_PAGE_SIZE());
+            long queried = Unistd.NoTransitions.sysconf(Unistd._SC_PAGE_SIZE());
             value = WordFactory.unsigned(queried);
             CACHED_PAGE_SIZE.get().write(value);
         }

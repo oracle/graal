@@ -29,24 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
 
-    @CompilationFinal private LLVMMemory llvmMemory;
-
     @Specialization
     protected boolean doLongCase(long a) {
-        return !getLLVMMemoryCached().isHandleMemory(a);
+        return !LLVMNativeMemory.isHandleMemory(a);
     }
 
     @Specialization
@@ -57,13 +53,5 @@ public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
     @Fallback
     protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
         return true;
-    }
-
-    private LLVMMemory getLLVMMemoryCached() {
-        if (llvmMemory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            llvmMemory = getLLVMMemory();
-        }
-        return llvmMemory;
     }
 }

@@ -42,7 +42,9 @@ public final class JarPackageProvider implements ComponentArchiveReader {
     public MetadataLoader createLoader(Path p, byte[] magic, Feedback feedback, boolean verify) throws IOException {
         if ((magic[0] == 0x50) && (magic[1] == 0x4b) &&
                         (magic[2] == 0x03) && (magic[3] == 0x04)) {
-            return new JarMetaLoader(new JarFile(p.toFile(), verify), feedback);
+            JarFile jf = null;
+            jf = new JarFile(p.toFile(), verify);
+            return new JarMetaLoader(jf, feedback);
         } else {
             return null;
         }

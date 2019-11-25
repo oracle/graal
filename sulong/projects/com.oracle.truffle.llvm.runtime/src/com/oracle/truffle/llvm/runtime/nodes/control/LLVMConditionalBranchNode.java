@@ -77,6 +77,11 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         }
 
         @Override
+        public String toString() {
+            return getShortString("trueSuccessor", "falseSuccessor");
+        }
+
+        @Override
         public int getSuccessorCount() {
             return 2;
         }

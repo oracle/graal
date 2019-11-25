@@ -40,7 +40,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -244,18 +243,6 @@ final class Target_sun_misc_MessageUtils {
     }
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_PhantomCleanable {
-}
-
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_WeakCleanable {
-}
-
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_SoftCleanable {
-}
-
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override
@@ -313,11 +300,6 @@ class Package_jdk_internal_loader implements Function<TargetClass, String> {
             return "jdk.internal.loader." + annotation.className();
         }
     }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath", innerClass = "JarLoader")
-@Delete
-final class Target_sun_misc_URLClassPath_JarLoader {
 }
 
 @TargetClass(className = "sun.reflect.misc.MethodUtil")

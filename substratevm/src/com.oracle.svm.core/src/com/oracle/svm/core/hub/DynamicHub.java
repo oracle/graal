@@ -81,7 +81,6 @@ import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -251,7 +250,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Classloader used for loading this class during image-build time.
      */
-    private final Target_java_lang_ClassLoader classloader;
+    private final ClassLoader classLoader;
 
     /**
      * Bits used for instance-of checks. A bit is set for each type, which an object with this HUB
@@ -304,7 +303,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, boolean isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
-                    Target_java_lang_ClassLoader classLoader) {
+                    ClassLoader classLoader) {
         this.name = name;
         this.isLocalClass = isLocalClass;
         this.isAnonymousClass = isAnonymousClass;
@@ -312,7 +311,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
-        this.classloader = classLoader;
+        this.classLoader = classLoader;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -669,7 +668,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private ClassLoader getClassLoader0() {
-        return SubstrateUtil.cast(classloader, ClassLoader.class);
+        return classLoader;
     }
 
     @KeepOriginal
@@ -1134,7 +1133,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private static String argumentTypesToString(Class<?>[] argTypes) {
-        return describeMethod("", argTypes, "");
+        return describeMethod("(", argTypes, ")");
     }
 
     @Substitute

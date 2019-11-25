@@ -44,7 +44,7 @@ public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolde
     private List<MDAttachment> mdAttachments = null;
     private LLVMSourceLocation sourceLocation = null;
 
-    public MDLocation getDebugLocation() {
+    public final MDLocation getDebugLocation() {
         return debugLocation;
     }
 

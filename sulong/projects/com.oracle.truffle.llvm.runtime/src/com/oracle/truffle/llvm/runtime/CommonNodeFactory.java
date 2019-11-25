@@ -55,12 +55,10 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToI64NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI8NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
@@ -226,12 +224,7 @@ public class CommonNodeFactory {
         return LLVMDebugObject.instantiate(sourceType, 0L, debugValue, null);
     }
 
-    public static LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId,
-                    String blockName, LLVMContext context) {
-        return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
-    }
-
-    public static LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
+    public static LLVMFrameValueAccess createDebugFrameValue(int slot, boolean isDeclaration) {
         final LLVMDebugValue.Builder builder = getDebugDynamicValueBuilder(isDeclaration).createBuilder();
         return new LLVMFrameValueAccessImpl(slot, builder);
     }
@@ -254,14 +247,14 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode, boolean isGlobal) {
+    public static LLVMDebugObjectBuilder createDebugStaticValue(LLVMContext context, LLVMExpressionNode valueNode, boolean isGlobal) {
         LLVMDebugValue.Builder toDebugNode = createDebugValueBuilder();
 
         Object value = null;
         if (isGlobal) {
             assert valueNode instanceof LLVMAccessGlobalVariableStorageNode;
             LLVMAccessGlobalVariableStorageNode node = (LLVMAccessGlobalVariableStorageNode) valueNode;
-            value = new LLVMDebugGlobalVariable(node.getDescriptor());
+            value = new LLVMDebugGlobalVariable(node.getDescriptor(), context);
         } else {
             try {
                 value = valueNode.executeGeneric(null);

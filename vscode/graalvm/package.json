@@ -2,14 +2,20 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Basic support for GraalVM",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"license": "SEE LICENSE IN LICENSE.txt",
-	"publisher": "OracleLabs",
+	"publisher": "oracle-labs-graalvm",
+	"author": {
+		"name": "Oracle Labs"
+	},
 	"icon": "images/graalvm-logo.png",
 	"homepage": "https://github.com/oracle/graal/blob/master/vscode/graalvm/README.md",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/oracle/graal.git"
+	},
+	"bugs": {
+		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
 		"vscode": "^1.32.0"

@@ -39,11 +39,14 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapOptions;
+import com.oracle.svm.core.genscavenge.ImageHeapInfo;
+import com.oracle.svm.core.genscavenge.hosted.LinearImageHeapLayouter;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
@@ -63,6 +66,7 @@ public class HeapFeature implements GraalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
+        ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter());
     }
 
     @Override
@@ -76,6 +80,12 @@ public class HeapFeature implements GraalFeature {
         barrierSnippets.registerLowerings(lowerings);
 
         AllocationSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        access.registerAsImmutable(imageHeapInfo);
     }
 
     @Override

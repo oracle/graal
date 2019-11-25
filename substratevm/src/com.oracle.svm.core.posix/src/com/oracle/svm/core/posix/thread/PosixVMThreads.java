@@ -26,12 +26,11 @@ package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -41,7 +40,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
-import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 
@@ -84,6 +82,9 @@ public final class PosixVMThreads extends VMThreads {
         LibC.free(thread);
     }
 
+    interface FILE extends PointerBase {
+    }
+
     @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
     private static native FILE fdopen(int fd, CCharPointer mode);
 
@@ -103,7 +104,6 @@ public final class PosixVMThreads extends VMThreads {
 }
 
 @AutomaticFeature
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 class PosixVMThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

@@ -24,24 +24,20 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 
+// Checkstyle: stop
+
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 public class LinuxPthread {
-    /* { Allow names with underscores: Checkstyle: stop */
 
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
-
-    /* } Allow names with underscores: Checkstyle: resume */
 }

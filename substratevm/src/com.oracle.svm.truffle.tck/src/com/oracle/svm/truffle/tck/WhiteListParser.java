@@ -34,6 +34,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.nativeimage.Platforms;
 
 final class WhiteListParser extends ConfigurationParser {
 
@@ -88,32 +90,36 @@ final class WhiteListParser extends ConfigurationParser {
         }
         String className = castProperty(classObject, String.class, "name");
 
-        AnalysisType clazz = resolve(className);
-        if (clazz == null) {
-            throw new JSONParserException("Class " + className + " not found");
-        }
-
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            String name = entry.getKey();
-            Object value = entry.getValue();
-            if (name.equals("name")) {
-                /* Already handled. */
-            } else if (name.equals("justification")) {
-                /* Used only to document the whitelist file. */
-            } else if (name.equals("allDeclaredConstructors")) {
-                if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
-                    registerDeclaredConstructors(clazz);
-                }
-            } else if (name.equals("allDeclaredMethods")) {
-                if (castProperty(value, Boolean.class, "allDeclaredMethods")) {
-                    registerDeclaredMethods(clazz);
-                }
-            } else if (name.equals("methods")) {
-                parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
-            } else {
-                throw new JSONParserException("Unknown attribute '" + name +
-                                "' (supported attributes: allDeclaredConstructors, allDeclaredMethods, methods, justification) in defintion of class " + className);
+        try {
+            AnalysisType clazz = resolve(className);
+            if (clazz == null) {
+                throw new JSONParserException("Class " + className + " not found");
             }
+
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                String name = entry.getKey();
+                Object value = entry.getValue();
+                if (name.equals("name")) {
+                    /* Already handled. */
+                } else if (name.equals("justification")) {
+                    /* Used only to document the whitelist file. */
+                } else if (name.equals("allDeclaredConstructors")) {
+                    if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
+                        registerDeclaredConstructors(clazz);
+                    }
+                } else if (name.equals("allDeclaredMethods")) {
+                    if (castProperty(value, Boolean.class, "allDeclaredMethods")) {
+                        registerDeclaredMethods(clazz);
+                    }
+                } else if (name.equals("methods")) {
+                    parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                } else {
+                    throw new JSONParserException("Unknown attribute '" + name +
+                                    "' (supported attributes: allDeclaredConstructors, allDeclaredMethods, methods, justification) in defintion of class " + className);
+                }
+            }
+        } catch (UnsupportedPlatformException unsupportedPlatform) {
+            // skip the type not available on active platform
         }
     }
 
@@ -169,16 +175,20 @@ final class WhiteListParser extends ConfigurationParser {
         List<AnalysisType> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = castProperty(type, String.class, "types");
-            AnalysisType clazz = resolve(typeName);
-            if (clazz == null) {
-                throw new JSONParserException("Class " + typeName + " not found");
+            try {
+                AnalysisType clazz = resolve(typeName);
+                if (clazz == null) {
+                    throw new JSONParserException("Parameter type " + typeName + " not found");
+                }
+                result.add(clazz);
+            } catch (UnsupportedPlatformException unsupportedPlatform) {
+                throw new JSONParserException("Parameter type " + typeName + " is not available on active platform");
             }
-            result.add(clazz);
         }
         return result;
     }
 
-    private AnalysisType resolve(String type) {
+    private AnalysisType resolve(String type) throws UnsupportedPlatformException {
         String useType;
         if (type.indexOf('[') != -1) {
             useType = MetaUtil.internalNameToJava(MetaUtil.toInternalName(type), true, true);
@@ -186,7 +196,18 @@ final class WhiteListParser extends ConfigurationParser {
             useType = type;
         }
         Class<?> clz = imageClassLoader.findClassByName(useType, false);
+        verifySupportedOnActivePlatform(clz);
         return bigBang.forClass(clz);
+    }
+
+    private void verifySupportedOnActivePlatform(Class<?> clz) throws UnsupportedPlatformException {
+        Class<?> current = clz;
+        do {
+            if (!bigBang.getUniverse().platformSupported(current)) {
+                throw new UnsupportedPlatformException(current);
+            }
+            current = current.getEnclosingClass();
+        } while (current != null);
     }
 
     private boolean registerMethod(AnalysisType type, String methodName, List<AnalysisType> formalParameters) {
@@ -280,4 +301,13 @@ final class WhiteListParser extends ConfigurationParser {
         }
     }
 
+    @SuppressWarnings("serial")
+    private static final class UnsupportedPlatformException extends Exception {
+
+        UnsupportedPlatformException(Class<?> clazz) {
+            super(String.format("The %s is supported only on platforms: %s",
+                            clazz.getName(),
+                            Arrays.toString(clazz.getAnnotation(Platforms.class).value())));
+        }
+    }
 }

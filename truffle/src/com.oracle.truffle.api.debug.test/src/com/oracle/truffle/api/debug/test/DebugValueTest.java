@@ -46,6 +46,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -185,6 +188,65 @@ public class DebugValueTest extends AbstractDebugTest {
         assertTrue(suspended[0]);
     }
 
+    @Test
+    public void testCached() {
+        final Source source = testSource("DEFINE(function, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Context context = Context.create();
+        context.eval(source);
+        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
+        assertNotNull(functionValue);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+
+        boolean[] suspended = new boolean[]{false};
+        final ModifiableAttributesTruffleObject ma = new ModifiableAttributesTruffleObject();
+        try (DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
+            assertFalse(suspended[0]);
+            DebugValue a = event.getTopStackFrame().getScope().getDeclaredValue("a");
+            ma.setIsReadable(true);
+            DebugValue ap1 = a.getProperty("p1");
+            DebugValue ap2 = a.getProperty("p2");
+            assertNotNull(ap1);
+            assertNotNull(ap2);
+
+            assertEquals(0, ap1.as(Number.class).intValue());
+            assertEquals(0, ap2.as(Number.class).intValue());
+            assertEquals(0, ap1.as(Number.class).intValue());
+            ap2 = a.getProperty("p2"); // Get a fresh property value
+            assertEquals(1, ap2.as(Number.class).intValue());
+            ap1.isArray();
+            ap1.isNull();
+            ap2.isArray();
+            ap2.isNull();
+            assertEquals(0, ap1.as(Number.class).intValue());
+            assertEquals(1, ap2.as(Number.class).intValue());
+
+            DebugValue ap1New = a.getProperty("p1");
+            DebugValue ap2New = a.getProperty("p2");
+            ap1New.isNull();
+            ap2New.isNull();
+            assertEquals(1, ap1New.as(Number.class).intValue());
+            assertEquals(2, ap2New.as(Number.class).intValue());
+            a.getProperty("p1");
+            ap1New = a.getProperty("p1");
+            ap1New.isNull();
+            ap2New.isNull();
+            assertEquals(2, ap1New.as(Number.class).intValue());
+            assertEquals(2, ap2New.as(Number.class).intValue());
+            // Original properties are unchanged:
+            assertEquals(0, ap1.as(Number.class).intValue());
+            assertEquals(1, ap2.as(Number.class).intValue());
+            event.prepareContinue();
+            suspended[0] = true;
+        })) {
+            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
+            functionValue.execute(ma);
+        }
+        assertTrue(suspended[0]);
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class NoAttributesTruffleObject implements TruffleObject {
 
@@ -231,6 +293,7 @@ public class DebugValueTest extends AbstractDebugTest {
         private boolean isWritable;
         private boolean hasWriteSideEffects;
         private boolean isInternal;
+        private final Map<String, Integer> memberCounters = new HashMap<>();
 
         @ExportMessage
         boolean hasMembers() {
@@ -282,7 +345,14 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         Object readMember(String member) {
-            return "propertyValue";
+            Integer counter = memberCounters.get(member);
+            if (counter == null) {
+                counter = 0;
+            } else {
+                counter++;
+            }
+            memberCounters.put(member, counter);
+            return counter;
         }
 
         public void setIsReadable(boolean isReadable) {
@@ -305,6 +375,10 @@ public class DebugValueTest extends AbstractDebugTest {
             this.isInternal = isInternal;
         }
 
+        public String getMemberCounters() {
+            return memberCounters.toString();
+        }
+
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof ModifiableAttributesTruffleObject;
         }
@@ -324,17 +398,26 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-            return "property";
+            switch ((int) index) {
+                case 0:
+                    return "property";
+                case 1:
+                    return "p1";
+                case 2:
+                    return "p2";
+                default:
+                    throw new IllegalStateException("Wrong index: " + index);
+            }
         }
 
         @ExportMessage
         long getArraySize() throws UnsupportedMessageException {
-            return 1L;
+            return 3L;
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index == 0;
+            return 0 <= index && index < 3;
         }
     }
 

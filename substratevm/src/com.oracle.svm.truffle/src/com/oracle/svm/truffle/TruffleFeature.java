@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,10 +56,10 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.annotate.Delete;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -74,16 +74,18 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedCompilationProfile;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -91,20 +93,24 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.hosted.GraalFeature.CallTreeNode;
 import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
@@ -117,6 +123,7 @@ import com.oracle.svm.hosted.option.RuntimeOptionFeature;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
+import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -133,6 +140,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.Profile;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -197,9 +205,36 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         @SuppressWarnings("unused")
         public void registerInterpreterEntryMethodsAsCompiled(PartialEvaluator partialEvaluator, BeforeAnalysisAccess access) {
         }
+
+        public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
+            GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
+            SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
+            return new SubstrateTruffleCompilerImpl(runtime,
+                            graalFeature.getHostedProviders().getGraphBuilderPlugins(),
+                            GraalSupport.getSuites(),
+                            GraalSupport.getLIRSuites(),
+                            GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
+                            GraalSupport.getFirstTierSuites(),
+                            GraalSupport.getFirstTierLirSuites(),
+                            GraalSupport.getFirstTierProviders(),
+                            snippetReflectionProvider);
+        }
+
+        public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
+            Object target = SubstrateObjectConstant.asObject(optimizedAssumptionConstant);
+            OptimizedAssumption assumption = (OptimizedAssumption) KnownIntrinsics.convertUnknownValue(target, Object.class);
+            return assumption.registerDependency();
+        }
+
+        public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
+            Object target = SubstrateObjectConstant.asObject(callNodeConstant);
+            OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) KnownIntrinsics.convertUnknownValue(target, Object.class);
+            OptimizedCallTarget callTarget = callNode.getCallTarget();
+            return SubstrateObjectConstant.forObject(callTarget);
+        }
     }
 
-    protected Support support;
+    private Support support;
 
     private final Set<ResolvedJavaMethod> blacklistMethods;
     private final Set<GraalFeature.CallTreeNode> blacklistViolations;
@@ -233,6 +268,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
+        invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState", Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.api.impl.TruffleLocator", "initializeNativeImageState", Collections.emptyList());
@@ -466,7 +502,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            if (original.getAnnotation(NeverInline.class) != null) {
+            if (SubstrateUtil.NativeImageLoadingShield.isNeverInline(original)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (invocationPlugins.lookupInvocation(original) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -540,7 +576,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
-        } else if (implementationMethod.getAnnotation(NeverInline.class) != null) {
+        } else if (SubstrateUtil.NativeImageLoadingShield.isNeverInline(implementationMethod)) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
             return false;
         } else if (implementationMethod.getAnnotation(Uninterruptible.class) != null) {
@@ -780,7 +816,23 @@ final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
      * start with a fresh profile at run time.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    OptimizedCompilationProfile compilationProfile;
+    int callThreshold;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    int callAndLoopThreshold;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    boolean compilationFailed;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    long initializedTimestamp;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<?>[] profiledArgumentTypes;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    OptimizedAssumption profiledArgumentTypesAssumption;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<?> profiledReturnType;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    OptimizedAssumption profiledReturnTypeAssumption;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Class<? extends Throwable> profiledExceptionType;
 }
 
 // Checkstyle: stop

@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -42,8 +41,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.option.XOptions;
@@ -169,7 +169,7 @@ final class Target_java_lang_Thread {
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
         group = (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup;
         priority = Thread.NORM_PRIORITY;
-        contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
+        contextClassLoader = ClassLoader.getSystemClassLoader();
         blockerLock = new Object();
         daemon = asDaemon;
     }
@@ -249,7 +249,7 @@ final class Target_java_lang_Thread {
          */
         threadStatus = ThreadStatus.RUNNABLE;
         wasStartedByCurrentIsolate = true;
-        JavaThreads.singleton().doStartThread(JavaThreads.fromTarget(this), chosenStackSize);
+        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), chosenStackSize);
     }
 
     @Substitute
@@ -263,12 +263,18 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
         final boolean result = interrupted;
         if (clearInterrupted) {
             interrupted = false;
         }
         return result;
+    }
+
+    @Substitute
+    public boolean isInterrupted() {
+        return interrupted;
     }
 
     @Substitute
@@ -294,20 +300,41 @@ final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"static-method"})
     private void stop0(Object o) {
-        VMError.unimplemented();
+        throw VMError.unsupportedFeature("The deprecated method Thread.stop is not supported");
     }
 
     @Substitute
     @SuppressWarnings({"static-method"})
     private void suspend0() {
-        VMError.unimplemented();
+        throw VMError.unsupportedFeature("The deprecated method Thread.suspend is not supported");
     }
 
     @Substitute
     @SuppressWarnings({"static-method"})
     private void resume0() {
-        VMError.unimplemented();
+        throw VMError.unsupportedFeature("The deprecated method Thread.resume is not supported");
     }
+
+    @Substitute
+    @SuppressWarnings({"static-method"})
+    private int countStackFrames() {
+        throw VMError.unsupportedFeature("The deprecated method Thread.countStackFrames is not supported");
+    }
+
+    /*
+     * We are defensive and also handle private native methods by marking them as deleted. If they
+     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
+     * linking error.
+     */
+
+    @Delete
+    private static native void registerNatives();
+
+    @Delete
+    private static native StackTraceElement[][] dumpThreads(Thread[] threads);
+
+    @Delete
+    private static native Thread[] getThreads();
 
     @Substitute
     private boolean isAlive() {
@@ -362,5 +389,16 @@ final class Target_java_lang_Thread {
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         return JavaThreads.getAllStackTraces();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    private static void clearInterruptEvent() {
+        // In the JDK, this is a noop except on Windows
+        // The JDK resets the interrupt event used by Process.waitFor
+        // ResetEvent((HANDLE) JVM_GetThreadInterruptEvent());
+        // Our implementation in WindowsJavaThreads.java takes care
+        // of this ResetEvent.
+        VMError.unimplemented();
     }
 }

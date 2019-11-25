@@ -25,7 +25,9 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,6 +72,10 @@ public class InstallCommand implements InstallerCommand {
     private boolean allowUpgrades;
     // verify archives by default
     private boolean verifyJar = true;
+    /**
+     * Was a file:// component location encountered ?
+     */
+    private boolean wasFile;
 
     private PostInstProcess postinstHelper;
 
@@ -84,6 +90,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_FAIL_EXISTING, "");
         OPTIONS.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
         OPTIONS.put(Commands.OPTION_NO_VERIFY_JARS, "");
+        OPTIONS.put(Commands.OPTION_LOCAL_DEPENDENCIES, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
@@ -95,6 +102,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_FAIL_EXISTING, Commands.OPTION_FAIL_EXISTING);
         OPTIONS.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
         OPTIONS.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
+        OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
 
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
@@ -163,6 +171,10 @@ public class InstallCommand implements InstallerCommand {
             feedback.output("INSTALL_ParametersMissing");
             return 1;
         }
+        if (input.optValue(Commands.OPTION_LOCAL_DEPENDENCIES) != null &&
+                        input.optValue(Commands.OPTION_FILES) == null) {
+            feedback.error("INSTALL_WarnLocalDependencies", null);
+        }
         try {
             executeStep(this::prepareInstallation, false);
             if (validateBeforeInstall) {
@@ -218,6 +230,7 @@ public class InstallCommand implements InstallerCommand {
      * Implied dependencies discovered during preparation.
      */
     private List<ComponentParam> dependencies = new ArrayList<>();
+    private Map<String, Collection<ComponentInfo>> dependencyMap = new HashMap<>();
 
     /**
      * Unresolved dependencies, which will be reported all at once.
@@ -242,6 +255,9 @@ public class InstallCommand implements InstallerCommand {
         LOG.log(Level.FINE, "Direct dependencies: {0}, errors: {1}", new Object[]{deps, errors});
         if (errors != null) {
             unresolvedDependencies.addAll(errors);
+            for (String s : errors) {
+                dependencyMap.computeIfAbsent(s, (id) -> new HashSet<>()).add(ci);
+            }
         }
 
         for (ComponentInfo i : deps) {
@@ -250,6 +266,7 @@ public class InstallCommand implements InstallerCommand {
             }
             ComponentParam p = input.existingFiles().createParam(i.getId(), i);
             dependencies.add(p);
+            dependencyMap.computeIfAbsent(i.getId(), (id) -> new HashSet<>()).add(ci);
         }
     }
 
@@ -260,7 +277,8 @@ public class InstallCommand implements InstallerCommand {
         feedback.output("INSTALL_RequiredDependencies");
         for (ComponentParam p : dependencies) {
             ComponentInfo ci = p.createMetaLoader().getComponentInfo();
-            feedback.output("INSTALL_RequiredDependencyLine", p.getDisplayName(), ci.getId(), ci.getVersion().displayString());
+            feedback.output("INSTALL_RequiredDependencyLine", p.getDisplayName(), ci.getId(), ci.getVersion().displayString(),
+                            printComponentList(dependencyMap.get(ci.getId())));
         }
     }
 
@@ -315,6 +333,22 @@ public class InstallCommand implements InstallerCommand {
         return true;
     }
 
+    String printComponentList(Collection<ComponentInfo> requestors) {
+        if (requestors == null || requestors.isEmpty()) {
+            return ""; // NOI18N
+        }
+        StringBuilder sb = new StringBuilder();
+        List<ComponentInfo> infos = new ArrayList<>(requestors);
+        Collections.sort(infos, (c1, c2) -> c1.getId().compareTo(c2.getId()));
+        for (ComponentInfo i : infos) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(feedback.l10n("INSTALL_RequiredDependencyItem", i.getName(), i.getId()));
+        }
+        return feedback.l10n("INSTALL_RequiredDependencySuffix", sb.toString());
+    }
+
     void checkDependencyErrors() {
         if (unresolvedDependencies.isEmpty()) {
             return;
@@ -323,7 +357,14 @@ public class InstallCommand implements InstallerCommand {
         List<String> ordered = new ArrayList<>(unresolvedDependencies);
         Collections.sort(ordered);
         for (String s : ordered) {
-            feedback.error("INSTALL_UnknownComponentLine", null, s);
+            feedback.error("INSTALL_UnknownComponentLine", null, s,
+                            printComponentList(dependencyMap.get(s)));
+        }
+        if (!input.getRegistry().isRemoteEnabled()) {
+            feedback.error("INSTALL_UnknownComponentsNote1", null);
+        }
+        if (wasFile && !input.hasOption(Commands.OPTION_LOCAL_DEPENDENCIES)) {
+            feedback.error("INSTALL_UnknownComponentsNote2", null);
         }
         throw feedback.failure("INSTALL_UnresolvedDependencies", null);
     }
@@ -346,6 +387,11 @@ public class InstallCommand implements InstallerCommand {
                 realInstallers.put(p, null);
             }
             current = null;
+
+            URL remote = ldr.getComponentInfo().getRemoteURL();
+            if (remote == null || remote.getProtocol().equalsIgnoreCase("file")) {
+                wasFile = true;
+            }
         }
 
         for (Installer i : new ArrayList<>(installers)) {
@@ -448,10 +494,11 @@ public class InstallCommand implements InstallerCommand {
             completeInstallers0(in);
             allDependencies.addAll(dependencies);
             in = dependencies;
+            // print required components prior to download
+            printRequiredComponents();
         } while (!in.isEmpty());
         dependencies = allDependencies;
         checkDependencyErrors();
-        printRequiredComponents();
     }
 
     void completeInstallers0(List<ComponentParam> in) throws IOException {

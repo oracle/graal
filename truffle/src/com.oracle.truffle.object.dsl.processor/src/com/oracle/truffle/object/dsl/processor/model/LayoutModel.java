@@ -61,10 +61,12 @@ public class LayoutModel {
     private final boolean hasBuilder;
     private final List<PropertyModel> properties;
     private final List<VariableElement> implicitCasts;
+    private final TypeMirror dispatch;
 
     public LayoutModel(TypeMirror objectTypeSuperclass, LayoutModel superLayout, String name, String packageName,
                     boolean hasObjectTypeGuard, boolean hasObjectGuard, boolean hasDynamicObjectGuard, boolean hasBuilder,
-                    Collection<PropertyModel> properties, String interfaceFullName, Collection<VariableElement> implicitCasts) {
+                    Collection<PropertyModel> properties, String interfaceFullName, Collection<VariableElement> implicitCasts,
+                    TypeMirror dispatch) {
         this.objectTypeSuperclass = objectTypeSuperclass;
         this.superLayout = superLayout;
         this.name = name;
@@ -76,6 +78,7 @@ public class LayoutModel {
         this.hasBuilder = hasBuilder;
         this.properties = Collections.unmodifiableList(new ArrayList<>(properties));
         this.implicitCasts = Collections.unmodifiableList(new ArrayList<>(implicitCasts));
+        this.dispatch = dispatch;
     }
 
     public TypeMirror getObjectTypeSuperclass() {
@@ -231,4 +234,7 @@ public class LayoutModel {
         return Collections.unmodifiableList(selectedProperties);
     }
 
+    public TypeMirror getDispatch() {
+        return dispatch;
+    }
 }

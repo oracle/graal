@@ -182,10 +182,6 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                     logStackTrace = true;
                     logInvalidatedDependency(dependency, message);
                 }
-
-                if (callTarget != null) {
-                    callTarget.getCompilationProfile().reportInvalidated();
-                }
             }
             e = e.next;
         }

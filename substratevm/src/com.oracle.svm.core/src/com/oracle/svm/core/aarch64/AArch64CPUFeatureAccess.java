@@ -24,15 +24,22 @@
  */
 package com.oracle.svm.core.aarch64;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
@@ -50,11 +57,67 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
     @Platforms(Platform.AARCH64.class)
     public static EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
+
+        AArch64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AArch64LibCHelper.CPUFeatures.class);
+
+        MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
+
+        AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
+
+        if (cpuFeatures.fFP()) {
+            features.add(AArch64.CPUFeature.FP);
+        }
+        if (cpuFeatures.fASIMD()) {
+            features.add(AArch64.CPUFeature.ASIMD);
+        }
+        if (cpuFeatures.fEVTSTRM()) {
+            features.add(AArch64.CPUFeature.EVTSTRM);
+        }
+        if (cpuFeatures.fAES()) {
+            features.add(AArch64.CPUFeature.AES);
+        }
+        if (cpuFeatures.fPMULL()) {
+            features.add(AArch64.CPUFeature.PMULL);
+        }
+        if (cpuFeatures.fSHA1()) {
+            features.add(AArch64.CPUFeature.SHA1);
+        }
+        if (cpuFeatures.fSHA2()) {
+            features.add(AArch64.CPUFeature.SHA2);
+        }
+        if (cpuFeatures.fCRC32()) {
+            features.add(AArch64.CPUFeature.CRC32);
+        }
+        if (cpuFeatures.fLSE()) {
+            features.add(AArch64.CPUFeature.LSE);
+        }
+        if (cpuFeatures.fSTXRPREFETCH()) {
+            features.add(AArch64.CPUFeature.STXR_PREFETCH);
+        }
+        if (cpuFeatures.fA53MAC()) {
+            features.add(AArch64.CPUFeature.A53MAC);
+        }
+        if (cpuFeatures.fDMBATOMICS()) {
+            features.add(AArch64.CPUFeature.DMB_ATOMICS);
+        }
+
         return features;
     }
 
     @Override
     public void verifyHostSupportsArchitecture(Architecture imageArchitecture) {
+        AArch64 architecture = (AArch64) imageArchitecture;
+        EnumSet<AArch64.CPUFeature> features = determineHostCPUFeatures();
+
+        if (!features.containsAll(architecture.getFeatures())) {
+            List<AArch64.CPUFeature> missingFeatures = new ArrayList<>();
+            for (AArch64.CPUFeature feature : architecture.getFeatures()) {
+                if (!features.contains(feature)) {
+                    missingFeatures.add(feature);
+                }
+            }
+            throw VMError.shouldNotReachHere("Current target does not support the following CPU features that are required by the image: " + missingFeatures);
+        }
 
     }
 

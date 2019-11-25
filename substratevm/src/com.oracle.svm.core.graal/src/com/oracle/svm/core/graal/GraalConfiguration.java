@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -53,7 +54,11 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
+import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class GraalConfiguration {
@@ -87,7 +92,17 @@ public class GraalConfiguration {
     }
 
     public void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry) {
-        matchRuleRegistry.put(AMD64NodeMatchRules.class, MatchRuleRegistry.createRules(AMD64NodeMatchRules.class));
+        Class<? extends NodeMatchRules> matchRuleClass;
+        final Architecture hostedArchitecture = ConfigurationValues.getTarget().arch;
+        if (hostedArchitecture instanceof AMD64) {
+            matchRuleClass = AMD64NodeMatchRules.class;
+        } else if (hostedArchitecture instanceof AArch64) {
+            matchRuleClass = AArch64NodeMatchRules.class;
+        } else {
+            throw VMError.shouldNotReachHere("Can not instantiate NodeMatchRules for architecture " + hostedArchitecture.getName());
+        }
+
+        matchRuleRegistry.put(matchRuleClass, MatchRuleRegistry.createRules(matchRuleClass));
     }
 
     public SubstrateBackend createBackend(Providers newProviders) {

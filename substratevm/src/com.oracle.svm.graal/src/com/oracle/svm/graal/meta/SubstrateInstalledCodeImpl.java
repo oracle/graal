@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,10 +44,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Metadata for the code is maintained by the class {@link CodeInfo}.
  */
 public class SubstrateInstalledCodeImpl extends InstalledCode implements SubstrateInstalledCode {
-
-    public SubstrateInstalledCodeImpl(String name) {
-        super(name);
-    }
 
     public SubstrateInstalledCodeImpl(SharedRuntimeMethod method) {
         super(method.format("%H.%n#(%p)"));

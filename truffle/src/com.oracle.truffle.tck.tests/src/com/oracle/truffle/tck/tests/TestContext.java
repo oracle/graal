@@ -116,6 +116,9 @@ final class TestContext implements Closeable {
                     final String id = provider.getId();
                     if (languages.contains(id) || isHost(provider)) {
                         tmpProviders.put(id, provider);
+                    } else {
+                        throw new IllegalStateException("Provider " + provider.getClass().getName() + " requires a non installed language " + id + "\n" +
+                                        "Installed languages: " + String.join(", ", languages));
                     }
                 }
                 providers = Collections.unmodifiableMap(tmpProviders);

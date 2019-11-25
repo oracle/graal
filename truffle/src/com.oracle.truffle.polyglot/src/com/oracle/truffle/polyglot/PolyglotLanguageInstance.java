@@ -136,7 +136,6 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     void patchFirstOptions(OptionValuesImpl optionValues) {
-        assert Thread.holdsLock(language.engine);
         this.firstOptionValues = optionValues;
     }
 

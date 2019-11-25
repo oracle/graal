@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,14 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
-import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.r29;
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
@@ -244,7 +245,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             try (ScratchRegister scratch = masm.getScratchRegister()) {
                 Register tempRegister = scratch.getRegister();
                 masm.mov(tempRegister, VMThreads.StatusSupport.STATUS_IN_NATIVE);
-                masm.str(64, tempRegister,
+                masm.str(32, tempRegister,
                                 AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
             }
         }
@@ -486,7 +487,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public Variable emitReadReturnAddress() {
-            return getLIRGeneratorTool().emitMove(StackSlot.get(getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize() - FrameAccess.wordSize(), true));
+            return getLIRGeneratorTool().emitMove(StackSlot.get(getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize(), true));
         }
     }
 
@@ -874,8 +875,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
-        crb.buildLabelOffsets(lir);
-        crb.emit(lir);
+        try {
+            crb.buildLabelOffsets(lir);
+            crb.emit(lir);
+        } catch (BranchTargetOutOfBoundsException e) {
+            // A branch estimation was wrong, now retry with conservative label ranges, this
+            // should always work
+            crb.setConservativeLabelRanges();
+            crb.resetForEmittingCode();
+            lir.resetLabels();
+            crb.emit(lir);
+        }
     }
 
     @Override

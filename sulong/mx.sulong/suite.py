@@ -26,31 +26,6 @@ suite = {
       ],
       "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
     },
-    "LLVM_ORG" : {
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-amd64.tar.gz"],
-            "sha1" : "e853f32336ca58d2077717420a9ba76b9ac9aab5",
-          },
-          "aarch64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-aarch64.tar.gz"],
-            "sha1" : "d2f502b216ef2689a79caa1a9f844be0f716da01",
-          }
-        },
-        "darwin" : {
-          "amd64" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/llvm-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-darwin-amd64.tar.gz"],
-            "sha1" : "11713f3d9c76d025b482771ef9ea45689cf50cb1",
-          }
-        },
-      }
-    },
-    "LLVM_ORG_COMPILER_RT_LINUX" : {
-      # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-amd64.tar.gz"],
-      "sha1" : "85aa08cfe1b28280d8267dc9ae2ef80463541d46",
-    },
     "LLVM_ORG_LIBCXX_SRC" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334.tar.gz"],
       "sha1" : "5e291cefe0beb2e2e3784b5aaac621c5081de5ef",
@@ -110,11 +85,11 @@ suite = {
         "bin/<lib:sulongtest>",
       ],
       "buildDependencies" : [
-        "SULONG_LLVM_ORG",
+        "sdk:LLVM_TOOLCHAIN",
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
+        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -308,7 +283,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "javaProperties" : {
-        "llvm.bin.dir" : "<path:SULONG_LLVM_ORG>/bin",
+        "llvm.bin.dir" : "<path:LLVM_TOOLCHAIN>/bin",
         "llvm.home": "<path:SULONG_HOME>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
@@ -322,7 +297,7 @@ suite = {
       "subDir": "projects",
       "class" : "BootstrapToolchainLauncherProject",
       "buildDependencies" : [
-        "SULONG_LLVM_ORG",
+        "sdk:LLVM_TOOLCHAIN",
         "com.oracle.truffle.llvm.toolchain.launchers",
       ],
       "license" : "BSD-new",
@@ -397,6 +372,34 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.llvm.tests.llirtestgen" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.llirtestgen.generated" : {
+      "class": "GeneratedTestSuite",
+      "subDir" : "tests",
+      "native" : True,
+      "vpath" : True,
+      "variants" : ["O0"],
+      "buildDependencies" : [
+        "LLIR_TEST_GEN",
+      ],
+      "buildEnv" : {
+        "LDFLAGS": "-lm",
+        "LLIR_TEST_GEN_JAR" : "<path:LLIR_TEST_GEN>",
+      },
+      "license" : "BSD-new",
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+
     "com.oracle.truffle.llvm.tests.pipe.native" : {
       "subDir" : "tests",
       "native" : True,
@@ -431,14 +434,35 @@ suite = {
         "include/polyglot.h",
       ],
       "buildDependencies" : [
-        "SULONG_LLVM_ORG",
+        "sdk:LLVM_TOOLCHAIN",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
-        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
-        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
-        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
+        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
+        "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
+        "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
+        "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
+        "OS" : "<os>",
+      },
+      "license" : "BSD-new",
+    },
+    "com.oracle.truffle.llvm.libraries.mock" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:polyglot-mock>",
+      ],
+      "buildDependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "buildEnv" : {
+        "LIBPOLYGLOT_MOCK" : "<lib:polyglot-mock>",
+        "CLANG" : "<toolchainGetToolPath:native,CC>",
+        "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -449,15 +473,14 @@ suite = {
       "vpath" : True,
       "results" : [
         "bin/<lib:sulong>",
-        "bin/<lib:polyglot-mock>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
         "com.oracle.truffle.llvm.libraries.bitcode",
-        "SULONG_LLVM_ORG",
+        "sdk:LLVM_TOOLCHAIN",
       ],
       "buildEnv" : {
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
+        "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "LIBSULONG" : "<lib:sulong>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
@@ -574,6 +597,27 @@ suite = {
       "variants" : ["O0"],
       "buildEnv" : {
         "OS" : "<os>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.bitcode.uncommon.native" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      # This should be the O1 variant (and the CFLAGS buildEnv entry
+      # below should be changed to -O1) but it currently breaks the
+      # tests in the project (difference in behavior between O0 and
+      # O1). This issue is related to the vstore.ll.ignored test in
+      # that we should fix it once we have a solution for the general
+      # issue in exeuction mistmatches. Until then the Sulong behavior
+      # is the more accurate one.
+      "variants" : ["O0"],
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CFLAGS" : "-O0",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -921,12 +965,14 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
@@ -935,6 +981,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
@@ -948,9 +995,10 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           {
             "source_type": "extracted-dependency",
-            "dependency": "LLVM_ORG",
+            "dependency": "sdk:LLVM_ORG",
             "path": "./lib/<lib:c++*>*",
             "dereference" : "never",
           },
@@ -962,6 +1010,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+        "com.oracle.truffle.llvm.libraries.mock",
       ],
       "license" : "BSD-new",
     },
@@ -1047,6 +1096,16 @@ suite = {
       "defaultBuild" : False,
     },
 
+    "LLIR_TEST_GEN" : {
+      "relpath" : True,
+      "dependencies" : [
+        "com.oracle.truffle.llvm.tests.llirtestgen",
+      ],
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+
     "SULONG_TEST_SUITES" : {
       "native" : True,
       "relpath" : True,
@@ -1054,8 +1113,10 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.llirtestgen.generated/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",
@@ -1102,23 +1163,6 @@ suite = {
         ],
       },
       "license" : "BSD-new",
-    },
-    "SULONG_LLVM_ORG": {
-      "native": True,
-      "description": "LLVM with general purpose patches used by Sulong",
-      "layout": {
-        "./": [
-          "extracted-dependency:LLVM_ORG",
-          "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
-          "file:3rd_party_license_llvm-toolchain.txt",
-        ],
-        "./patches/" : [
-          "file:patches/*"
-        ],
-      },
-      "platformDependent" : True,
-      "maven": False,
-      "license" : "NCSA",
     },
   }
 }

@@ -106,7 +106,7 @@ final class PolyglotReferences {
             ContextPolicy prevPolicy = null;
             for (TruffleStackTraceElement stackTrace : TruffleStackTrace.getStackTrace(e)) {
                 RootNode root = stackTrace.getTarget().getRootNode();
-                PolyglotEngineImpl engine = (PolyglotEngineImpl) EngineAccessor.NODES.getSourceVM(root);
+                PolyglotEngineImpl engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
                 if (engine != null && usedEngine != engine) {
                     // different engine different assertion
                     break;
@@ -149,7 +149,7 @@ final class PolyglotReferences {
     private static PolyglotLanguageInstance lookupLanguageInstance(RootNode root) {
         TruffleLanguage<?> spi = EngineAccessor.NODES.getLanguage(root);
         if (spi != null) {
-            return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getLanguageInstance(spi);
+            return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(spi);
         }
         return null;
     }
