@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * Debug node that can be used when an arbitrary side-effect and a
+ * Debug node that can be used when an arbitrary side-effect and when a
  * {@link LocationIdentity#ANY_LOCATION} kill is needed.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, allowedUsageTypes = {InputType.Memory})
