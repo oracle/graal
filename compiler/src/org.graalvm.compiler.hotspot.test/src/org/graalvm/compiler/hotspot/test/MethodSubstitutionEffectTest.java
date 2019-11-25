@@ -296,11 +296,12 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
     public void test2() {
         try (AutoCloseable c = new TTY.Filter()) {
             getGraph("snippet02");
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if (t.getCause() instanceof GraalError && t.getMessage().contains("unexpected node between return StateSplit and last instruction")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
@@ -309,11 +310,12 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
     public void test3() {
         try (AutoCloseable c = new TTY.Filter()) {
             getGraph("snippet03");
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if (t.getCause() instanceof GraalError && t.getMessage().contains(" produced invalid framestate")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
@@ -332,11 +334,12 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
     public void test6() {
         try (AutoCloseable c = new TTY.Filter()) {
             getGraph("snippet06");
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if (t.getCause() instanceof GraalError && t.getMessage().contains(" produced invalid framestate")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
@@ -375,11 +378,12 @@ public class MethodSubstitutionEffectTest extends GraalCompilerTest {
             try (AutoCloseable c = new TTY.Filter()) {
                 StructuredGraph graph = getProviders().getReplacements().getIntrinsicGraph(method, INVALID_COMPILATION_ID, getDebugContext(), null);
                 getCode(method, graph);
+                Assert.fail("Compilation should not reach this point, must throw an exception before");
             } catch (Throwable t) {
                 if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid state")) {
                     continue;
                 }
-                Assert.fail(method.toString() + "-->" + t.getMessage());
+                throw new AssertionError(t);
             }
         }
 

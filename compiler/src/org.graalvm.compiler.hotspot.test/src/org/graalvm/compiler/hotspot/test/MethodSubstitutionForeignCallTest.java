@@ -340,12 +340,12 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
             Suites s = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().getDefaultSuites(getInitialOptions());
             s.getHighTier().apply(g, getDefaultHighTierContext());
             s.getMidTier().apply(g, getDefaultMidTierContext());
-            Assert.fail();
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
@@ -358,12 +358,12 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
             Suites s = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().getDefaultSuites(getInitialOptions());
             s.getHighTier().apply(g, getDefaultHighTierContext());
             s.getMidTier().apply(g, getDefaultMidTierContext());
-            Assert.fail();
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
@@ -376,12 +376,12 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
             Suites s = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().getDefaultSuites(getInitialOptions());
             s.getHighTier().apply(g, getDefaultHighTierContext());
             s.getMidTier().apply(g, getDefaultMidTierContext());
-            Assert.fail();
+            Assert.fail("Compilation should not reach this point, must throw an exception before");
         } catch (Throwable t) {
             if ((t.getCause() instanceof GraalError || t instanceof GraalError) && t.getMessage().contains("invalid framestate")) {
                 return;
             }
-            Assert.fail();
+            throw new AssertionError(t);
         }
     }
 
