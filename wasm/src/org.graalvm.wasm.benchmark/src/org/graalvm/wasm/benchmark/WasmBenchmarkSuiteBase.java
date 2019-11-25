@@ -111,6 +111,7 @@ public abstract class WasmBenchmarkSuiteBase {
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
             benchmarkRun = wasmBindings.getMember("_benchmarkRun");
+            Assert.assertNotNull(String.format("No benchmarkRun method in %s."), wantedBenchmarkName);
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
             customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             initialization = benchmarkCase.initialization();
