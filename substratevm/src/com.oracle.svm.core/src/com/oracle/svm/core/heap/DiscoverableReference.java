@@ -31,6 +31,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -218,6 +219,7 @@ public class DiscoverableReference {
             /* No instances. */
         }
 
+        @NeverInline("Prevent the access from moving around")
         public static Pointer getReferentPointer(DiscoverableReference that) {
             return that.getReferentPointer();
         }
