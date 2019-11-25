@@ -172,6 +172,7 @@ public class IntrinsicContext {
          * An intrinsic is the root of compilation.
          */
         ROOT_COMPILATION,
+
         /**
          * An intrinsic is the root of a compilation done for graph encoding.
          */
