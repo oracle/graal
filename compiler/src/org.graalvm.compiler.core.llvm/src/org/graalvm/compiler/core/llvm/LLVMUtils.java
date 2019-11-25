@@ -274,7 +274,7 @@ public class LLVMUtils {
 
         @Override
         public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
+            return value == null ? "<not assigned>" : LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 
