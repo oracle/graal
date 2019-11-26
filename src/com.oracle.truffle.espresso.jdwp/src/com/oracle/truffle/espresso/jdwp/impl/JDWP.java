@@ -684,26 +684,7 @@ class JDWP {
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
-                    if (result.getException() != null) {
-                        JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
-                    } else {
-                        Object value = context.toGuest(result.getResult());
-                        JDWPLogger.log("Got converted result from method invocation: " + value, JDWPLogger.LogLevel.PACKET);
-                        if (value != null) {
-                            byte tag = context.getTag(value);
-                            writeValue(tag, value, reply, true, context);
-                        } else { // return value is null
-                            reply.writeByte(TagConstants.OBJECT);
-                            reply.writeLong(0);
-                        }
-                        // no exception, so zero object ID
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                    }
+                    writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
@@ -762,26 +743,7 @@ class JDWP {
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
-                    if (result.getException() != null) {
-                        JDWPLogger.log("constructor threw exception", JDWPLogger.LogLevel.PACKET);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
-                    } else {
-                        Object value = context.toGuest(result.getResult());
-                        JDWPLogger.log("created new instance: " + value, JDWPLogger.LogLevel.PACKET);
-                        if (value != null) {
-                            byte tag = context.getTag(value);
-                            writeValue(tag, value, reply, true, context);
-                        } else { // return value is null
-                            reply.writeByte(TagConstants.OBJECT);
-                            reply.writeLong(0);
-                        }
-                        // no exception, so zero object ID
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                    }
+                    writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
@@ -1198,7 +1160,6 @@ class JDWP {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
                     ThreadJob job = new ThreadJob(thread, new Callable<Object>() {
-
                         @Override
                         public Object call() throws Exception {
                             return method.invokeMethod(callee, args);
@@ -1207,25 +1168,7 @@ class JDWP {
                     controller.postJobForThread(job);
                     ThreadJob.JobResult result = job.getResult();
 
-                    if (result.getException() != null) {
-                        JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(context.getIds().getIdAsLong(result.getException()));
-                    } else {
-                        Object value = context.toGuest(result.getResult());
-                        if (value != null) {
-                            byte tag = context.getTag(value);
-                            writeValue(tag, value, reply, true, context);
-                        } else { // return value is null
-                            reply.writeByte(TagConstants.OBJECT);
-                            reply.writeLong(0);
-                        }
-                        // no exception, so zero object ID
-                        reply.writeByte(TagConstants.OBJECT);
-                        reply.writeLong(0);
-                    }
+                    writeMethodResult(reply, context, result);
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
@@ -2087,6 +2030,29 @@ class JDWP {
                 break;
             default:
                 throw new RuntimeException("Should not reach here!");
+        }
+    }
+
+    private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob.JobResult result) {
+        if (result.getException() != null) {
+            JDWPLogger.log("method threw exception", JDWPLogger.LogLevel.PACKET);
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
+            reply.writeByte(TagConstants.OBJECT);
+            Object guestException = context.getGuestException(result.getException());
+            reply.writeLong(context.getIds().getIdAsLong(guestException));
+        } else {
+            Object value = context.toGuest(result.getResult());
+            if (value != null) {
+                byte tag = context.getTag(value);
+                writeValue(tag, value, reply, true, context);
+            } else { // return value is null
+                reply.writeByte(TagConstants.OBJECT);
+                reply.writeLong(0);
+            }
+            // no exception, so zero object ID
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
         }
     }
 
