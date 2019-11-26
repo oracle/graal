@@ -214,9 +214,9 @@ public final class JDWPContextImpl implements JDWPContext {
                 } else if (JAVA_LANG_CLASS_LOADER.equals(staticObject.getKlass().getType().toString())) {
                     tag = TagConstants.CLASS_LOADER;
                 }
-            } else if (isBoxedPrimitive(object.getClass())) {
-                tag = TagConstants.getTagFromPrimitive(object);
             }
+        } else if (isBoxedPrimitive(object.getClass())) {
+            tag = TagConstants.getTagFromPrimitive(object);
         }
         return tag;
     }
