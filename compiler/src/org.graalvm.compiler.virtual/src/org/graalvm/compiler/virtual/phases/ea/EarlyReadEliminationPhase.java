@@ -34,7 +34,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class EarlyReadEliminationPhase extends EffectsPhase<CoreProviders> {
 
-    private final boolean considerGuards;
+    protected final boolean considerGuards;
 
     public EarlyReadEliminationPhase(CanonicalizerPhase canonicalizer) {
         super(1, canonicalizer, true);
