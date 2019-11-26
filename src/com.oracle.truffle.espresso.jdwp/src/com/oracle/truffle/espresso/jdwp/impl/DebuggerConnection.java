@@ -426,6 +426,10 @@ public class DebuggerConnection implements JDWPCommands {
                         switch (packet.cmd) {
                             case JDWP.ThreadGroupReference.NAME.ID:
                                 result = JDWP.ThreadGroupReference.NAME.createReply(packet, context);
+                                break;
+                            case JDWP.ThreadGroupReference.PARENT.ID:
+                                result = JDWP.ThreadGroupReference.PARENT.createReply(packet, context);
+                                break;
                         }
                         break;
                     case JDWP.ArrayReference.ID: {

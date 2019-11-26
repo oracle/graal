@@ -1591,6 +1591,25 @@ class JDWP {
                 return new JDWPResult(reply);
             }
         }
+
+        static class PARENT {
+            public static final int ID = 2;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadGroupId = input.readLong();
+                Object thread = verifyThreadGroup(threadGroupId, reply, context);
+
+                if (thread == null) {
+                    return new JDWPResult(reply);
+                }
+
+                reply.writeLong(0); // no parent thread group
+                return new JDWPResult(reply);
+            }
+        }
     }
 
     static class ArrayReference {
