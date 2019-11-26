@@ -286,22 +286,6 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), parserResults, initializationOrder);
     }
 
-    /*
-     * abstract static class CheckGlobalNode extends LLVMNode {
-     * 
-     * abstract boolean execute(LLVMGlobal descriptor);
-     * 
-     * @SuppressWarnings("unused")
-     * 
-     * @Specialization(guards = "descriptor == cachedDescriptor") boolean doCached(LLVMGlobal
-     * descriptor,
-     * 
-     * @Cached("descriptor") LLVMGlobal cachedDescriptor,
-     * 
-     * @Cached("create()") LLVMCheckGlobalVariableStorageNode check) { return
-     * check.execute(cachedDescriptor); } }
-     */
-
     private abstract static class AllocGlobalNode extends LLVMNode {
 
         static final AllocGlobalNode[] EMPTY = {};
@@ -391,6 +375,7 @@ final class Runner {
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
         private final int id;
+        private final int globalLength;
 
         InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
@@ -420,6 +405,7 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
+            this.globalLength = allocGlobals.length + res.getExternalGlobals().size();
             this.writeGlobals = LLVMWriteGlobalVariableStorageNodeGen.create();
         }
 
@@ -430,7 +416,8 @@ final class Runner {
         public LLVMPointer execute(LLVMContext ctx) {
             LLVMPointer roBase = allocOrNull(allocRoSection);
             LLVMPointer rwBase = allocOrNull(allocRwSection);
-            ctx.registerGlobalMap(id, new LLVMPointer[this.allocGlobals.length + this.fileScope.values().size()]);
+            //Allocating the size of the global as determined from the module.
+            ctx.registerGlobalMap(id, new LLVMPointer[globalLength]);
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
@@ -451,7 +438,6 @@ final class Runner {
             for (int i = 0; i < allocGlobals.length; i++) {
                 AllocGlobalNode allocGlobal = allocGlobals[i];
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
-                descriptor.setIndex(i);
                 if (!checkGlobals.execute(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
                     // already bound before to a different target location
@@ -466,15 +452,11 @@ final class Runner {
         private void bindUnresolvedSymbols(LLVMContext ctx) {
             NFIContextExtension nfiContextExtension = ctx.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            int index = allocGlobals.length;
             synchronized (ctx) {
                 for (LLVMSymbol symbol : fileScope.values()) {
                     if (!symbol.isDefined()) {
                         if (symbol instanceof LLVMGlobal) {
                             LLVMGlobal global = (LLVMGlobal) symbol;
-                            global.setID(id);
-                            global.setIndex(index);
-                            index++;
                             bindGlobal(ctx, global, nfiContextExtension);
                         } else if (symbol instanceof LLVMFunctionDescriptor) {
                             LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
@@ -785,9 +767,9 @@ final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-                    ((LLVMGlobal) globalSymbol).setID(id.get());
-                    globalScope.register(globalSymbol);
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getID());
+
+                    //globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
                     throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
@@ -899,9 +881,15 @@ final class Runner {
     private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
         EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
         for (String imported : parserResult.getImportedSymbols()) {
-            ExternalLibrary lib = globalScope.get(imported).getLibrary();
-            if (lib != null) {
-                importedLibs.add(lib);
+
+            LLVMSymbol symbol = globalScope.get(imported);
+
+            if (symbol != null) {
+                ExternalLibrary lib = symbol.getLibrary();
+
+                if (lib != null) {
+                    importedLibs.add(lib);
+                }
             }
         }
         return importedLibs;
