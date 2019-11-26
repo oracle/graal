@@ -88,7 +88,6 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -252,7 +251,7 @@ public abstract class PartialEvaluator {
     private StructuredGraph createGraphForPE(DebugContext debug, String name, ResolvedJavaMethod rootMethod, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, SpeculationLog log,
                     Cancellable cancellable) {
         // @formatter:off
-        StructuredGraph.Builder builder = new StructuredGraph.Builder(TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class), debug, allowAssumptions).
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(TruffleCompilerOptions.getOptions(), debug, allowAssumptions).
                 name(name).
                 method(rootMethod).
                 speculationLog(log).

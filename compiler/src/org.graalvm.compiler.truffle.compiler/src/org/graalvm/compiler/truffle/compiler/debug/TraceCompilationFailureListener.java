@@ -36,6 +36,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 /**
  * Traces Truffle compilation failures.
@@ -75,7 +76,7 @@ public final class TraceCompilationFailureListener implements TruffleCompilerLis
     }
 
     private static boolean bailoutActionIsPrintOrGreater() {
-        OptionValues options = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
+        OptionValues options = TruffleCompilerOptions.getOptions();
         return CompilationBailoutAsFailure.getValue(options) && CompilationFailureAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
     }
 

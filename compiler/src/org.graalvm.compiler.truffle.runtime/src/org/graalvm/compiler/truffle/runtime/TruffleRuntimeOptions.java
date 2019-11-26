@@ -144,12 +144,12 @@ public final class TruffleRuntimeOptions {
      */
     public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
         Map<String, Object> map = new HashMap<>();
-        OptionValues values = callTarget.getOptionValues();
+        OptionValues values = callTarget == null ? null : callTarget.getOptionValues();
 
         for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();
             if (hasBeenSet(values, key)) {
-                Object value = TruffleRuntimeOptions.getPolyglotOptionValue(values, key);
+                Object value = getPolyglotOptionValue(values, key);
                 if (!isPrimitiveType(value)) {
                     value = CompilerRuntimeAccessor.engineAccessor().getUnparsedOptionValue(values, key);
                 }

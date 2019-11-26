@@ -27,9 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -40,6 +37,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 /**
  * A simple test class verifying that a truffle-2-truffle call never results in the compilation of
@@ -117,7 +116,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (PolyglotCompilerOptionsScope o = PolyglotCompilerOptionsScope.overrideOptions(PolyglotCompilerOptions.Inlining, false)) {
             StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerNoException));
             Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
         }
@@ -141,7 +140,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (PolyglotCompilerOptionsScope o = PolyglotCompilerOptionsScope.overrideOptions(PolyglotCompilerOptions.Inlining, false)) {
             StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerWithException));
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         }

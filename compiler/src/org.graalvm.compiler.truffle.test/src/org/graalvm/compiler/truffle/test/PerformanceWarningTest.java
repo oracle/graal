@@ -32,20 +32,16 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -121,11 +117,9 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
         boolean seenException = false;
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
-            try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE);
-                            TruffleRuntimeOptionsOverrideScope scope2runtime = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE);
-                            TruffleOptionsOverrideScope scope2compile = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE)) {
-                OptionValues options = scope2compile.getOptions();
-                DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+            try (PolyglotCompilerOptionsScope scope = PolyglotCompilerOptionsScope.overrideOptions(PolyglotCompilerOptions.TracePerformanceWarnings, Boolean.TRUE,
+                            PolyglotCompilerOptions.PerformanceWarningsAreFatal, Boolean.TRUE, PolyglotCompilerOptions.PerformanceWarningsAreFatal, Boolean.TRUE)) {
+                DebugContext debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
                 try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                     final OptimizedCallTarget compilable = target;
                     CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);

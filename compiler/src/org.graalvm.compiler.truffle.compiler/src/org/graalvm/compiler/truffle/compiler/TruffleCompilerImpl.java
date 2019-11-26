@@ -218,7 +218,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         try (PolyglotCompilerOptionsScope optionsScope = PolyglotCompilerOptionsScope.open(options)) {
             final DebugContext debugContext;
-            final OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
+            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
             if (compilation == null) {
                 debugContext = DebugContext.create(debugContextOptionValues, DebugHandlersFactory.LOADER);
             } else {
@@ -262,7 +262,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     notifyCompilableOfFailure(compilable, e);
                 }
             } else {
-                final OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
+                final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
                 try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
                                 DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                     actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug);

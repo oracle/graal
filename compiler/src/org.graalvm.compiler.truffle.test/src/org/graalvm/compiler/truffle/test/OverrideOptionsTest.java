@@ -28,8 +28,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -53,7 +53,7 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
             GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
                 @Override
                 public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph) {
-                    Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleInliningMaxCallerSize));
+                    Assert.assertEquals((Integer) 42, TruffleCompilerOptions.getPolyglotOptionValue(PolyglotCompilerOptions.InliningNodeBudget));
                 }
             };
             runtime.addListener(listener);

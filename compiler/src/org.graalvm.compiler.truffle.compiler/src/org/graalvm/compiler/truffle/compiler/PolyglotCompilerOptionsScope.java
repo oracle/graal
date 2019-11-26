@@ -68,9 +68,33 @@ public final class PolyglotCompilerOptionsScope implements Closeable {
         return current.optionValues;
     }
 
-    static PolyglotCompilerOptionsScope open(Map<String, Object> options) {
+    public static PolyglotCompilerOptionsScope open(Map<String, Object> options) {
         PolyglotCompilerOptionsScope parent = Lazy.currentScope.get();
         OptionValues values = convertToOptionValues(options);
+        PolyglotCompilerOptionsScope newScope = new PolyglotCompilerOptionsScope(values, parent);
+        Lazy.currentScope.set(newScope);
+        return newScope;
+    }
+
+    public static PolyglotCompilerOptionsScope overrideOptions(OptionKey<?> key1, Object value1, Object... extraOverrides) {
+        if ((extraOverrides.length & 1) != 0) {
+            throw new IllegalArgumentException("ExtraOverrides must have even size.");
+        }
+        PolyglotCompilerOptionsScope parent = Lazy.currentScope.get();
+        EconomicMap<OptionKey<?>, Object> parsedOptions = EconomicMap.create(Equivalence.IDENTITY);
+        if (parent != null) {
+            for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
+                OptionKey<?> descKey = desc.getKey();
+                if (parent.optionValues.hasBeenSet(descKey)) {
+                    parsedOptions.put(desc.getKey(), parent.optionValues.get(desc.getKey()));
+                }
+            }
+        }
+        parsedOptions.put(key1, value1);
+        for (int i = 0; i < extraOverrides.length; i += 2) {
+            parsedOptions.put((OptionKey<?>) extraOverrides[i], extraOverrides[i + 1]);
+        }
+        OptionValuesImpl values = new OptionValuesImpl(PolyglotCompilerOptions.getDescriptors(), parsedOptions);
         PolyglotCompilerOptionsScope newScope = new PolyglotCompilerOptionsScope(values, parent);
         Lazy.currentScope.set(newScope);
         return newScope;
