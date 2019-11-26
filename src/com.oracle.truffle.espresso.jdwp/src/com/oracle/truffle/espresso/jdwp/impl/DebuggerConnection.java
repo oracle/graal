@@ -197,7 +197,7 @@ public class DebuggerConnection implements JDWPCommands {
                                     try {
                                         Thread.sleep(10);
                                     } catch (InterruptedException e) {
-                                        Thread.interrupted();
+                                        // fall through
                                     }
                                 }
                             }
@@ -207,7 +207,7 @@ public class DebuggerConnection implements JDWPCommands {
                     }
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
-                        throw new RuntimeException("Failed to process jdwp packet", e);
+                        JDWPLogger.log("Failed to process jdwp packet with message: " + e.getMessage(), JDWPLogger.LogLevel.ALL);
                     }
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
