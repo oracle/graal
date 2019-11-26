@@ -195,7 +195,10 @@ public class RequestedJDWPEvents {
             case 5: // class positive pattern
                 String classPattern = input.readString();
                 try {
-                    Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
+                    if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
+                        classPattern = Pattern.quote(classPattern);
+                    }
+                    Pattern pattern = Pattern.compile(classPattern);
                     filter.addPositivePattern(pattern);
                     JDWPLogger.log("adding positive refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.PACKET);
                 } catch (PatternSyntaxException ex) {
@@ -204,8 +207,11 @@ public class RequestedJDWPEvents {
                 break;
             case 6:
                 classPattern = input.readString();
+                if (!classPattern.endsWith("*") && !classPattern.startsWith("*")) {
+                    classPattern = Pattern.quote(classPattern);
+                }
                 try {
-                    Pattern pattern = Pattern.compile(classPattern.replace('$', '_'));
+                    Pattern pattern = Pattern.compile(classPattern);
                     filter.addExcludePattern(pattern);
                     JDWPLogger.log("adding negative refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.PACKET);
                 } catch (PatternSyntaxException ex) {
