@@ -109,4 +109,6 @@ public interface KlassRef {
     boolean isAssignable(KlassRef klass);
 
     Object getKlassObject();
+
+    int getModifiers();
 }

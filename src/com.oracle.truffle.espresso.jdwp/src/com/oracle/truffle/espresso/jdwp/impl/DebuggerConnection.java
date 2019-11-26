@@ -280,8 +280,14 @@ public class DebuggerConnection implements JDWPCommands {
                     }
                     case JDWP.ReferenceType.ID: {
                         switch (packet.cmd) {
+                            case JDWP.ReferenceType.SIGNATURE.ID:
+                                result = JDWP.ReferenceType.SIGNATURE.createReply(packet, context);
+                                break;
                             case JDWP.ReferenceType.CLASSLOADER.ID:
                                 result = JDWP.ReferenceType.CLASSLOADER.createReply(packet, context);
+                                break;
+                            case JDWP.ReferenceType.MODIFIERS.ID:
+                                result = JDWP.ReferenceType.MODIFIERS.createReply(packet, context);
                                 break;
                             case JDWP.ReferenceType.GET_VALUES.ID:
                                 result = JDWP.ReferenceType.GET_VALUES.createReply(packet, context);

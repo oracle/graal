@@ -295,6 +295,24 @@ class JDWP {
     static class ReferenceType {
         public static final int ID = 2;
 
+        static class SIGNATURE {
+            public static final int ID = 1;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                reply.writeString(klass.getTypeAsString());
+                return new JDWPResult(reply);
+            }
+        }
+
         static class CLASSLOADER {
             public static final int ID = 2;
 
@@ -314,6 +332,25 @@ class JDWP {
                 } else {
                     reply.writeLong(context.getIds().getIdAsLong(loader));
                 }
+                return new JDWPResult(reply);
+            }
+        }
+
+        static class MODIFIERS {
+            public static final int ID = 3;
+
+            static JDWPResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long refTypeId = input.readLong();
+                KlassRef klass = verifyRefType(refTypeId, reply, context);
+                if (klass == null) {
+                    return new JDWPResult(reply);
+                }
+
+                reply.writeInt(klass.getModifiers());
+
                 return new JDWPResult(reply);
             }
         }

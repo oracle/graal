@@ -75,4 +75,9 @@ public class NullKlass implements KlassRef {
     public Object getKlassObject() {
         return null;
     }
+
+    @Override
+    public int getModifiers() {
+        return 0;
+    }
 }
