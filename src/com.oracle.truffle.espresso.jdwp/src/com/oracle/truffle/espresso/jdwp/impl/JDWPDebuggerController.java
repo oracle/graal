@@ -75,6 +75,7 @@ public class JDWPDebuggerController {
 
     // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
+    private JDWPContext context;
 
     public JDWPDebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
@@ -83,6 +84,7 @@ public class JDWPDebuggerController {
     public void initialize(TruffleLanguage.Env languageEnv, JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
         this.options = jdwpOptions;
         this.languageEnv = languageEnv;
+        this.context = context;
         this.ids = context.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
@@ -96,8 +98,8 @@ public class JDWPDebuggerController {
         }
     }
 
-    public void reInitialize(JDWPOptions jdwpOptions, JDWPContext context) {
-        initialize(languageEnv, jdwpOptions, context, true);
+    public void reInitialize() {
+        initialize(languageEnv, options, context, true);
     }
 
     public JDWPContext getContext() {
