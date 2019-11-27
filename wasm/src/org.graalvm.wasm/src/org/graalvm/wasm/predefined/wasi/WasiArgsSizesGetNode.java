@@ -38,44 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.predefined.wasi;
+
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
-import static org.graalvm.wasm.WasmTracing.trace;
-
-public class LLVMExp2F64 extends WasmPredefinedRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmModule module) {
+public class WasiArgsSizesGetNode extends WasmPredefinedRootNode {
+    public WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        double x = (double) args[0];
-
-        trace("LLVMExp2F64 EXECUTE");
-
-        return exp2(x);
+        return null;
     }
 
     @Override
     public String predefinedNodeName() {
-        return "_llvm_exp2_f64";
+        return "__wasi_args_sizes_get";
     }
 
-    // TODO: Remove the boundary here.
     @CompilerDirectives.TruffleBoundary
-    double exp2(double x) {
-        return Math.pow(2, x);
+    private WasmTrap fail(int code) {
+        throw new WasmTrap(this, "Program aborted: " + code);
     }
 }

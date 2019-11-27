@@ -41,16 +41,15 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class Unlock extends WasmPredefinedRootNode {
-    public Unlock(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+    public Unlock(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override

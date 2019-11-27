@@ -38,44 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
+package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.PredefinedModule;
 
-import static org.graalvm.wasm.WasmTracing.trace;
+import static org.graalvm.wasm.ValueTypes.I32_TYPE;
 
-public class LLVMExp2F64 extends WasmPredefinedRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmModule module) {
-        super(language, module);
-    }
-
+public class WasiModule extends PredefinedModule {
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            trace("argument: %s", arg);
-        }
-
-        double x = (double) args[0];
-
-        trace("LLVMExp2F64 EXECUTE");
-
-        return exp2(x);
-    }
-
-    @Override
-    public String predefinedNodeName() {
-        return "_llvm_exp2_f64";
-    }
-
-    // TODO: Remove the boundary here.
-    @CompilerDirectives.TruffleBoundary
-    double exp2(double x) {
-        return Math.pow(2, x);
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = new WasmModule(name, null);
+        defineMemory(context, module, "memory", 32, 4096);
+        defineFunction(module, "__wasi_args_sizes_get", types(I32_TYPE, I32_TYPE), types(), new WasiArgsSizesGetNode(language, null));
+        return module;
     }
 }

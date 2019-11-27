@@ -42,11 +42,10 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import java.util.function.Consumer;
@@ -58,8 +57,8 @@ import java.util.function.Consumer;
  * the memory.
  */
 public class RunCustomInitialization extends WasmPredefinedRootNode {
-    public RunCustomInitialization(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+    public RunCustomInitialization(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override

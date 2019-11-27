@@ -57,6 +57,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.predefined.wasi.WasiModule;
 
 public abstract class PredefinedModule {
     private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();
@@ -65,6 +66,7 @@ public abstract class PredefinedModule {
         final Map<String, PredefinedModule> pm = predefinedModules;
         pm.put("emscripten", new EmscriptenModule());
         pm.put("testutil", new TestutilModule());
+        pm.put("wasi", new WasiModule());
     }
 
     public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {

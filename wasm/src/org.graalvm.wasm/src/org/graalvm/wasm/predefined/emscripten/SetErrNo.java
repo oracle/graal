@@ -41,16 +41,16 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class SetErrNo extends WasmPredefinedRootNode {
-    public SetErrNo(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+    public SetErrNo(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
@@ -66,6 +66,7 @@ public class SetErrNo extends WasmPredefinedRootNode {
         trace("SetErrNo EXECUTE");
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
+        WasmMemory memory = module.symbolTable().memory();
         memory.store_i32(3120, value);
 
         return value;

@@ -42,15 +42,14 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 public class AbortNode extends WasmPredefinedRootNode {
-    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+    public AbortNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override

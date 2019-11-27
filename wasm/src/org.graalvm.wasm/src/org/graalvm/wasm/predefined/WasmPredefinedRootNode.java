@@ -40,20 +40,17 @@
  */
 package org.graalvm.wasm.predefined;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.nodes.WasmRootNode;
-import org.graalvm.wasm.memory.WasmMemory;
 
 public abstract class WasmPredefinedRootNode extends WasmRootNode {
-    protected final TruffleLogger logger = TruffleLogger.getLogger("wasm");
-    protected final WasmMemory memory;
+    protected final WasmModule module;
 
-    public WasmPredefinedRootNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry);
-        this.memory = memory;
+    public WasmPredefinedRootNode(WasmLanguage language, WasmModule module) {
+        super(language, null);
+        this.module = module;
     }
 
     @Override
