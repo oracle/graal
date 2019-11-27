@@ -479,18 +479,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (JavaConstant.isNull(a.getConstant())) {
             append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, 0, state));
             return true;
-        } else if (a.getConstant() instanceof VMConstant && size == DWORD) {
+        } else if (a.getConstant() instanceof VMConstant && size == DWORD && target().inlineObjects) {
             VMConstant vc = (VMConstant) a.getConstant();
             append(new AMD64BinaryConsumer.MemoryVMConstOp(CMP.getMIOpcode(size, false), b, vc, state));
             return true;
         } else {
-            long value = a.getJavaConstant().asLong();
-            if (NumUtil.is32bit(value)) {
-                append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
-                return true;
-            } else {
-                return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
+            if (a.getConstant() instanceof JavaConstant && a.getJavaConstant().getJavaKind() != JavaKind.Object) {
+                long value = a.getJavaConstant().asLong();
+                if (NumUtil.is32bit(value)) {
+                    append(new AMD64BinaryConsumer.MemoryConstOp(CMP, size, b, (int) value, state));
+                    return true;
+                }
             }
+            return emitCompareRegMemoryOp(size, asAllocatable(a), b, state);
         }
     }
 

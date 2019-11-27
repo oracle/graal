@@ -46,7 +46,6 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -60,7 +59,7 @@ class OSCommittedMemoryProviderFeature implements Feature {
     }
 }
 
-public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
+public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     @Platforms(Platform.HOSTED_ONLY.class)
     public OSCommittedMemoryProvider() {
     }
@@ -94,7 +93,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
      */
     @Override
     public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        final int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
+        final int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE | (executable ? VirtualMemoryProvider.Access.EXECUTE : 0);
 
         if (alignment.equal(UNALIGNED)) {
             Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, access);

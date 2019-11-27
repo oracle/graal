@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -168,6 +170,14 @@ public final class RuntimeCodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseCodeMemory(CodePointer codeStart, UnsignedWord codeSize) {
         CommittedMemoryProvider.get().free(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
+    }
+
+    public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
+        CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
+    }
+
+    public static void makeCodeMemoryWriteableNonExecutable(CodePointer start, UnsignedWord size) {
+        CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
