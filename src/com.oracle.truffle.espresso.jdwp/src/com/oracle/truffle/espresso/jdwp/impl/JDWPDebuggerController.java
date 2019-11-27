@@ -190,26 +190,26 @@ public class JDWPDebuggerController {
     }
 
     public void stepInto(Object thread) {
-        JDWPLogger.log("STEP_INTO for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);;
+        JDWPLogger.log("STEP_INTO for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareStepInto(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_INTO);
         } else {
-            JDWPLogger.log("not STEPPING INTO for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);;
+            JDWPLogger.log("not STEPPING INTO for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
         }
     }
 
     public void stepOut(Object thread) {
-        JDWPLogger.log("STEP_OUT for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);;
+        JDWPLogger.log("STEP_OUT for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareStepOut(STEP_CONFIG);
             susp.recordStep(DebuggerCommand.Kind.STEP_OUT);
         } else {
-            JDWPLogger.log("not STEPPING OUT for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);;
+            JDWPLogger.log("not STEPPING OUT for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
         }
     }
 
