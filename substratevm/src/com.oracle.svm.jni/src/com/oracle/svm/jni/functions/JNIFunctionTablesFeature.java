@@ -30,6 +30,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -115,7 +117,13 @@ public class JNIFunctionTablesFeature implements Feature {
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
             CEntryPoint annotation = GuardedAnnotationAccess.getAnnotation(method, CEntryPoint.class);
             assert annotation != null : "only entry points allowed in class";
-            CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
+            CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> {
+                CEntryPointData data = CEntryPointData.create(method);
+                if (!SubstrateOptions.JNIExportSymbols.getValue() && data.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                    data = data.copyWithPublishAs(CEntryPointOptions.Publish.NotPublished);
+                }
+                return data;
+            });
         });
 
         ArrayList<ResolvedJavaMethod> generated = new ArrayList<>();
