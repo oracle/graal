@@ -226,7 +226,7 @@ public final class Main {
 
             HotSpotGC graalGC = runtime.getGarbageCollector();
             // Prior to JDK 14, the Graal HotSpotGC enum order matched the JDK CollectedHeap enum
-            // order, so using the ordinal value worked fine. In JDK 14, CMS was removed on the 
+            // order, so using the ordinal value worked fine. In JDK 14, CMS was removed on the
             // JDK side, so we need a symbolic lookup of the JDK value.
             int def = graalGC.ordinal() + 1;
             // The GC names are spelled the same in both enums, so no clever remapping is needed
