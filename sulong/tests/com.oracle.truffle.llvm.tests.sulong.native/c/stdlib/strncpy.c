@@ -47,6 +47,7 @@ int main() {
   copy(buf, "../some/path/that/is/a/bit/longer");
   copy(name, buf);
   printf("%s\n", name);
+  free(buf);
 
   return 0;
 }

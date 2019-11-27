@@ -327,6 +327,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return isBootImageHeaderBits(headerBits);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean isBootImage(Object o) {
         final UnsignedWord headerBits = readHeaderBitsFromObject(o);
         return isBootImageHeaderBits(headerBits);
@@ -337,6 +338,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return isBootImageHeaderBits(headerBits);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isBootImageHeaderBits(UnsignedWord headerBits) {
         return headerBitsEqual(headerBits, BOOT_IMAGE);
     }
@@ -529,6 +531,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static UnsignedWord readHeaderBitsFromObject(Object o) {
         final UnsignedWord header = readHeaderFromObject(o);
         return ObjectHeaderImpl.getHeaderBitsFromHeader(header);
@@ -560,6 +563,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /** Test if an object header has the specified bits. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean headerBitsEqual(UnsignedWord headerBits, UnsignedWord specifiedBits) {
         return headerBits.equal(specifiedBits);
     }

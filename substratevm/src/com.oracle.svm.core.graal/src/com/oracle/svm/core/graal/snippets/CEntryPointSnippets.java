@@ -84,6 +84,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -173,6 +174,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final CGlobalData<Pointer> baseIsolate = initializeBaseIsolate();
 
     @Fold
+    static boolean hasBaseIsolate() {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Fold
     static CGlobalData<Pointer> initializeBaseIsolate() {
         return CompilerBackend.getValue().equals("llvm") ? CGlobalDataFactory.createWord() : null;
     }
@@ -208,7 +214,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
-        if (CompilerBackend.getValue().equals("llvm")) {
+        if (hasBaseIsolate()) {
             Pointer value = baseIsolate.get().compareAndSwapWord(0, WordFactory.zero(), isolate.read(), LocationIdentity.ANY_LOCATION);
             if (!value.isNull()) {
                 baseIsolate.get().writeWord(0, WordFactory.signed(-1));
@@ -253,6 +259,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget
     private static int initializeIsolate() {
+        if (!Heap.getHeap().initialize()) {
+            return CEntryPointErrors.UNSPECIFIED;
+        }
+
         boolean firstIsolate = false;
 
         final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();

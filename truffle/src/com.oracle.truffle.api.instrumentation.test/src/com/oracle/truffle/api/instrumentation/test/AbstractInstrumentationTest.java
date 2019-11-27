@@ -183,10 +183,10 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
     protected final SourceSection createSection(Source source, int charIndex, int length) {
         com.oracle.truffle.api.source.Source sourceImpl = getSourceImpl(source);
         com.oracle.truffle.api.source.SourceSection sectionImpl = sourceImpl.createSection(charIndex, length);
-        return TestAccessor.ACCESSOR.engineAccess().createSourceSection(getCurrentVM(), source, sectionImpl);
+        return TestAccessor.ACCESSOR.engineAccess().createSourceSection(getPolyglotEngine(), source, sectionImpl);
     }
 
-    private Object getCurrentVM() {
+    private Object getPolyglotEngine() {
         return ReflectionUtils.getField(engine, "impl");
     }
 

@@ -260,7 +260,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         this.contextImpls = new Object[engine.contextLength];
         this.contexts = createContextArray();
-
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();

@@ -86,6 +86,18 @@ public final class ModuleSupport {
     }
 
     /**
+     * Exports and opens {@code pkg} in the module named {@code name} to all unnamed modules.
+     *
+     * @param optional if {@code false} and there is no module named {@code name},
+     *            {@link NoSuchElementException} is thrown
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+    }
+
+    /**
      * Gets the name of the module containing {@code clazz}.
      */
     @SuppressWarnings("unused")

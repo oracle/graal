@@ -30,12 +30,13 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
+//Checkstyle: stop
+
 /**
  * Definitions manually translated from the C header file sys/times.h.
  */
 @CContext(PosixDirectives.class)
 public class Times {
-    /* Allow lower-case type names: Checkstyle: stop. */
 
     @CStruct(addStructKeyword = true)
     public interface tms extends PointerBase {
@@ -67,6 +68,4 @@ public class Times {
 
     @CFunction
     public static native long times(tms tp);
-
-    /* Allow lower-case type names: Checkstyle: resume. */
 }

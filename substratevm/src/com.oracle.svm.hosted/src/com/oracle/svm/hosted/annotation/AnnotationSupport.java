@@ -61,6 +61,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateAnnotationInvocationHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -592,11 +593,35 @@ class AnnotationObjectReplacer implements Function<Object, Object> {
      */
     private ConcurrentHashMap<Object, Object> objectCache = new ConcurrentHashMap<>();
 
+    /**
+     * During image generation, individual {@link SubstrateAnnotationInvocationHandler} instances
+     * are necessary because the invocation handler still stores the actual properties of the
+     * annotation. At run time, all individual objects can be canonicalized to a singleton.
+     */
+    private static final SubstrateAnnotationInvocationHandler SINGLETON_HANDLER = new SubstrateAnnotationInvocationHandler(null);
+
+    private static final Class<?> HOSTED_INVOCATION_HANDLER_CLASS;
+    static {
+        try {
+            HOSTED_INVOCATION_HANDLER_CLASS = Class.forName("sun.reflect.annotation.AnnotationInvocationHandler");
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     @Override
     public Object apply(Object original) {
         Class<?> clazz = original.getClass();
         if (Annotation.class.isAssignableFrom(clazz) && Proxy.class.isAssignableFrom(clazz)) {
             return objectCache.computeIfAbsent(original, AnnotationObjectReplacer::replacementComputer);
+        } else if (original instanceof SubstrateAnnotationInvocationHandler) {
+            return SINGLETON_HANDLER;
+        } else if (HOSTED_INVOCATION_HANDLER_CLASS.isInstance(original)) {
+            /*
+             * If we see an instance of the AnnotationInvocationHandler used by the JDK as reachable
+             * in the image heap, something is wrong in our handling of annotations.
+             */
+            throw VMError.shouldNotReachHere("Instance of the hosted AnnotationInvocationHandler is reachable at run time");
         }
 
         return original;
@@ -610,7 +635,6 @@ class AnnotationObjectReplacer implements Function<Object, Object> {
         Class<?>[] interfaces = original.getClass().getInterfaces();
         Class<?>[] extendedInterfaces = Arrays.copyOf(interfaces, interfaces.length + 1);
         extendedInterfaces[extendedInterfaces.length - 1] = AnnotationSupport.constantAnnotationMarkerInterface;
-        return Proxy.newProxyInstance(original.getClass().getClassLoader(), extendedInterfaces, Proxy.getInvocationHandler(original));
+        return Proxy.newProxyInstance(original.getClass().getClassLoader(), extendedInterfaces, new SubstrateAnnotationInvocationHandler(Proxy.getInvocationHandler(original)));
     }
-
 }

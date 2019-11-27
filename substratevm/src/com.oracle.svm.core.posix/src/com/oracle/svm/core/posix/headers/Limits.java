@@ -27,7 +27,7 @@ package com.oracle.svm.core.posix.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
  * Definitions manually translated from the C header file linux/limits.h.

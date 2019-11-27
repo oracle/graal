@@ -156,6 +156,9 @@ public final class NativeImageBuildServer {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
+        }
 
         if (!verifyValidJavaVersionAndPlatform()) {
             System.exit(FAILED_EXIT_STATUS);

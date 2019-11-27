@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -77,7 +78,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNuller;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
@@ -582,11 +582,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMFrameNuller createFrameNuller(FrameSlot slot) {
-        return new LLVMFrameNuller(slot);
-    }
-
-    @Override
     public LLVMControlFlowNode createRetVoid() {
         return LLVMVoidReturnNodeGen.create();
     }
@@ -954,7 +949,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createAllocaArray(Type elementType, LLVMExpressionNode numElements, int alignment) {
         int byteSize = getByteSize(elementType);
-        return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, elementType);
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, elementType, numElements);
     }
 
     @Override
@@ -1062,13 +1057,12 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
+                    LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
-        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
-                        afterBlockNuller);
-        body.getOrCreateSourceDescriptor().setSourceLocation(location);
+        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]));
+        body.setSourceLocation(LLVMSourceLocation.orDefault(location));
         final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
-        functionRoot.getOrCreateSourceDescriptor().setSourceLocation(location);
+        functionRoot.setSourceLocation(LLVMSourceLocation.orDefault(location));
         return functionRoot;
     }
 

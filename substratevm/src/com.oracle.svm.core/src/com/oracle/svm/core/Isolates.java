@@ -33,9 +33,12 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -43,16 +46,16 @@ public class Isolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
     public static final String IMAGE_HEAP_END_SYMBOL_NAME = "__svm_heap_end";
     public static final String IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME = "__svm_heap_relocatable_begin";
-    public static final String IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER_NAME = "__svm_heap_relocatable_first_reloc_pointer";
     public static final String IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME = "__svm_heap_relocatable_end";
+    public static final String IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME = "__svm_a_relocatable_pointer";
     public static final String IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME = "__svm_heap_writable_begin";
     public static final String IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME = "__svm_heap_writable_end";
 
     public static final CGlobalData<Word> IMAGE_HEAP_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_END_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_RELOCATABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME);
-    public static final CGlobalData<Word> IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER = CGlobalDataFactory.forSymbol(IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_RELOCATABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME);
+    public static final CGlobalData<Word> IMAGE_HEAP_A_RELOCATABLE_POINTER = CGlobalDataFactory.forSymbol(IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
 
@@ -68,11 +71,15 @@ public class Isolates {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
         int result = CommittedMemoryProvider.get().initialize(isolatePointer, parameters);
-        if (result == CEntryPointErrors.NO_ERROR && checkSanity(isolatePointer.read()) != CEntryPointErrors.NO_ERROR) {
-            result = CEntryPointErrors.UNSPECIFIED;
-            isolatePointer.write(WordFactory.nullPointer());
+        if (result != CEntryPointErrors.NO_ERROR) {
+            return result;
         }
-        return result;
+        result = checkSanity(isolatePointer.read());
+        if (result != CEntryPointErrors.NO_ERROR) {
+            isolatePointer.write(WordFactory.nullPointer());
+            return result;
+        }
+        return CEntryPointErrors.NO_ERROR;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
@@ -86,6 +93,14 @@ public class Isolates {
 
     @Uninterruptible(reason = "Tear-down in progress.")
     public static int tearDownCurrent() {
+        freeUnmanagedMemory();
+        Heap.getHeap().tearDown();
         return CommittedMemoryProvider.get().tearDown();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void freeUnmanagedMemory() {
+        CodeInfoTable.tearDown();
+        NonmovableArrays.tearDown();
     }
 }

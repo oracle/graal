@@ -102,17 +102,20 @@ import com.oracle.svm.core.util.VMError;
  * the mutex is held from the time the safepoint is initiated until it is complete, new threads can
  * not be created (or attached) during the safepoint.
  * <p>
- * {@link ThreadingSupportFeature} implements an optional per-thread timer on top of the safepoint
- * mechanism. For that purpose, a safepoint check is actually implemented as a decrement of
- * {@link #safepointRequested} with a <= 0 check that triggers a call to
- * {@link #slowPathSafepointCheck}. If a timer is registered and the slow path determines that that
- * timer has expired, a timer callback is executed and {@link #safepointRequested} is reset with a
- * value that estimates the number of safepoint checks during the intended timer interval. When an
- * actual safepoint is requested, the master does an arithmetic negation of each slave's
- * {@link #safepointRequested} value. When no timer is active on a thread, its
- * {@link #safepointRequested} value is reset to {@link SafepointRequestValues#RESET}. Because
- * {@link #safepointRequested} still eventually decrements to 0, threads can very infrequently call
- * {@link #slowPathSafepointCheck} without cause.
+ * A safepoint check is implemented as a check of {@link #safepointRequested} <= 0, which, if true,
+ * triggers a call to {@link #slowPathSafepointCheck}. {@link ThreadingSupportFeature} implements an
+ * optional per-thread timer on top of the safepoint mechanism. If that timer feature is
+ * {@linkplain ThreadingSupportImpl.Options#SupportRecurringCallback supported in the image}, each
+ * safepoint check decrements {@link #safepointRequested} before the comparison, which will cause it
+ * to periodically enter the slow path. If a timer is registered and the slow path determines that
+ * that timer has expired, the timer callback is executed and {@link #safepointRequested} is reset
+ * with a value that estimates the number of safepoint checks during the intended timer interval.
+ * When an actual safepoint is requested, the master does an arithmetic negation of each slave's
+ * {@link #safepointRequested} value to make it enter the slow path on the next safepoint check.
+ * When no timer is active on a thread, its {@link #safepointRequested} value is reset to
+ * {@link Safepoint#THREAD_REQUEST_RESET}. Because {@link #safepointRequested} still eventually
+ * decrements to 0, threads can very infrequently call {@link #slowPathSafepointCheck} without
+ * cause.
  *
  * @see SafepointCheckNode
  */
@@ -257,12 +260,6 @@ public final class Safepoint {
         VMThreads.THREAD_MUTEX.lockNoTransition();
     }
 
-    /** Specific values for {@link #safepointRequested}. */
-    public interface SafepointRequestValues {
-        int RESET = Integer.MAX_VALUE;
-        int ENTER = 1;
-    }
-
     /**
      * Per-thread counter for safepoint requests. It can have one of the following values:
      * <ul>
@@ -276,6 +273,9 @@ public final class Safepoint {
      * </ul>
      */
     static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt();
+
+    /** The value to reset a thread's {@link #safepointRequested} value to after a safepoint. */
+    static final int THREAD_REQUEST_RESET = Integer.MAX_VALUE;
 
     /**
      * Use this method with care as it potentially destroys or skews data that is needed for
@@ -325,7 +325,7 @@ public final class Safepoint {
     private static void enterSlowPathSafepointCheck() throws Throwable {
         if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread())) {
             /* The thread is detaching so it won't ever need to execute a safepoint again. */
-            Safepoint.setSafepointRequested(Safepoint.SafepointRequestValues.RESET);
+            Safepoint.setSafepointRequested(THREAD_REQUEST_RESET);
             return;
         }
         VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Attempting to do a safepoint check when not in Java mode");
@@ -507,11 +507,15 @@ public final class Safepoint {
          * race conditions that can't be avoided for performance reasons).
          */
         private static void requestSafepoint(IsolateThread vmThread) {
-            int value;
-            do {
-                value = safepointRequested.getVolatile(vmThread);
-                assert value >= 0 : "the value can only be negative if a safepoint was requested";
-            } while (!safepointRequested.compareAndSet(vmThread, value, -value));
+            if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+                int value;
+                do {
+                    value = safepointRequested.getVolatile(vmThread);
+                    assert value >= 0 : "the value can only be negative if a safepoint was requested";
+                } while (!safepointRequested.compareAndSet(vmThread, value, -value));
+            } else {
+                safepointRequested.setVolatile(vmThread, 0);
+            }
 
             Statistics.incRequested();
         }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
@@ -45,4 +48,9 @@ public class LLVMOptions {
 
     @Option(help = "Path to a custom ld binary for LLVM linking")//
     public static final HostedOptionKey<String> CustomLD = new HostedOptionKey<>("");
+
+    @Option(help = "Enable LLVM bitcode optimizations")//
+    public static final HostedOptionKey<Boolean> BitcodeOptimizations = new HostedOptionKey<>(false);
+
+    static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMBatchesPerThread, CustomLLC, CustomLD, BitcodeOptimizations);
 }

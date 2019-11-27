@@ -24,20 +24,18 @@
  */
 package com.oracle.svm.core.posix;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -67,7 +65,6 @@ import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class, Platform.DARWIN_AMD64.class})
 @AutomaticFeature
 public class SegfaultHandlerFeature implements Feature {
 
@@ -86,12 +83,17 @@ class SubstrateSegfaultHandler {
 
     private static volatile boolean dispatchInProgress = false;
 
+    @Fold
+    static boolean fixedRegisters() {
+        return !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+    }
+
     @CEntryPoint
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
-        if (SubstrateOptions.CompilerBackend.getValue().equals("lir")) {
+        if (fixedRegisters()) {
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 PointerBase heapBase = ImageSingletons.lookup(UContextRegisterDumper.class).getHeapBase(uContext);
                 WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
@@ -108,7 +110,7 @@ class SubstrateSegfaultHandler {
                  */
                 return;
             }
-        } else if (SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+        } else {
             Isolate isolate = CEntryPointSnippets.baseIsolate.get().readWord(0);
             if (isolate.rawValue() == -1) {
                 /*

@@ -90,7 +90,8 @@ public class RuntimeCodeCache {
         NonmovableArrays.releaseUnmanagedArray(codeInfos);
         codeInfos = NonmovableArrays.nullArray();
 
-        RuntimeCodeInfoMemory.singleton().tearDown(); // releases all CodeInfos from our table too
+        // releases all CodeInfos from our table too
+        RuntimeCodeInfoMemory.singleton().tearDown();
     }
 
     /**

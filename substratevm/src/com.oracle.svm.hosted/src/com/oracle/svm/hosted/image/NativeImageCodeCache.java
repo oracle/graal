@@ -289,16 +289,18 @@ public abstract class NativeImageCodeCache {
 
     public abstract void writeCode(RelocatableBuffer buffer);
 
-    public void writeConstants(RelocatableBuffer buffer) {
+    public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            imageHeap.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
+            writer.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
         });
     }
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
 
     public abstract String[] getCCInputFiles(Path tempDirectory, String imageName);
+
+    public abstract List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile);
 
     public Map<HostedMethod, CompilationResult> getCompilations() {
         return compilations;

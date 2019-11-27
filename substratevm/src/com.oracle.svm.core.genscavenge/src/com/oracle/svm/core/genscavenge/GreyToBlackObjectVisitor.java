@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -168,8 +167,9 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                                 .string("  history / count:  ")
                                 .signed(getHistoryLength()).string(" / ").signed(historyCount)
                                 .indent(true);
-                final Pointer firstRORPointer = Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyReferenceObject);
-                final Pointer lastRORPointer = Word.objectToUntrackedPointer(NativeImageInfo.lastReadOnlyReferenceObject);
+                ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+                final Pointer firstRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject);
+                final Pointer lastRORPointer = Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject);
                 final ObjectHeaderImpl ohi = HeapImpl.getHeapImpl().getObjectHeaderImpl();
                 /*
                  * Report the history from the next available slot in the ring buffer. The older

@@ -264,7 +264,7 @@ def build_llvm_org(args=None):
     defaultBuildArgs = ['-p']
     if not args.no_warning_as_error:
         defaultBuildArgs += ['--warning-as-error']
-    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
 
 
 def clangformatcheck(args=None):
@@ -660,7 +660,7 @@ def findGCCProgram(gccProgram, optional=False):
         return installedProgram
 
 def findBundledLLVMProgram(llvm_program):
-    llvm_dist = 'SULONG_LLVM_ORG'
+    llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
@@ -968,19 +968,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         ),
     ] + _suite.toolchain.get_launcher_configs(),
     installable=False,
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='LLVM.org toolchain',
-    short_name='llp',
-    installable=True,
-    installable_id='llvm-toolchain',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
-    dependencies=[],
-    support_distributions=['sulong:SULONG_LLVM_ORG']
 ))
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,16 +28,15 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
@@ -59,11 +58,11 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
     public static EnumSet<AMD64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
 
-        LibCHelper.CPUFeatures cpuFeatures = StackValue.get(LibCHelper.CPUFeatures.class);
+        AMD64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AMD64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(LibCHelper.CPUFeatures.class), (byte) 0);
+        MemoryUtil.fillToMemoryAtomic((Pointer) cpuFeatures, SizeOf.unsigned(AMD64LibCHelper.CPUFeatures.class), (byte) 0);
 
-        LibCHelper.determineCPUFeatures(cpuFeatures);
+        AMD64LibCHelper.determineCPUFeatures(cpuFeatures);
         if (cpuFeatures.fCX8()) {
             features.add(AMD64.CPUFeature.CX8);
         }

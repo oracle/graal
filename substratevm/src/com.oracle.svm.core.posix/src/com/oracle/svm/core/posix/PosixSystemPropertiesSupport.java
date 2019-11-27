@@ -24,21 +24,16 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Limits.MAXPATHLEN;
-import static com.oracle.svm.core.posix.headers.Pwd.getpwuid;
-
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
-import com.oracle.svm.core.posix.headers.Pwd.passwd;
+import com.oracle.svm.core.posix.headers.Limits;
+import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Unistd;
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSupport {
 
     /*
@@ -48,19 +43,19 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
 
     @Override
     protected String userNameValue() {
-        passwd pwent = getpwuid(Unistd.getuid());
+        Pwd.passwd pwent = Pwd.getpwuid(Unistd.getuid());
         return pwent.isNull() ? "?" : CTypeConversion.toJavaString(pwent.pw_name());
     }
 
     @Override
     protected String userHomeValue() {
-        passwd pwent = getpwuid(Unistd.getuid());
+        Pwd.passwd pwent = Pwd.getpwuid(Unistd.getuid());
         return pwent.isNull() ? "?" : CTypeConversion.toJavaString(pwent.pw_dir());
     }
 
     @Override
     protected String userDirValue() {
-        int bufSize = MAXPATHLEN();
+        int bufSize = Limits.MAXPATHLEN();
         CCharPointer buf = StackValue.get(bufSize);
         if (Unistd.getcwd(buf, WordFactory.unsigned(bufSize)).isNonNull()) {
             return CTypeConversion.toJavaString(buf);

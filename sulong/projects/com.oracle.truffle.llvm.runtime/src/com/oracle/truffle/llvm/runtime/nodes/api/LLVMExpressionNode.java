@@ -33,20 +33,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 /**
  * An expression node is a node that returns a result, e.g., a local variable read, or an addition
@@ -55,8 +45,9 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @GenerateWrapper
 public abstract class LLVMExpressionNode extends LLVMInstrumentableNode {
 
+    @SuppressWarnings("static-method")
     @GenerateWrapper.OutgoingConverter
-    Object convertOutgoing(@SuppressWarnings("unused") Object object) {
+    final Object convertOutgoing(@SuppressWarnings("unused") Object object) {
         return null;
     }
 
@@ -64,19 +55,15 @@ public abstract class LLVMExpressionNode extends LLVMInstrumentableNode {
 
     public abstract Object executeGeneric(VirtualFrame frame);
 
-    public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVM80BitFloat(executeGeneric(frame));
-    }
-
-    public LLVMPointer executeLLVMPointer(VirtualFrame frame) throws UnexpectedResultException {
+    public final LLVMPointer executeLLVMPointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMPointer(executeGeneric(frame));
     }
 
-    public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
+    public final LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMNativePointer(executeGeneric(frame));
     }
 
-    public LLVMManagedPointer executeLLVMManagedPointer(VirtualFrame frame) throws UnexpectedResultException {
+    public final LLVMManagedPointer executeLLVMManagedPointer(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMManagedPointer(executeGeneric(frame));
     }
 
@@ -104,52 +91,16 @@ public abstract class LLVMExpressionNode extends LLVMInstrumentableNode {
         return LLVMTypesGen.expectLong(executeGeneric(frame));
     }
 
-    public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMIVarBit(executeGeneric(frame));
-    }
-
     public byte executeI8(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectByte(executeGeneric(frame));
     }
 
-    public LLVMI8Vector executeLLVMI8Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI8Vector(executeGeneric(frame));
-    }
-
-    public LLVMI64Vector executeLLVMI64Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI64Vector(executeGeneric(frame));
-    }
-
-    public LLVMI32Vector executeLLVMI32Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI32Vector(executeGeneric(frame));
-    }
-
-    public LLVMI1Vector executeLLVMI1Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI1Vector(executeGeneric(frame));
-    }
-
-    public LLVMI16Vector executeLLVMI16Vector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMI16Vector(executeGeneric(frame));
-    }
-
-    public LLVMFloatVector executeLLVMFloatVector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMFloatVector(executeGeneric(frame));
-    }
-
-    public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMDoubleVector(executeGeneric(frame));
-    }
-
-    public LLVMPointerVector executeLLVMPointerVector(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMPointerVector(executeGeneric(frame));
-    }
-
-    public String getSourceDescription() {
+    public final String getSourceDescription() {
         return getRootNode().getName();
     }
 
     @Override
-    public WrapperNode createWrapper(ProbeNode probe) {
+    public final WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMExpressionNodeWrapper(this, probe);
     }
 
