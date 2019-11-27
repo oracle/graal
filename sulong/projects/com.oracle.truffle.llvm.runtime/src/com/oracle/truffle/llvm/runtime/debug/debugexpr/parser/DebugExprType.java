@@ -200,8 +200,8 @@ public final class DebugExprType {
         }
     }
 
+    @TruffleBoundary
     public static DebugExprType getTypeFromSymbolTableMetaObject(Object metaObj) {
-        CompilerDirectives.transferToInterpreter();
         if (metaObj instanceof LLVMSourceBasicType) {
             LLVMSourceBasicType basicType = (LLVMSourceBasicType) metaObj;
             LLVMSourceBasicType.Kind typeKind = basicType.getKind();
