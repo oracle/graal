@@ -39,6 +39,7 @@ public class RequestFilter {
     private Object thread;
     private Pattern[] positivePatterns = new Pattern[0];
     private BreakpointInfo breakpointInfo;
+    private long thisFilterId = 0;
 
     public RequestFilter(int requestId, byte eventKind, int modifiers) {
         this.requestId = requestId;
@@ -122,5 +123,15 @@ public class RequestFilter {
 
     public Pattern[] getExcludePatterns() {
         return classExcludePatterns;
+    }
+
+    public void addThisFilterId(long thisId) {
+        System.out.println("setting this ID: " + thisId + " in " + this.hashCode());
+        this.thisFilterId = thisId;
+    }
+
+    public long getThisFilterId() {
+        System.out.println("getting this ID: " + thisFilterId + " in " + this.hashCode());
+        return thisFilterId;
     }
 }
