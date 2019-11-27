@@ -29,7 +29,7 @@
  */
  
 /*
- * The parser and lexer need to be generated using 'mx create-parser';
+ * The parser and lexer need to be generated using 'mx create-parsers';
  */
 
 grammar DebugExpression;
@@ -99,8 +99,7 @@ fragment LF : '\n';
 fragment SINGLECOMMA : '\'';
 fragment QUOTE : '"';
 
-// Add token declarations here.
-// Example:
+// Token declarations here.
 LAPR : '(';
 RAPR : ')';
 ASTERISC : '*';
@@ -144,11 +143,6 @@ WS  : [ \t\r\n]+ -> skip ;
 
 // PRODUCTIONS
 
-//DebugExpr											(. DebugExpressionPair p=null; .)
-//=
-//Expr<out p> 										(. if(errors.count==0) astRoot =p.getNode(); .)
-//.
-
 debugExpr :
   {
   DebugExpressionPair p = null;
@@ -157,19 +151,6 @@ debugExpr :
   (expr { p = $expr.p; }) EOF                       {if(_syntaxErrors == 0){ astRoot = p.getNode();}}
   );
 
-
-//PrimExpr<out DebugExpressionPair p>					(. p=null; .)
-//=
-//ident 												(. p = NF.createVarNode(t.val);.)
-//|
-//number 												(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
-//|
-//floatnumber 										(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)
-//|
-//charConst											(. p = NF.createCharacterConstant(t.val); .)
-//|
-//"(" Expr<out p> ")"
-//.
 
 primExpr returns [DebugExpressionPair p] :
   {
@@ -184,20 +165,6 @@ primExpr returns [DebugExpressionPair p] :
   ;
 
 
-//Designator<out DebugExpressionPair p>				(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
-//=
-//PrimExpr<out p>
-//{
-//	 "[" Expr<out idxPair> "]"						(. p = NF.createArrayElement(p, idxPair); .)
-//	|
-//	 ActPars<out l>									(. p = NF.createFunctionCall(p, l); .)
-//	|
-//	 "." ident										(. p = NF.createObjectMember(p, t.val); .)
-//	|
-//	 "->" ident										(. p = NF.createObjectPointerMember(p, t.val); .)
-//}
-//.
-
 designator returns [DebugExpressionPair p] :
   (
   primExpr { $p = $primExpr.p; }
@@ -209,22 +176,6 @@ designator returns [DebugExpressionPair p] :
   )*;
 
 
-//
-//ActPars<out List l>									(. DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); .)
-//=
-//"("
-//[
-//	 Expr<out p1> 									(. l.add(p1); .)
-//
-//	{
-//		 "," Expr<out p2> 							(. l.add(p2); .)
-//
-//	}
-//
-//]
-//")"
-//.
-
 actPars returns [List l] :
   {
   $l = new LinkedList<DebugExpressionPair>();
@@ -232,38 +183,12 @@ actPars returns [List l] :
   LAPR ( (expr { $l.add($expr.p); }) (',' expr { $l.add($expr.p); })* )? ')';
 
 
-//UnaryExpr<out DebugExpressionPair p>				(. p=null; char kind='\0'; DebugExprType typeP=null;.)
-//=
-//Designator<out p>
-//|
-//UnaryOp<out kind> CastExpr<out p> 					(. p = NF.createUnaryOpNode(p, kind); .)
-//|
-//"sizeof" "(" DType<out typeP> ")" 					(. p=NF.createSizeofNode(typeP); .)
-//.
-
 unaryExpr returns [DebugExpressionPair p] :
   ( designator                                          { $p = $designator.p; }
   | unaryOP castExpr                                    { $p = NF.createUnaryOpNode($castExpr.p, $unaryOP.kind); }
   | 'sizeof' LAPR dType ')'                             { $p = NF.createSizeofNode($dType.ty); }
   );
 
-
-//
-//UnaryOp<out char kind>								(. kind='\0'; .)
-//=
-//(
-//	 "*"
-//	|
-//	 "+"
-//	|
-//	 "-"
-//	|
-//	 "~"
-//	|
-//	 "!"
-//)
-//													(. kind = t.val.charAt(0); .)
-//.
 
 unaryOP returns [char kind] :
   t=( '*'
@@ -274,22 +199,6 @@ unaryOP returns [char kind] :
   )                                              { $kind = $t.getText().charAt(0); }
   ;
 
-
-//CastExpr<out DebugExpressionPair p>					(. DebugExprType typeP=null; DebugExprTypeofNode typeNode=null; .)
-//=
-//[
-//	IF (IsCast()) "("
-//		(
-//			DType<out typeP>
-//		|
-//			"typeof" "(" ident						(. typeNode = NF.createTypeofNode(t.val); .)
-//			")"
-//		)
-//		")"
-//]
-//UnaryExpr<out p> 									(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); }
-//														if(typeNode!=null) {p = NF.createPointerCastNode(p, typeNode);} .)
-//.
 
 castExpr returns [DebugExpressionPair p] :
   {
@@ -313,21 +222,6 @@ castExpr returns [DebugExpressionPair p] :
   ;
 
 
-//MultExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//CastExpr<out p>
-//{
-//	 "*" CastExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1); .)
-//
-//	|
-//	 "/" CastExpr<out p1> 							(. p = NF.createDivNode(p, p1); .)
-//
-//	|
-//	 "%" CastExpr<out p1> 							(. p = NF.createRemNode(p, p1); .)
-//
-//}
-//.
-
 multExpr returns [DebugExpressionPair p] :
   (
   castExpr { $p = $castExpr.p; }
@@ -338,18 +232,6 @@ multExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//AddExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//MultExpr<out p>
-//{
-//	 "+" MultExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1); .)
-//
-//	|
-//	 "-" MultExpr<out p1> 							(.p = NF.createArithmeticOp(ArithmeticOperation.SUB, p, p1); .)
-//
-//}
-//.
-
 addExpr returns [DebugExpressionPair p] :
   (multExpr { $p = $multExpr.p; })
   ( ('+' multExpr { $p = NF.createArithmeticOp(ArithmeticOperation.ADD, $p, $multExpr.p);})
@@ -357,42 +239,12 @@ addExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//ShiftExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
-//=
-//AddExpr<out p>
-//{
-//	 "<<" AddExpr<out p1> 							(.p = NF.createShiftLeft(p, p1); .)
-//
-//	|
-//	 ">>" AddExpr<out p1> 							(.p = NF.createShiftRight(p, p1); .)
-//
-//}
-//.
-
 shiftExpr returns [DebugExpressionPair p] :
   (addExpr { $p = $addExpr.p; })
   ( ('<<' addExpr { $p = NF.createShiftLeft($p, $addExpr.p); })
   | ('>>' addExpr { $p = NF.createShiftRight($p, $addExpr.p); })
   )*;
 
-
-//RelExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//ShiftExpr<out p>
-//{
-//	 "<" ShiftExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.LT, p1); .)
-//
-//	|
-//	 ">" ShiftExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.GT, p1); .)
-//
-//	|
-//	 "<=" ShiftExpr<out p1> 						(. p = NF.createCompareNode(p, CompareKind.LE, p1); .)
-//
-//	|
-//	 ">=" ShiftExpr<out p1> 						(. p = NF.createCompareNode(p, CompareKind.GE, p1); .)
-//
-//}
-//.
 
 relExpr returns [DebugExpressionPair p] :
   (
@@ -405,33 +257,12 @@ relExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//EqExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//RelExpr<out p>
-//{
-//	 "==" RelExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.EQ, p1); .)
-//
-//	|
-//	 "!=" RelExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.NE, p1); .)
-//
-//}
-//.
-
 eqExpr returns [DebugExpressionPair p] :
   (relExpr { $p = $relExpr.p; })
   ( ('==' relExpr { $p = NF.createCompareNode($p, CompareKind.EQ, $relExpr.p); })
   | ('!=' relExpr { $p = NF.createCompareNode($p, CompareKind.NE, $relExpr.p); })
   )*;
 
-
-//AndExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//EqExpr<out p>
-//{
-//	 "&" EqExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1); .)
-//
-//}
-//.
 
 andExpr returns [DebugExpressionPair p] :
   ( eqExpr { $p = $eqExpr.p; } )
@@ -440,30 +271,12 @@ andExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//XorExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//AndExpr<out p>
-//{
-//	 "^" AndExpr<out p1> 							(.	p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1); .)
-//
-//}
-//.
-
 xorExpr returns [DebugExpressionPair p] :
   ( andExpr { $p = $andExpr.p; } )
   (
     '^' andExpr { $p = NF.createArithmeticOp(ArithmeticOperation.XOR, $p, $andExpr.p); }
   )*;
 
-
-//OrExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
-//=
-//XorExpr<out p>
-//{
-//	 "|" XorExpr<out p1> 							(.  p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1); .)
-//
-//}
-//.
 
 orExpr returns [DebugExpressionPair p] :
   ( xorExpr { $p = $xorExpr.p; } )
@@ -472,15 +285,6 @@ orExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//LogAndExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
-//=
-//OrExpr<out p>
-//{
-//	 "&&" OrExpr<out p1> 							(. p= NF.createLogicalAndNode(p, p1); .)
-//
-//}
-//.
-
 logAndExpr returns [DebugExpressionPair p] :
   ( orExpr { $p = $orExpr.p; } )
   (
@@ -488,29 +292,13 @@ logAndExpr returns [DebugExpressionPair p] :
   )*;
 
 
-//LogOrExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
-//=
-//LogAndExpr<out p>
-//{
-//	 "||" LogAndExpr<out p> 						(. p= NF.createLogicalOrNode(p, p1); .)
-//
-//}
-//.
 logOrExpr returns [DebugExpressionPair p] :
   ( logAndExpr { $p = $logAndExpr.p; } )
   (
     '||' logAndExpr { $p = NF.createLogicalOrNode($p, $logAndExpr.p); }
   )*;
 
-//
-//Expr<out DebugExpressionPair p>						(. DebugExpressionPair pThen=null, pElse=null; .)
-//=
-//LogOrExpr<out p>
-//[
-//	 "?" Expr<out pThen> ":" Expr<out pElse> 		(. p = NF.createTernaryNode(p, pThen, pElse);.)
-//
-//]
-//.
+
 expr returns [DebugExpressionPair p] :
   {
   DebugExpressionPair pThen = null;
@@ -522,26 +310,6 @@ expr returns [DebugExpressionPair p] :
     ':' (expr { pElse = $expr.p; }) { $p = NF.createTernaryNode($p, pThen, pElse); }
   )?;
 
-
-//
-//DType<out DebugExprType ty>
-//=
-//BaseType<out ty>
-//{
-//		 "*" 										(. ty = ty.createPointer(); .)
-//
-//}
-//{
-//	 "["
-//
-//	(
-//		 number										(. ty = ty.createArrayType(Integer.parseInt(t.val)); .)
-//	|
-//													(. ty = ty.createArrayType(-1); .)
-//	)
-//	 "]"
-//}
-//.
 
 dType returns [DebugExprType ty] :
   (
@@ -556,51 +324,6 @@ dType returns [DebugExprType ty] :
     )
   ']')*;
 
-
-//BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
-//=
-//"(" DType<out ty> ")"
-//|
-//"void" 												(. ty = DebugExprType.getVoidType(); .)
-//|
-//
-//(
-//	 "signed" 										(. signed = true; .)
-//
-//	|
-//	 "unsigned" 									(. signed = false; .)
-//
-//)
-//[
-//	 "char" 										(. ty = DebugExprType.getIntType(8, signed); .)
-//
-//	|
-//	 "short" 										(. ty = DebugExprType.getIntType(16, signed); .)
-//
-//	|
-//	 "int" 											(. ty = DebugExprType.getIntType(32, signed); .)
-//
-//	|
-//	 "long" 										(. ty = DebugExprType.getIntType(64, signed); .)
-//
-//]
-//|
-//"char" 												(. ty = DebugExprType.getIntType(8, false);.)
-//|
-//"short" 											(. ty = DebugExprType.getIntType(16, true);.)
-//|
-//"int" 												(. ty = DebugExprType.getIntType(32, true);.)
-//|
-//"long" 												(. ty = DebugExprType.getIntType(64, true);.)
-//[
-//	 "double" 										(. ty = DebugExprType.getFloatType(128); .)
-//
-//]
-//|
-//"float" 											(. ty = DebugExprType.getFloatType(32);.)
-//|
-//"double" 											(. ty = DebugExprType.getFloatType(64);.)
-//.
 
 baseType returns [DebugExprType ty] :
   {
