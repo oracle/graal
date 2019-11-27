@@ -109,5 +109,4 @@ public interface RepeatingNode extends NodeInterface {
             return BREAK_LOOP_STATUS;
         }
     }
-
 }
