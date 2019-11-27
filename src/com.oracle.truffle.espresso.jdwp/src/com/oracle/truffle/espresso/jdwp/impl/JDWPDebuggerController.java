@@ -81,20 +81,20 @@ public class JDWPDebuggerController {
         this.instrument = instrument;
     }
 
-    public void initialize(TruffleLanguage.Env languageEnv, JDWPOptions jdwpOptions, JDWPContext context, boolean reconnect) {
+    public void initialize(TruffleLanguage.Env env, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
         this.options = jdwpOptions;
-        this.languageEnv = languageEnv;
-        this.context = context;
-        this.ids = context.getIds();
+        this.languageEnv = env;
+        this.context = jdwpContext;
+        this.ids = jdwpContext.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
-        Debugger debugger = languageEnv.lookup(languageEnv.getInstruments().get("debugger"), Debugger.class);
+        Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
         debuggerSession.suspendNextExecution();
 
         if (!reconnect) {
-            instrument.init(context);
+            instrument.init(jdwpContext);
         }
     }
 
@@ -169,7 +169,7 @@ public class JDWPDebuggerController {
     }
 
     public void stepOver(Object thread) {
-        JDWPLogger.log("STEP_OVER for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);;
+        JDWPLogger.log("STEP_OVER for thread: " + getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
@@ -314,7 +314,7 @@ public class JDWPDebuggerController {
         return lock;
     }
 
-    public void disposeDebugger(boolean prepareForReconnect) {
+    public void disposeDebugger() {
         new Thread(new Runnable() {
             @Override
             public void run() {

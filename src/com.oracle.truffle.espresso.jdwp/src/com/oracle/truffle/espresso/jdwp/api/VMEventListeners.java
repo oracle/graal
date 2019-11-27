@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
-import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.impl.VMEventListener;
 

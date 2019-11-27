@@ -45,7 +45,7 @@ public class JDWPSetup {
         JDWPDebuggerController controller = contextMap.get(context);
         if (controller != null) {
             VMEventListeners.getDefault().vmDied();
-            controller.disposeDebugger(false);
+            controller.disposeDebugger();
         }
     }
 }

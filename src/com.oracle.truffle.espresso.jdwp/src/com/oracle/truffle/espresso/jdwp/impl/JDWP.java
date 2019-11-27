@@ -116,7 +116,7 @@ class JDWP {
                 return new JDWPResult(reply, Collections.singletonList(new Callable<Void>() {
                     @Override
                     public Void call() throws Exception {
-                        controller.disposeDebugger(true);
+                        controller.disposeDebugger();
                         return null;
                     }
                 }));
@@ -202,8 +202,8 @@ class JDWP {
                 // TODO(Gregersen) - currently, we don't free up IDs
                 int count = input.readInt();
                 for (int i = 0; i < count; i++) {
-                    long objectID = input.readLong();
-                    int refCount = input.readInt();
+                    /*long objectID =*/ input.readLong();
+                    /*int refCount =*/ input.readInt();
                 }
                 return new JDWPResult(reply);
             }
