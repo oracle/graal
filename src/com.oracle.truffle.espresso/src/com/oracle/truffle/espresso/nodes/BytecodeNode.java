@@ -579,6 +579,10 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         int statementIndex = -1;
         int nextStatementIndex = 0;
 
+        if (instrument != null) {
+            instrument.notifyEntry(frame);
+        }
+
         loop: while (true) {
             int curOpcode;
             bcCount.inc();
@@ -1248,9 +1252,15 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
     private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
         if (instrumentation != null) {
-            instrumentation.notifyStatement(frame, statementIndex, -1);
+            instrumentation.notifyReturn(frame, statementIndex, toReturn);
         }
         return toReturn;
+    }
+
+    public void notifyEntry(VirtualFrame frame) {
+        if (instrumentation != null) {
+            instrumentation.notifyEntry(frame);
+        }
     }
 
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
@@ -2404,6 +2414,14 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             }
             exitAt(frame, statementIndex);
             enterAt(frame, nextStatementIndex);
+        }
+
+        public void notifyEntry(VirtualFrame frame) {
+            // TODO(Gregersen) - implement method entry breakpoint hooks
+        }
+
+        public void notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
+            // TODO(Gregersen) - implement method return breakpoint hooks
         }
 
         final void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {
