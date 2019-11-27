@@ -219,7 +219,7 @@ class MultiLanguageShell {
             } catch (PolyglotException e) {
                 bufferSource = null;
                 if (e.isInternalError()) {
-                    console.println("Internal error occured: " + e.toString());
+                    console.println("Internal error occurred: " + e.toString());
                     if (verboseErrors) {
                         e.printStackTrace(new PrintWriter(console.getOutput()));
                     } else {
@@ -260,7 +260,7 @@ class MultiLanguageShell {
                     }
                 }
             } catch (Throwable e) {
-                console.println("Internal error occured: " + e.toString());
+                console.println("Internal error occurred: " + e.toString());
                 if (verboseErrors) {
                     e.printStackTrace(new PrintWriter(console.getOutput()));
                 } else {
