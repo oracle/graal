@@ -72,6 +72,11 @@ public class SecurityServiceTest {
 
         static final long serialVersionUID = 1234L;
 
+        /*
+         * The java.security.Provider(String name, double version, String info) constructor was
+         * deprecated in Java > 8
+         */
+        @SuppressWarnings("deprecation")
         protected NoOpProvider() {
             super("no-op-provider", 1.0, "No-op provider used in " + SecurityServiceTest.class.getName());
             putService(new NoOpService(this));
