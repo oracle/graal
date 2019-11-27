@@ -33,6 +33,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
@@ -200,6 +201,7 @@ public final class DebugExprType {
     }
 
     public static DebugExprType getTypeFromSymbolTableMetaObject(Object metaObj) {
+        CompilerDirectives.transferToInterpreter();
         if (metaObj instanceof LLVMSourceBasicType) {
             LLVMSourceBasicType basicType = (LLVMSourceBasicType) metaObj;
             LLVMSourceBasicType.Kind typeKind = basicType.getKind();
