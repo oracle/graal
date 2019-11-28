@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
@@ -57,7 +58,7 @@ public class ResetContextNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         boolean zeroMemory = (boolean) frame.getArguments()[0];
         resetModuleState(zeroMemory);
         return WasmVoidResult.getInstance();

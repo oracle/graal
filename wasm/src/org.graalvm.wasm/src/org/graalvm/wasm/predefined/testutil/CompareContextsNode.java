@@ -43,6 +43,7 @@ package org.graalvm.wasm.predefined.testutil;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.Globals;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
@@ -60,7 +61,7 @@ public class CompareContextsNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final ContextState firstState = (ContextState) frame.getArguments()[0];
         final ContextState lastState = (ContextState) frame.getArguments()[0];
         compareContexts(firstState, lastState);

@@ -88,6 +88,12 @@ public class Linker {
                 linkMemories(module);
                 module.setLinked();
             }
+            for (WasmModule module : modules.values()) {
+                final WasmFunction start = module.symbolTable().startFunction();
+                if (start != null) {
+                    start.resolveCallTarget().call(new Object[0]);
+                }
+            }
             linked = true;
         }
     }

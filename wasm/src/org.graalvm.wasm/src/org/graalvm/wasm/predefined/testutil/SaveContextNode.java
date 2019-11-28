@@ -60,7 +60,7 @@ public class SaveContextNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         return saveModuleState();
     }
 

@@ -41,6 +41,7 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -54,7 +55,7 @@ public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         trace("EmscriptenGetHeapSize EXECUTE");
 
         WasmMemory memory = module.symbolTable().memory();

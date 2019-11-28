@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
@@ -54,7 +55,7 @@ public class WasiArgsSizesGetNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         WasmMemory memory = module.symbolTable().memory();
         int argcAddress = (int) frame.getArguments()[0];
         int argvBufSizeAddress = (int) frame.getArguments()[1];

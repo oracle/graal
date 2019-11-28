@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.predefined;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.nodes.WasmRootNode;
@@ -51,11 +50,6 @@ public abstract class WasmPredefinedRootNode extends WasmRootNode {
     public WasmPredefinedRootNode(WasmLanguage language, WasmModule module) {
         super(language, null);
         this.module = module;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return 0;
     }
 
     public abstract String predefinedNodeName();
