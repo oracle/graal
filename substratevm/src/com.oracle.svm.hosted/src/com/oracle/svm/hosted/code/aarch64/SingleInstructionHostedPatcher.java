@@ -31,10 +31,10 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -131,17 +131,12 @@ public class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnota
     @Override
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         /*
-         * The relocation site is some offset into the instruction, which is some offset into the
-         * method, which is some offset into the text section (a.k.a. code cache). The offset we get
-         * out of the RelocationSiteInfo accounts for the first two, since we pass it the whole
-         * method. We add the method start to get the section-relative offset.
+         * Right now relocations need to have the ability to access a value via a PC-relative 32 bit
+         * immediate, which is too big for a single instruction. Instead, either adrp/ldr, adrp/add,
+         * or a sequence of moves should be used.
          */
-        int siteOffset = compStart + annotation.instructionPosition;
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
-        siteOffset += 4;
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 0, Long.valueOf(0), ref);
-        // relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_GOT_LD_PREL19, 0,
-        // Long.valueOf(0), ref);
+
+        throw VMError.shouldNotReachHere("Currently relocations must use either adrp/ldp, adrp/add, or a sequence of moves");
     }
 }
 
@@ -240,37 +235,33 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
     @Override
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         /*
-         * The relocation site is some offset into the instruction, which is some offset into the
+         * The relocation site is the offset of the instruction, which is some offset into the
          * method, which is some offset into the text section (a.k.a. code cache). The offset we get
-         * out of the RelocationSiteInfo accounts for the first two, since we pass it the whole
+         * out of the RelocationSiteInfo accounts for instruction offset, since we pass it the whole
          * method. We add the method start to get the section-relative offset.
          */
         int siteOffset = compStart + annotation.instructionPosition;
         if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference) {
             if (annotation.numInstrs == 1) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G0, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             } else if (annotation.numInstrs > 1) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G0_NC, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             }
+            siteOffset = siteOffset + 4;
             if (annotation.numInstrs == 2) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G1, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             } else if (annotation.numInstrs > 2) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G1_NC, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             }
+            siteOffset = siteOffset + 4;
             if (annotation.numInstrs == 3) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G2, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             } else if (annotation.numInstrs > 3) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G2_NC, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             }
+            siteOffset = siteOffset + 4;
             if (annotation.numInstrs == 4) {
                 relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_MOVW_UABS_G3, 2, Long.valueOf(0), ref);
-                siteOffset = siteOffset + 4;
             }
         } else if (ref instanceof ConstantReference) {
             relocs.addDirectRelocationWithoutAddend(siteOffset, annotation.numInstrs * 2, ref);
