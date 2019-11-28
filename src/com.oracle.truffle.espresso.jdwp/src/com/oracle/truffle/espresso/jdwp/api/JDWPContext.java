@@ -59,13 +59,6 @@ public interface JDWPContext {
     KlassRef[] getAllLoadedClasses();
 
     /**
-     * Finds the klass for which an root node was created from.
-     * @param root the Truffle root node object
-     * @return the declaring class of the root node
-     */
-    KlassRef getKlassFromRootNode(RootNode root);
-
-    /**
      * Finds the method for which an root node was created from.
      * @param root the Truffle root node object
      * @return the declaring method of the root node

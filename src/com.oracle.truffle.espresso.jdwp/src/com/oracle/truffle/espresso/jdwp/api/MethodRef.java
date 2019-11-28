@@ -128,4 +128,10 @@ public interface MethodRef {
      * @return true if last line, false otherwise
      */
     boolean isLastLine(long codeIndex);
+
+    /**
+     * Returns the klass that declares this method.
+     * @return the declaring klass
+     */
+    KlassRef getDeclaringKlass();
 }

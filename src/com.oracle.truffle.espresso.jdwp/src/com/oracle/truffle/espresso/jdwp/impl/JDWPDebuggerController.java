@@ -532,10 +532,10 @@ public class JDWPDebuggerController {
                 }
 
                 RootNode root = findCurrentRoot(frame);
-                KlassRef klass = getContext().getKlassFromRootNode(root);
+                MethodRef method = getContext().getMethodFromRootNode(root);
 
-                if (klass != null) {
-                    MethodRef method = getContext().getMethodFromRootNode(root);
+                if (method != null) {
+                    KlassRef klass = method.getDeclaringKlass();
 
                     long klassId = ids.getIdAsLong(klass);
                     long methodId = ids.getIdAsLong(method);

@@ -135,14 +135,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public KlassRef getKlassFromRootNode(RootNode root) {
-        if (root != null && root instanceof EspressoRootNode) {
-            return ((EspressoRootNode) root).getMethod().getDeclaringKlass();
-        }
-        return null;
-    }
-
-    @Override
     public MethodRef getMethodFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
             return ((EspressoRootNode) root).getMethod();
