@@ -42,29 +42,38 @@ package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.exception.WasmTrap;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiArgsSizesGetNode extends WasmPredefinedRootNode {
-    public WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
+    WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return null;
+        WasmMemory memory = module.symbolTable().memory();
+        int argcAddress = (int) frame.getArguments()[0];
+        int argvBufSizeAddress = (int) frame.getArguments()[1];
+
+        final String[] arguments = contextReference().get().environment().getApplicationArguments();
+        final int argc = arguments.length;
+        int argvBufSize = 0;
+        for (String argument : arguments) {
+            argvBufSize += argument.length() + 1;
+        }
+
+        memory.store_i32(argcAddress, argc);
+        memory.store_i32(argvBufSizeAddress, argvBufSize);
+
+        return WasmVoidResult.getInstance();
     }
 
     @Override
     public String predefinedNodeName() {
         return "__wasi_args_sizes_get";
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private WasmTrap fail(int code) {
-        throw new WasmTrap(this, "Program aborted: " + code);
     }
 }

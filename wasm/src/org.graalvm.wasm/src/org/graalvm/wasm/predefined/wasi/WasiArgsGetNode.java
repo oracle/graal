@@ -40,20 +40,52 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
-import static org.graalvm.wasm.ValueTypes.I32_TYPE;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class WasiModule extends PredefinedModule {
+import java.nio.charset.StandardCharsets;
+
+public class WasiArgsGetNode extends WasmPredefinedRootNode {
+    WasiArgsGetNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
+    }
+
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        WasmModule module = new WasmModule(name, null);
-        defineMemory(context, module, "memory", 32, 4096);
-        defineFunction(module, "__wasi_args_sizes_get", types(I32_TYPE, I32_TYPE), types(), new WasiArgsSizesGetNode(language, module));
-        defineFunction(module, "__wasi_args_get", types(I32_TYPE, I32_TYPE), types(), new WasiArgsGetNode(language, module));
-        return module;
+    public Object execute(VirtualFrame frame) {
+        final WasmMemory memory = module.symbolTable().memory();
+        final int argvAddress = (int) frame.getArguments()[0];
+        final int argvBuffAddress = (int) frame.getArguments()[1];
+
+        final String[] arguments = contextReference().get().environment().getApplicationArguments();
+        int argvPointer = argvAddress;
+        int argvBuffPointer = argvBuffAddress;
+        for (String argument : arguments) {
+            memory.store_i32(argvPointer, argvBuffPointer);
+            argvPointer += 4;
+            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
+                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+            }
+            for (int i = 0; i < argument.length(); i++) {
+                final char character = argument.charAt(i);
+                final byte charByte = (byte) character;
+                memory.store_i32_8(argvBuffPointer, charByte);
+                argvBuffPointer++;
+            }
+            memory.store_i32_8(argvBuffPointer, (byte) 0);
+            argvBuffPointer++;
+        }
+
+        return WasmVoidResult.getInstance();
+    }
+
+    @Override
+    public String predefinedNodeName() {
+        return "__wasi_args_sizes_get";
     }
 }
