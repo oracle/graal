@@ -101,7 +101,11 @@ public class WasmLauncher extends AbstractLanguageLauncher {
                 entryPoint = context.getBindings(getLanguageId()).getMember("_main");
             }
             if (entryPoint == null) {
-                throw abort("No main function found.");
+                // Try the wasi-sdk naming convention.
+                entryPoint = context.getBindings(getLanguageId()).getMember("_start");
+            }
+            if (entryPoint == null) {
+                throw abort("No entry-point function found, cannot start program.");
             }
             return entryPoint.execute().asInt();
         } catch (IOException e) {
