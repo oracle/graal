@@ -121,5 +121,11 @@ public interface MethodRef {
      */
     boolean hasSourceFileAttribute();
 
+    /**
+     * Determines if the code index is located in the source file on the last
+     * line of this method.
+     * @param codeIndex
+     * @return true if last line, false otherwise
+     */
     boolean isLastLine(long codeIndex);
 }

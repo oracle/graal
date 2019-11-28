@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.impl.AbstractBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;

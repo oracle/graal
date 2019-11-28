@@ -270,11 +270,35 @@ public interface JDWPContext {
      */
     JDWPCallFrame[] getStackTrace(Object thread);
 
+    /**
+     * Determines if the given object is an instance of the given klass.
+     * @param object the guest-language object
+     * @param klass the guest language klass
+     * @return true if object is instance of the klass, otherwise false
+     */
     boolean isInstanceOf(Object object, KlassRef klass);
 
+    /**
+     * Returns all top-level thread groups within the context. A top-level
+     * thread group is one that doesn't have a parent thread group.
+     * @return guest-language object array for all top-level thread groups
+     */
     Object[] getTopLevelThreadGroups();
 
+    /**
+     * Returns the reflected klass type for a given guest language klass
+     * object.
+     * @param classObject the object instance representing a class
+     * @return the reflected klass type
+     */
     KlassRef getReflectedType(Object classObject);
 
+    /**
+     * Constructs a new array with component type matching the given klass
+     * with the given length.
+     * @param klass the component type of the new array
+     * @param length
+     * @return guest language object representing the new array
+     */
     Object newArray(KlassRef klass, int length);
 }

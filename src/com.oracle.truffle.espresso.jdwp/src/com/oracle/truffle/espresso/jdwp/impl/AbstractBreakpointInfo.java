@@ -1,7 +1,6 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public class AbstractBreakpointInfo implements BreakpointInfo {

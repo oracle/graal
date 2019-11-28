@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
-
 import java.util.concurrent.Callable;
 
 public interface JDWPCommands {

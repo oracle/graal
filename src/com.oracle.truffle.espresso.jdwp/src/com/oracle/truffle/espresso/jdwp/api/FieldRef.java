@@ -82,11 +82,27 @@ public interface FieldRef {
      */
     void setValue(Object self, Object value);
 
+    /**
+     * Returns all information about potential field breakpoints set on this field.
+     * @return array of field breakpoint info
+     */
     FieldBreakpointInfo[] getFieldBreakpointInfos();
 
+    /**
+     * Add a new field breakpoint with the given info on this field.
+     * @param info the info that describes the breakpoint
+     */
     void addFieldBreakpointInfo(FieldBreakpointInfo info);
 
+    /**
+     * Remove a field breakpoint with the given info on this field.
+     * @param requestId the ID for the request that set the breakpoint
+     */
     void removeFieldBreakpointInfo(int requestId);
 
+    /**
+     * Determines if there are any breakpoints set on this field
+     * @return true if this field has any breakpoints, false otherwise
+     */
     boolean hasActiveBreakpoint();
 }

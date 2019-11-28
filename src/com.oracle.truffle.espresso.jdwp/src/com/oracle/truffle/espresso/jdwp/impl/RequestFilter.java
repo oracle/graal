@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 import java.util.regex.Pattern;

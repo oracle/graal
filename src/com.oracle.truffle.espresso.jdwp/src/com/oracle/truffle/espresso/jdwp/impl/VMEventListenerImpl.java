@@ -24,12 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.api.BreakpointInfo;
-import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.*;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

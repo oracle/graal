@@ -1,7 +1,7 @@
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 public interface BreakpointInfo {
 

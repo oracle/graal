@@ -106,9 +106,22 @@ public interface KlassRef {
      */
     Object getPrepareThread();
 
+    /**
+     * Determines if the input this klass is assignable from the given input klass.
+     * @param klass
+     * @return true if this klass is assignable from the input klass
+     */
     boolean isAssignable(KlassRef klass);
 
+    /**
+     * Returns the object representing this klass type.
+     * @return guest language object for the klass type
+     */
     Object getKlassObject();
 
+    /**
+     * Returns the modifiers of this klass.
+     * @return klass modifier bitmask.
+     */
     int getModifiers();
 }
