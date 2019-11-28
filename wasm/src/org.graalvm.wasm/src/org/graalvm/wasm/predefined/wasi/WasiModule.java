@@ -51,9 +51,10 @@ public class WasiModule extends PredefinedModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);
-        defineMemory(context, module, "memory", 32, 4096);
+        importMemory(context, module, "memory", "memory", 16, 4096);
         defineFunction(module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(), new WasiArgsSizesGetNode(language, module));
         defineFunction(module, "args_get", types(I32_TYPE, I32_TYPE), types(), new WasiArgsGetNode(language, module));
+        defineFunction(module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
         return module;
     }
 }

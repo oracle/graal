@@ -653,7 +653,7 @@ public class SymbolTable {
         return memory;
     }
 
-    void importMemory(WasmContext context, String moduleName, String memoryName, int initSize, int maxSize) {
+    public void importMemory(WasmContext context, String moduleName, String memoryName, int initSize, int maxSize) {
         checkNotLinked();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);

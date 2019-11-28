@@ -38,55 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm.exception;
 
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+/**
+ * Thrown when a WebAssembly program encounters an exit call.
+ */
+public class WasmExit extends ThreadDeath implements TruffleException {
 
-import java.nio.charset.StandardCharsets;
+    private static final long serialVersionUID = 1787712823539392187L;
+    private final Node location;
+    private final int exitCode;
 
-public class WasiArgsGetNode extends WasmPredefinedRootNode {
-    WasiArgsGetNode(WasmLanguage language, WasmModule module) {
-        super(language, module);
+    public WasmExit(Node location, int exitCode) {
+        this.location = location;
+        this.exitCode = exitCode;
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = module.symbolTable().memory();
-        final int argvAddress = (int) frame.getArguments()[0];
-        final int argvBuffAddress = (int) frame.getArguments()[1];
-
-        final String[] arguments = contextReference().get().environment().getApplicationArguments();
-        int argvPointer = argvAddress;
-        int argvBuffPointer = argvBuffAddress;
-        for (String argument : arguments) {
-            memory.store_i32(argvPointer, argvBuffPointer);
-            argvPointer += 4;
-            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
-            }
-            for (int i = 0; i < argument.length(); i++) {
-                final char character = argument.charAt(i);
-                final byte charByte = (byte) character;
-                memory.store_i32_8(argvBuffPointer, charByte);
-                argvBuffPointer++;
-            }
-            memory.store_i32_8(argvBuffPointer, (byte) 0);
-            argvBuffPointer++;
-        }
-
-        return WasmVoidResult.getInstance();
+    public Node getLocation() {
+        return location;
     }
 
     @Override
-    public String predefinedNodeName() {
-        return "__wasi_args_get";
+    public boolean isExit() {
+        return true;
+    }
+
+    @Override
+    public int getExitStatus() {
+        return exitCode;
     }
 }

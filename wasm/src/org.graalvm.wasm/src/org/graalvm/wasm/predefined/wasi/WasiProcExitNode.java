@@ -43,50 +43,24 @@ package org.graalvm.wasm.predefined.wasi;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.exception.WasmExit;
 import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-import java.nio.charset.StandardCharsets;
-
-public class WasiArgsGetNode extends WasmPredefinedRootNode {
-    WasiArgsGetNode(WasmLanguage language, WasmModule module) {
+public class WasiProcExitNode extends WasmPredefinedRootNode {
+    WasiProcExitNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = module.symbolTable().memory();
-        final int argvAddress = (int) frame.getArguments()[0];
-        final int argvBuffAddress = (int) frame.getArguments()[1];
-
-        final String[] arguments = contextReference().get().environment().getApplicationArguments();
-        int argvPointer = argvAddress;
-        int argvBuffPointer = argvBuffAddress;
-        for (String argument : arguments) {
-            memory.store_i32(argvPointer, argvBuffPointer);
-            argvPointer += 4;
-            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
-            }
-            for (int i = 0; i < argument.length(); i++) {
-                final char character = argument.charAt(i);
-                final byte charByte = (byte) character;
-                memory.store_i32_8(argvBuffPointer, charByte);
-                argvBuffPointer++;
-            }
-            memory.store_i32_8(argvBuffPointer, (byte) 0);
-            argvBuffPointer++;
-        }
-
-        return WasmVoidResult.getInstance();
+        final int exitCode = (int) frame.getArguments()[0];
+        throw new WasmExit(this, exitCode);
     }
 
     @Override
     public String predefinedNodeName() {
-        return "__wasi_args_get";
+        return "__wasi_proc_exit";
     }
 }

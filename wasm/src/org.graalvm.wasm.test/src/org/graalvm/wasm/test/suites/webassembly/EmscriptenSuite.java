@@ -53,7 +53,7 @@ public class EmscriptenSuite extends WasmSuiteBase {
 
     @Override
     protected String includedExternalModules() {
-        return super.includedExternalModules() + ",env:emscripten";
+        return super.includedExternalModules() + ",memory,env:emscripten";
     }
 
     @Override

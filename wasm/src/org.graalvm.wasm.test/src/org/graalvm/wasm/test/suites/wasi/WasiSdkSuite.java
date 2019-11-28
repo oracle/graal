@@ -38,55 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm.test.suites.wasi;
 
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import java.io.IOException;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.test.WasmSuiteBase;
+import org.junit.Test;
 
-import java.nio.charset.StandardCharsets;
-
-public class WasiArgsGetNode extends WasmPredefinedRootNode {
-    WasiArgsGetNode(WasmLanguage language, WasmModule module) {
-        super(language, module);
+public class WasiSdkSuite extends WasmSuiteBase {
+    @Override
+    protected String testResource() {
+        return "wasi";
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = module.symbolTable().memory();
-        final int argvAddress = (int) frame.getArguments()[0];
-        final int argvBuffAddress = (int) frame.getArguments()[1];
-
-        final String[] arguments = contextReference().get().environment().getApplicationArguments();
-        int argvPointer = argvAddress;
-        int argvBuffPointer = argvBuffAddress;
-        for (String argument : arguments) {
-            memory.store_i32(argvPointer, argvBuffPointer);
-            argvPointer += 4;
-            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
-            }
-            for (int i = 0; i < argument.length(); i++) {
-                final char character = argument.charAt(i);
-                final byte charByte = (byte) character;
-                memory.store_i32_8(argvBuffPointer, charByte);
-                argvBuffPointer++;
-            }
-            memory.store_i32_8(argvBuffPointer, (byte) 0);
-            argvBuffPointer++;
-        }
-
-        return WasmVoidResult.getInstance();
+    protected String includedExternalModules() {
+        return super.includedExternalModules() + ",wasi:wasi";
     }
 
     @Override
-    public String predefinedNodeName() {
-        return "__wasi_args_get";
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }
