@@ -35,12 +35,10 @@ public final class JDWPContextImpl implements JDWPContext {
     public static final NullKlass NULL_KLASS = new NullKlass();
 
     private final EspressoContext context;
-    private final JDWPVirtualMachine vm;
     private final Ids<Object> ids;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
-        this.vm = new JDWPVirtualMachineImpl();
         this.ids = new Ids<>(StaticObject.NULL);
     }
 
@@ -144,11 +142,6 @@ public final class JDWPContextImpl implements JDWPContext {
             return staticObject.asString();
         }
         return object.toString();
-    }
-
-    @Override
-    public JDWPVirtualMachine getVirtualMachine() {
-        return vm;
     }
 
     @Override

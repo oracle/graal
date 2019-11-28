@@ -227,7 +227,7 @@ public class DebuggerConnection implements JDWPCommands {
                     case JDWP.VirtualMachine.ID: {
                         switch (packet.cmd) {
                             case JDWP.VirtualMachine.VERSION.ID:
-                                result = JDWP.VirtualMachine.VERSION.createReply(packet, context.getVirtualMachine());
+                                result = JDWP.VirtualMachine.VERSION.createReply(packet, controller.getVirtualMachine());
                                 break;
                             case JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.ID:
                                 result = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, context);
@@ -242,7 +242,7 @@ public class DebuggerConnection implements JDWPCommands {
                                 result = JDWP.VirtualMachine.DISPOSE.createReply(packet, controller);
                                 break;
                             case JDWP.VirtualMachine.IDSIZES.ID:
-                                result = JDWP.VirtualMachine.IDSIZES.createReply(packet, context.getVirtualMachine());
+                                result = JDWP.VirtualMachine.IDSIZES.createReply(packet, controller.getVirtualMachine());
                                 break;
                             case JDWP.VirtualMachine.SUSPEND.ID:
                                 result = JDWP.VirtualMachine.SUSPEND.createReply(packet, controller);

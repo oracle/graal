@@ -70,9 +70,11 @@ public class JDWPDebuggerController {
     // justification for this being a map is that lookups only happen when at a breakpoint
     private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
     private JDWPContext context;
+    private JDWPVirtualMachine vm;
 
     public JDWPDebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
+        this.vm = new JDWPVirtualMachineImpl();
     }
 
     public void initialize(TruffleLanguage.Env env, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
@@ -327,6 +329,10 @@ public class JDWPDebuggerController {
 
     public void prepareFieldBreakpoint(FieldBreakpointEvent event) {
         fieldBreakpointExpected.put(Thread.currentThread(), event);
+    }
+
+    public JDWPVirtualMachine getVirtualMachine() {
+        return vm;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {

@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPVirtualMachine;
 
 /**
  * Interface that defines required methods for a guest language
@@ -64,11 +63,6 @@ public interface JDWPContext {
      * @return array containing every class loaded
      */
     KlassRef[] getAllLoadedClasses();
-
-    /**
-     * @return the virtual machine representation
-     */
-    JDWPVirtualMachine getVirtualMachine();
 
     /**
      * Finds the klass for which an root node was created from.
