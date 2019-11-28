@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
@@ -123,12 +122,10 @@ class EspressoThreadManager implements ContextAccess {
             }
         }
         pushThread((int) host.getId(), guest);
-        VMEventListeners.getDefault().threadStarted(guest);
     }
 
     public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);
-        VMEventListeners.getDefault().threadDied(thread);
     }
 
     /**

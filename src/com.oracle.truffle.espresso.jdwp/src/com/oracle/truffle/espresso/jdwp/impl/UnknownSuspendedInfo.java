@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 public class UnknownSuspendedInfo extends SuspendedInfo {

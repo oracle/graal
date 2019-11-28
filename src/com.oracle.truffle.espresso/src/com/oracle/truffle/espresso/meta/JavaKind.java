@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Array;
 
-import com.oracle.truffle.espresso.jdwp.impl.TagConstants;
+import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;

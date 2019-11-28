@@ -34,8 +34,8 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.jdwp.api.JDWPListeners;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
-import com.oracle.truffle.espresso.jdwp.api.VMEventListeners;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
 
@@ -195,10 +195,9 @@ public final class EspressoContext {
         assert !this.initialized;
         spawnVM();
         this.initialized = true;
-        jdwpContext = new JDWPContextImpl(this);
+        this.jdwpContext = new JDWPContextImpl(this);
         jdwpContext.jdwpInit(env);
-        // send the VM start event to listeners, e.g. JDWP
-        VMEventListeners.getDefault().vmStarted(getMainThread());
+        JDWPListeners.getListener().vmStarted(getMainThread());
         hostToGuestReferenceDrainThread.start();
     }
 
@@ -368,7 +367,6 @@ public final class EspressoContext {
                         /* name */ meta.toGuestString("main"));
         mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
-        VMEventListeners.getDefault().threadStarted(mainThread);
         mainThreadCreated = true;
     }
 
@@ -511,10 +509,12 @@ public final class EspressoContext {
 
     public void registerThread(Thread host, StaticObject self) {
         threadManager.registerThread(host, self);
+        JDWPListeners.getListener().threadStarted(self);
     }
 
     public void unregisterThread(StaticObject self) {
         threadManager.unregisterThread(self);
+        JDWPListeners.getListener().threadDied(self);
     }
 
     public void invalidateNoThreadStop(String message) {

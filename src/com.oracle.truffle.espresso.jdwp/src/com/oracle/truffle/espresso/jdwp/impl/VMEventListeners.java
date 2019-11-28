@@ -20,12 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
-import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPCallFrame;
-import com.oracle.truffle.espresso.jdwp.impl.VMEventListener;
+import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
 
 /**
  * A class that keeps track of VM event listeners for which
@@ -44,7 +42,6 @@ public class VMEventListeners {
      */
     private VMEventListener listener;
 
-
     public static VMEventListeners getDefault() {
         return DEFAULT;
     }
@@ -57,56 +54,9 @@ public class VMEventListeners {
         this.listener = vmEventListener;
     }
 
-    public void vmStarted(Object mainThread) {
-        if (listener != null) {
-            listener.vmStarted(mainThread);
-        }
-    }
-
     public void vmDied() {
         if (listener != null) {
             listener.vmDied();
-        }
-    }
-
-    /**
-     * Fire a class prepare event on the listener.
-     * @param klass the class that has just been prepared by the VM
-     * @param currentThread the thread used when preparing the class
-     */
-    public void classPrepared(KlassRef klass, Object currentThread) {
-        if (listener != null) {
-            listener.classPrepared(klass, currentThread);
-        }
-    }
-
-    /**
-     * Fire a class unload event on the listener.
-     * @param klass that was just unloaded
-     */
-    public void classUnloaded(KlassRef klass) {
-        if (listener != null) {
-            listener.classUnloaded(klass);
-        }
-    }
-
-    /**
-     * Fire a thread started event on the listener.
-     * @param thread that has just been started
-     */
-    public void threadStarted(Object thread) {
-        if (listener != null) {
-            listener.threadStarted(thread);
-        }
-    }
-
-    /**
-     * Fire a thread stopped event on the listener.
-     * @param thread that was just stopped
-     */
-    public void threadDied(Object thread) {
-        if (listener != null) {
-            listener.threadDied(thread);
         }
     }
 
@@ -139,20 +89,6 @@ public class VMEventListeners {
         }
     }
 
-    public boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value) {
-        if (listener != null) {
-            return listener.hasFieldModificationBreakpoint(field, receiver, value);
-        }
-        return false;
-    }
-
-    public boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver) {
-        if (listener != null) {
-            return listener.hasFieldAccessBreakpoint(field, receiver);
-        }
-        return false;
-    }
-
     public void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
         if (listener != null) {
             listener.fieldAccessBreakpointHit(event, currentThread, callFrame);
@@ -162,6 +98,14 @@ public class VMEventListeners {
     public void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
         if (listener != null) {
             listener.fieldModificationBreakpointHit(event, currentThread, callFrame);
+        }
+    }
+
+    public JDWPListener getEventListener() {
+        if (listener == null) {
+            return new EmptyListener();
+        } else {
+            return listener;
         }
     }
 }

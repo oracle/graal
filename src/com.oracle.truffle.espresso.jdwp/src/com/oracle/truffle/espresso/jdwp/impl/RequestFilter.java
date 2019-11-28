@@ -125,12 +125,10 @@ public class RequestFilter {
     }
 
     public void addThisFilterId(long thisId) {
-        System.out.println("setting this ID: " + thisId + " in " + this.hashCode());
         this.thisFilterId = thisId;
     }
 
     public long getThisFilterId() {
-        System.out.println("getting this ID: " + thisFilterId + " in " + this.hashCode());
         return thisFilterId;
     }
 }

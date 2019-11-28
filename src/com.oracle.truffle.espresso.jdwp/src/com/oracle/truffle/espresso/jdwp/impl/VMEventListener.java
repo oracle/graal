@@ -22,42 +22,29 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 import java.util.concurrent.Callable;
 
-public interface VMEventListener {
-    void classPrepared(KlassRef klass, Object currentThread);
+public interface VMEventListener extends JDWPListener {
     void classUnloaded(KlassRef klass);
-    void threadStarted(Object thread);
-    void threadDied(Object thread);
-    void vmStarted(Object mainThread);
-    void vmDied();
-
     void breakpointHIt(BreakpointInfo info, Object currentThread);
-
+    void vmDied();
     void addClassUnloadRequestId(int id);
     void addThreadStartedRequestId(int id);
     void addThreadDiedRequestId(int id);
     void addVMStartRequest(int id);
     void addVMDeathRequest(int id);
-
     Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
     void removeClassPrepareRequest(int requestId);
-
     void addBreakpointRequest(int requestId, BreakpointInfo info);
     void removeBreakpointRequest(int requestId);
-
     void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame);
-
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame);
-
     void increaseFieldBreakpointCount();
     void decreaseFieldBreakpointCount();
-    boolean hasFieldModificationBreakpoint(FieldRef field, Object receiver, Object value);
-    boolean hasFieldAccessBreakpoint(FieldRef field, Object receiver);
-
     void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame);
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame);
 }

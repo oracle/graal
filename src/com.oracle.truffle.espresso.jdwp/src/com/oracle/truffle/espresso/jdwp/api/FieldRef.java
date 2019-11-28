@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
-
 /**
  * Interface representing a Field in a running program.
  */
@@ -86,13 +84,13 @@ public interface FieldRef {
      * Returns all information about potential field breakpoints set on this field.
      * @return array of field breakpoint info
      */
-    FieldBreakpointInfo[] getFieldBreakpointInfos();
+    JDWPFieldBreakpoint[] getFieldBreakpointInfos();
 
     /**
      * Add a new field breakpoint with the given info on this field.
      * @param info the info that describes the breakpoint
      */
-    void addFieldBreakpointInfo(FieldBreakpointInfo info);
+    void addFieldBreakpointInfo(JDWPFieldBreakpoint info);
 
     /**
      * Remove a field breakpoint with the given info on this field.

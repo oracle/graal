@@ -31,8 +31,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
-import com.oracle.truffle.espresso.jdwp.impl.StableBoolean;
+import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.StableBoolean;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -250,7 +250,7 @@ public final class Field extends Member<Type> implements FieldRef {
     private final StableBoolean hasActiveBreakpoints = new StableBoolean(false);
 
     // array with maximum size 2, one access info and/or one modification info.
-    private FieldBreakpointInfo[] infos = null;
+    private JDWPFieldBreakpoint[] infos = null;
 
     @Override
     public boolean hasActiveBreakpoint() {
@@ -258,19 +258,19 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     @Override
-    public FieldBreakpointInfo[] getFieldBreakpointInfos() {
+    public JDWPFieldBreakpoint[] getFieldBreakpointInfos() {
         return infos;
     }
 
     @Override
-    public void addFieldBreakpointInfo(FieldBreakpointInfo info) {
+    public void addFieldBreakpointInfo(JDWPFieldBreakpoint info) {
         if (infos == null) {
-            infos = new FieldBreakpointInfo[] {info};
+            infos = new JDWPFieldBreakpoint[] {info};
             return;
         }
 
         int length = infos.length;
-        FieldBreakpointInfo[] temp = new FieldBreakpointInfo[length + 1];
+        JDWPFieldBreakpoint[] temp = new JDWPFieldBreakpoint[length + 1];
         System.arraycopy(infos, 0, temp, 0, length);
         temp[length] = info;
         infos = temp;
@@ -287,8 +287,8 @@ public final class Field extends Member<Type> implements FieldRef {
                 hasActiveBreakpoints.set(false);
                 return;
             case 2:
-                FieldBreakpointInfo[] temp = new FieldBreakpointInfo[1];
-                FieldBreakpointInfo info = infos[0];
+                JDWPFieldBreakpoint[] temp = new JDWPFieldBreakpoint[1];
+                JDWPFieldBreakpoint info = infos[0];
                 if (info.getRequestId() == requestId) {
                     // remove index 0, but keep info at index 1
                     temp[0] = infos[1];

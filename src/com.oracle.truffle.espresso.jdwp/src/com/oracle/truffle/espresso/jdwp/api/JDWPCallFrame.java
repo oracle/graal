@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
 public class JDWPCallFrame {
 
@@ -32,7 +32,7 @@ public class JDWPCallFrame {
     private final Object thisValue;
     private final Object[] variables;
 
-    JDWPCallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Object thisValue, Object[] variables) {
+    public JDWPCallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex, Object thisValue, Object[] variables) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;

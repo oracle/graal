@@ -24,7 +24,15 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.espresso.jdwp.api.*;
+import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
+import com.oracle.truffle.espresso.jdwp.api.FieldRef;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.api.StableBoolean;
+import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -159,10 +167,10 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldModificationSlowPath(FieldRef field, Object receiver, Object value) {
-        for (FieldBreakpointInfo info : field.getFieldBreakpointInfos()) {
+        for (JDWPFieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
-                debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent(info, receiver, value));
+                debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver, value));
                 debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
                 return true;
             }
@@ -189,10 +197,10 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldAccessSlowPath(FieldRef field, Object receiver) {
-        for (FieldBreakpointInfo info : field.getFieldBreakpointInfos()) {
+        for (JDWPFieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
-                debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent(info, receiver));
+                debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver));
                 debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
                 return true;
             }

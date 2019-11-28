@@ -55,20 +55,19 @@ public class JDWPDebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
+    // justification for all of the hash maps is that lookups only happen when at a breakpoint
+    private final Map<Object, Object> suspendLocks = new HashMap<>();
+    private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
+    private final Map<Object, Integer> commandRequestIds = new HashMap<>();
+    private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
+    private final Map<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
+    private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
+
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private final JDWPInstrument instrument;
     private TruffleLanguage.Env languageEnv;
-    private Map<Object, Object> suspendLocks = new HashMap<>();
-    private Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
-    private Map<Object, Integer> commandRequestIds = new HashMap<>();
-    private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
-    private HashMap<Object, FieldBreakpointEvent> fieldBreakpointExpected = new HashMap<>();
-
     private Ids<Object> ids;
-
-    // justification for this being a map is that lookups only happen when at a breakpoint
-    private Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
     private JDWPContext context;
     private JDWPVirtualMachine vm;
 
@@ -317,6 +316,7 @@ public class JDWPDebuggerController {
                 instrument.reset(true);
             }
         }).start();
+        VMEventListeners.getDefault().vmDied();
     }
 
     public void endSession() {
