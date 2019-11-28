@@ -24,11 +24,13 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class TypeTag {
+public final class TypeTag {
 
     public static final byte CLASS = 1;
     public static final byte INTERFACE = 2;
     public static final byte ARRAY = 3;
+
+    private TypeTag() {}
 
     public static byte getKind(KlassRef klassRef) {
         if (klassRef.isArray()) {

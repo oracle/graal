@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
  * Main entry point for setting up JDWP. The class looks up the JDWP instrument
  * and initializes communication with the debugger.
  */
-public class JDWPSetup {
+public final class JDWPSetup {
 
     private JDWPDebuggerController controller;
 

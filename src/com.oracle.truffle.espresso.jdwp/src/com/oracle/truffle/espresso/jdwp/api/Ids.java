@@ -32,7 +32,7 @@ import java.lang.ref.WeakReference;
  * Each entity will be assigned a unique ID.
  * Only weak references are kept for entities.
  */
-public class Ids<T> {
+public final class Ids<T> {
 
     private volatile long uniqueID = 1;
 

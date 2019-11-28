@@ -27,7 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ThreadSuspension {
+public final class ThreadSuspension {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static Object[] threads = new Object[0];

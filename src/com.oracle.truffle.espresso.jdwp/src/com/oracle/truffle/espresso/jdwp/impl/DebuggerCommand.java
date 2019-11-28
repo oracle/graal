@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-class DebuggerCommand {
+final class DebuggerCommand {
 
     enum Kind {
         STEP_INTO,

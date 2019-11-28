@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
 import java.util.regex.Pattern;
 
-public class RequestFilter {
+public final class RequestFilter {
 
     private final int requestId;
     private final byte eventKind;

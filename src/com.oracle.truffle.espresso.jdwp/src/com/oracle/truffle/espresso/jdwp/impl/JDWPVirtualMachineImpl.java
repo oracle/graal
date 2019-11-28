@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.Truffle;
 
-public class JDWPVirtualMachineImpl implements JDWPVirtualMachine {
+public final class JDWPVirtualMachineImpl implements JDWPVirtualMachine {
 
     public static final String VM_Description = Truffle.getRuntime().getName();
     public static final String vmVersion = System.getProperty("java.vm.version");

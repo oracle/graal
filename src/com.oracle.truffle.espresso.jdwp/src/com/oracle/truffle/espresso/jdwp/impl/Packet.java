@@ -27,7 +27,7 @@ import java.io.IOException;
 /**
  * A class that represents a JDWP packet. Code copied from com.sun.tools.jdi.Packet
  */
-public class Packet {
+public final class Packet {
     public final static short NoFlags = 0x0;
     public final static short Reply = 0x80;
     public final static short ReplyNoError = 0x0;

@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class FieldBreakpointEvent {
+public final class FieldBreakpointEvent {
 
     private final FieldBreakpointInfo fieldBreakpointInfo;
     private final Object receiver;

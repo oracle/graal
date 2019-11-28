@@ -22,8 +22,10 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class SuspendStrategy {
+public final class SuspendStrategy {
     public static final byte NONE = 0;
     public static final byte EVENT_THREAD = 1;
     public static final byte ALL = 2;
+
+    private SuspendStrategy() {}
 }

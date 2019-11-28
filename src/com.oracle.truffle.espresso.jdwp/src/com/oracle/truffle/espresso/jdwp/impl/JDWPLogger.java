@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class JDWPLogger {
+public final class JDWPLogger {
 
     public static LogLevel LEVEL;
 

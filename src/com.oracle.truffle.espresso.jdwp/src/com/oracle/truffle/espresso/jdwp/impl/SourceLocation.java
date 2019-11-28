@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
-public class SourceLocation {
+public final class SourceLocation {
 
     private final int lineNumber;
     private final JDWPContext context;

@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.ByteArrayOutputStream;
 
-public class PacketStream {
+public final class PacketStream {
 
     private final Packet packet;
     private int readPosition;

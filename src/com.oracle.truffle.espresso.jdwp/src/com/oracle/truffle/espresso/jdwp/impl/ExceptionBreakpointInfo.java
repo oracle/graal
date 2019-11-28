@@ -2,7 +2,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class ExceptionBreakpointInfo extends AbstractBreakpointInfo {
+public final class ExceptionBreakpointInfo extends AbstractBreakpointInfo {
 
     private final KlassRef klass;
     private final boolean caught;

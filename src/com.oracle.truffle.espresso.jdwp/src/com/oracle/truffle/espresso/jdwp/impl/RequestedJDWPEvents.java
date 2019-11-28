@@ -29,7 +29,7 @@ import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-public class RequestedJDWPEvents {
+public final class RequestedJDWPEvents {
 
     public static final byte SINGLE_STEP = 1;
     public static final byte BREAKPOINT = 2;

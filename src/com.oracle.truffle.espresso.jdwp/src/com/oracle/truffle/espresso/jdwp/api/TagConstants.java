@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-public class TagConstants {
+public final class TagConstants {
 
     public static final byte ARRAY = 91;	        // '[' - an array object (objectID size).
     public static final byte BYTE = 66;	            // 'B' - a byte value (1 byte).
@@ -40,6 +40,8 @@ public class TagConstants {
     public static final byte THREAD_GROUP = 103;	// 'g' - a ThreadGroup object (objectID size).
     public static final byte CLASS_LOADER = 108;	// 'l' - a ClassLoader object (objectID size).
     public static final byte CLASS_OBJECT = 99;     // 'c' - a class object object (objectID size).
+
+    private TagConstants() {}
 
     public static boolean isPrimitive(byte tag) {
         return

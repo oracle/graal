@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 /**
  * Class representing common JDWP options.
  */
-public class JDWPOptions {
+public final class JDWPOptions {
     public final String transport;
     public final String address;
     public final boolean server;

@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
  * A class that keeps track of VM event listeners for which
  * events are fired as they occur in the underlying VM.
  */
-public class VMEventListeners {
+public final class VMEventListeners {
 
     /**
      * The default instance

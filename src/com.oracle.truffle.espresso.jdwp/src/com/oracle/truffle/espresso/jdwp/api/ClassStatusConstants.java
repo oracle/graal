@@ -25,9 +25,11 @@ package com.oracle.truffle.espresso.jdwp.api;
 /**
  * Constants to mimic the status of classes in a VM.
  */
-public class ClassStatusConstants {
+public final class ClassStatusConstants {
     public static final int VERIFIED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 4;
     public static final int ERROR = 8;
+
+    private ClassStatusConstants() {}
 }

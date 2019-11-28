@@ -31,7 +31,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
-public class DebuggerConnection implements JDWPCommands {
+public final class DebuggerConnection implements JDWPCommands {
 
     private final JDWPDebuggerController controller;
     private final JDWPContext context;

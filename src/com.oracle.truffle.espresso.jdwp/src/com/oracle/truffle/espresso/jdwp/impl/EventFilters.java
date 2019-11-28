@@ -27,7 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class EventFilters {
+public final class EventFilters {
 
     private static final EventFilters DEFAULT = new EventFilters();
 

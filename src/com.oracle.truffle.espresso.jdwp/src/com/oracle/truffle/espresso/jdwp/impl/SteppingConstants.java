@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class SteppingConstants {
+public final class SteppingConstants {
     // step depths
     public static final int INTO = 0;
     public static final int OVER = 1;
@@ -31,4 +31,6 @@ public class SteppingConstants {
     // step sizes
     public static final int MIN = 0;
     public static final int LINE = 1;
+
+    private SteppingConstants() {}
 }

@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class ClassNameUtils {
+public final class ClassNameUtils {
 
     public static String fromInternalObjectNametoSlashName(String internalObjectName) {
         // TODO(Gregersen) - handle array and primitive types

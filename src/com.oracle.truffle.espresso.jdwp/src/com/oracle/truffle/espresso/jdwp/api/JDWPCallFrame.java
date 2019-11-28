@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-public class JDWPCallFrame {
+public final class JDWPCallFrame {
 
     private final byte typeTag;
     private final long classId;

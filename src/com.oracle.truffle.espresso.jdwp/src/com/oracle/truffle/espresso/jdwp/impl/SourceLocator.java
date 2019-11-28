@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public class SourceLocator {
+public final class SourceLocator {
 
     private final JDWPContext context;
 

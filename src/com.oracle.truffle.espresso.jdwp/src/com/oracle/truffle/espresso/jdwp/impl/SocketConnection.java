@@ -30,7 +30,7 @@ import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-public class SocketConnection implements Runnable {
+public final class SocketConnection implements Runnable {
     private Socket socket;
     private ServerSocket serverSocket;
     private boolean closed = false;

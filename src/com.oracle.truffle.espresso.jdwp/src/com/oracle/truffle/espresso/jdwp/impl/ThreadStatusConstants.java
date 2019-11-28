@@ -22,10 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class ThreadStatusConstants {
+public final class ThreadStatusConstants {
     public static final int ZOMBIE = 0;
     public static final int RUNNING = 1;
     public static final int SLEEPING = 2;
     public static final int MONITOR = 3;
     public static final int WAIT = 4;
+
+    private ThreadStatusConstants() {}
 }

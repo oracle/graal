@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.HashSet;
 
-public class GCPrevention {
+public final class GCPrevention {
 
     // simply hold a strong reference to all objects for which
     // GC should be disabled

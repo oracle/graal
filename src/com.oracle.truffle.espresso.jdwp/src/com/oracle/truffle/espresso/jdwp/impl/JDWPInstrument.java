@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 @TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = JDWPDebuggerController.class)
-public class JDWPInstrument extends TruffleInstrument implements Runnable {
+public final class JDWPInstrument extends TruffleInstrument implements Runnable {
 
     public static final String ID = "jdwp";
     public static Object suspendStartupLock = new Object();
