@@ -1529,12 +1529,12 @@ public class BasicNodeFactory implements NodeFactory {
                 case X86_FP80:
                     return LLVMFP80ArithmeticNodeGen.create(op, left, right);
                 default:
-                    throw new AssertionError(type);
+                    throw new AssertionError("Unknown primitive type: " + type);
             }
         } else if (type instanceof VariableBitWidthType) {
             return LLVMIVarBitArithmeticNodeGen.create(op, left, right);
         } else {
-            throw new AssertionError(type);
+            throw new AssertionError("Unknown type: " + type);
         }
     }
 
