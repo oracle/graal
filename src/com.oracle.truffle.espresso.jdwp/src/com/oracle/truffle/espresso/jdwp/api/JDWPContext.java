@@ -46,12 +46,6 @@ public interface JDWPContext {
     Thread getGuest2HostThread(Object thread);
 
     /**
-     * Returns the special KlassRef object representing the null class
-     * @return the null class
-     */
-    KlassRef getNullKlass();
-
-    /**
      * Finds a klasses loaded under the given name.
      * @param slashName name of the class
      * @return an array of all classes loaded with the given name

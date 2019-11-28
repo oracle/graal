@@ -2119,10 +2119,6 @@ class JDWP {
             reply.errorCode(JDWPErrorCodes.INVALID_CLASS);
             return null;
         }
-        if (klass == context.getNullKlass()) {
-            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-            return null;
-        }
         return klass;
     }
 
