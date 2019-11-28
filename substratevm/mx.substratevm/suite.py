@@ -351,7 +351,28 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
+        "com.oracle.svm.hosted.jdk14": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "requiresConcealed" : {
+                "java.base" :
+                    ["jdk.internal.loader"],
+                "jdk.internal.vm.ci" :
+                    ["jdk.vm.ci.meta"],
+            },
+            "javaCompliance": "14+",
+            "multiReleaseJarVersion": "14",
+            "overlayTarget" : "com.oracle.svm.hosted",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",

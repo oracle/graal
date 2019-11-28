@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -118,4 +120,21 @@ public interface CommittedMemoryProvider {
      */
     default void afterGarbageCollection(boolean completeCollection) {
     }
+
+    enum Access {
+        READ,
+        WRITE,
+        EXECUTE
+    }
+
+    /**
+     * Change access permissions for a block of committed memory that was allocated with
+     * {@link #allocate}.
+     *
+     * @param start The start of the memory block
+     * @param nbytes Length of the memory block
+     * @param access protection setting
+     * @return true on success, false otherwise
+     */
+    boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

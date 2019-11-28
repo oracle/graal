@@ -60,6 +60,8 @@ public class LLVMUtils {
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     public static final String ALWAYS_INLINE = "alwaysinline";
     public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String ATOMIC_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_object_xchg";
+    public static final String LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_object_from_untracked_pointer";
     public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
     public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
@@ -274,7 +276,7 @@ public class LLVMUtils {
 
         @Override
         public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
+            return value == null ? "<not assigned>" : LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 

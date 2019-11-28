@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -54,13 +55,26 @@ public final class ModuleSupport {
         try {
             bundleClass = loader.loadClass(bundleName);
         } catch (ClassNotFoundException ex) {
-            /*
-             * This call will most likely throw an exception because it will also not find the
-             * bundle class. But it avoids special and JDK-specific handling here.
-             */
-            return ResourceBundle.getBundle(bundleName, locale, loader);
+            return getResourceBundleFallback(bundleName, locale, loader);
         }
         return ResourceBundle.getBundle(bundleName, locale, bundleClass.getModule());
+    }
+
+    private static ResourceBundle getResourceBundleFallback(String bundleName, Locale locale, ClassLoader loader) {
+        /* Try looking through all modules to find a match. */
+        for (Module module : ModuleLayer.boot().modules()) {
+            try {
+                return ResourceBundle.getBundle(bundleName, locale, module);
+            } catch (MissingResourceException e2) {
+                /* Continue the loop. */
+            }
+        }
+
+        /*
+         * This call will most likely throw an exception because it will also not find the bundle
+         * class. But it avoids special and JDK-specific handling here.
+         */
+        return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
     public static List<String> getModuleResources(Collection<String> names) {
@@ -114,6 +128,24 @@ public final class ModuleSupport {
             Modules.addExportsToAllUnnamed(module, pkg);
             Modules.addOpensToAllUnnamed(module, pkg);
         }
+    }
+
+    /**
+     * Exports and opens a single package {@code pkg} in the module named {@code name} to all
+     * unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
+        Optional<Module> value = ModuleLayer.boot().findModule(name);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(name);
+            }
+            return;
+        }
+        Module module = value.get();
+        Modules.addExportsToAllUnnamed(module, pkg);
+        Modules.addOpensToAllUnnamed(module, pkg);
     }
 
     public static String getModuleName(Class<?> clazz) {

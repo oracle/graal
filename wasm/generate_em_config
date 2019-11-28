@@ -1,0 +1,23 @@
+#!/bin/sh
+
+CONFIG_PATH="$1"
+LLVM_ROOT="$2"
+BINARYEN_ROOT="$3"
+EMSCRIPTEN_ROOT="$4"
+NODE_JS="$5"
+
+{
+echo "import os"
+echo ""
+echo "LLVM_ROOT='$LLVM_ROOT'"
+echo "BINARYEN_ROOT='$BINARYEN_ROOT'"
+echo "EMSCRIPTEN_ROOT='$EMSCRIPTEN_ROOT'"
+echo "NODE_JS='$NODE_JS'"
+echo "COMPILER_ENGINE=NODE_JS"
+echo "JS_ENGINES=[NODE_JS]"
+} > "$CONFIG_PATH"
+
+echo "Generated Emscripten config file at $CONFIG_PATH:"
+echo "--------"
+cat "$CONFIG_PATH"
+echo "--------"

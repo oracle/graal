@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -61,6 +62,9 @@ public class RuntimeCodeCache {
     public static class Options {
         @Option(help = "Print logging information for runtime code cache modifications")//
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
+
+        @Option(help = "Allocate code cache with write access, allowing inlining of objects", type = OptionType.Expert)//
+        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(null);
     }
 
     private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, () -> new CodeCacheLogEntry());

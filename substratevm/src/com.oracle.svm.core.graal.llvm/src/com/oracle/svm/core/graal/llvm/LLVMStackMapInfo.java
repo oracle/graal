@@ -278,16 +278,23 @@ public class LLVMStackMapInfo {
             }
 
             assert base.type == Location.Type.Indirect; // spilled values
-            int baseOffset = getStackOffset(patchpointID, base);
-            seenBases.add(baseOffset);
+            int[] baseOffsets = getStackOffsets(patchpointID, base);
 
             assert ref.type == Location.Type.Indirect; // spilled values
-            int derivedOffset = getStackOffset(patchpointID, ref);
+            int[] derivedOffsets = getStackOffsets(patchpointID, ref);
 
-            /* Derived pointers have their base already registered on the stackmap */
-            if (!seenOffsets.contains(derivedOffset)) {
-                seenOffsets.add(derivedOffset);
-                callback.accept(derivedOffset, baseOffset);
+            assert baseOffsets.length == derivedOffsets.length;
+
+            for (int j = 0; j < baseOffsets.length; ++j) {
+                int baseOffset = baseOffsets[j];
+                int derivedOffset = derivedOffsets[j];
+
+                seenBases.add(baseOffset);
+                /* Derived pointers have their base already registered on the stackmap */
+                if (!seenOffsets.contains(derivedOffset)) {
+                    seenOffsets.add(derivedOffset);
+                    callback.accept(derivedOffset, baseOffset);
+                }
             }
         }
 
@@ -301,27 +308,36 @@ public class LLVMStackMapInfo {
 
         assert startRecord.locations.length == 1;
         Location alloca = startRecord.locations[0];
-
         assert alloca.type == Location.Type.Direct;
-        return getStackOffset(startPatchPointId, alloca);
+
+        int[] offsets = getStackOffsets(startPatchPointId, alloca);
+        assert offsets.length == 1;
+        return offsets[0];
     }
 
-    private int getStackOffset(long patchpointID, Location location) {
-        assert location.size == 8;
+    private int[] getStackOffsets(long patchpointID, Location location) {
+        assert location.size % FrameAccess.wordSize() == 0;
+        int numLocations = location.size / FrameAccess.wordSize();
+        assert numLocations > 0;
 
-        int offset;
+        int baseOffset;
         if (location.regNum == TargetSpecific.get().getStackPointerDwarfRegNum()) {
-            offset = location.offset;
+            baseOffset = location.offset;
         } else if (location.regNum == TargetSpecific.get().getFramePointerDwarfRegNum()) {
             /*
              * Convert frame-relative offset (negative) to a stack-relative offset (positive).
              */
-            offset = location.offset + NumUtil.safeToInt(getFunctionStackSize(patchpointID)) + TargetSpecific.get().getFramePointerOffset();
+            baseOffset = location.offset + NumUtil.safeToInt(getFunctionStackSize(patchpointID)) + TargetSpecific.get().getFramePointerOffset();
         } else {
             throw shouldNotReachHere("found other register " + patchpointID + " " + location.regNum);
         }
+        assert baseOffset >= 0 && baseOffset + location.size < getFunctionStackSize(patchpointID);
 
-        assert offset >= 0 && offset < (getFunctionStackSize(patchpointID) - FrameAccess.wordSize());
-        return offset;
+        int[] offsets = new int[numLocations];
+        for (int i = 0; i < numLocations; ++i) {
+            offsets[i] = baseOffset + i * FrameAccess.wordSize();
+        }
+
+        return offsets;
     }
 }

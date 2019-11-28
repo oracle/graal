@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "java.util.zip.ZipFile", innerClass = "CleanableResource", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.util.zip.ZipFile", innerClass = "CleanableResource", onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
 public final class Target_java_util_zip_ZipFile_CleanableResource {
 
     @SuppressWarnings({"unused"})
@@ -48,6 +48,9 @@ public final class Target_java_util_zip_ZipFile_CleanableResource {
          * cleanup mechanism (ZipFile.CleanableResource.FinalizableResource) will be removed once
          * ZipFile#finalize() is removed. Since we anyway do not support finalization we have to
          * substitute that away.
+         *
+         * This substitution is only necessary for JDK 11. Changes made in JDK 14 removed the use of
+         * finalizers and the get method.
          */
         return new Target_java_util_zip_ZipFile_CleanableResource(zf, file, mode);
     }

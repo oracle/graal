@@ -133,6 +133,11 @@ public abstract class JavaThreads {
         systemGroup = mainGroup.getParent();
         VMError.guarantee(systemGroup.getParent() == null && systemGroup.getName().equals("system"), "Wrong ThreadGroup for system");
 
+        /*
+         * The mainThread's contextClassLoader is set to the current thread's contextClassLoader
+         * which is a NativeImageClassLoader. The ClassLoaderFeature object replacer will unwrap the
+         * original AppClassLoader from the NativeImageClassLoader.
+         */
         mainThread = new Thread(mainGroup, "main");
         mainThread.setDaemon(false);
 

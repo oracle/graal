@@ -300,6 +300,8 @@ public abstract class NativeImageCodeCache {
 
     public abstract String[] getCCInputFiles(Path tempDirectory, String imageName);
 
+    public abstract List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile);
+
     public Map<HostedMethod, CompilationResult> getCompilations() {
         return compilations;
     }

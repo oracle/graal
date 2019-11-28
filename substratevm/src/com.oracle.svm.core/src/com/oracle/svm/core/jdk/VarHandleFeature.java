@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -489,7 +489,7 @@ final class Target_java_lang_invoke_VarHandle {
      * collects details about the MemberName, which are method handle internals that must not be
      * reachable.
      */
-    @TargetElement(onlyWith = JDK13OrLater.class)
+    @TargetElement(onlyWith = JDK14OrLater.class)
     @Substitute
     @Override
     public String toString() {
