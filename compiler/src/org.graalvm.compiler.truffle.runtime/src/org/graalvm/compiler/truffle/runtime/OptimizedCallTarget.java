@@ -340,10 +340,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             try {
                 final boolean isInlined = InlineDecision.get();
                 /*
-                Language agnostic inlining depends on this call to callBoundary to inline. The
-                isInlined value is passed in to create a data dependency needed by the compiler
-                and despite being "always true" should not be replaced with true (or anything else).
-                */
+                 * Language agnostic inlining depends on this call to callBoundary to inline. The
+                 * isInlined value is passed in to create a data dependency needed by the compiler
+                 * and despite being "always true" should not be replaced with true (or anything
+                 * else).
+                 */
                 Object result = isInlined ? callBoundary(InlineDecision.inject(args, isInlined)) : doInvoke(args);
                 if (CompilerDirectives.inCompiledCode()) {
                     result = injectReturnValueProfile(result);
