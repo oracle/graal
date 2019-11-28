@@ -41,7 +41,6 @@ import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -59,15 +58,6 @@ final class GraphManager {
         this.partialEvaluator = partialEvaluator;
         this.rootIR = ir;
         this.callNodeProvider = callNodeProvider;
-    }
-
-    private static void handleInlinedNodes(StructuredGraph ir, UnmodifiableEconomicMap<Node, Node> duplicates) {
-        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
-            final IsInlinedNode duplicate = (IsInlinedNode) duplicates.get(isInlinedNode);
-            if (duplicate != null) {
-                duplicate.inlined();
-            }
-        }
     }
 
     Entry get(CompilableTruffleAST truffleAST) {
@@ -97,7 +87,6 @@ final class GraphManager {
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
         final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
-        handleInlinedNodes(ir, duplicates);
         return duplicates;
     }
 

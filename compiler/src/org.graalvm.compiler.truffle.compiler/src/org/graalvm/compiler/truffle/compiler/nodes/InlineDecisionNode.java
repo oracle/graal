@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,29 +31,50 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * This node is used by
- * {@link org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase
- * language-agnostic inlining} to differentiate between calls that were inlined (and thus do not
- * need any special handling code for the call) from those that were not. The
- * {@link org.graalvm.compiler.truffle.compiler.PartialEvaluator} removes all instances of this
- * class from the graph during the Truffle tier.
+ * Since SVM specializes behaviour on call sites, we need to differentiate the inlined call sites
+ * which should not contain this specialized code.
  *
+ * This node is a placeholder to be replaced with a {@code true} or {@code false} constant matching
+ * the corresponding inlining decision. The inlining decision is made on the invoke which is
+ * connected to this node with data flow through i.e. the {@link InlineDecisionInjectNode} wrapping
+ * the arguments of the call whose inlining decision has this node as input.
+ *
+ * This is the expected situation in the graph.
+ *
+ * <pre>
+ *     InlineDecisionNode------------------------
+ *         |                                    |
+ *     IntegerEqualsNode------C(0)              |
+ *         |                                    |
+ *     IfNode  ------------------         InlineDecisionInjectNode
+ *         |                    |               |
+ *     BeginNode             BeginNode    MethodCallTargetNode
+ *         |                    |               |
+ *    [Nodes handling  ]       Invoke!#callBoundary
+ *    [non inlined case]      [this is where the inlining happens]
+ *       ...                   ...
+ *         |                    |
+ *         -------      ---------
+ *                |     |
+ *               MergeNode
+ * </pre>
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class IsInlinedNode extends FloatingNode implements IterableNodeType {
-    public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
+public final class InlineDecisionNode extends ValueNode implements IterableNodeType {
 
-    protected IsInlinedNode() {
+    public static final NodeClass<InlineDecisionNode> TYPE = NodeClass.create(InlineDecisionNode.class);
+
+    protected InlineDecisionNode() {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
     }
 
-    public static IsInlinedNode create() {
-        return new IsInlinedNode();
+    public static InlineDecisionNode create() {
+        return new InlineDecisionNode();
     }
 
     public void inlined() {

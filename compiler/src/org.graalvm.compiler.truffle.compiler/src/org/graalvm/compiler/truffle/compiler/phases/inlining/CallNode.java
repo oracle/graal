@@ -32,8 +32,10 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -41,8 +43,11 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node {
@@ -241,6 +246,7 @@ public final class CallNode extends Node {
             state = State.Removed;
             return;
         }
+        handleIsAttachedInlinedNode(invoke);
         final UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
         for (CallNode child : childInvokes.getKeys()) {
             if (child.state != State.Removed) {
@@ -256,6 +262,22 @@ public final class CallNode extends Node {
         }
         state = State.Inlined;
         getCallTree().inlined++;
+    }
+
+    private static void handleIsAttachedInlinedNode(Invoke invoke) {
+        final NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
+        final ValueNode argument = arguments.get(1);
+        if (!(argument instanceof InlineDecisionInjectNode)) {
+            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
+        }
+        final InlineDecisionInjectNode attachNode = (InlineDecisionInjectNode) argument;
+        final ValueNode maybeDecision = attachNode.getDecision();
+        if (!(maybeDecision instanceof InlineDecisionNode)) {
+            GraalError.shouldNotReachHere("Agnostic inlining expectations not met by graph");
+        }
+        final InlineDecisionNode inlineDecisionNode = (InlineDecisionNode) maybeDecision;
+        inlineDecisionNode.inlined();
+        attachNode.resolve();
     }
 
     /**
