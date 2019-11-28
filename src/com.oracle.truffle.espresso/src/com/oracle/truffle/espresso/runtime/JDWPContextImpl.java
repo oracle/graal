@@ -31,22 +31,24 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
+    private JDWPSetup setup;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.ids = new Ids<>(StaticObject.NULL);
+        this.setup = new JDWPSetup();
     }
 
     public void jdwpInit(TruffleLanguage.Env env) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (context.JDWPOptions != null) {
-            JDWPSetup.setup(env, context.JDWPOptions, this);
+            setup.setup(env, context.JDWPOptions, this);
         }
     }
 
     public void finalizeContext() {
         if (context.JDWPOptions != null) {
-            JDWPSetup.finalize(this);
+            setup.finalizeSession();
         }
     }
 
