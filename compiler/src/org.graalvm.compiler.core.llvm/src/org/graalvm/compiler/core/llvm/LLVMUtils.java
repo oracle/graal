@@ -273,11 +273,6 @@ public class LLVMUtils {
         public LLVMValueRef get() {
             return value;
         }
-
-        @Override
-        public String toString() {
-            return value == null ? "<not assigned>" : LLVM.LLVMPrintValueToString(value).getString();
-        }
     }
 
     static class LLVMConstant extends ConstantValue implements LLVMValueWrapper {
@@ -291,11 +286,6 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             return value;
-        }
-
-        @Override
-        public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 
@@ -319,11 +309,6 @@ public class LLVMUtils {
 
         public LLVMVariable address() {
             return address;
-        }
-
-        @Override
-        public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 
