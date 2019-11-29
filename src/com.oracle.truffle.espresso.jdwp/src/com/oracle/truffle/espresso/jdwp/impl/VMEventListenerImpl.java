@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -230,6 +231,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         if (!toSend.isEmpty()) {
             // TODO(Gregersen) - we should suspend the event thread to be correct
+            // tracked by /browse/GR-19816
             stream.writeByte(SuspendStrategy.NONE);
             stream.writeInt(toSend.size());
 
@@ -241,8 +243,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
                 // only send PREPARED status for class prepare events.
-                // TODO(Gregersen) - when sending when class is initialized already
-                // TODO(Gregersen) using ClassStatusConstants.INITIALIZED the debugger doesn't submit a breakpoint!
+                // if using ClassStatusConstants.INITIALIZED the debugger doesn't submit a breakpoint!
                 stream.writeInt(ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
@@ -362,6 +363,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(context.getIds().getIdAsLong(exception));
 
         // catch-location. TODO(Gregersen) - figure out how to implement this
+        // tracked by /browse/GR-19554
         stream.writeByte((byte) 1);
         stream.writeLong(0);
         stream.writeLong(0);
@@ -373,7 +375,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
-        stream.writeByte(SuspendStrategy.EVENT_THREAD); // TODO(Gregersen) - implemented suspend policies
+        // TODO(Gregersen) - implemented suspend policies
+        // tracked by /browse/GR-19816
+        stream.writeByte(SuspendStrategy.EVENT_THREAD);
         stream.writeInt(1); // # events in reply
 
         stream.writeByte(RequestedJDWPEvents.SINGLE_STEP);
@@ -390,7 +394,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void classUnloaded(KlassRef klass) {
-        // TODO(Gregersen) - not implemented yet
+        throw new NotImplementedException();
     }
 
     @Override
@@ -439,7 +443,8 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void addClassUnloadRequestId(int id) {
-        // TODO(Gregersen) - not implemented yet
+        // not implemented yet
+        JDWPLogger.log("class unload events not yet implemented!", JDWPLogger.LogLevel.ALL);
     }
 
     @Override

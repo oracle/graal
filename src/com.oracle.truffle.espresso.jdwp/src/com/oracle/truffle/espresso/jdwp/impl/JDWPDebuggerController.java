@@ -391,6 +391,7 @@ public class JDWPDebuggerController {
                     Object guestException = getContext().getGuestException(exception);
                     JDWPLogger.log("checking exception breakpoint for exception: %s", JDWPLogger.LogLevel.STEPPING, exception);
                     // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is completed
+                    // See /browse/GR-10371
                     // Currently, the Truffle Debug API doesn't filter on type, so we end up here having to check
                     // also, the ignore count set on the breakpoint will not work properly due to this.
                     // we need to do a real type check here, since subclasses of the specified exception
@@ -569,6 +570,7 @@ public class JDWPDebuggerController {
 
         private Object getRealValue(DebugValue value) {
             // TODO(Gregersen) - hacked in with reflection currently
+            // tracked by /browse/GR-19813
             // awaiting a proper API for this
             try {
                 java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod(DEBUG_VALUE_GET);
@@ -581,6 +583,7 @@ public class JDWPDebuggerController {
 
         private RootNode findCurrentRoot(DebugStackFrame frame) {
             // TODO(Gregersen) - hacked in with reflection currently
+            // tracked by /browse/GR-19814
             // for now just use reflection to get the current root
             try {
                 java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
@@ -593,6 +596,7 @@ public class JDWPDebuggerController {
 
         private Throwable getRawException(DebugException exception) {
             // TODO(Gregersen) - hacked in with reflection currently
+            // tracked by /browse/GR-19815
             try {
                 Method method = DebugException.class.getDeclaredMethod(DEBUG_EXCEPTION_GET_RAW_EXCEPTION);
                 method.setAccessible(true);

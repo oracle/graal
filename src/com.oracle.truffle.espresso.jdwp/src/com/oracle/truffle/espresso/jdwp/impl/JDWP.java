@@ -204,7 +204,7 @@ final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                // TODO(Gregersen) - currently, we don't free up IDs
+                // currently, we don't free up IDs
                 int count = input.readInt();
                 for (int i = 0; i < count; i++) {
                     /*long objectID =*/ input.readLong();
@@ -220,7 +220,6 @@ final class JDWP {
             static JDWPResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                // TODO(Gregersen) - figure out what capabilities we want to expose
                 reply.writeBoolean(true); // canWatchFieldModification
                 reply.writeBoolean(true); // canWatchFieldAccess
                 reply.writeBoolean(false); // canGetBytecodes
@@ -279,7 +278,9 @@ final class JDWP {
                     reply.writeByte(TypeTag.getKind(klass));
                     reply.writeLong(context.getIds().getIdAsLong(klass));
                     reply.writeString(klass.getTypeAsString());
-                    reply.writeString(""); // TODO(Gregersen) - generic signature if any
+                    // TODO(Gregersen) - generic signature if any
+                    // tracked by /browse/GR-19818
+                    reply.writeString("");
                     reply.writeInt(klass.getStatus());
                 }
 
@@ -509,7 +510,9 @@ final class JDWP {
                 }
 
                 reply.writeString(klass.getTypeAsString());
-                reply.writeString(""); // TODO(Gregersen) - generic signature
+                // TODO(Gregersen) - generic signature
+                // tracked by /browse/GR-19818
+                reply.writeString("");
                 return new JDWPResult(reply);
             }
         }
@@ -575,7 +578,9 @@ final class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(method));
                     reply.writeString(method.getNameAsString());
                     reply.writeString(method.getSignatureAsString());
-                    reply.writeString(""); // TODO(Gregersen) - get the generic signature
+                    // TODO(Gregersen) - get the generic signature
+                    // tracked by /browse/GR-19818
+                    reply.writeString("");
                     reply.writeInt(method.getModifiers());
                 }
                 return new JDWPResult(reply);
@@ -953,8 +958,9 @@ final class JDWP {
         }
 
         // TODO(Gregersen) - current disabled by Capabilities.
+        // tracked by /browse/GR-19817
         // Enabling causes the NetBeans debugger to send wrong stepping
-        // events for step into/over so diabled for now. Perhaps the bytecode
+        // events for step into/over so disabled for now. Perhaps the bytecode
         // returned from method.getCode() is incorrect?
         static class BYTECODES {
             public static final int ID = 3;
@@ -1021,7 +1027,9 @@ final class JDWP {
                     reply.writeLong(local.getStartBCI());
                     reply.writeString(local.getNameAsString());
                     reply.writeString(local.getTypeAsString());
-                    reply.writeString(""); // TODO(Gregersen) - generic signature
+                    // TODO(Gregersen) - generic signature
+                    // tracked by /browse/GR-19818
+                    reply.writeString("");
                     reply.writeInt(local.getEndBCI() - local.getStartBCI());
                     reply.writeInt(local.getSlot());
                 }
@@ -1165,7 +1173,9 @@ final class JDWP {
                     byte valueKind = input.readByte();
                     args[i] = readValue(valueKind, input, context);
                 }
-                /*int options = */ input.readInt(); // TODO(Gregersen) - handle invocation options
+                // TODO(Gregersen) - handle invocation options
+                // tracked by /browse/GR-19819
+                /*int options = */ input.readInt();
 
                 Object callee = context.getIds().fromId((int) objectId);
                 MethodRef method = verifyMethodRef(methodId, reply, context);
@@ -1785,6 +1795,7 @@ final class JDWP {
                 }
 
                 // TODO(Gregersen) - we will need all classes for which this classloader was the initiating loader
+                // tracked by /browse/GR-19820
                 KlassRef[] klasses = context.getInitiatedClasses(classLoader);
 
                 reply.writeInt(klasses.length);
@@ -1845,17 +1856,14 @@ final class JDWP {
                         Object value = variables[slot - offset];
 
                         byte sigbyte = input.readByte();
-                        // TODO(Gregersen) - verify sigbyte against actual value type
-                        if (sigbyte == TagConstants.ARRAY) {
-                            reply.writeByte(sigbyte);
-                            reply.writeLong(context.getIds().getIdAsLong(value));
-                        } else if (sigbyte == TagConstants.OBJECT) {
-                            sigbyte = context.getTag(value);
-                            reply.writeByte(sigbyte);
-                            reply.writeLong(context.getIds().getIdAsLong(value));
-                        } else {
-                            writeValue(sigbyte, value, reply, true, context);
+                        byte realTag = context.getTag(value);
+
+                        if (sigbyte != realTag) {
+                            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+                            return new JDWPResult(reply);
                         }
+
+                        writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     // invalid slot provided
