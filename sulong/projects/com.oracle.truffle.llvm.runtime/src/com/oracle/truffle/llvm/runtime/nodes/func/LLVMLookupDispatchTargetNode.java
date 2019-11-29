@@ -32,17 +32,18 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -51,7 +52,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    @CompilationFinal private LLVMMemory llvmMemory;
+    @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
 
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
@@ -114,16 +115,16 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return object instanceof LLVMTypedForeignObject;
     }
 
-    protected final LLVMMemory getLLVMMemoryCached() {
-        if (llvmMemory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            llvmMemory = getLLVMMemory();
-        }
-        return llvmMemory;
-    }
-
     protected boolean isAutoDerefHandle(long addr) {
-        return getLLVMMemoryCached().isDerefHandleMemory(addr);
+        if (languageRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            languageRef = lookupLanguageReference(LLVMLanguage.class);
+        }
+        // checking the bit is cheaper than getting the assumption in interpreted mode
+        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoHandleAssumption(true).isValid()) {
+            return false;
+        }
+        return LLVMNativeMemory.isDerefHandleMemory(addr);
     }
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {

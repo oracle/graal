@@ -35,10 +35,12 @@ import java.util.List;
 
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
@@ -100,6 +102,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String NAME = "LLVM";
 
     @CompilationFinal private List<ContextExtension> contextExtensions;
+    @CompilationFinal private Configuration activeConfiguration = null;
+
+    private final LLDBSupport lldbSupport = new LLDBSupport(this);
+    private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
+    private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
     public abstract static class Loader implements LLVMCapability {
         public abstract void loadDefaults(LLVMContext context, Path internalLibraryPath);
@@ -158,15 +165,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguage().lldbSupport;
     }
 
-    private @CompilationFinal Configuration activeConfiguration = null;
-
-    private final LLDBSupport lldbSupport = new LLDBSupport(this);
-
     public <C extends LLVMCapability> C getCapability(Class<C> type) {
         CompilerAsserts.partialEvaluationConstant(type);
         C ret = activeConfiguration.getCapability(type);
         CompilerAsserts.partialEvaluationConstant(ret);
         return ret;
+    }
+
+    /**
+     * Get assumptions used to globally enable/disable checks for handles. This function will return
+     * an assumption that is valid as long as no handles of the selected type (deref or normal
+     * handles) have been created.
+     */
+    public Assumption getNoHandleAssumption(boolean deref) {
+        CompilerAsserts.partialEvaluationConstant(deref);
+        return deref ? noDerefHandleAssumption : noCommonHandleAssumption;
     }
 
     public final String getLLVMLanguageHome() {
