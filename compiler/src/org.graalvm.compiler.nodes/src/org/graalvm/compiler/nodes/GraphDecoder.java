@@ -461,17 +461,25 @@ public class GraphDecoder {
         }
     }
 
+    public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = false;
+
     protected LoopScope processNextNode(MethodScope methodScope, LoopScope loopScope) {
         int nodeOrderId = loopScope.nodesToProcess.nextSetBit(0);
         loopScope.nodesToProcess.clear(nodeOrderId);
 
         FixedNode node = (FixedNode) lookupNode(loopScope, nodeOrderId);
+
         if (node.isDeleted()) {
             return loopScope;
         }
-
+        if (DUMP_DURING_FIXED_NODE_PROCESSING) {
+            if (node != null) {
+                debug.dump(DebugContext.DETAILED_LEVEL, graph, "Before processing node %s", node);
+            }
+        }
         if ((node instanceof MergeNode ||
-                        (node instanceof LoopBeginNode && (methodScope.loopExplosion.unrollLoops() && !methodScope.loopExplosion.mergeLoops()))) &&
+                        (node instanceof LoopBeginNode && (methodScope.loopExplosion.useExplosion() &&
+                                        !methodScope.loopExplosion.mergeLoops()))) &&
                         ((AbstractMergeNode) node).forwardEndCount() == 1) {
             AbstractMergeNode merge = (AbstractMergeNode) node;
             EndNode singleEnd = merge.forwardEndAt(0);
@@ -542,17 +550,29 @@ public class GraphDecoder {
 
         } else if (node instanceof MergeNode) {
             handleMergeNode(((MergeNode) node));
-
         } else if (node instanceof AbstractEndNode) {
             LoopScope phiInputScope = loopScope;
             LoopScope phiNodeScope = loopScope;
-
+            int mergeOrderId = readOrderId(methodScope);
+            /*
+             * Special case FULL_UNROLL_UNTIL_RETURN continue from an inner loop to an outer loop: A
+             * continue from an inner loop to an outer loop exits the inner loop. UNTIL_RETURN means
+             * that we duplicate loop exits, so in this case we need to duplicate through loop ends
+             * of the outer loop to get a proper merge created.
+             */
+            boolean forceDuplicationOfLoopEnds = false;
+            if (loopScope.nextIterations != null && !loopScope.nextIterations.isEmpty() &&
+                            methodScope.loopExplosion.duplicateLoopExits() &&
+                            !methodScope.loopExplosion.duplicateLoopEnds() && loopScope.loopDepth > 0) {
+                Node expectedMerge = lookupNode(loopScope.nextIterations.getLast(), mergeOrderId);
+                if (expectedMerge != null) {
+                    forceDuplicationOfLoopEnds = !expectedMerge.isAlive() || !(expectedMerge instanceof AbstractMergeNode);
+                }
+            }
             if (methodScope.loopExplosion.useExplosion() && node instanceof LoopEndNode) {
-                node = handleLoopExplosionEnd(methodScope, loopScope, (LoopEndNode) node);
+                node = handleLoopExplosionEnd(methodScope, loopScope, (LoopEndNode) node, forceDuplicationOfLoopEnds);
                 phiNodeScope = loopScope.nextIterations.getLast();
             }
-
-            int mergeOrderId = readOrderId(methodScope);
             AbstractMergeNode merge = (AbstractMergeNode) lookupNode(phiNodeScope, mergeOrderId);
             if (merge == null) {
                 merge = (AbstractMergeNode) makeStubNode(methodScope, phiNodeScope, mergeOrderId);
@@ -574,9 +594,7 @@ public class GraphDecoder {
                     resultScope.nodesToProcess.set(mergeOrderId);
                 }
             }
-
             handlePhiFunctions(methodScope, phiInputScope, phiNodeScope, (AbstractEndNode) node, merge);
-
         } else if (node instanceof Invoke) {
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
             resultScope = handleInvoke(methodScope, loopScope, invokeData);
@@ -584,6 +602,11 @@ public class GraphDecoder {
             methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
         } else {
             handleFixedNode(methodScope, loopScope, nodeOrderId, node);
+        }
+        if (DUMP_DURING_FIXED_NODE_PROCESSING) {
+            if (node != null) {
+                debug.dump(DebugContext.DETAILED_LEVEL, graph, "After processing node %s", node);
+            }
         }
 
         return resultScope;
@@ -738,13 +761,13 @@ public class GraphDecoder {
         throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method");
     }
 
-    protected FixedNode handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope, LoopEndNode loopEnd) {
+    protected FixedNode handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope, LoopEndNode loopEnd, boolean forceLoopEndDuplication) {
         EndNode replacementNode = graph.add(new EndNode());
         loopEnd.replaceAtPredecessor(replacementNode);
         loopEnd.safeDelete();
 
         assert methodScope.loopExplosion.useExplosion();
-        if (methodScope.loopExplosion.duplicateLoopEnds() || loopScope.nextIterations.isEmpty()) {
+        if (methodScope.loopExplosion.duplicateLoopEnds() || loopScope.nextIterations.isEmpty() || forceLoopEndDuplication) {
             int nextIterationNumber = loopScope.nextIterations.isEmpty() ? loopScope.loopIteration + 1 : loopScope.nextIterations.getLast().loopIteration + 1;
             LoopScope nextIterationScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId,
                             Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),

@@ -52,6 +52,9 @@ public class UnrollingTestNode {
 
     public static final String OUTSIDE_LOOP_MARKER = "OUTSIDE_LOOP_MARKER";
     public static final String INSIDE_LOOP_MARKER = "INSIDE_LOOP_MARKER";
+    public static final String INSIDE_LOOP_MARKER_2 = "INSIDE_LOOP_MARKER_2";
+    public static final String OUTER_LOOP_INSIDE_LOOP_MARKER = "OUTER_LOOP_INSIDE_LOOP_MARKER";
+    public static final String CONTINUE_LOOP_MARKER = "CONTINUE_LOOP_MARKER";
     public static final String AFTER_LOOP_MARKER = "AFTER_LOOP_MARKER";
 
     public static int countBlackholeNodes(StructuredGraph graph, String val) {
@@ -155,6 +158,157 @@ public class UnrollingTestNode {
                     }
                     // random code
                     // loop end -> unroll
+                }
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class FullUnrollUntilReturnNestedLoopsBreakInner extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            for (int i = 0; i < count; i++) {
+                SideEffect = i;
+                for (int j = 0; j < count; j++) {
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    SideEffect = j;
+                    if (i == SideEffect2) {
+                        // exit the loop
+                        GraalDirectives.blackhole(OUTSIDE_LOOP_MARKER);
+                        GraalDirectives.blackhole(i);
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        break;
+                    }
+                    // random code
+                    // loop end -> unroll
+                }
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class FullUnrollUntilReturnNestedLoopsContinueOuter01 extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            /*
+             * Special case full unroll until return with a conitnue statement to the outer loop.
+             * UNTIL_RETURN implies the duplication of code paths along loop exits. Continue
+             * statements to outer loops create loop exits of the inner loop and continues of the
+             * outer loop.
+             */
+            int i = 0;
+            while (true) {
+                if (i >= count) {
+                    break;
+                }
+                CompilerAsserts.partialEvaluationConstant(i);
+                GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
+                int j = 0;
+                inner: while (true) {
+                    if (j >= count) {
+                        break;
+                    }
+                    CompilerAsserts.partialEvaluationConstant(j);
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    if (SideEffect3 == j) {
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        /* continue to outer loop */
+                        break inner;
+                    }
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER_2);
+                    j++;
+                }
+                i++;
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class FullUnrollUntilReturnNestedLoopsContinueOuter02 extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            int i = 0;
+            outer: while (true) {
+                if (i >= count) {
+                    break;
+                }
+                CompilerAsserts.partialEvaluationConstant(i);
+                GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
+                int j = 0;
+                while (true) {
+                    if (j >= count) {
+                        break;
+                    }
+                    CompilerAsserts.partialEvaluationConstant(j);
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    if (SideEffect3 == j) {
+                        i++;
+                        GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                        SideEffect = i;
+                        continue outer;
+                    } else {
+                        GraalDirectives.blackhole(INSIDE_LOOP_MARKER_2);
+                    }
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER_2);
+                    j++;
+                }
+                i++;
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class FullUnrollUntilReturnNestedLoopsContinueOuter03 extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
+                CompilerAsserts.partialEvaluationConstant(i);
+                for (int j = 0; j < count; j++) {
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    if (j == SideEffect3) {
+                        GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        continue outer;
+                    }
+                }
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class FullUnrollUntilReturnNestedLoopsContinueOuter04 extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
+                CompilerAsserts.partialEvaluationConstant(i);
+                for (int j = 0; j < count; j++) {
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    if (j == SideEffect3) {
+                        GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        int x = i * j + 2 * i;
+                        CompilerAsserts.partialEvaluationConstant(x);
+                        SideEffect = x;
+                        SideEffect1 = x;
+                        continue outer;
+                    }
                 }
             }
             GraalDirectives.blackhole(AFTER_LOOP_MARKER);
