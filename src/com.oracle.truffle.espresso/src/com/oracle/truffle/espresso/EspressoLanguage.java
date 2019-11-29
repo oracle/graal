@@ -80,6 +80,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
+    private static final String SCOPE_NAME = "block";
 
     private final Symbols symbols;
     private final Utf8ConstantTable utf8Constants;
@@ -159,13 +160,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             return super.findLocalScopes(context, espressoNode, frame);
         }
-        Klass klass = method.getDeclaringKlass();
-        String scopeName = klass.getName().toString() + "." + method.getName().toString() + method.getRawSignature().toString();
-
         // construct the current scope with valid local variables information
         Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
 
-        Scope scope = Scope.newBuilder(scopeName, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
+        Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
         return Collections.singletonList(scope);
     }
 
