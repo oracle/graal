@@ -175,6 +175,7 @@ public @interface ExplodeLoop {
 }
 
 @SuppressFBWarnings("UC")
+@SuppressWarnings("static-method")
 class Snippets {
     // BEGIN: loopEndsExits
     int loopEndExits() {
@@ -233,6 +234,7 @@ class Snippets {
 
     // BEGIN: unrollVsExplodeLoopExploded
     void unrollVsExplodeLoopExploded() {
+        @SuppressWarnings("unused")
         int state = 1;
         if (c(0, 1)) {
             if (c(1, 2)) {
