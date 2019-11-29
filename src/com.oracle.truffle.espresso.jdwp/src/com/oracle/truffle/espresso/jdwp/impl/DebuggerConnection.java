@@ -524,7 +524,7 @@ public final class DebuggerConnection implements JDWPCommands {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
                 }
             }
         }

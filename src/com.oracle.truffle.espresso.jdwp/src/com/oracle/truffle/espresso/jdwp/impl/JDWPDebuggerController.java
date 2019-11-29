@@ -582,9 +582,8 @@ public class JDWPDebuggerController {
                 getMethod.setAccessible(true);
                 return getMethod.invoke(value);
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failed to call getRealValue reflectively", e);
             }
-            return null;
         }
 
         private RootNode findCurrentRoot(DebugStackFrame frame) {
@@ -595,9 +594,8 @@ public class JDWPDebuggerController {
                 getRoot.setAccessible(true);
                 return (RootNode) getRoot.invoke(frame);
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failed to call findCurrentRoot reflectively", e);
             }
-            return null;
         }
 
         private Throwable getRawException(DebugException exception) {
@@ -607,8 +605,7 @@ public class JDWPDebuggerController {
                 method.setAccessible(true);
                 return (Throwable) method.invoke(exception);
             } catch (Exception e) {
-                e.printStackTrace();
-                return exception;
+                throw new RuntimeException("Failed to call getRawException reflectively", e);
             }
         }
 
