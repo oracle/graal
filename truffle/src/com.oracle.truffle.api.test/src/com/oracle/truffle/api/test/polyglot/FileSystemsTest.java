@@ -1729,6 +1729,87 @@ public class FileSystemsTest {
         ctx.eval(LANGUAGE_ID, "");
     }
 
+    @Test
+    public void testVisitRelativeFolderAfterSetSurrentWorkingDirectory() {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        Assume.assumeTrue(cfg.canRead() && cfg.allowsUserDir());
+        languageAction = (Env env) -> {
+            final TruffleFile folder = cfg.resolve(env, path.resolve(FOLDER_EXISTING).toString());
+            TruffleFile cwd = env.getCurrentWorkingDirectory();
+            try {
+                env.setCurrentWorkingDirectory(folder);
+
+                TruffleFile relativeFolder = env.getInternalTruffleFile(FOLDER_EXISTING_INNER1);
+                Assert.assertFalse(relativeFolder.isAbsolute());
+                Assert.assertTrue(relativeFolder.isDirectory());
+                relativeFolder.visit(new FileVisitor<TruffleFile>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(TruffleFile t, BasicFileAttributes bfa) throws IOException {
+                        Assert.assertFalse(t.isAbsolute());
+                        relativeFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(TruffleFile t, BasicFileAttributes bfa) throws IOException {
+                        Assert.assertFalse(t.isAbsolute());
+                        relativeFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(TruffleFile t, IOException ioe) throws IOException {
+                        return FileVisitResult.TERMINATE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(TruffleFile t, IOException ioe) throws IOException {
+                        Assert.assertFalse(t.isAbsolute());
+                        relativeFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+                }, Integer.MAX_VALUE);
+
+                TruffleFile absoluteFolder = folder.resolve(FOLDER_EXISTING_INNER1);
+                Assert.assertTrue(absoluteFolder.isAbsolute());
+                Assert.assertTrue(absoluteFolder.isDirectory());
+                absoluteFolder.visit(new FileVisitor<TruffleFile>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(TruffleFile t, BasicFileAttributes bfa) throws IOException {
+                        Assert.assertTrue(t.isAbsolute());
+                        absoluteFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFile(TruffleFile t, BasicFileAttributes bfa) throws IOException {
+                        Assert.assertTrue(t.isAbsolute());
+                        absoluteFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(TruffleFile t, IOException ioe) throws IOException {
+                        return FileVisitResult.TERMINATE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(TruffleFile t, IOException ioe) throws IOException {
+                        Assert.assertTrue(t.isAbsolute());
+                        absoluteFolder.relativize(t);
+                        return FileVisitResult.CONTINUE;
+                    }
+                }, Integer.MAX_VALUE);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } finally {
+                env.setCurrentWorkingDirectory(cwd);
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
     static boolean verifyPermissions(Set<PosixFilePermission> permissions, int mode) {
         int perms = 0;
         for (PosixFilePermission perm : permissions) {
