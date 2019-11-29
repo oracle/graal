@@ -212,7 +212,6 @@ public final class PacketStream {
         try {
             ret = new String(packet.data, readPosition, len, "UTF8");
         } catch(java.io.UnsupportedEncodingException e) {
-            System.err.println(e);
             ret = "Conversion error!";
         }
         readPosition += len;

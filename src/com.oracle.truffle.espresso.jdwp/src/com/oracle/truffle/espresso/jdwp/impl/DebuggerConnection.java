@@ -123,7 +123,6 @@ public final class DebuggerConnection implements JDWPCommands {
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
                 DebuggerCommand debuggerCommand = awaitNextCommand(); // blocking
-                //System.out.println("got a " + debuggerCommand.kind + " command from debugger");
 
                 if (debuggerCommand != null) {
                     Object thread = debuggerCommand.getThread();

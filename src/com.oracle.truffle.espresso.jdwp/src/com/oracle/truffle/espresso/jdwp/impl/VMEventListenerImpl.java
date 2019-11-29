@@ -387,7 +387,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getClassId());
         stream.writeLong(currentFrame.getMethodId());
         stream.writeLong(currentFrame.getCodeIndex());
-        //System.out.println("sending step completed command at index: " + currentFrame.getCodeIndex());
         connection.queuePacket(stream);
     }
 

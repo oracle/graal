@@ -301,7 +301,6 @@ public final class RequestedJDWPEvents {
             if (kind == eventKind) {
                 switch (eventKind) {
                     case SINGLE_STEP:
-                        //System.out.println("clear single step not implemented");
                         break;
                     case METHOD_EXIT_WITH_RETURN_VALUE:
                     case METHOD_ENTRY:

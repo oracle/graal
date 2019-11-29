@@ -376,7 +376,6 @@ public class JDWPDebuggerController {
 
             boolean hit = false;
             for (Breakpoint bp : event.getBreakpoints()) {
-                //System.out.println("BP at suspension point: " + bp.getLocationDescription());
 
                 BreakpointInfo info = breakpointInfos.get(bp);
                 suspendPolicy = info.getSuspendPolicy();
