@@ -45,7 +45,7 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
     @Child private LLVMInlineAssemblyPrologueNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
 
-    private final LLVMExpressionNode result;
+    @Child private LLVMExpressionNode result;
 
     public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor,
                     LLVMStatementNode[] statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {

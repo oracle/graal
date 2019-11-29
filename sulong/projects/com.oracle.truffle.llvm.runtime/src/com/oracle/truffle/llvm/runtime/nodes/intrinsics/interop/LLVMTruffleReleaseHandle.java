@@ -38,7 +38,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -52,7 +52,7 @@ public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @CachedLanguage LLVMLanguage language) {
         long address = handle.asNative();
-        if (language.getCapability(LLVMMemory.class).isDerefHandleMemory(address)) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
             context.getDerefHandleContainer().free(address);
         } else {
             context.getHandleContainer().free(address);
