@@ -108,7 +108,7 @@ public abstract class PredefinedModule {
 
     protected WasmMemory defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize) {
         final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
-        module.symbolTable().exportMemory(memoryName);
+        module.symbolTable().exportMemory(context, memoryName);
         return memory;
     }
 
@@ -116,8 +116,8 @@ public abstract class PredefinedModule {
         module.symbolTable().importMemory(context, importModuleName, memoryName, initSize, maxSize);
     }
 
-    protected void exportMemory(WasmModule module, String memoryName) {
-        module.symbolTable().exportMemory(memoryName);
+    protected void exportMemory(WasmContext context, WasmModule module, String memoryName) {
+        module.symbolTable().exportMemory(context, memoryName);
     }
 
     protected byte[] types(byte... args) {

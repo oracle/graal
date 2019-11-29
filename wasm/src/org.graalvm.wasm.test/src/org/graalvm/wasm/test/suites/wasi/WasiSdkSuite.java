@@ -53,7 +53,7 @@ public class WasiSdkSuite extends WasmSuiteBase {
 
     @Override
     protected String includedExternalModules() {
-        return super.includedExternalModules() + ",wasi:wasi";
+        return super.includedExternalModules() + ",memory,wasi:wasi";
     }
 
     @Override
