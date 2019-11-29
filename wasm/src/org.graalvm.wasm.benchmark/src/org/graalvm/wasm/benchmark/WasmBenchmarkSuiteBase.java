@@ -100,7 +100,7 @@ public abstract class WasmBenchmarkSuiteBase {
             Assert.assertNotNull(String.format("Benchmark %s.%s not found", benchmarkResource(), wantedBenchmarkName), benchmarkCase);
 
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.Builtins", "testutil:testutil,env:emscripten");
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
 
             byte[] binary = benchmarkCase.createBinary();
             Context context = contextBuilder.build();
@@ -111,7 +111,7 @@ public abstract class WasmBenchmarkSuiteBase {
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
             benchmarkRun = wasmBindings.getMember("_benchmarkRun");
-            Assert.assertNotNull(String.format("No benchmarkRun method in %s."), wantedBenchmarkName);
+            Assert.assertNotNull(String.format("No benchmarkRun method in %s.", wantedBenchmarkName), benchmarkRun);
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
             customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             initialization = benchmarkCase.initialization();

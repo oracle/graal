@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import org.graalvm.wasm.Linker.ResolutionDag.DataDecl;
 import org.graalvm.wasm.Linker.ResolutionDag.Decl;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportMemoryDecl;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportMemoryDecl;
@@ -278,6 +279,20 @@ public class Linker {
         resolutionDag.resolveLater(new ExportMemoryDecl(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
+    void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data) {
+        Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
+        final Runnable resolveAction = () -> {
+            WasmMemory memory = module.symbolTable().memory();
+            Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", module.name()));
+            memory.validateAddress(null, baseAddress, byteLength);
+            for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
+                byte b = data[writeOffset];
+                memory.store_i32_8(baseAddress + writeOffset, b);
+            }
+        };
+        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), new Decl[] { new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory()) }, resolveAction);
+    }
+
     static class ResolutionDag {
         abstract static class Decl {
         }
@@ -337,6 +352,30 @@ public class Linker {
                 }
                 final ExportMemoryDecl that = (ExportMemoryDecl) object;
                 return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
+            }
+        }
+
+        static class DataDecl extends Decl {
+            final String moduleName;
+            final int dataSectionId;
+
+            DataDecl(String moduleName, int dataSectionId) {
+                this.moduleName = moduleName;
+                this.dataSectionId = dataSectionId;
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ dataSectionId;
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof DataDecl)) {
+                    return false;
+                }
+                final DataDecl that = (DataDecl) object;
+                return this.dataSectionId == that.dataSectionId && this.moduleName.equals(that.moduleName);
             }
         }
 

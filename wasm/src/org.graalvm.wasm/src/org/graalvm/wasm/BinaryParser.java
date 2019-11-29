@@ -1156,8 +1156,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readDataSection() {
-        WasmMemory memory = module.symbolTable().memory();
-        Assert.assertNotNull(memory, "No memory declared or imported in the module.");
+        final WasmContext context = WasmLanguage.getCurrentContext();
         int numDataSections = readVectorLength();
         for (int i = 0; i != numDataSections; ++i) {
             int memIndex = readUnsignedInt32();
@@ -1189,14 +1188,23 @@ public class BinaryParser extends BinaryStreamParser {
                         Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
                 }
             } while (instruction != Instructions.END);
+
             int byteLength = readVectorLength();
-
             long baseAddress = dataOffset;
-            memory.validateAddress(null, baseAddress, byteLength);
-
-            for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
-                byte b = read1();
-                memory.store_i32_8(baseAddress + writeOffset, b);
+            final WasmMemory memory = module.symbolTable().memory();
+            if (memory != null) {
+                memory.validateAddress(null, baseAddress, byteLength);
+                for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
+                    byte b = read1();
+                    memory.store_i32_8(baseAddress + writeOffset, b);
+                }
+            } else {
+                byte[] dataSegment = new byte[byteLength];
+                for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
+                    byte b = read1();
+                    dataSegment[writeOffset] = b;
+                }
+                context.linker().resolveDataSection(module, i, baseAddress, byteLength, dataSegment);
             }
         }
     }
