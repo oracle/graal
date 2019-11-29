@@ -485,6 +485,7 @@ public class JDWPDebuggerController {
                         Object filterObject = context.getIds().fromId((int) requestFilter.getThisFilterId());
                         Object thisObject = frame.getThisValue();
                         if (filterObject != thisObject) {
+                            continueStepping(event, thread);
                             return true;
                         }
                     }
