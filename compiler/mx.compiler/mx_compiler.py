@@ -1198,7 +1198,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     # may have changed and we want to pick up these changes.
     source_jdk_timestamps_file = dst_jdk_dir + '.source_jdk_timestamps'
     timestamps = []
-    nl = os.linesep
+    nl = '\n'
     for root, _, filenames in os.walk(jdk.home):
         for name in filenames:
             ts = mx.TimeStampFile(join(root, name))
