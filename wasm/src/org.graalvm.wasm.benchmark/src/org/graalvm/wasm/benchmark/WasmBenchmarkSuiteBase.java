@@ -100,7 +100,7 @@ public abstract class WasmBenchmarkSuiteBase {
             Assert.assertNotNull(String.format("Benchmark %s.%s not found", benchmarkResource(), wantedBenchmarkName), benchmarkCase);
 
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.PredefinedModules", "testutil:testutil,env:emscripten");
+            contextBuilder.option("wasm.Builtins", "testutil:testutil,env:emscripten");
 
             byte[] binary = benchmarkCase.createBinary();
             Context context = contextBuilder.build();

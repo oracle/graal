@@ -126,7 +126,7 @@ public final class WasmContext {
     }
 
     private void initializePredefinedModules() {
-        final String extraModuleValue = WasmOptions.PredefinedModules.getValue(env.getOptions());
+        final String extraModuleValue = WasmOptions.Builtins.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;
         }

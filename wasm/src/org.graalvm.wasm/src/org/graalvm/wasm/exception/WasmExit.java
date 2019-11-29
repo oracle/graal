@@ -58,6 +58,11 @@ public class WasmExit extends ThreadDeath implements TruffleException {
     }
 
     @Override
+    public String getMessage() {
+        return "Program exited with status code " + exitCode + ".";
+    }
+
+    @Override
     public Node getLocation() {
         return location;
     }

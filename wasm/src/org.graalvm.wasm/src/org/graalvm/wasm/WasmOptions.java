@@ -47,7 +47,7 @@ import org.graalvm.options.OptionStability;
 
 @Option.Group("wasm")
 public class WasmOptions {
-    @Option(help = "A comma-separated list of predefined modules: <linked-name>:<predefined-module-name>.",
+    @Option(help = "A comma-separated list of builtin modules to use: <linking-name>:<builtin-module-name>.",
                     category = OptionCategory.USER, stability = OptionStability.STABLE)
-    public static final OptionKey<String> PredefinedModules = new OptionKey<>("");
+    public static final OptionKey<String> Builtins = new OptionKey<>("");
 }

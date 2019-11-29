@@ -50,6 +50,7 @@ import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
 import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
+import org.graalvm.wasm.test.suites.wasi.WasiSdkSuite;
 import org.graalvm.wasm.test.suites.webassembly.MultipleFunctionsSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -73,6 +74,7 @@ import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
                 EmscriptenSuite.class,
+                WasiSdkSuite.class,
                 WasmPolyglotTestSuite.class,
 })
 public class WasmTestSuite {

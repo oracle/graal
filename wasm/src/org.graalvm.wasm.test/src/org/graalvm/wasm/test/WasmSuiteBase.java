@@ -176,9 +176,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
                 validateResult(testCase.data().resultValidator(), result, capturedStdout);
             } catch (PolyglotException e) {
-                // We cannot label the tests with polyglot errors, because they might be return
-                // values.
-                throw e;
+                // We cannot label the tests with polyglot errors, because they might
+                // semantically be return values of the test.
+                validateThrown(testCase.data().expectedErrorMessage(), e);
             } catch (Throwable t) {
                 final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
                 e.setStackTrace(new StackTraceElement[0]);
@@ -233,7 +233,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             }
 
             contextBuilder.allowExperimentalOptions(true);
-            contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
+            contextBuilder.option("wasm.Builtins", includedExternalModules());
             Source source = sourceBuilder.build();
             Context context;
 
@@ -263,8 +263,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             runInContext(testCase, context, source, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
-        } catch (PolyglotException e) {
-            validateThrown(testCase.data().expectedErrorMessage(), e);
         }
         return WasmTestStatus.OK;
     }
