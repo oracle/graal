@@ -29,9 +29,15 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * A provider for {@link TruffleCallNode}s.
  */
-public interface CallNodeProvider {
+public interface TruffleMetaAccessProvider {
     /**
      * Gets the runtime representation of the call node constant.
      */
     TruffleCallNode findCallNode(JavaConstant callNode);
+
+    /**
+     * If {@code node} represents an AST Node then return the nearest source information for it.
+     * Otherwise simply return null.
+     */
+    TruffleSourceLanguagePosition getPosition(JavaConstant node);
 }

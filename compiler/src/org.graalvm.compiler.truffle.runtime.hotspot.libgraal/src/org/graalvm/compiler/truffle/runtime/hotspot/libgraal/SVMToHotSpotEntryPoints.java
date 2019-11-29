@@ -123,7 +123,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.truffle.common.CallNodeProvider;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 /**
@@ -482,7 +482,7 @@ final class SVMToHotSpotEntryPoints {
     }
 
     @SVMToHotSpot(FindCallNode)
-    static TruffleCallNode findCallNode(CallNodeProvider provider, long callNodeHandle) {
+    static TruffleCallNode findCallNode(TruffleMetaAccessProvider provider, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
         return provider.findCallNode(callNode);
     }

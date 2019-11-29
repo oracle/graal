@@ -175,10 +175,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
 
     @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Double> InliningCutoffCountPenalty = new OptionKey<>(0.1);
+    public static final OptionKey<Double> InliningCutoffCountPenalty = new OptionKey<>(0.9);
 
     @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Double> InliningNodeCountPenalty = new OptionKey<>(0.1);
+    public static final OptionKey<Double> InliningNodeCountPenalty = new OptionKey<>(0.01);
 
     @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Double> InliningExpandAllProximityFactor = new OptionKey<>(0.5);
