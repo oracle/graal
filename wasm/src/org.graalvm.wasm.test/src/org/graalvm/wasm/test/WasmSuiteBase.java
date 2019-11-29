@@ -226,7 +226,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         try {
             byte[] binary = testCase.createBinary();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
@@ -234,8 +233,15 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             contextBuilder.allowExperimentalOptions(true);
             contextBuilder.option("wasm.Builtins", includedExternalModules());
-            Source source = sourceBuilder.build();
+            String commandLineArgs = testCase.options().getProperty("command-line-args");
+            if (commandLineArgs != null) {
+                contextBuilder.arguments("wasm", commandLineArgs.split(" "));
+            }
+
             Context context;
+
+            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
+            Source source = sourceBuilder.build();
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
