@@ -65,7 +65,8 @@ final class JDWP {
                 // get the requested classes
                 PacketStream input = new PacketStream(packet);
                 String signature = input.readString();
-                String slashName = ClassNameUtils.fromInternalObjectNametoSlashName(signature);
+                // we know it's a class type in the format Lsomething;
+                String slashName = signature.substring(1, signature.length() - 1);
                 KlassRef[] loaded = context.findLoadedClass(slashName);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
