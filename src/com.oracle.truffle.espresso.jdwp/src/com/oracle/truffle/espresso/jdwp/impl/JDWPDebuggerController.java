@@ -310,13 +310,16 @@ public class JDWPDebuggerController {
     }
 
     public void disposeDebugger() {
+        // Creating a new thread, because the reset method
+        // will interrupt all active jdwp threads, which might
+        // include the current one if we received a DISPOSE command.
         new Thread(new Runnable() {
             @Override
             public void run() {
                 instrument.reset(true);
+                VMEventListeners.getDefault().vmDied();
             }
         }).start();
-        VMEventListeners.getDefault().vmDied();
     }
 
     public void endSession() {
