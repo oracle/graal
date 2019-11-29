@@ -125,9 +125,8 @@ sulong-ruby-downstream-test: {
 
 sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   run: [
-    ["mx", "create-asm-parser"]
-    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyLexer.java"]
-    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyParser.java"]
+    ["mx", "create-parsers"]
+    ["git", "diff", "--exit-code", "projects/"]
   ]
 }
 
