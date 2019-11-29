@@ -70,7 +70,7 @@ public final class Ids<T> {
             // really slow lookup path
             Object obj = objects[i].get();
             if (obj == object) {
-                JDWPLogger.log("ID cache hit for object: " + object + " with ID: " + i, JDWPLogger.LogLevel.IDS);
+                JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
                 return i;
             }
         }
@@ -85,16 +85,16 @@ public final class Ids<T> {
      */
     public T fromId(int id) {
         if (id == 0) {
-            JDWPLogger.log("Null object from ID: " + id, JDWPLogger.LogLevel.IDS);
+            JDWPLogger.log("Null object from ID: %d", JDWPLogger.LogLevel.IDS, id);
             return nullObject;
         }
         WeakReference<T> ref = objects[id];
         T o = ref.get();
         if (o == null) {
-            JDWPLogger.log("object with ID: " + id + " was garbage collected", JDWPLogger.LogLevel.IDS);
+            JDWPLogger.log("object with ID: %d was garbage collected", JDWPLogger.LogLevel.IDS, id);
             return null;
         } else {
-            JDWPLogger.log("returning object: " + o + " for ID: " + id, JDWPLogger.LogLevel.IDS);
+            JDWPLogger.log("returning object: %s for ID: %d", JDWPLogger.LogLevel.IDS, o, id);
             return o;
         }
     }
@@ -112,7 +112,7 @@ public final class Ids<T> {
         System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-        JDWPLogger.log("Generating new ID: " + id + " for object: " + object, JDWPLogger.LogLevel.IDS);
+        JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
         return id;
     }
 }

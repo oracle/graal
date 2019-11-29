@@ -74,10 +74,10 @@ public final class RequestedJDWPEvents {
         int modifiers = input.readInt();
 
         RequestFilter filter = new RequestFilter(packet.id, eventKind, modifiers);
-        JDWPLogger.log("New event request with ID: " + packet.id + " with kind: " + eventKind + " and " + modifiers + " modifiers", JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("New event request with ID: %d with kind: %d and %d modifiers", JDWPLogger.LogLevel.STEPPING, packet.id, eventKind, modifiers);
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
-            JDWPLogger.log("Handling modKind: " + modKind, JDWPLogger.LogLevel.STEPPING);
+            JDWPLogger.log("Handling modKind: %d", JDWPLogger.LogLevel.STEPPING, modKind);
             handleModKind(filter, input, modKind, callback, context);
         }
 
@@ -117,7 +117,7 @@ public final class RequestedJDWPEvents {
                 fieldBreakpointInfo.setAccessBreakpoint();
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
                 String location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
-                JDWPLogger.log("Submitting field access breakpoint: " + location, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("Submitting field access breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
                 eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
@@ -127,7 +127,7 @@ public final class RequestedJDWPEvents {
                 fieldBreakpointInfo.setModificationBreakpoint();
                 fieldBreakpointInfo.getField().addFieldBreakpointInfo(fieldBreakpointInfo);
                 location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
-                JDWPLogger.log("Submitting field modification breakpoint: " + location, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("Submitting field modification breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
                 eventListener.increaseFieldBreakpointCount();
                 reply = toReply(packet);
                 break;
@@ -152,7 +152,7 @@ public final class RequestedJDWPEvents {
                 reply = toReply(packet);
                 break;
             default:
-                System.out.println("unhandled event kind " + eventKind);
+                JDWPLogger.log("unhandled event kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
                 break;
         }
 
@@ -172,23 +172,23 @@ public final class RequestedJDWPEvents {
         switch (modKind) {
             case 1:
                 int count = input.readInt();
-                JDWPLogger.log("adding count limit: " + count + " to filter", JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("adding count limit: %d to filter", JDWPLogger.LogLevel.STEPPING, count);
                 filter.addEventCount(count);
                 break;
             case 2:
-                System.err.println("unhandled modKind 2");
+                JDWPLogger.log("unhandled modKind 2", JDWPLogger.LogLevel.PACKET);
                 break;
             case 3: // limit to specific thread
                 long threadId = input.readLong();
                 Object thread = ids.fromId((int) threadId);
                 filter.addThread(thread);
-                JDWPLogger.log("limiting to thread: " + context.getThreadName(thread), JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("limiting to thread: %s", JDWPLogger.LogLevel.STEPPING, context.getThreadName(thread));
                 break;
             case 4:
                 long refTypeId = input.readLong();
                 KlassRef klass = (KlassRef) ids.fromId((int) refTypeId);
                 filter.addRefTypeLimit(klass);
-                JDWPLogger.log("RefType limit: " + klass, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("RefType limit: %s", JDWPLogger.LogLevel.STEPPING, klass);
                 break;
             case 5: // class positive pattern
                 String classPattern = input.readString();
@@ -198,7 +198,7 @@ public final class RequestedJDWPEvents {
                     }
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addPositivePattern(pattern);
-                    JDWPLogger.log("adding positive refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.STEPPING);
+                    JDWPLogger.log("adding positive refType pattern: %s", JDWPLogger.LogLevel.STEPPING, pattern.pattern());
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
                 }
@@ -211,7 +211,7 @@ public final class RequestedJDWPEvents {
                 try {
                     Pattern pattern = Pattern.compile(classPattern);
                     filter.addExcludePattern(pattern);
-                    JDWPLogger.log("adding negative refType pattern: " + pattern.pattern(), JDWPLogger.LogLevel.STEPPING);
+                    JDWPLogger.log("adding negative refType pattern: %s", JDWPLogger.LogLevel.STEPPING, pattern.pattern());
                 } catch (PatternSyntaxException ex) {
                     // wrong input pattern, silently ignore this breakpoint request then
                 }
@@ -229,7 +229,7 @@ public final class RequestedJDWPEvents {
 
                 LineBreakpointInfo info = new LineBreakpointInfo(filter, typeTag, classId, methodId, bci, slashName, line);
                 filter.addBreakpointInfo(info);
-                JDWPLogger.log("Adding breakpoint info for location: " + klass.getNameAsString() + "." + method.getNameAsString() + ":" + line, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("Adding breakpoint info for location: %s.%s:%d", JDWPLogger.LogLevel.STEPPING, klass.getNameAsString(), method.getNameAsString(), line);
                 break;
             case 8:
                 refTypeId = input.readLong();
@@ -242,7 +242,7 @@ public final class RequestedJDWPEvents {
                 boolean unCaught = input.readBoolean();
                 ExceptionBreakpointInfo exceptionBreakpointInfo = new ExceptionBreakpointInfo(filter, klass, caught, unCaught);
                 filter.addBreakpointInfo(exceptionBreakpointInfo);
-                JDWPLogger.log("adding exception filter: caught=" + caught + ", uncaught=" + unCaught, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("adding exception filter: caught=%b, uncaught=%b", JDWPLogger.LogLevel.STEPPING, caught, unCaught);
                 break;
             case 9: // limit to specific field
                 refTypeId = input.readLong();
@@ -252,7 +252,7 @@ public final class RequestedJDWPEvents {
 
                 FieldBreakpointInfo fieldBreakpointInfo = new FieldBreakpointInfo(filter, klass, field);
                 filter.addBreakpointInfo(fieldBreakpointInfo);
-                JDWPLogger.log("limiting to field: " + field.getNameAsString(), JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("limiting to field: %s", JDWPLogger.LogLevel.STEPPING, field.getNameAsString());
                 break;
             case 10:
                 filter.setStepping(true);
@@ -262,7 +262,7 @@ public final class RequestedJDWPEvents {
                 int size = input.readInt();
                 int depth = input.readInt();
 
-                JDWPLogger.log("Step command: size= " + size + ", depth=" + depth, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("Step command: size= %d, depth=%d", JDWPLogger.LogLevel.STEPPING, size, depth);
                 switch (depth) {
                     case SteppingConstants.INTO:
                         callback.stepInto(thread, filter.getRequestId());
@@ -277,11 +277,11 @@ public final class RequestedJDWPEvents {
                 break;
             case 11:
                 long thisId = input.readLong();
-                JDWPLogger.log("adding instance filter for object ID: " + thisId, JDWPLogger.LogLevel.STEPPING);
+                JDWPLogger.log("adding instance filter for object ID: %d", JDWPLogger.LogLevel.STEPPING, thisId);
                 filter.addThisFilterId(thisId);
                 break;
             case 12:
-                System.err.println("unhandled modKind 12");
+                JDWPLogger.log("unhandled modKind 12", JDWPLogger.LogLevel.PACKET);
                 break;
             default:
                 break;
@@ -330,7 +330,7 @@ public final class RequestedJDWPEvents {
                         eventListener.addClassUnloadRequestId(packet.id);
                         break;
                     default:
-                        System.out.println("unhandled event clear kind " + eventKind);
+                        JDWPLogger.log("unhandled event clear kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
                         break;
                 }
             } else {

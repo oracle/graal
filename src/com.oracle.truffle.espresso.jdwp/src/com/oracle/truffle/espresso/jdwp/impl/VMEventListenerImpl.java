@@ -280,7 +280,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(info.getClassId());
         stream.writeLong(info.getMethodId());
         stream.writeLong(info.getBci());
-        JDWPLogger.log("Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy(), JDWPLogger.LogLevel.STEPPING);
+        JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.STEPPING, context.getThreadName(currentThread), info.getSuspendPolicy());
         connection.queuePacket(stream);
     }
 
@@ -404,7 +404,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        JDWPLogger.log("sending thread started event for thread: " + context.getThreadName(thread), JDWPLogger.LogLevel.THREAD);
+        JDWPLogger.log("sending thread started event for thread: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread));
         connection.queuePacket(stream);
     }
 

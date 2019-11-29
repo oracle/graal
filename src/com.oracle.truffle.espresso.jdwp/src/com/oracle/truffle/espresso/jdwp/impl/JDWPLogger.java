@@ -22,7 +22,13 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import com.oracle.truffle.api.TruffleLogger;
+
+import java.util.logging.Level;
+
 public final class JDWPLogger {
+
+    private static final TruffleLogger logger = TruffleLogger.getLogger("JDWPLogger");
 
     public static LogLevel LEVEL;
 
@@ -56,9 +62,10 @@ public final class JDWPLogger {
         }
     }
 
-    public static void log(String msg, LogLevel level) {
+    public static void log(String msg, LogLevel level, Object... args) {
         if (shouldLog(level)) {
-            System.out.println(msg);
+            String logRecord = String.format(msg, args);
+            logger.log(Level.INFO, logRecord);
         }
     }
 }
