@@ -27,6 +27,7 @@ package com.oracle.svm.truffle.tck;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
@@ -201,9 +202,14 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     private void verifySupportedOnActivePlatform(Class<?> clz) throws UnsupportedPlatformException {
+        AnalysisUniverse universe = bigBang.getUniverse();
+        Package pkg = clz.getPackage();
+        if (pkg != null && !universe.platformSupported(pkg)) {
+            throw new UnsupportedPlatformException(clz.getPackage());
+        }
         Class<?> current = clz;
         do {
-            if (!bigBang.getUniverse().platformSupported(current)) {
+            if (!universe.platformSupported(current)) {
                 throw new UnsupportedPlatformException(current);
             }
             current = current.getEnclosingClass();
@@ -305,9 +311,16 @@ final class WhiteListParser extends ConfigurationParser {
     private static final class UnsupportedPlatformException extends Exception {
 
         UnsupportedPlatformException(Class<?> clazz) {
-            super(String.format("The %s is supported only on platforms: %s",
+            super(String.format("The class %s is supported only on platforms: %s",
                             clazz.getName(),
                             Arrays.toString(clazz.getAnnotation(Platforms.class).value())));
         }
+
+        UnsupportedPlatformException(Package pkg) {
+            super(String.format("The package %s is supported only on platforms: %s",
+                            pkg.getName(),
+                            Arrays.toString(pkg.getAnnotation(Platforms.class).value())));
+        }
+
     }
 }

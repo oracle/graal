@@ -276,7 +276,8 @@ public class PermissionsFeature implements Feature {
                         visited.put(callee, parents);
                         if (targets.contains(callee)) {
                             parents.add(m);
-                            return true;
+                            callPathContainsTarget = true;
+                            continue;
                         }
                         boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
                         if (add) {
@@ -284,7 +285,7 @@ public class PermissionsFeature implements Feature {
                             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
                         }
                         callPathContainsTarget |= add;
-                    } else if (!isBacktrace(callee, path) || hasLanguageMethodOnCallPath(callee, path)) {
+                    } else if (!isBacktrace(callee, path) || isBackTraceOverLanguageMethod(callee, path)) {
                         parents.add(m);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
                         callPathContainsTarget = true;
@@ -313,19 +314,31 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Checks if the call path up to given {@code method} frame contains a language method.
+     * Checks if the back call of given method crosses some language method on given call path. If
+     * the back call crosses a language method the call has to be included into the call graph, the
+     * crossed language method is the start method of a violation. Example: P privileged method, L
+     * language method.
      *
-     * @param method the method to stop on
+     * <pre>
+     * G((A,L),(A,P),(L,C),(C,A),(C,D))
+     * </pre>
+     *
+     * The violation is L->C->A->P
+     *
+     * @param method the method being invoked
      * @param path the current call path
-     * @return {@code true} if the call path up to given {@code method} contains a language method.
+     * @return {@code true} if the call of given method crosses some language method.
      */
-    private static boolean hasLanguageMethodOnCallPath(AnalysisMethod method, Deque<AnalysisMethod> path) {
+    private static boolean isBackTraceOverLanguageMethod(AnalysisMethod method, Deque<AnalysisMethod> path) {
+        if (!isCompilerClass(method) && !isSystemClass(method)) {
+            return false;
+        }
+        boolean found = false;
         for (Iterator<AnalysisMethod> it = path.descendingIterator(); it.hasNext();) {
             AnalysisMethod pe = it.next();
             if (method.equals(pe)) {
-                return false;
-            }
-            if (!isCompilerClass(pe) && !isSystemClass(pe)) {
+                found = true;
+            } else if (found && !isCompilerClass(pe) && !isSystemClass(pe)) {
                 return true;
             }
         }
