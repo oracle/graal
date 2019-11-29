@@ -29,7 +29,7 @@ public final class PacketStream {
     private final Packet packet;
     private int readPosition;
 
-    ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
+    private final ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 
     PacketStream() {
         packet = new Packet();

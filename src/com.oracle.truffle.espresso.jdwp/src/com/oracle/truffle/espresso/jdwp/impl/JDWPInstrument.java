@@ -34,7 +34,7 @@ import java.util.Collection;
 public final class JDWPInstrument extends TruffleInstrument implements Runnable {
 
     public static final String ID = "jdwp";
-    public static Object suspendStartupLock = new Object();
+    public static final Object suspendStartupLock = new Object();
 
     private JDWPDebuggerController controller;
     private TruffleInstrument.Env env;

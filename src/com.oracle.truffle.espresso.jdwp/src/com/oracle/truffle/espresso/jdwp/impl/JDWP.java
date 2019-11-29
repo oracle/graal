@@ -41,6 +41,8 @@ final class JDWP {
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
+    private JDWP() {}
+
     static class VirtualMachine {
         public static final int ID = 1;
 

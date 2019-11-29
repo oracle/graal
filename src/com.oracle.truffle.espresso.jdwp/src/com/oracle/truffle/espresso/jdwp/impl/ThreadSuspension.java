@@ -35,7 +35,7 @@ public final class ThreadSuspension {
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private static int[] suspensionCount = new int[0];
 
-    private static Set<Object> hardSuspendedThreads = new HashSet<>();
+    private static final Set<Object> hardSuspendedThreads = new HashSet<>();
 
     public static void suspendThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {

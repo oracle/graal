@@ -26,9 +26,9 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
 
 public class SuspendedInfo {
 
-    private SuspendedEvent event;
-    private JDWPCallFrame[] stackFrames;
-    private Object thread;
+    private final SuspendedEvent event;
+    private final JDWPCallFrame[] stackFrames;
+    private final Object thread;
     private DebuggerCommand.Kind stepKind;
 
     SuspendedInfo(SuspendedEvent event, JDWPCallFrame[] stackFrames, Object thread) {

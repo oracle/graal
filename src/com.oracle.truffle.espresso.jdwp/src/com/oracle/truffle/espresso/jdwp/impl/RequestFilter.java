@@ -31,7 +31,7 @@ public final class RequestFilter {
     private final int requestId;
     private final byte eventKind;
     private Pattern[] classExcludePatterns = new Pattern[0];
-    private KlassRef[] klassRefPatterns;
+    private final KlassRef[] klassRefPatterns;
     private int nextIndex;
     private boolean stepping;
     private int count = 0;

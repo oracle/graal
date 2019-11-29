@@ -31,16 +31,16 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public final class SocketConnection implements Runnable {
-    private Socket socket;
-    private ServerSocket serverSocket;
+    private final Socket socket;
+    private final ServerSocket serverSocket;
     private boolean closed = false;
-    private OutputStream socketOutput;
-    private InputStream socketInput;
-    private Object receiveLock = new Object();
-    private Object sendLock = new Object();
-    private Object closeLock = new Object();
+    private final OutputStream socketOutput;
+    private final InputStream socketInput;
+    private final Object receiveLock = new Object();
+    private final Object sendLock = new Object();
+    private final Object closeLock = new Object();
 
-    private BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
+    private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
 
     SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
         this.socket = socket;

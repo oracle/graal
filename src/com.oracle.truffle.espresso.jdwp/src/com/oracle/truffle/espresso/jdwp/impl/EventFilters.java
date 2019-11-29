@@ -31,7 +31,6 @@ public final class EventFilters {
 
     private ReadWriteLock lock = new ReentrantReadWriteLock();
 
-    // implement using a dynamic array that doesn't resize on each element insert
     private RequestFilter[] requestFilters = new RequestFilter[0];
 
     EventFilters() {}

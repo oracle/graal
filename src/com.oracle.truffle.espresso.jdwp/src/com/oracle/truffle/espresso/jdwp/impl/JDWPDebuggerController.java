@@ -135,7 +135,7 @@ public class JDWPDebuggerController {
             if (ignoreCount > 0) {
                 bp.setIgnoreCount(ignoreCount);
             }
-            mapBrekpoint(bp, command.getBreakpointInfo());
+            mapBreakpoint(bp, command.getBreakpointInfo());
             debuggerSession.install(bp);
             JDWPLogger.log("Breakpoint submitted at %s", JDWPLogger.LogLevel.STEPPING, bp.getLocationDescription());
 
@@ -153,13 +153,13 @@ public class JDWPDebuggerController {
         if (ignoreCount > 0) {
             bp.setIgnoreCount(ignoreCount);
         }
-        mapBrekpoint(bp, command.getBreakpointInfo());
+        mapBreakpoint(bp, command.getBreakpointInfo());
         debuggerSession.install(bp);
         JDWPLogger.log("exception breakpoint submitted", JDWPLogger.LogLevel.STEPPING);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void mapBrekpoint(Breakpoint bp, BreakpointInfo info) {
+    private void mapBreakpoint(Breakpoint bp, BreakpointInfo info) {
         breakpointInfos.put(bp, info);
         info.setBreakpoint(bp);
     }

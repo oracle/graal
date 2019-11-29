@@ -28,7 +28,7 @@ public final class GCPrevention {
 
     // simply hold a strong reference to all objects for which
     // GC should be disabled
-    private static HashSet<Object> prevent = new HashSet<>();
+    private static final HashSet<Object> prevent = new HashSet<>();
 
     public static void disableGC(Object object) {
         prevent.add(object);

@@ -22,8 +22,11 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -32,7 +35,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
-import com.oracle.truffle.espresso.jdwp.api.StableBoolean;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -302,6 +304,48 @@ public final class Field extends Member<Type> implements FieldRef {
                     infos = temp;
                     return;
                 }
+        }
+    }
+
+    /**
+     * Helper class that uses an assumption to switch between two "stable" states
+     * efficiently. Copied from DebuggerSession with modifications to the set method
+     * to make it thread safe (but slower on the slow path).
+     */
+    private final class StableBoolean {
+
+        @CompilerDirectives.CompilationFinal
+        private volatile Assumption unchanged;
+        @CompilerDirectives.CompilationFinal
+        private volatile boolean value;
+
+        public StableBoolean(boolean initialValue) {
+            this.value = initialValue;
+            this.unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
+        }
+
+        public boolean get() {
+            if (unchanged.isValid()) {
+                return value;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return value;
+            }
+        }
+
+        /**
+         * This method needs to be behind a boundary due to the fact that compiled code
+         * will constant fold the value, hence the first check might yield a wrong result.
+         * @param value
+         */
+        @CompilerDirectives.TruffleBoundary
+        public synchronized void set(boolean value) {
+            if (this.value != value) {
+                this.value = value;
+                Assumption old = this.unchanged;
+                unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
+                old.invalidate();
+            }
         }
     }
 

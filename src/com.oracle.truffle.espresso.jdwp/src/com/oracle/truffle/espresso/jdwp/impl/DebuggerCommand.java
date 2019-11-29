@@ -33,9 +33,9 @@ final class DebuggerCommand {
     }
 
     final Kind kind;
+    private final Object thread;
     private SourceLocation location;
     private BreakpointInfo breakpointInfo;
-    private final Object thread;
 
     DebuggerCommand(Kind kind, Object thread) {
         this.kind = kind;

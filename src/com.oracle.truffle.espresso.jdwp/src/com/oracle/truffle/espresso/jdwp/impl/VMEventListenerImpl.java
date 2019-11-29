@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.StableBoolean;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 import java.lang.reflect.Modifier;
@@ -48,15 +47,14 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final Ids<Object> ids;
     private final JDWPContext context;
     private final JDWPDebuggerController debuggerController;
-    private HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
-    private HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
+    private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
+    private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
+    private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
     private int vmDeathRequestId;
     private int vmStartRequestId;
-
-    private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
 
     public VMEventListenerImpl(SocketConnection connection, JDWPContext context, JDWPDebuggerController controller) {
         this.connection = connection;
