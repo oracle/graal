@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
@@ -66,27 +65,25 @@ public class JDWPDebuggerController {
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
     private final JDWPInstrument instrument;
-    private TruffleLanguage.Env languageEnv;
     private Ids<Object> ids;
     private JDWPContext context;
-    private JDWPVirtualMachine vm;
+    private final JDWPVirtualMachine vm;
+    private Debugger debugger;
 
     public JDWPDebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
         this.vm = new JDWPVirtualMachineImpl();
     }
 
-    public void initialize(TruffleLanguage.Env env, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
+    public void initialize(Debugger debugger, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
+        this.debugger = debugger;
         this.options = jdwpOptions;
-        this.languageEnv = env;
         this.context = jdwpContext;
         this.ids = jdwpContext.getIds();
 
         // setup the debugger session object early to make sure instrumentable nodes are materialized
-        Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
-        //debuggerSession.suspendNextExecution();
 
         if (!reconnect) {
             instrument.init(jdwpContext);
@@ -94,7 +91,7 @@ public class JDWPDebuggerController {
     }
 
     public void reInitialize() {
-        initialize(languageEnv, options, context, true);
+        initialize(debugger, options, context, true);
     }
 
     public JDWPContext getContext() {
