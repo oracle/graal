@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -34,7 +32,6 @@ public final class EventFilters {
     private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     // implement using a dynamic array that doesn't resize on each element insert
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
     private RequestFilter[] requestFilters = new RequestFilter[0];
 
     EventFilters() {}

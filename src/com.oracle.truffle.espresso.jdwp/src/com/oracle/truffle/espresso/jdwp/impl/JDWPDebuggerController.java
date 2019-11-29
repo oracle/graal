@@ -86,7 +86,7 @@ public class JDWPDebuggerController {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         debuggerSession = debugger.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
-        debuggerSession.suspendNextExecution();
+        //debuggerSession.suspendNextExecution();
 
         if (!reconnect) {
             instrument.init(jdwpContext);
@@ -341,17 +341,8 @@ public class JDWPDebuggerController {
         public static final String DEBUG_STACK_FRAME_FIND_CURRENT_ROOT = "findCurrentRoot";
         public static final String DEBUG_EXCEPTION_GET_RAW_EXCEPTION = "getRawException";
 
-        @CompilerDirectives.CompilationFinal
-        private boolean firstSuspensionCalled;
-
         @Override
         public void onSuspend(SuspendedEvent event) {
-            if (!firstSuspensionCalled) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                firstSuspensionCalled = true;
-                return;
-            }
-
             Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
 
