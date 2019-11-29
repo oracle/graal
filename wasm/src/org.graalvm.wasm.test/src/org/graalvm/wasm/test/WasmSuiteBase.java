@@ -147,45 +147,49 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         ByteArrayOutputStream capturedStdout;
         Object firstIterationContextState = null;
 
-        for (int i = 0; i != iterations; ++i) {
-            try {
-                capturedStdout = new ByteArrayOutputStream();
-                System.setOut(new PrintStream(capturedStdout));
+        try {
+            for (int i = 0; i != iterations; ++i) {
+                try {
+                    capturedStdout = new ByteArrayOutputStream();
+                    System.setOut(new PrintStream(capturedStdout));
 
-                // Run custom initialization.
-                if (testCase.initialization() != null) {
-                    customInitialize.execute(testCase.initialization());
-                }
-
-                // Execute benchmark.
-                result = mainFunction.execute();
-
-                // Save context state, and check that it's consistent with the previous one.
-                if (iterationNeedsStateCheck(i)) {
-                    Object contextState = saveContext.execute();
-                    if (firstIterationContextState == null) {
-                        firstIterationContextState = contextState;
-                    } else {
-                        compareContexts.execute(firstIterationContextState, contextState);
+                    // Run custom initialization.
+                    if (testCase.initialization() != null) {
+                        customInitialize.execute(testCase.initialization());
                     }
+
+                    // Execute benchmark.
+                    result = mainFunction.execute();
+
+                    // Save context state, and check that it's consistent with the previous one.
+                    if (iterationNeedsStateCheck(i)) {
+                        Object contextState = saveContext.execute();
+                        if (firstIterationContextState == null) {
+                            firstIterationContextState = contextState;
+                        } else {
+                            compareContexts.execute(firstIterationContextState, contextState);
+                        }
+                    }
+
+                    // Reset context state.
+                    boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
+                    resetContext.execute(zeroMemory);
+
+                    validateResult(testCase.data().resultValidator(), result, capturedStdout);
+                } catch (PolyglotException e) {
+                    // We cannot label the tests with polyglot errors, because they might
+                    // semantically be return values of the test.
+                    validateThrown(testCase.data().expectedErrorMessage(), e);
+                } catch (Throwable t) {
+                    final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
+                    e.setStackTrace(new StackTraceElement[0]);
+                    throw e;
+                } finally {
+                    System.setOut(oldOut);
                 }
-
-                // Reset context state.
-                boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
-                resetContext.execute(zeroMemory);
-
-                validateResult(testCase.data().resultValidator(), result, capturedStdout);
-            } catch (PolyglotException e) {
-                // We cannot label the tests with polyglot errors, because they might
-                // semantically be return values of the test.
-                validateThrown(testCase.data().expectedErrorMessage(), e);
-            } catch (Throwable t) {
-                final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
-                e.setStackTrace(new StackTraceElement[0]);
-                throw e;
-            } finally {
-                System.setOut(oldOut);
             }
+        } finally {
+            context.close(true);
         }
 
         return result;

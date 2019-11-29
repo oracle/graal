@@ -1192,7 +1192,7 @@ public class BinaryParser extends BinaryStreamParser {
             int byteLength = readVectorLength();
 
             long baseAddress = dataOffset;
-            memory.validateAddress(baseAddress, byteLength);
+            memory.validateAddress(null, baseAddress, byteLength);
 
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = read1();

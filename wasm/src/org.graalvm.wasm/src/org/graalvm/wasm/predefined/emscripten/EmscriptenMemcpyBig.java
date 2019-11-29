@@ -69,7 +69,7 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
         trace("EmscriptenMemcpyBig EXECUTE");
 
         WasmMemory memory = module.symbolTable().memory();
-        memory.copy(src, dest, num);
+        memory.copy(this, src, dest, num);
 
         return 0;
     }
