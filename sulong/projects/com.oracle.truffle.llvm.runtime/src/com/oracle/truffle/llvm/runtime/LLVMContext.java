@@ -183,8 +183,8 @@ public final class LLVMContext {
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
         LLVMMemory memory = language.getCapability(LLVMMemory.class);
-        this.handleContainer = memory.createHandleContainer(false, language.getNoHandleAssumption(false));
-        this.derefHandleContainer = memory.createHandleContainer(true, language.getNoHandleAssumption(true));
+        this.handleContainer = memory.createHandleContainer(false, language.getNoCommonHandleAssumption());
+        this.derefHandleContainer = memory.createHandleContainer(true, language.getNoDerefHandleAssumption());
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();

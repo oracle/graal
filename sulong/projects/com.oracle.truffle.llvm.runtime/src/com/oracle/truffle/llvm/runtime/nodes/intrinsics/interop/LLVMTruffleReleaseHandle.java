@@ -52,7 +52,7 @@ public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @CachedLanguage LLVMLanguage language) {
         long address = handle.asNative();
-        if (!language.getNoHandleAssumption(true).isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
             context.getDerefHandleContainer().free(address);
         } else {
             context.getHandleContainer().free(address);

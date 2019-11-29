@@ -70,7 +70,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
             languageRef = lookupLanguageReference(LLVMLanguage.class);
         }
         // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoHandleAssumption(true).isValid()) {
+        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
             return false;
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);

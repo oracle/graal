@@ -232,9 +232,9 @@ class Snippets {
     }
     // END: unrollVsExplodeLoopUnrolled
 
+    @SuppressWarnings("unused")
     // BEGIN: unrollVsExplodeLoopExploded
     void unrollVsExplodeLoopExploded() {
-        @SuppressWarnings("unused")
         int state = 1;
         if (c(0, 1)) {
             if (c(1, 2)) {

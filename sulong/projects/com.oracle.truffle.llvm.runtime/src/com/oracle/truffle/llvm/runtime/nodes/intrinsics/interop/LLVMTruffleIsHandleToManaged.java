@@ -49,9 +49,9 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
     protected boolean doLongCase(long address,
                     @CachedLanguage LLVMLanguage language,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (!language.getNoHandleAssumption(true).isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
             return context.get().getDerefHandleContainer().isHandle(address);
-        } else if (!language.getNoHandleAssumption(false).isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
+        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
             return context.get().getHandleContainer().isHandle(address);
         }
         return false;
