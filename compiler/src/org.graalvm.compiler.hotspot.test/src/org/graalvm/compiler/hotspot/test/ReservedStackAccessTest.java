@@ -72,7 +72,7 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         vmArgs.add("-XX:+UseJVMCICompiler");
         vmArgs.add("-Dgraal.Inline=false");
         vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread");
-        vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
 
         // Avoid SOE in HotSpotJVMCIRuntime.adjustCompilationLevel
         vmArgs.add("-Dgraal.CompileGraalWithC1Only=false");
