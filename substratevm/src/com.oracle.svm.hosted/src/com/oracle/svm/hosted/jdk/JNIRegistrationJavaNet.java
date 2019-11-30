@@ -100,8 +100,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         a.registerReachabilityHandler(registerInitInetAddressIDs,
                         method(a, "java.net.InetAddress", "init"),
-                        /* The following methods call initInetAddressIDs directly. */
-                        method(a, "java.net.NetworkInterface", "init"),
+                        /* The next two methods call initInetAddressIDs directly. */
                         method(a, "java.net.Inet4AddressImpl", "lookupAllHostAddr", String.class),
                         method(a, "java.net.Inet6AddressImpl", "lookupAllHostAddr", String.class));
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerInetAddressLoadImpl,
@@ -119,7 +118,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
         }
 
-        /* Reuse same lambda for registerNetworkInterfaceInit to ensure it only gets called once */
         Consumer<DuringAnalysisAccess> registerNetworkInterfaceInit = JNIRegistrationJavaNet::registerNetworkInterfaceInit;
         a.registerReachabilityHandler(registerNetworkInterfaceInit,
                         method(a, "java.net.NetworkInterface", "init"));
@@ -160,6 +158,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     public void cleanup() {
         /* Reset the static state. */
         initInetAddressIDs.set(false);
+        networkInterfaceInit.set(false);
     }
 
     private static AtomicBoolean initInetAddressIDs = new AtomicBoolean();
@@ -192,18 +191,23 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         RuntimeReflection.register(constructor(a, "java.net.Inet6AddressImpl"));
     }
 
+    private static AtomicBoolean networkInterfaceInit = new AtomicBoolean();
+
     private static void registerNetworkInterfaceInit(DuringAnalysisAccess a) {
+        if (!networkInterfaceInit.compareAndSet(false, true)) {
+            return; /* Already registered. */
+        }
+
         JNIRuntimeAccess.register(constructor(a, "java.net.NetworkInterface"));
         JNIRuntimeAccess.register(fields(a, "java.net.NetworkInterface", "name", "displayName", "index", "addrs", "bindings", "childs"));
-        RuntimeReflection.register(clazz(a, "[Ljava.net.NetworkInterface;"));
-
         if (isPosix()) {
             JNIRuntimeAccess.register(fields(a, "java.net.NetworkInterface", "virtual", "parent", "defaultIndex"));
         }
 
         JNIRuntimeAccess.register(constructor(a, "java.net.InterfaceAddress"));
         JNIRuntimeAccess.register(fields(a, "java.net.InterfaceAddress", "address", "broadcast", "maskLength"));
-        RuntimeReflection.register(clazz(a, "[Ljava.net.InterfaceAddress;"));
+
+        registerInitInetAddressIDs(a);
     }
 
     private static void registerDatagramPacketInit(DuringAnalysisAccess a) {
