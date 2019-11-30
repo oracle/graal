@@ -100,6 +100,13 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         }
 
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerConnectionCreateInetSocketAddress, method(a, "com.sun.jndi.ldap.Connection", "createInetSocketAddress", String.class, int.class));
+
+        Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
+        if (JavaVersionUtil.JAVA_SPEC < 9) {
+            a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.IOUtil", "initIDs"));
+        } else {
+            a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));
+        }
     }
 
     private static void registerServerSocketChannelImplInitIDs(DuringAnalysisAccess a) {

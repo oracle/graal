@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.net.DatagramPacket;
-import java.net.InetAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -93,20 +93,20 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                         "java.net.ProtocolException", "java.net.NoRouteToHostException",
                         "java.net.SocketTimeoutException", "java.net.PortUnreachableException", "sun.net.ConnectionResetException");
 
-        /* Reuse same lambda for registerInitInetAddressIDs to ensure it only gets called once */
-        Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         /*
          * InetAddress, Inet4Address, and Inet6Address are registered from many places in the JDK,
          * so it does not make sense to separate them.
          */
+        Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
         a.registerReachabilityHandler(registerInitInetAddressIDs,
                         method(a, "java.net.InetAddress", "init"),
-                        method(a, "java.net.Inet4Address", "init"),
-                        method(a, "java.net.Inet6Address", "init"),
+                        /* The following methods call initInetAddressIDs directly. */
                         method(a, "java.net.NetworkInterface", "init"),
-                        method(a, "sun.nio.ch.IOUtil", "initIDs"),
-                        clazz(a, "java.net.Inet4AddressImpl"),
-                        clazz(a, "java.net.Inet6AddressImpl"));
+                        method(a, "java.net.Inet4AddressImpl", "lookupAllHostAddr", String.class),
+                        method(a, "java.net.Inet6AddressImpl", "lookupAllHostAddr", String.class));
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerInetAddressLoadImpl,
+                        method(a, "java.net.InetAddress", "loadImpl", String.class));
+
         if (isPosix()) {
             a.registerReachabilityHandler(registerInitInetAddressIDs,
                             method(a, "java.net.PlainSocketImpl", "initProto"),
@@ -156,34 +156,40 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         }
     }
 
-    private static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(method(a, "java.net.InetAddress", "anyLocalAddress"));
-        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress", "holder", "preferIPv6Address"));
+    @Override
+    public void cleanup() {
+        /* Reset the static state. */
+        initInetAddressIDs.set(false);
+    }
 
-        RuntimeReflection.register(clazz(a, "java.net.InetAddressImpl"));
+    private static AtomicBoolean initInetAddressIDs = new AtomicBoolean();
+
+    static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
+        if (!initInetAddressIDs.compareAndSet(false, true)) {
+            return; /* Already registered. */
+        }
+
+        /* Java_java_net_InetAddress_init */
+        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress", "holder", "preferIPv6Address"));
+        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress$InetAddressHolder", "address", "family", "hostName", "originalHostName"));
+
+        /* Java_java_net_Inet4Address_init */
+        JNIRuntimeAccess.register(constructor(a, "java.net.Inet4Address"));
+
+        /* Java_java_net_Inet6Address_init */
+        JNIRuntimeAccess.register(constructor(a, "java.net.Inet6Address"));
+        JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
+        if (JavaVersionUtil.JAVA_SPEC < 13) {
+            JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "cached_scope_id"));
+        }
+        JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
+    }
+
+    private static void registerInetAddressLoadImpl(DuringAnalysisAccess a) {
         RuntimeReflection.register(clazz(a, "java.net.Inet4AddressImpl"));
         RuntimeReflection.register(constructor(a, "java.net.Inet4AddressImpl"));
         RuntimeReflection.register(clazz(a, "java.net.Inet6AddressImpl"));
         RuntimeReflection.register(constructor(a, "java.net.Inet6AddressImpl"));
-
-        JNIRuntimeAccess.register(fields(a, "java.net.InetAddress$InetAddressHolder", "address", "family", "hostName", "originalHostName"));
-
-        JNIRuntimeAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
-
-        JNIRuntimeAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
-
-        JNIRuntimeAccess.register(clazz(a, "java.net.Inet4Address"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.Inet4Address"));
-
-        JNIRuntimeAccess.register(clazz(a, "java.net.Inet6Address"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.Inet6Address"));
-        JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "cached_scope_id"));
-        }
-
-        JNIRuntimeAccess.register(clazz(a, "java.net.Inet6Address$Inet6AddressHolder"));
-        JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
     }
 
     private static void registerNetworkInterfaceInit(DuringAnalysisAccess a) {
