@@ -48,28 +48,37 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        rerunClassInit(a, "java.net.NetworkInterface", "java.net.DefaultInterface",
-                        "java.net.InetAddress", "java.net.Inet4AddressImpl", "java.net.Inet6AddressImpl",
-                        "java.net.SocketInputStream", "java.net.SocketOutputStream",
-                        "java.net.DatagramPacket",
-                        "java.net.AbstractPlainSocketImpl", "java.net.AbstractPlainDatagramSocketImpl");
-        if (isPosix()) {
-            rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.PlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
-            }
-        }
+        rerunClassInit(a, "java.net.DatagramPacket", "java.net.InetAddress", "java.net.NetworkInterface",
+                        "java.net.SocketInputStream", "java.net.SocketOutputStream");
         if (isWindows()) {
             rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                rerunClassInit(a, "java.net.PlainSocketImpl");
-            } else {
+            if (JavaVersionUtil.JAVA_SPEC < 11) {
                 rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl");
+            } else {
+                /* The other implementations are merged into PlainSocketImpl. */
+                rerunClassInit(a, "java.net.PlainSocketImpl");
             }
-        }
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "sun.net.ext.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+        } else {
+            assert isPosix();
+            rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC < 9) {
+                rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
+            } else {
+                /* These two classes cache whether SO_REUSEPORT, added in Java 9, is supported. */
+                rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
+            }
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /*
+                 * The libextnet was actually introduced in Java 9, but the support for Linux and
+                 * Darwin was added later in Java 10 and Java 11 respectively.
+                 */
+                rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "sun.net.ext.ExtendedSocketOptions",
+                                "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+            }
+            if (isDarwin()) {
+                /* Caches the default interface. */
+                rerunClassInit(a, "java.net.DefaultInterface");
+            }
         }
     }
 
@@ -126,9 +135,14 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
                             method(a, "java.net.PlainSocketImpl", "initProto"));
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            if (JavaVersionUtil.JAVA_SPEC < 9) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
+            }
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /* Support for the libextnet. */
+                a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
+                                method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
             }
         }
         if (isWindows()) {
@@ -139,11 +153,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
                             method(a, "java.net." + plainSocketImpl, "initIDs"));
-        }
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
-                            method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
         }
     }
 
@@ -249,12 +258,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             implClassName = "jdk.net.LinuxSocketOptions";
         } else if (isDarwin()) {
             implClassName = "jdk.net.MacOSXSocketOptions";
-        } else if (isWindows()) {
-            /*
-             * Windows uses PlatformSocketOptions directly, without any subclass and without any
-             * reflective instantiation.
-             */
-            return;
         } else {
             throw VMError.shouldNotReachHere("Unexpected platform");
         }
