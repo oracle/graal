@@ -51,6 +51,8 @@ public class ThermometerInstrument extends TruffleInstrument {
     static final OptionKey<Integer> ReportingPeriod = new OptionKey<>(333);
     @Option(help = "Source location (file:line) to sample iterations per second", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> IterationPoint = new OptionKey<>("");
+    @Option(help = "Log file", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<String> LogFile = new OptionKey<>("");
     // @formatter:on
 
     private Thermometer thermometer;
@@ -65,7 +67,16 @@ public class ThermometerInstrument extends TruffleInstrument {
             thermometer.start(new ThermometerConfig(
                     options.get(SamplingPeriod),
                     options.get(ReportingPeriod),
-                    options.get(IterationPoint).isEmpty() ? null : options.get(IterationPoint)));
+                    getStringOrNullOption(options, IterationPoint),
+                    getStringOrNullOption(options, LogFile)));
+        }
+    }
+
+    private static String getStringOrNullOption(OptionValues options, OptionKey<String> iterationPoint) {
+        if (options.get(iterationPoint).isEmpty()) {
+            return null;
+        } else {
+            return options.get(iterationPoint);
         }
     }
 

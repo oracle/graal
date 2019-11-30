@@ -29,11 +29,13 @@ public class ThermometerConfig {
     private final int samplingPeriod;
     private final int reportingPeriod;
     private final String iterationLocation;
+    private final String logFile;
 
-    public ThermometerConfig(int samplingPeriod, int reportingPeriod, String iterationLocation) {
+    public ThermometerConfig(int samplingPeriod, int reportingPeriod, String iterationLocation, String logFile) {
         this.samplingPeriod = samplingPeriod;
         this.reportingPeriod = reportingPeriod;
         this.iterationLocation = iterationLocation;
+        this.logFile = logFile;
     }
 
     public int getSamplingPeriod() {
@@ -48,4 +50,7 @@ public class ThermometerConfig {
         return iterationLocation;
     }
 
+    public String getLogFile() {
+        return logFile;
+    }
 }

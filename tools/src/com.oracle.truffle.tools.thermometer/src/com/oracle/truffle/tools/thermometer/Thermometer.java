@@ -32,10 +32,14 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 
 public final class Thermometer implements AutoCloseable {
 
@@ -47,9 +51,10 @@ public final class Thermometer implements AutoCloseable {
 
     private boolean running;
     private long startTime;
+    private PrintStream logStream;
     private ScheduledThreadPoolExecutor executor;
 
-    private boolean iterationLocation;
+    private boolean hasIterationLocation;
 
     public Thermometer(Env env) {
         this.env = env;
@@ -70,25 +75,36 @@ public final class Thermometer implements AutoCloseable {
 
         // Install a node at the IPS sample location to count iterations
 
-        iterationLocation = config.getIterationLocation() != null;
+        hasIterationLocation = config.getIterationLocation() != null;
 
-        if (iterationLocation) {
+        if (hasIterationLocation) {
             final int index = config.getIterationLocation().lastIndexOf(':');
 
             if (index == -1) {
+                env.getLogger("").log(Level.WARNING, "thermometer iteration location could not be parsed - should be file:line");
+                hasIterationLocation = false;
+            } else {
+                final String file = config.getIterationLocation().substring(0, index);
+                final int line = Integer.parseInt(config.getIterationLocation().substring(index + 1));
 
+                final SourceSectionFilter iterationNodeFilter = SourceSectionFilter.newBuilder()
+                        .tagIs(StandardTags.StatementTag.class)
+                        .sourceIs((source) -> source.getName().endsWith(file))
+                        .lineIs(line)
+                        .build();
+
+                env.getInstrumenter().attachExecutionEventFactory(iterationNodeFilter, context -> new ThermometerSampleIterationNode(sampler));
             }
+        }
 
-            final String file = config.getIterationLocation().substring(0, index);
-            final int line = Integer.parseInt(config.getIterationLocation().substring(index + 1));
+        // Create the log stream if requested
 
-            final SourceSectionFilter iterationNodeFilter = SourceSectionFilter.newBuilder()
-                    .tagIs(StandardTags.StatementTag.class)
-                    .sourceIs((source) -> source.getName().endsWith(file))
-                    .lineIs(line)
-                    .build();
-
-            env.getInstrumenter().attachExecutionEventFactory(iterationNodeFilter, context -> new ThermometerSampleIterationNode(sampler));
+        if (config.getLogFile() != null) {
+            try {
+                logStream = new PrintStream(new FileOutputStream(config.getLogFile()), true);
+            } catch (IOException e) {
+                env.getLogger("").log(Level.WARNING, "thermometer log file could not be opened", e);
+            }
         }
 
         // Track loaded sources
@@ -131,7 +147,10 @@ public final class Thermometer implements AutoCloseable {
         final CompilationState compilationState = env.getInstrumenter().sampleCompilationState();
         if (compilationState != null) {
             final ThermometerState state = new ThermometerState(elapsedTime, sampler.readCompilation(), sampler.readIterationsPerSecond(elapsedTime), loadedSource.get(), compilationState);
-            env.getLogger("").info(state.format(previousState.get(), iterationLocation));
+            env.getLogger("").info(state.format(previousState.get(), hasIterationLocation));
+            if (logStream != null) {
+                state.writeLog(logStream, hasIterationLocation);
+            }
             previousState.set(state);
         }
     }
@@ -147,6 +166,10 @@ public final class Thermometer implements AutoCloseable {
         // Report at the end to see the final deoptimisations
 
         report();
+
+        if (logStream != null) {
+            logStream.close();
+        }
     }
 
 }
