@@ -50,7 +50,7 @@ import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
 
-public class JDWPDebuggerController {
+public class DebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
@@ -67,16 +67,16 @@ public class JDWPDebuggerController {
     private final JDWPInstrument instrument;
     private Ids<Object> ids;
     private JDWPContext context;
-    private final JDWPVirtualMachine vm;
+    private final VirtualMachine vm;
     private Debugger debugger;
     private final GCPrevention gcPrevention;
     private final ThreadSuspension threadSuspension;
     private final EventFilters eventFilters;
     private VMEventListener eventListener;
 
-    public JDWPDebuggerController(JDWPInstrument instrument) {
+    public DebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
-        this.vm = new JDWPVirtualMachineImpl();
+        this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
@@ -178,7 +178,7 @@ public class JDWPDebuggerController {
             // check if we're at the last line in a method
             // if so, we need to STEP_OUT to reach the caller
             // location
-            JDWPCallFrame currentFrame = susp.getStackFrames()[0];
+            CallFrame currentFrame = susp.getStackFrames()[0];
             MethodRef method = (MethodRef) ids.fromId((int) currentFrame.getMethodId());
             if (method.isLastLine(currentFrame.getCodeIndex())) {
                 susp.getEvent().prepareStepOut(STEP_CONFIG);// .prepareStepOver(STEP_CONFIG);
@@ -341,7 +341,7 @@ public class JDWPDebuggerController {
         fieldBreakpointExpected.put(Thread.currentThread(), event);
     }
 
-    public JDWPVirtualMachine getVirtualMachine() {
+    public VirtualMachine getVirtualMachine() {
         return vm;
     }
 
@@ -374,14 +374,14 @@ public class JDWPDebuggerController {
 
             if (commandRequestIds.get(currentThread) != null) {
                 // get the top frame for chekcing instance filters
-                JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1);
+                CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1);
                 if (checkExclusionFilters(event, currentThread, callFrames[0])) {
                     JDWPLogger.log("not suspending here: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection());
                     return;
                 }
             }
 
-            JDWPCallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1);
+            CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), -1);
 
             SuspendedInfo suspendedInfo = new SuspendedInfo(event, callFrames, currentThread);
             suspendedInfos.put(currentThread, suspendedInfo);
@@ -479,7 +479,7 @@ public class JDWPDebuggerController {
             suspend(callFrames[0], currentThread, suspendPolicy, jobs);
         }
 
-        private boolean matchLocation(Pattern[] patterns, JDWPCallFrame callFrame) {
+        private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {
             KlassRef klass = (KlassRef) ids.fromId((int) callFrame.getClassId());
 
             for (Pattern pattern : patterns) {
@@ -490,7 +490,7 @@ public class JDWPDebuggerController {
             return false;
         }
 
-        private boolean checkExclusionFilters(SuspendedEvent event, Object thread, JDWPCallFrame frame) {
+        private boolean checkExclusionFilters(SuspendedEvent event, Object thread, CallFrame frame) {
             Integer id = commandRequestIds.get(thread);
 
             if (id != null) {
@@ -538,8 +538,8 @@ public class JDWPDebuggerController {
             }
         }
 
-        private JDWPCallFrame[] createCallFrames(long threadId, Iterable<DebugStackFrame> stackFrames, int frameLimit) {
-            LinkedList<JDWPCallFrame> list = new LinkedList<>();
+        private CallFrame[] createCallFrames(long threadId, Iterable<DebugStackFrame> stackFrames, int frameLimit) {
+            LinkedList<CallFrame> list = new LinkedList<>();
             int frameCount = 0;
 
             for (DebugStackFrame frame : stackFrames) {
@@ -581,16 +581,16 @@ public class JDWPDebuggerController {
                             }
                         }
                     }
-                    list.addLast(new JDWPCallFrame(threadId, typeTag, klassId, methodId, codeIndex, thisValue, realVariables.toArray(new Object[realVariables.size()])));
+                    list.addLast(new CallFrame(threadId, typeTag, klassId, methodId, codeIndex, thisValue, realVariables.toArray(new Object[realVariables.size()])));
                     frameCount++;
                     if (frameLimit != -1 && frameCount >= frameLimit) {
-                        return list.toArray(new JDWPCallFrame[list.size()]);
+                        return list.toArray(new CallFrame[list.size()]);
                     }
                 } else {
                     throw new RuntimeException("stack walking not implemented for root node type! " + root);
                 }
             }
-            return list.toArray(new JDWPCallFrame[list.size()]);
+            return list.toArray(new CallFrame[list.size()]);
         }
 
         private Object getRealValue(DebugValue value) {
@@ -631,7 +631,7 @@ public class JDWPDebuggerController {
             }
         }
 
-        private void suspend(JDWPCallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs) {
+        private void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs) {
             JDWPLogger.log("suspending from callback in thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
 
             switch(suspendPolicy) {
@@ -656,7 +656,7 @@ public class JDWPDebuggerController {
                                 if (activeThread != thread) {
                                     JDWPLogger.log("Request thread suspend for other thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(activeThread));
 
-                                    JDWPDebuggerController.this.suspend(activeThread);
+                                    DebuggerController.this.suspend(activeThread);
                                 }
                             }
                             // send any breakpoint events here, since now all threads that are expected to be suspended
@@ -681,7 +681,7 @@ public class JDWPDebuggerController {
             }
         }
 
-        private void suspendEventThread(JDWPCallFrame currentFrame, Object thread) {
+        private void suspendEventThread(CallFrame currentFrame, Object thread) {
             JDWPLogger.log("Suspending event thread: %s with new suspension count: %d", JDWPLogger.LogLevel.THREAD, getThreadName(thread), threadSuspension.getSuspensionCount(thread));
 
             // if during stepping, send a step completed event back to the debugger

@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -252,7 +252,7 @@ public final class Field extends Member<Type> implements FieldRef {
     private final StableBoolean hasActiveBreakpoints = new StableBoolean(false);
 
     // array with maximum size 2, one access info and/or one modification info.
-    private JDWPFieldBreakpoint[] infos = null;
+    private FieldBreakpoint[] infos = null;
 
     @Override
     public boolean hasActiveBreakpoint() {
@@ -260,19 +260,19 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     @Override
-    public JDWPFieldBreakpoint[] getFieldBreakpointInfos() {
+    public FieldBreakpoint[] getFieldBreakpointInfos() {
         return infos;
     }
 
     @Override
-    public void addFieldBreakpointInfo(JDWPFieldBreakpoint info) {
+    public void addFieldBreakpointInfo(FieldBreakpoint info) {
         if (infos == null) {
-            infos = new JDWPFieldBreakpoint[] {info};
+            infos = new FieldBreakpoint[] {info};
             return;
         }
 
         int length = infos.length;
-        JDWPFieldBreakpoint[] temp = new JDWPFieldBreakpoint[length + 1];
+        FieldBreakpoint[] temp = new FieldBreakpoint[length + 1];
         System.arraycopy(infos, 0, temp, 0, length);
         temp[length] = info;
         infos = temp;
@@ -289,8 +289,8 @@ public final class Field extends Member<Type> implements FieldRef {
                 hasActiveBreakpoints.set(false);
                 return;
             case 2:
-                JDWPFieldBreakpoint[] temp = new JDWPFieldBreakpoint[1];
-                JDWPFieldBreakpoint info = infos[0];
+                FieldBreakpoint[] temp = new FieldBreakpoint[1];
+                FieldBreakpoint info = infos[0];
                 if (info.getRequestId() == requestId) {
                     // remove index 0, but keep info at index 1
                     temp[0] = infos[1];

@@ -30,13 +30,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
-@TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = JDWPDebuggerController.class)
+@TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
 public final class JDWPInstrument extends TruffleInstrument implements Runnable {
 
     public static final String ID = "jdwp";
     public static final Object suspendStartupLock = new Object();
 
-    private JDWPDebuggerController controller;
+    private DebuggerController controller;
     private TruffleInstrument.Env env;
     private JDWPContext context;
     private DebuggerConnection connection;
@@ -45,7 +45,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
         assert controller == null;
-        controller = new JDWPController(this);
+        controller = new Controller(this);
         this.env = instrumentEnv;
         this.env.registerService(controller);
     }
@@ -124,7 +124,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect() throws IOException {
-        SocketConnection socketConnection = JDWPHandshakeController.createSocketConnection(controller.getListeningPort(), activeThreads);
+        SocketConnection socketConnection = HandshakeController.createSocketConnection(controller.getListeningPort(), activeThreads);
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         connection.doProcessCommands(controller.shouldWaitForAttach(), activeThreads);
@@ -143,9 +143,9 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         return context;
     }
 
-    private static final class JDWPController extends JDWPDebuggerController {
+    private static final class Controller extends DebuggerController {
 
-        JDWPController(JDWPInstrument instrument) {
+        Controller(JDWPInstrument instrument) {
             super(instrument);
         }
     }

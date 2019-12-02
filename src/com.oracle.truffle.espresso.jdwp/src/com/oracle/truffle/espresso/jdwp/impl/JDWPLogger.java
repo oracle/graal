@@ -65,7 +65,8 @@ public final class JDWPLogger {
     public static void log(String msg, LogLevel level, Object... args) {
         if (shouldLog(level)) {
             String logRecord = String.format(msg, args);
-            logger.log(Level.INFO, logRecord);
+            System.out.println("We should log: " + logRecord);
+            logger.info(logRecord);
         }
     }
 }

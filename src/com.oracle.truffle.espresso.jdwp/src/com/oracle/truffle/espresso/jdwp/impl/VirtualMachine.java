@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
  * A simple virtual machine interface used to retrieve basic
  * information about the VM through JDWP.
  */
-public interface JDWPVirtualMachine {
+public interface VirtualMachine {
 
     int DEFAULT_SIZE = 8;
 

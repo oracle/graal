@@ -27,9 +27,9 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -46,7 +46,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     private final Ids<Object> ids;
     private final JDWPContext context;
-    private final JDWPDebuggerController debuggerController;
+    private final DebuggerController debuggerController;
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
@@ -57,7 +57,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private int vmDeathRequestId;
     private int vmStartRequestId;
 
-    public VMEventListenerImpl(JDWPDebuggerController controller) {
+    public VMEventListenerImpl(DebuggerController controller) {
         this.debuggerController = controller;
         this.context = controller.getContext();
         this.ids = context.getIds();
@@ -169,7 +169,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldModificationSlowPath(FieldRef field, Object receiver, Object value) {
-        for (JDWPFieldBreakpoint info : field.getFieldBreakpointInfos()) {
+        for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver, value));
@@ -199,7 +199,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @CompilerDirectives.TruffleBoundary
     private boolean checkFieldAccessSlowPath(FieldRef field, Object receiver) {
-        for (JDWPFieldBreakpoint info : field.getFieldBreakpointInfos()) {
+        for (FieldBreakpoint info : field.getFieldBreakpointInfos()) {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver));
@@ -290,13 +290,13 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
+    public void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame) {
         PacketStream stream = writeSharedFieldInformation(event, currentThread, callFrame, RequestedJDWPEvents.FIELD_ACCESS);
         connection.queuePacket(stream);
     }
 
     @Override
-    public void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame) {
+    public void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame) {
         PacketStream stream = writeSharedFieldInformation(event, currentThread, callFrame, RequestedJDWPEvents.FIELD_MODIFICATION);
 
         // value about to be set
@@ -307,7 +307,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         connection.queuePacket(stream);
     }
 
-    private PacketStream writeSharedFieldInformation(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame, byte eventType) {
+    private PacketStream writeSharedFieldInformation(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame, byte eventType) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         FieldBreakpointInfo info = event.getInfo();
@@ -345,7 +345,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, JDWPCallFrame callFrame) {
+    public void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame callFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(info.getSuspendPolicy());
@@ -375,7 +375,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void stepCompleted(int commandRequestId, JDWPCallFrame currentFrame) {
+    public void stepCompleted(int commandRequestId, CallFrame currentFrame) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         // TODO(Gregersen) - implemented suspend policies

@@ -1,10 +1,10 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
+import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public final class EmptyListener implements JDWPListener {
+public final class EmptyListener implements VMListener {
 
     @Override
     public void vmStarted(Object mainThread) {

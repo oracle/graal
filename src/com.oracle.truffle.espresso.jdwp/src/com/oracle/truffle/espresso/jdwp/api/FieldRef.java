@@ -84,13 +84,13 @@ public interface FieldRef {
      * Returns all information about potential field breakpoints set on this field.
      * @return array of field breakpoint info
      */
-    JDWPFieldBreakpoint[] getFieldBreakpointInfos();
+    FieldBreakpoint[] getFieldBreakpointInfos();
 
     /**
      * Add a new field breakpoint with the given info on this field.
      * @param info the info that describes the breakpoint
      */
-    void addFieldBreakpointInfo(JDWPFieldBreakpoint info);
+    void addFieldBreakpointInfo(FieldBreakpoint info);
 
     /**
      * Remove a field breakpoint with the given info on this field.

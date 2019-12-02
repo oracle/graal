@@ -31,16 +31,16 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
-public final class DebuggerConnection implements JDWPCommands {
+public final class DebuggerConnection implements Commands {
 
-    private final JDWPDebuggerController controller;
+    private final DebuggerController controller;
     private final JDWPContext context;
     private final SocketConnection connection;
     private final BlockingQueue<DebuggerCommand> queue = new ArrayBlockingQueue<>(512);
     private Thread commandProcessor;
     private Thread jdwpTransport;
 
-    public DebuggerConnection(SocketConnection connection, JDWPDebuggerController controller) {
+    public DebuggerConnection(SocketConnection connection, DebuggerController controller) {
         this.connection = connection;
         this.controller = controller;
         this.context = controller.getContext();
@@ -213,7 +213,7 @@ public final class DebuggerConnection implements JDWPCommands {
         }
 
         private void processPacket(Packet packet) {
-            JDWPResult result = null;
+            CommandResult result = null;
 
             if (packet.flags == Packet.Reply) {
                 // result packet from debugger!

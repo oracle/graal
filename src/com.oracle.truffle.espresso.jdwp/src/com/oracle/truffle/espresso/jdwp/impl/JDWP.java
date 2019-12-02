@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.jdwp.api.LocalRef;
@@ -49,21 +49,21 @@ final class JDWP {
         static class VERSION {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPVirtualMachine vm) {
+            static CommandResult createReply(Packet packet, com.oracle.truffle.espresso.jdwp.impl.VirtualMachine vm) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeString(vm.getVmDescription());
                 reply.writeInt(1);
                 reply.writeInt(8);
                 reply.writeString(vm.getVmVersion());
                 reply.writeString(vm.getVmName());
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CLASSES_BY_SIGNATURE {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 // get the requested classes
                 PacketStream input = new PacketStream(packet);
                 String signature = input.readString();
@@ -78,14 +78,14 @@ final class JDWP {
                     reply.writeLong(context.getIds().getIdAsLong(klass));
                     reply.writeInt(klass.getStatus());
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class ALL_THREADS {
             public static final int ID = 4;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object[] allThreads = context.getAllGuestThreads();
                 reply.writeInt(allThreads.length);
@@ -93,14 +93,14 @@ final class JDWP {
                 for (Object t : allThreads) {
                     reply.writeLong(context.getIds().getIdAsLong(t));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class TOP_LEVEL_THREAD_GROUPS {
             public static final int ID = 5;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 Object[] threadGroups = context.getTopLevelThreadGroups();
@@ -108,17 +108,17 @@ final class JDWP {
                 for (Object threadGroup : threadGroups) {
                     reply.writeLong(context.getIds().getIdAsLong(threadGroup));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class DISPOSE {
             public static final int ID = 6;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                return new JDWPResult(reply, Collections.singletonList(new Callable<Void>() {
+                return new CommandResult(reply, Collections.singletonList(new Callable<Void>() {
                     @Override
                     public Void call() throws Exception {
                         controller.disposeDebugger();
@@ -131,45 +131,45 @@ final class JDWP {
         static class IDSIZES {
             public static final int ID = 7;
 
-            static JDWPResult createReply(Packet packet, JDWPVirtualMachine vm) {
+            static CommandResult createReply(Packet packet, com.oracle.truffle.espresso.jdwp.impl.VirtualMachine vm) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeInt(vm.getSizeOfFieldRef());
                 reply.writeInt(vm.getSizeOfMethodRef());
                 reply.writeInt(vm.getSizeofObjectRef());
                 reply.writeInt(vm.getSizeOfClassRef());
                 reply.writeInt(vm.getSizeOfFrameRef());
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SUSPEND {
             public static final int ID = 8;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 JDWPLogger.log("Suspend all packet", JDWPLogger.LogLevel.THREAD);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class RESUME {
             public static final int ID = 9;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 JDWPLogger.log("Resume all packet", JDWPLogger.LogLevel.THREAD);
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CREATE_STRING {
             public static final int ID = 11;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 String utf = input.readString();
                 // we must create a new StaticObject instance representing the String
@@ -177,14 +177,14 @@ final class JDWP {
                 Object string = context.toGuestString(utf);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeLong(context.getIds().getIdAsLong(string));
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CAPABILITIES {
             public static final int ID = 12;
 
-            static JDWPResult createReply(Packet packet) {
+            static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.writeBoolean(true); // canWatchFieldModification
                 reply.writeBoolean(true); // canWatchFieldAccess
@@ -193,14 +193,14 @@ final class JDWP {
                 reply.writeBoolean(false); // canGetOwnedMonitorInfo
                 reply.writeBoolean(false); // canGetCurrentContendedMonitor
                 reply.writeBoolean(false); // canGetMonitorInfo
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class DISPOSE_OBJECTS {
             public static final int ID = 14;
 
-            static JDWPResult createReply(Packet packet) {
+            static CommandResult createReply(Packet packet) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -210,14 +210,14 @@ final class JDWP {
                     /*long objectID =*/ input.readLong();
                     /*int refCount =*/ input.readInt();
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CAPABILITIES_NEW {
             public static final int ID = 17;
 
-            static JDWPResult createReply(Packet packet) {
+            static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 reply.writeBoolean(true); // canWatchFieldModification
@@ -252,23 +252,23 @@ final class JDWP {
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
                 reply.writeBoolean(false); // reserved for future
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SET_DEFAULT_STRATUM {
             public static final int ID = 19;
 
-            static JDWPResult createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(JDWPErrorCodes.NOT_IMPLEMENTED);
-                return new JDWPResult(reply);
+            static CommandResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                return new CommandResult(reply);
             }
         }
 
         static class ALL_CLASSES_WITH_GENERIC {
             public static final int ID = 20;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
@@ -284,16 +284,16 @@ final class JDWP {
                     reply.writeInt(klass.getStatus());
                 }
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class INSTANCE_COUNTS {
             public static final int ID = 21;
 
-            static JDWPResult createReply(Packet packet) {
-                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(JDWPErrorCodes.NOT_IMPLEMENTED);
-                return new JDWPResult(reply);
+            static CommandResult createReply(Packet packet) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                return new CommandResult(reply);
             }
         }
     }
@@ -304,32 +304,32 @@ final class JDWP {
         static class SIGNATURE {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long refTypeId = input.readLong();
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeString(klass.getTypeAsString());
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CLASSLOADER {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long refTypeId = input.readLong();
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object loader = klass.getDefiningClassLoader();
@@ -338,40 +338,40 @@ final class JDWP {
                 } else {
                     reply.writeLong(context.getIds().getIdAsLong(loader));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class MODIFIERS {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long refTypeId = input.readLong();
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeInt(klass.getModifiers());
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class GET_VALUES {
             public static final int ID = 6;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long refTypeId = input.readLong();
 
                 if (verifyRefType(refTypeId, reply, context) == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int fields = input.readInt();
@@ -382,7 +382,7 @@ final class JDWP {
                     FieldRef field = verifyFieldRef(fieldId, reply, context);
 
                     if (field == null) {
-                        return new JDWPResult(reply);
+                        return new CommandResult(reply);
                     }
 
                     // check if class has been initialized
@@ -399,14 +399,14 @@ final class JDWP {
 
                     writeValue(tag, value, reply, true, context);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SOURCE_FILE {
             public static final int ID = 7;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -414,7 +414,7 @@ final class JDWP {
 
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 String sourceFile = null;
@@ -423,21 +423,21 @@ final class JDWP {
                     // we need only look at one method to find
                     // the source file of the declaring class
                     if (!method.hasSourceFileAttribute()) {
-                        reply.errorCode(JDWPErrorCodes.ABSENT_INFORMATION);
-                        return new JDWPResult(reply);
+                        reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
+                        return new CommandResult(reply);
                     }
                     sourceFile = method.getSourceFile();
                     break;
                 }
                 reply.writeString(sourceFile);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class STATUS {
             public static final int ID = 9;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -445,11 +445,11 @@ final class JDWP {
                 KlassRef klass = verifyRefType(klassRef, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeInt(klass.getStatus());
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
 
         }
@@ -458,7 +458,7 @@ final class JDWP {
         static class INTERFACES {
             public static final int ID = 10;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
@@ -466,7 +466,7 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 KlassRef[] interfaces = klass.getImplementedInterfaces();
@@ -475,14 +475,14 @@ final class JDWP {
                 for (KlassRef itf : interfaces) {
                     reply.writeLong(context.getIds().getIdAsLong(itf));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class CLASS_OBJECT {
             public static final int ID = 11;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
@@ -490,20 +490,20 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object classObject = klass.getKlassObject();
 
                 reply.writeLong(context.getIds().getIdAsLong(classObject));
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SIGNATURE_WITH_GENERIC {
             public static final int ID = 13;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long refTypeId = input.readLong();
 
@@ -511,21 +511,21 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeString(klass.getTypeAsString());
                 // TODO(Gregersen) - generic signature
                 // tracked by /browse/GR-19818
                 reply.writeString("");
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class FIELDS_WITH_GENERIC {
             public static final int ID = 14;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -533,13 +533,13 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 // check if class has been prepared
                 if (klass.getStatus() < ClassStatusConstants.PREPARED) {
-                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.CLASS_NOT_PREPARED);
+                    return new CommandResult(reply);
                 }
 
                 FieldRef[] declaredFields = klass.getDeclaredFields();
@@ -552,14 +552,14 @@ final class JDWP {
                     reply.writeString(field.getGenericSignatureAsString());
                     reply.writeInt(field.getModifiers());
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class METHODS_WITH_GENERIC {
             public static final int ID = 15;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -567,13 +567,13 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 // check if class has been prepared
                 if (klass.getStatus() < ClassStatusConstants.PREPARED) {
-                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.CLASS_NOT_PREPARED);
+                    return new CommandResult(reply);
                 }
 
                 MethodRef[] declaredMethods = klass.getDeclaredMethods();
@@ -588,7 +588,7 @@ final class JDWP {
                     reply.writeString("");
                     reply.writeInt(method.getModifiers());
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -600,7 +600,7 @@ final class JDWP {
 
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -608,7 +608,7 @@ final class JDWP {
                 KlassRef klassRef = verifyRefType(classId, reply, context);
 
                 if (klassRef == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 boolean isJavaLangObject = JAVA_LANG_OBJECT.equals(klassRef.getTypeAsString());
@@ -619,7 +619,7 @@ final class JDWP {
                     KlassRef superKlass = klassRef.getSuperClass();
                     reply.writeLong(context.getIds().getIdAsLong(superKlass));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
@@ -627,7 +627,7 @@ final class JDWP {
 
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -635,13 +635,13 @@ final class JDWP {
                 KlassRef klass = verifyRefType(classId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 // check if class has been prepared
                 if (klass.getStatus() < ClassStatusConstants.PREPARED) {
-                    reply.errorCode(JDWPErrorCodes.CLASS_NOT_PREPARED);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.CLASS_NOT_PREPARED);
+                    return new CommandResult(reply);
                 }
 
                 int values = input.readInt();
@@ -651,7 +651,7 @@ final class JDWP {
                     FieldRef field = verifyFieldRef(fieldId, reply, context);
 
                     if (field == null) {
-                        return new JDWPResult(reply);
+                        return new CommandResult(reply);
                     }
 
                     byte tag = field.getTagConstant();
@@ -662,7 +662,7 @@ final class JDWP {
                     Object value = readValue(tag, input, context);
                     context.setStaticFieldValue(field, value);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
@@ -670,24 +670,24 @@ final class JDWP {
 
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 JDWPContext context = controller.getContext();
 
                 KlassRef klass = verifyRefType(input.readLong(), reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object thread = verifyThread(input.readLong(), reply, context);
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("trying to invoke static method: %s", JDWPLogger.LogLevel.PACKET, method.getNameAsString());
@@ -719,7 +719,7 @@ final class JDWP {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
@@ -727,7 +727,7 @@ final class JDWP {
 
             public static final int ID = 4;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 PacketStream input = new PacketStream(packet);
 
@@ -735,18 +735,18 @@ final class JDWP {
 
                 KlassRef klass = verifyRefType(input.readLong(), reply, context);
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object thread = verifyThread(input.readLong(), reply, context);
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
                     JDWPLogger.log("not a valid method", JDWPLogger.LogLevel.PACKET);
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("trying to invoke constructor in klass: %s", JDWPLogger.LogLevel.PACKET, klass.getNameAsString());
@@ -778,7 +778,7 @@ final class JDWP {
                     throw new RuntimeException("not able to invoke static method through jdwp", t);
                 }
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -789,14 +789,14 @@ final class JDWP {
         static class NEW_INSTANCE {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 PacketStream input = new PacketStream(packet);
 
                 KlassRef klass = verifyRefType(input.readLong(), reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int length = input.readInt();
@@ -805,7 +805,7 @@ final class JDWP {
                 reply.writeByte(TagConstants.ARRAY);
                 reply.writeLong(context.getIds().getIdAsLong(newArray));
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -816,7 +816,7 @@ final class JDWP {
         static class INVOKE_METHOD {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 PacketStream input = new PacketStream(packet);
                 JDWPContext context = controller.getContext();
@@ -824,22 +824,22 @@ final class JDWP {
                 KlassRef itf = verifyRefType(input.readLong(), reply, context);
 
                 if (itf == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 if (!itf.isInterface()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_CLASS);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_CLASS);
+                    return new CommandResult(reply);
                 }
 
                 Object thread = verifyThread(input.readLong(), reply, context);
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("trying to invoke interface method: %s", JDWPLogger.LogLevel.PACKET, method.getNameAsString());
@@ -889,7 +889,7 @@ final class JDWP {
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke interface method through jdwp", t);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -910,7 +910,7 @@ final class JDWP {
                 }
             }
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 PacketStream input = new PacketStream(packet);
@@ -920,13 +920,13 @@ final class JDWP {
                 KlassRef klass = verifyRefType(refTypeId, reply, context);
 
                 if (klass == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 LineNumberTableRef table = method.getLineNumberTable();
@@ -958,7 +958,7 @@ final class JDWP {
                         reply.writeInt(line.lineNumber);
                     }
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
@@ -970,19 +970,19 @@ final class JDWP {
         static class BYTECODES {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
                 if (klassRef == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 long methodId = input.readLong();
                 MethodRef method = verifyMethodRef(methodId, reply, context);
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 byte[] code = method.getCode();
@@ -990,26 +990,26 @@ final class JDWP {
                 reply.writeInt(code.length);
                 reply.writeByteArray(code);
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class VARIABLE_TABLE_WITH_GENERIC {
             public static final int ID = 5;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 KlassRef klassRef = verifyRefType(input.readLong(), reply, context);// ref type
                 if (klassRef == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 long methodId = input.readLong();
                 MethodRef method = verifyMethodRef(methodId, reply, context);
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 KlassRef[] params = method.getParameters();
@@ -1038,7 +1038,7 @@ final class JDWP {
                     reply.writeInt(local.getEndBCI() - local.getStartBCI());
                     reply.writeInt(local.getSlot());
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1049,7 +1049,7 @@ final class JDWP {
         static class REFERENCE_TYPE {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
@@ -1057,8 +1057,8 @@ final class JDWP {
                 Object object = context.getIds().fromId((int) objectId);
 
                 if (object == context.getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 KlassRef klassRef = context.getRefType(object);
@@ -1066,14 +1066,14 @@ final class JDWP {
                 reply.writeByte(TypeTag.getKind(klassRef));
                 reply.writeLong(context.getIds().getIdAsLong(klassRef));
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class GET_VALUES {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1081,8 +1081,8 @@ final class JDWP {
                 Object object = context.getIds().fromId((int) objectId);
 
                 if (object == context.getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 int numFields = input.readInt();
@@ -1094,7 +1094,7 @@ final class JDWP {
                     FieldRef field = verifyFieldRef(fieldId, reply, context);
 
                     if (field == null) {
-                        return new JDWPResult(reply);
+                        return new CommandResult(reply);
                     }
 
                     Object value = field.getValue(object);
@@ -1105,14 +1105,14 @@ final class JDWP {
                     }
                     writeValue(tag, value, reply, true, context);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SET_VALUES {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1120,8 +1120,8 @@ final class JDWP {
                 Object object = context.getIds().fromId((int) objectId);
 
                 if (object == context.getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 int numFields = input.readInt();
@@ -1131,7 +1131,7 @@ final class JDWP {
                     FieldRef field = verifyFieldRef(fieldId, reply, context);
 
                     if (field == null) {
-                        return new JDWPResult(reply);
+                        return new CommandResult(reply);
                     }
 
                     byte tag = field.getTagConstant();
@@ -1141,14 +1141,14 @@ final class JDWP {
                     Object value = readValue(tag, input, context);
                     field.setValue(object, value);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class INVOKE_METHOD {
             public static final int ID = 6;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
 
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
@@ -1163,11 +1163,11 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, context);
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 if (verifyRefType(input.readLong(), reply, context) == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 long methodId = input.readLong();
@@ -1186,7 +1186,7 @@ final class JDWP {
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("trying to invoke method: %s", JDWPLogger.LogLevel.PACKET, method.getNameAsString());
@@ -1207,64 +1207,64 @@ final class JDWP {
                 } catch (Throwable t) {
                     throw new RuntimeException("not able to invoke method through jdwp", t);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class DISABLE_COLLECTION {
             public static final int ID = 7;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = controller.getContext().getIds().fromId((int) objectId);
 
                 if (object == controller.getContext().getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 controller.getGCPrevention().disableGC(object);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class ENABLE_COLLECTION {
             public static final int ID = 8;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = controller.getContext().getIds().fromId((int) objectId);
 
                 if (object == controller.getContext().getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 controller.getGCPrevention().enableGC(object);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class IS_COLLECTED {
             public static final int ID = 9;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 Object object = context.getIds().fromId((int) objectId);
 
                 if (object == context.getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeBoolean(object == context.getNullObject());
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1275,7 +1275,7 @@ final class JDWP {
         static class VALUE {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1283,16 +1283,16 @@ final class JDWP {
                 Object string = verifyString(objectId, reply, context);
 
                 if (string == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 if (string == context.getNullObject()) {
-                    reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
                 } else {
                     reply.writeString(context.getStringValue(string));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1305,7 +1305,7 @@ final class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1315,7 +1315,7 @@ final class JDWP {
                 if (thread == null) {
                     JDWPLogger.log("null thread discovered with ID: %s", JDWPLogger.LogLevel.THREAD, threadId);
 
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 String threadName = context.getThreadName(thread);
@@ -1324,14 +1324,14 @@ final class JDWP {
 
                 JDWPLogger.log("thread name: %s", JDWPLogger.LogLevel.THREAD, threadName);
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SUSPEND {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1339,20 +1339,20 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("suspend thread packet for thread: %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
 
                 controller.suspend(thread);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class RESUME {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1360,13 +1360,13 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 JDWPLogger.log("resume thread packet for thread: %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
 
                 controller.resume(thread, false);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
@@ -1396,7 +1396,7 @@ final class JDWP {
                             JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
                             JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 JDWPContext context = controller.getContext();
@@ -1405,7 +1405,7 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, context);
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
@@ -1417,7 +1417,7 @@ final class JDWP {
                 JDWPLogger.log("status command for thread: %s with status: %s, suspended: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread), threadStatus, suspended);
 
 
-                return new JDWPResult(reply, null);
+                return new CommandResult(reply, null);
             }
 
             private static int getThreadStatus(int jvmtiThreadStatus) {
@@ -1449,7 +1449,7 @@ final class JDWP {
         static class THREAD_GROUP {
             public static final int ID = 5;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1457,19 +1457,19 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, context);
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object threadGroup = context.getThreadGroup(thread);
                 reply.writeLong(context.getIds().getIdAsLong(threadGroup));
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class FRAMES {
             public static final int ID = 6;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1477,7 +1477,7 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int startFrame = input.readInt();
@@ -1491,8 +1491,8 @@ final class JDWP {
 
                 if (suspendedInfo == null) {
                     JDWPLogger.log("THREAD_NOT_SUSPENDED: %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
-                    reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                    return new CommandResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
@@ -1500,12 +1500,12 @@ final class JDWP {
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                     if (suspendedInfo instanceof UnknownSuspendedInfo) {
                         // we can't return any frames for a not yet suspended thread
-                        reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
-                        return new JDWPResult(reply);
+                        reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                        return new CommandResult(reply);
                     }
                 }
 
-                JDWPCallFrame[] frames = suspendedInfo.getStackFrames();
+                CallFrame[] frames = suspendedInfo.getStackFrames();
 
                 if (length == -1) {
                     length = frames.length;
@@ -1514,21 +1514,21 @@ final class JDWP {
                 JDWPLogger.log("returning %d frames for thread: %s", JDWPLogger.LogLevel.THREAD, length, controller.getContext().getThreadName(thread));
 
                 for (int i = startFrame; i < startFrame + length; i++) {
-                    JDWPCallFrame frame = frames[i];
+                    CallFrame frame = frames[i];
                     reply.writeLong(controller.getContext().getIds().getIdAsLong(frame));
                     reply.writeByte(frame.getTypeTag());
                     reply.writeLong(frame.getClassId());
                     reply.writeLong(frame.getMethodId());
                     reply.writeLong(frame.getCodeIndex());
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class FRAME_COUNT {
             public static final int ID = 7;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1536,14 +1536,14 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
 
                 if (suspendedInfo == null) {
-                    reply.errorCode(JDWPErrorCodes.THREAD_NOT_SUSPENDED);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
+                    return new CommandResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
@@ -1553,14 +1553,14 @@ final class JDWP {
                 reply.writeInt(suspendedInfo.getStackFrames().length);
                 JDWPLogger.log("current frame count: %d for thread: %s", JDWPLogger.LogLevel.THREAD, length, controller.getContext().getThreadName(thread));
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SUSPEND_COUNT {
             public static final int ID = 12;
 
-            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1568,18 +1568,18 @@ final class JDWP {
                 Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
                 JDWPLogger.log("suspension count: %d returned for thread: %s", JDWPLogger.LogLevel.THREAD, suspensionCount, controller.getContext().getThreadName(thread));
 
                 reply.writeInt(suspensionCount);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
-        private static SuspendedInfo awaitSuspendedInfo(JDWPDebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
+        private static SuspendedInfo awaitSuspendedInfo(DebuggerController controller, Object thread, SuspendedInfo suspendedInfo) {
             // OK, we hard suspended this thread, but it hasn't yet actually suspended
             // in a code location known to Truffle
             // let's check if the thread is RUNNING and give it a moment to reach
@@ -1612,7 +1612,7 @@ final class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1620,18 +1620,18 @@ final class JDWP {
                 Object threadGroup = verifyThreadGroup(threadGroupId, reply, context);
 
                 if (threadGroup == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeString("main");
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class PARENT {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1639,11 +1639,11 @@ final class JDWP {
                 Object thread = verifyThreadGroup(threadGroupId, reply, context);
 
                 if (thread == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 reply.writeLong(0); // no parent thread group
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1654,7 +1654,7 @@ final class JDWP {
         static class LENGTH {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1662,20 +1662,20 @@ final class JDWP {
                 Object array = verifyArray(arrayId, reply, context);
 
                 if (array == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 int arrayLength = context.getArrayLength(array);
 
                 reply.writeInt(arrayLength);
-                return new JDWPResult(reply, null);
+                return new CommandResult(reply, null);
             }
         }
 
         static class GET_VALUES {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 long arrayId = input.readLong();
                 int index = input.readInt();
@@ -1686,7 +1686,7 @@ final class JDWP {
                 Object array = verifyArray(arrayId, reply, context);
 
                 if (array == null || !verifyArrayLength(array, length, reply, context)) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 byte tag = context.getTypeTag(array);
@@ -1698,14 +1698,14 @@ final class JDWP {
                     Object theValue = context.getArrayValue(array, i);
                     writeValue(tag, theValue, reply, !isPrimitive, context);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SET_VALUES {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1716,13 +1716,13 @@ final class JDWP {
                 Object array = verifyArray(arrayId, reply, context);
 
                 if (array == null || !verifyArrayLength(array, index + values, reply, context)) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 byte tag = context.getTypeTag(array);
 
                 setArrayValues(context, input, index, values, array, tag);
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
 
             private static void setArrayValues(JDWPContext context, PacketStream input, int index, int values, Object array, byte tag) {
@@ -1789,7 +1789,7 @@ final class JDWP {
 
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1797,7 +1797,7 @@ final class JDWP {
 
                 Object classLoader = verifyClassLoader(classLoaderId, reply, context);
                 if (classLoader == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 // TODO(Gregersen) - we will need all classes for which this classloader was the initiating loader
@@ -1810,7 +1810,7 @@ final class JDWP {
                     reply.writeByte(TypeTag.getKind(klass));
                     reply.writeLong(context.getIds().getIdAsLong(klass));
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1833,22 +1833,22 @@ final class JDWP {
         static class GET_VALUES {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 if (verifyThread(input.readLong(), reply, context) == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 long frameId = input.readLong();
                 int slots = input.readInt();
                 reply.writeInt(slots);
 
-                JDWPCallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyClassFrame(frameId, reply, context);
 
                 if (frame == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object thisValue = frame.getThisValue();
@@ -1865,40 +1865,40 @@ final class JDWP {
                         byte realTag = context.getTag(value);
 
                         if (sigbyte != realTag) {
-                            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
-                            return new JDWPResult(reply);
+                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                            return new CommandResult(reply);
                         }
 
                         writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     // invalid slot provided
-                    reply.errorCode(JDWPErrorCodes.INVALID_SLOT);
-                    return new JDWPResult(reply);
+                    reply.errorCode(ErrorCodes.INVALID_SLOT);
+                    return new CommandResult(reply);
                 }
 
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class SET_VALUES {
             public static final int ID = 2;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 if (verifyThread(input.readLong(), reply, context) == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 long frameId = input.readLong();
                 int slots = input.readInt();
 
-                JDWPCallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyClassFrame(frameId, reply, context);
 
                 if (frame == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object thisValue = frame.getThisValue();
@@ -1911,26 +1911,26 @@ final class JDWP {
                     byte kind = input.readByte();
                     variables[slot - offset] = readValue(kind, input, context);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
 
         static class THIS_OBJECT {
             public static final int ID = 3;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 if (verifyThread(input.readLong(), reply, context) == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
                 long frameId = input.readLong();
 
-                JDWPCallFrame frame = verifyClassFrame(frameId, reply, context);
+                CallFrame frame = verifyClassFrame(frameId, reply, context);
 
                 if (frame == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 Object thisValue = frame.getThisValue();
@@ -1941,7 +1941,7 @@ final class JDWP {
                 } else {
                     reply.writeLong(0);
                 }
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -1952,7 +1952,7 @@ final class JDWP {
         static class REFLECTED_TYPE {
             public static final int ID = 1;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -1961,14 +1961,14 @@ final class JDWP {
                 Object classObject = verifyClassObject(classObjectId, reply, context);
 
                 if (classObject == null) {
-                    return new JDWPResult(reply);
+                    return new CommandResult(reply);
                 }
 
                 KlassRef klass = context.getReflectedType(classObject);
 
                 reply.writeByte(TypeTag.getKind(klass));
                 reply.writeLong(context.getIds().getIdAsLong(klass));
-                return new JDWPResult(reply);
+                return new CommandResult(reply);
             }
         }
     }
@@ -2114,7 +2114,7 @@ final class JDWP {
         try {
             klass = (KlassRef) context.getIds().fromId((int) refTypeId);
         } catch (ClassCastException ex) {
-            reply.errorCode(JDWPErrorCodes.INVALID_CLASS);
+            reply.errorCode(ErrorCodes.INVALID_CLASS);
             return null;
         }
         return klass;
@@ -2125,7 +2125,7 @@ final class JDWP {
         try {
             field = (FieldRef) context.getIds().fromId((int) fieldId);
         } catch (ClassCastException ex) {
-            reply.errorCode(JDWPErrorCodes.INVALID_FIELDID);
+            reply.errorCode(ErrorCodes.INVALID_FIELDID);
             return null;
         }
         return field;
@@ -2136,7 +2136,7 @@ final class JDWP {
         try {
             method = (MethodRef) context.getIds().fromId((int) methodId);
         } catch (ClassCastException ex) {
-            reply.errorCode(JDWPErrorCodes.INVALID_METHODID);
+            reply.errorCode(ErrorCodes.INVALID_METHODID);
             return null;
         }
         return method;
@@ -2146,12 +2146,12 @@ final class JDWP {
         Object thread = context.getIds().fromId((int) threadId);
 
         if (thread == context.getNullObject()) {
-            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }
 
         if (!context.isValidThread(thread)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_THREAD);
+            reply.errorCode(ErrorCodes.INVALID_THREAD);
             return null;
         }
         return thread;
@@ -2161,12 +2161,12 @@ final class JDWP {
         Object threadGroup = context.getIds().fromId((int) threadGroupId);
 
         if (threadGroup == context.getNullObject()) {
-            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }
 
         if (!context.isValidThreadGroup(threadGroup)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_THREAD_GROUP);
+            reply.errorCode(ErrorCodes.INVALID_THREAD_GROUP);
             return null;
         }
 
@@ -2177,12 +2177,12 @@ final class JDWP {
         Object array = context.getIds().fromId((int) arrayId);
 
         if (array == context.getNullObject()) {
-            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }
 
         if (!context.isArray(array)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_ARRAY);
+            reply.errorCode(ErrorCodes.INVALID_ARRAY);
             return null;
         }
         return array;
@@ -2190,7 +2190,7 @@ final class JDWP {
 
     private static boolean verifyArrayLength(Object array, int maxIndex, PacketStream reply, JDWPContext context) {
         if (!context.verifyArrayLength(array, maxIndex)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_LENGTH);
+            reply.errorCode(ErrorCodes.INVALID_LENGTH);
             return false;
         }
         return true;
@@ -2200,7 +2200,7 @@ final class JDWP {
         Object string = context.getIds().fromId((int) objectId);
 
         if (!context.isString(string)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_STRING);
+            reply.errorCode(ErrorCodes.INVALID_STRING);
             return null;
         }
         return string;
@@ -2210,27 +2210,27 @@ final class JDWP {
         Object classLoader = context.getIds().fromId((int) classLoaderId);
 
         if (!context.isValidClassLoader(classLoader)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_CLASS_LOADER);
+            reply.errorCode(ErrorCodes.INVALID_CLASS_LOADER);
             return null;
         }
         return classLoader;
     }
 
-    private static JDWPCallFrame verifyClassFrame(long frameId, PacketStream reply, JDWPContext context) {
+    private static CallFrame verifyClassFrame(long frameId, PacketStream reply, JDWPContext context) {
         Object frame = context.getIds().fromId((int) frameId);
-        if (!(frame instanceof JDWPCallFrame)) {
-            reply.errorCode(JDWPErrorCodes.INVALID_FRAMEID);
+        if (!(frame instanceof CallFrame)) {
+            reply.errorCode(ErrorCodes.INVALID_FRAMEID);
             return null;
         }
 
-        return (JDWPCallFrame) frame;
+        return (CallFrame) frame;
     }
 
     private static Object verifyClassObject(long classObjectId, PacketStream reply, JDWPContext context) {
         Object object = context.getIds().fromId((int) classObjectId);
 
         if (object == context.getNullObject()) {
-            reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }
         return object;

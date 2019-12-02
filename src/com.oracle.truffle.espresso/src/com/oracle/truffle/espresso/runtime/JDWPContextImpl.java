@@ -5,18 +5,18 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
+import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPDebuggerController;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -43,11 +43,11 @@ public final class JDWPContextImpl implements JDWPContext {
         this.setup = new JDWPSetup();
     }
 
-    public JDWPListener jdwpInit(TruffleLanguage.Env env) {
+    public VMListener jdwpInit(TruffleLanguage.Env env) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (context.JDWPOptions != null) {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-            JDWPDebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
+            DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
             setup.setup(debugger, control, context.JDWPOptions, this);
             return control.getEventListener();
         }
@@ -358,10 +358,10 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public JDWPCallFrame[] getStackTrace(Object thread) {
+    public CallFrame[] getStackTrace(Object thread) {
         // TODO(Gregersen) - implement this method when we can get stack frames
         // for arbitrary threads.
-        return new JDWPCallFrame[0];
+        return new CallFrame[0];
     }
 
     @Override

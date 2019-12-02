@@ -56,17 +56,17 @@ public final class RequestedJDWPEvents {
     public static final byte VM_DISCONNECTED = 100;
 
     private final VMEventListener eventListener;
-    private final JDWPDebuggerController controller;
+    private final DebuggerController controller;
     private final Ids<Object> ids;
 
-    RequestedJDWPEvents(SocketConnection connection, JDWPDebuggerController controller) {
+    RequestedJDWPEvents(SocketConnection connection, DebuggerController controller) {
         this.controller = controller;
         this.eventListener = controller.getEventListener();
         this.ids = controller.getContext().getIds();
         eventListener.setConnection(connection);
     }
 
-    public JDWPResult registerEvent(Packet packet, JDWPCommands callback) {
+    public CommandResult registerEvent(Packet packet, Commands callback) {
         PacketStream reply = null;
         ArrayList<Callable<Void>> futures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
@@ -161,7 +161,7 @@ public final class RequestedJDWPEvents {
 
         // register the request filter for this event
         controller.getEventFitlers().addFilter(filter);
-        return new JDWPResult(reply, futures);
+        return new CommandResult(reply, futures);
     }
 
     private static PacketStream toReply(Packet packet) {
@@ -171,7 +171,7 @@ public final class RequestedJDWPEvents {
         return reply;
     }
 
-    private void handleModKind(RequestFilter filter, PacketStream input, byte modKind, JDWPCommands callback, JDWPContext context) {
+    private void handleModKind(RequestFilter filter, PacketStream input, byte modKind, Commands callback, JDWPContext context) {
         switch (modKind) {
             case 1:
                 int count = input.readInt();
@@ -291,7 +291,7 @@ public final class RequestedJDWPEvents {
         }
     }
 
-    public JDWPResult clearRequest(Packet packet) {
+    public CommandResult clearRequest(Packet packet) {
         PacketStream reply = new PacketStream().id(packet.id).replyPacket();
         PacketStream input = new PacketStream(packet);
 
@@ -336,12 +336,12 @@ public final class RequestedJDWPEvents {
                         break;
                 }
             } else {
-                reply.errorCode(JDWPErrorCodes.INVALID_EVENT_TYPE);
+                reply.errorCode(ErrorCodes.INVALID_EVENT_TYPE);
             }
         } else {
-            reply.errorCode(JDWPErrorCodes.INVALID_EVENT_TYPE);
+            reply.errorCode(ErrorCodes.INVALID_EVENT_TYPE);
         }
 
-        return new JDWPResult(reply);
+        return new CommandResult(reply);
     }
 }

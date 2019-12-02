@@ -29,7 +29,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Collection;
 
-public final class JDWPHandshakeController {
+public final class HandshakeController {
 
     private static final String JDWP_HANDSHAKE = "JDWP-Handshake";
 

@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 
 public class SuspendedInfo {
 
     private final SuspendedEvent event;
-    private final JDWPCallFrame[] stackFrames;
+    private final CallFrame[] stackFrames;
     private final Object thread;
     private DebuggerCommand.Kind stepKind;
 
-    SuspendedInfo(SuspendedEvent event, JDWPCallFrame[] stackFrames, Object thread) {
+    SuspendedInfo(SuspendedEvent event, CallFrame[] stackFrames, Object thread) {
         this.event = event;
         this.stackFrames = stackFrames;
         this.thread = thread;
@@ -41,7 +41,7 @@ public class SuspendedInfo {
         return event;
     }
 
-    public JDWPCallFrame[] getStackFrames() {
+    public CallFrame[] getStackFrames() {
         return stackFrames;
     }
 

@@ -22,28 +22,26 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import java.util.List;
-import java.util.concurrent.Callable;
+import com.oracle.truffle.api.Truffle;
 
-public final class JDWPResult {
+public final class VirtualMachineImpl implements VirtualMachine {
 
-    private final PacketStream reply;
-    private final List<Callable<Void>> futures;
+    public static final String VM_Description = Truffle.getRuntime().getName();
+    public static final String vmVersion = System.getProperty("java.vm.version");
+    public static final String vmName = System.getProperty("java.vm.name");
 
-    JDWPResult(PacketStream reply) {
-        this(reply, null);
+    @Override
+    public String getVmDescription() {
+        return VM_Description;
     }
 
-    JDWPResult(PacketStream reply, List<Callable<Void>> futures) {
-        this.reply = reply;
-        this.futures = futures;
+    @Override
+    public String getVmVersion() {
+        return vmVersion;
     }
 
-    public PacketStream getReply() {
-        return reply;
-    }
-
-    public List<Callable<Void>> getFutures() {
-        return futures;
+    @Override
+    public String getVmName() {
+        return vmName;
     }
 }

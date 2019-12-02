@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.util.concurrent.Callable;
 
-public interface JDWPCommands {
+public interface Commands {
     void stepOver(Object thread, int requestId);
     void stepInto(Object thread, int requestId);
     void stepOut(Object thread, int requestId);

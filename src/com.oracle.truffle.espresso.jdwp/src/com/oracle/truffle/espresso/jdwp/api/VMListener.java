@@ -1,6 +1,6 @@
 package com.oracle.truffle.espresso.jdwp.api;
 
-public interface JDWPListener {
+public interface VMListener {
 
     void vmStarted(Object mainThread);
 

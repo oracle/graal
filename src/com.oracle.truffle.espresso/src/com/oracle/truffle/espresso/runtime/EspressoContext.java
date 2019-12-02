@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
+import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
@@ -85,7 +85,7 @@ public final class EspressoContext {
     private final AtomicInteger klassIdProvider = new AtomicInteger();
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
-    private JDWPListener eventListener;
+    private VMListener eventListener;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -202,7 +202,7 @@ public final class EspressoContext {
         hostToGuestReferenceDrainThread.start();
     }
 
-    public JDWPListener getJDWPListener() {
+    public VMListener getJDWPListener() {
         return eventListener;
     }
 

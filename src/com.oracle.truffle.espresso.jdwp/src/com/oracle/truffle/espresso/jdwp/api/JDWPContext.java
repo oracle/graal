@@ -248,7 +248,7 @@ public interface JDWPContext {
      * @param thread the guest thread
      * @return an array of the call frames for the thread
      */
-    JDWPCallFrame[] getStackTrace(Object thread);
+    CallFrame[] getStackTrace(Object thread);
 
     /**
      * Determines if the given object is an instance of the given klass.

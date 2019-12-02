@@ -1,6 +1,6 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPCallFrame;
+import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 public final class UnknownSuspendedInfo extends SuspendedInfo {
@@ -13,7 +13,7 @@ public final class UnknownSuspendedInfo extends SuspendedInfo {
     }
 
     @Override
-    public JDWPCallFrame[] getStackFrames() {
+    public CallFrame[] getStackFrames() {
         return context.getStackTrace(getThread());
     }
 }

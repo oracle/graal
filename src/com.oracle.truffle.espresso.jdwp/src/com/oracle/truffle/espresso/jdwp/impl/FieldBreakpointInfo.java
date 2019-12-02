@@ -23,10 +23,10 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.JDWPFieldBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 
-public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements BreakpointInfo, JDWPFieldBreakpoint {
+public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements BreakpointInfo, FieldBreakpoint {
 
     private final KlassRef klass;
     private final FieldRef field;
