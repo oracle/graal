@@ -429,6 +429,10 @@ final class JDWP {
                     sourceFile = method.getSourceFile();
                     break;
                 }
+                if (sourceFile == null) {
+                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
+                    return new CommandResult(reply);
+                }
                 reply.writeString(sourceFile);
                 return new CommandResult(reply);
             }
