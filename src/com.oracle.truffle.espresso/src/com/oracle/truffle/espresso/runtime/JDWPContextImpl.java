@@ -172,6 +172,9 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public byte getTag(Object object) {
+        if (object == null) {
+            return TagConstants.OBJECT;
+        }
         byte tag = TagConstants.OBJECT;
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;

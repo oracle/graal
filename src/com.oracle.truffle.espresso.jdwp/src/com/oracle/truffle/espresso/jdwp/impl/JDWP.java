@@ -385,13 +385,18 @@ final class JDWP {
                         return new JDWPResult(reply);
                     }
 
-                    byte tag = field.getTagConstant();
-
-                    Object value = context.getStaticFieldValue(field);
-
-                    if (tag == TagConstants.OBJECT) {
-                        tag = context.getTag(value);
+                    // check if class has been initialized
+                    // if not, we're probably suspended in <clinit>
+                    // and should not try to read static field values
+                    Object value;
+                    if (field.getDeclaringKlass().getStatus() != ClassStatusConstants.INITIALIZED) {
+                        value = null;
+                    } else {
+                        value = context.getStaticFieldValue(field);
                     }
+
+                    byte tag = context.getTag(value);
+
                     writeValue(tag, value, reply, true, context);
                 }
                 return new JDWPResult(reply);
@@ -2070,7 +2075,7 @@ final class JDWP {
             case TagConstants.THREAD_GROUP:
             case TagConstants.CLASS_OBJECT:
             case TagConstants.CLASS_LOADER:
-                if (value == context.getNullObject()) {
+                if (value == null || value == context.getNullObject()) {
                     reply.writeLong(0);
                 } else {
                     reply.writeLong(context.getIds().getIdAsLong(value));
