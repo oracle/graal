@@ -216,8 +216,7 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
+JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
     jclass errorClass;
     jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
     if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
@@ -235,14 +234,12 @@ JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jbool
     return NULL;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
+JNIEXPORT jobject JNICALL JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
     fprintf(stderr, "JVM_GetInheritedAccessControlContext called:  Unimplemented\n");
     return NULL;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
+JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
     fprintf(stderr, "JVM_GetStackAccessControlContext called:  Unimplemented\n");
     return NULL;
 }
@@ -278,3 +275,5 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   return len;
 }
 #endif
+
+include "JvmFuncsFallbacks.c"
