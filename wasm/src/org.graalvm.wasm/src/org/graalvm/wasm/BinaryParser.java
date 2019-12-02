@@ -362,7 +362,9 @@ public class BinaryParser extends BinaryStreamParser {
         /* Read (parse) and abstractly interpret the code entry */
         byte returnTypeId = module.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
+        state.pushStackState(0);
         WasmBlockNode bodyBlock = readBlockBody(rootNode.codeEntry(), state, returnTypeId, returnTypeId);
+        state.popStackState();
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
