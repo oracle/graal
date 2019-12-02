@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import com.oracle.svm.core.hub.DynamicHub;
 
 class ModuleAccess {
+    @SuppressWarnings("unused")
     public static void extractAndSetModule(DynamicHub hub, Class<?> clazz) {
         // Noop
     }

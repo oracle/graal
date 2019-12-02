@@ -330,6 +330,7 @@ suite = {
             ],
             "workingSets": "SVM",
         },
+
         "com.oracle.svm.hosted.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
