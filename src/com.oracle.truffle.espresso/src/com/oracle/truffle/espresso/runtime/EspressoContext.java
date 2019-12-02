@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.jdwp.api.JDWPListeners;
+import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.polyglot.Engine;
@@ -85,6 +85,7 @@ public final class EspressoContext {
     private final AtomicInteger klassIdProvider = new AtomicInteger();
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
+    private JDWPListener eventListener;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -196,9 +197,13 @@ public final class EspressoContext {
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
-        jdwpContext.jdwpInit(env);
-        JDWPListeners.getListener().vmStarted(getMainThread());
+        this.eventListener = jdwpContext.jdwpInit(env);
+        eventListener.vmStarted(getMainThread());
         hostToGuestReferenceDrainThread.start();
+    }
+
+    public JDWPListener getJDWPListener() {
+        return eventListener;
     }
 
     public Source findOrCreateSource(Method method) {
@@ -509,12 +514,16 @@ public final class EspressoContext {
 
     public void registerThread(Thread host, StaticObject self) {
         threadManager.registerThread(host, self);
-        JDWPListeners.getListener().threadStarted(self);
+        if (eventListener != null) {
+            eventListener.threadStarted(self);
+        }
     }
 
     public void unregisterThread(StaticObject self) {
         threadManager.unregisterThread(self);
-        JDWPListeners.getListener().threadDied(self);
+        if (eventListener != null) {
+            eventListener.threadDied(self);
+        }
     }
 
     public void invalidateNoThreadStop(String message) {

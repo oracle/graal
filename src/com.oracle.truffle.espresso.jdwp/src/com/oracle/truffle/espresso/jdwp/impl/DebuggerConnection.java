@@ -152,7 +152,7 @@ public final class DebuggerConnection implements JDWPCommands {
 
         @CompilerDirectives.CompilationFinal
         private boolean started;
-        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(context, connection, controller);
+        private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(connection, controller);
         // constant used to allow for initial startup sequence debugger commands to occur before
         // waking up the main Espresso startup thread
         private static final int GRACE_PERIOD = 100;
@@ -375,10 +375,10 @@ public final class DebuggerConnection implements JDWPCommands {
                                 result = JDWP.ObjectReference.INVOKE_METHOD.createReply(packet, controller);
                                 break;
                             case JDWP.ObjectReference.DISABLE_COLLECTION.ID:
-                                result = JDWP.ObjectReference.DISABLE_COLLECTION.createReply(packet, context);
+                                result = JDWP.ObjectReference.DISABLE_COLLECTION.createReply(packet, controller);
                                 break;
                             case JDWP.ObjectReference.ENABLE_COLLECTION.ID:
-                                result = JDWP.ObjectReference.ENABLE_COLLECTION.createReply(packet, context);
+                                result = JDWP.ObjectReference.ENABLE_COLLECTION.createReply(packet, controller);
                                 break;
                             case JDWP.ObjectReference.IS_COLLECTED.ID:
                                 result = JDWP.ObjectReference.IS_COLLECTED.createReply(packet, context);
@@ -406,7 +406,7 @@ public final class DebuggerConnection implements JDWPCommands {
                                 result = JDWP.ThreadReference.RESUME.createReply(packet, controller);
                                 break;
                             case JDWP.ThreadReference.STATUS.ID:
-                                result = JDWP.ThreadReference.STATUS.createReply(packet, context);
+                                result = JDWP.ThreadReference.STATUS.createReply(packet, controller);
                                 break;
                             case JDWP.ThreadReference.THREAD_GROUP.ID:
                                 result = JDWP.ThreadReference.THREAD_GROUP.createReply(packet, context);
@@ -418,7 +418,7 @@ public final class DebuggerConnection implements JDWPCommands {
                                 result = JDWP.ThreadReference.FRAME_COUNT.createReply(packet, controller);
                                 break;
                             case JDWP.ThreadReference.SUSPEND_COUNT.ID:
-                                result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, context);
+                                result = JDWP.ThreadReference.SUSPEND_COUNT.createReply(packet, controller);
                                 break;
                         }
                         break;
@@ -463,7 +463,7 @@ public final class DebuggerConnection implements JDWPCommands {
                     case JDWP.EventRequest.ID: {
                         switch (packet.cmd) {
                             case JDWP.EventRequest.SET.ID: {
-                                result = requestedJDWPEvents.registerEvent(packet, DebuggerConnection.this, context);
+                                result = requestedJDWPEvents.registerEvent(packet, DebuggerConnection.this);
                                 break;
                             }
                             case JDWP.EventRequest.CLEAR.ID: {

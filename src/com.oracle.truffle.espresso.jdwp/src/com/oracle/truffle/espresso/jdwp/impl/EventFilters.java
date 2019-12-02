@@ -27,17 +27,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public final class EventFilters {
 
-    private static final EventFilters DEFAULT = new EventFilters();
-
-    private ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private RequestFilter[] requestFilters = new RequestFilter[0];
-
-    EventFilters() {}
-
-    public static EventFilters getDefault() {
-        return DEFAULT;
-    }
 
     public void addFilter(RequestFilter filter) {
         lock.writeLock().lock();
@@ -63,6 +55,4 @@ public final class EventFilters {
         lock.readLock().unlock();
         return null;
     }
-
-
 }

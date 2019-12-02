@@ -1209,18 +1209,18 @@ final class JDWP {
         static class DISABLE_COLLECTION {
             public static final int ID = 7;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Object object = context.getIds().fromId((int) objectId);
+                Object object = controller.getContext().getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (object == controller.getContext().getNullObject()) {
                     reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
                     return new JDWPResult(reply);
                 }
 
-                GCPrevention.disableGC(object);
+                controller.getGCPrevention().disableGC(object);
                 return new JDWPResult(reply);
             }
         }
@@ -1228,18 +1228,18 @@ final class JDWP {
         static class ENABLE_COLLECTION {
             public static final int ID = 8;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 long objectId = input.readLong();
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Object object = context.getIds().fromId((int) objectId);
+                Object object = controller.getContext().getIds().fromId((int) objectId);
 
-                if (object == context.getNullObject()) {
+                if (object == controller.getContext().getNullObject()) {
                     reply.errorCode(JDWPErrorCodes.INVALID_OBJECT);
                     return new JDWPResult(reply);
                 }
 
-                GCPrevention.enableGC(object);
+                controller.getGCPrevention().enableGC(object);
                 return new JDWPResult(reply);
             }
         }
@@ -1391,9 +1391,10 @@ final class JDWP {
                             JVMTI_THREAD_STATE_WAITING_INDEFINITELY |
                             JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                JDWPContext context = controller.getContext();
 
                 long threadId = input.readLong();
                 Object thread = verifyThread(threadId, reply, context);
@@ -1405,7 +1406,7 @@ final class JDWP {
                 int jvmtiThreadStatus = context.getThreadStatus(thread);
                 int threadStatus = getThreadStatus(jvmtiThreadStatus);
                 reply.writeInt(threadStatus);
-                int suspended = ThreadSuspension.getSuspensionCount(thread) > 0 ? 1 : 0;
+                int suspended = controller.getThreadSuspension().getSuspensionCount(thread) > 0 ? 1 : 0;
                 reply.writeInt(suspended);
 
                 JDWPLogger.log("status command for thread: %s with status: %s, suspended: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread), threadStatus, suspended);
@@ -1554,19 +1555,19 @@ final class JDWP {
         static class SUSPEND_COUNT {
             public static final int ID = 12;
 
-            static JDWPResult createReply(Packet packet, JDWPContext context) {
+            static JDWPResult createReply(Packet packet, JDWPDebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 long threadId = input.readLong();
-                Object thread = verifyThread(threadId, reply, context);
+                Object thread = verifyThread(threadId, reply, controller.getContext());
 
                 if (thread == null) {
                     return new JDWPResult(reply);
                 }
 
-                int suspensionCount = ThreadSuspension.getSuspensionCount(thread);
-                JDWPLogger.log("suspension count: %d returned for thread: %s", JDWPLogger.LogLevel.THREAD, suspensionCount, context.getThreadName(thread));
+                int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
+                JDWPLogger.log("suspension count: %d returned for thread: %s", JDWPLogger.LogLevel.THREAD, suspensionCount, controller.getContext().getThreadName(thread));
 
                 reply.writeInt(suspensionCount);
                 return new JDWPResult(reply);

@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.jdwp.api.JDWPListeners;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -269,8 +268,10 @@ public final class ObjectKlass extends Klass {
                     prepare();
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                        JDWPListeners.getListener().classPrepared(this, prepareThread);
+                        if (getContext().getJDWPListener() != null) {
+                            prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                            getContext().getJDWPListener().classPrepared(this, prepareThread);
+                        }
                     }
                     if (getSuperKlass() != null) {
                         getSuperKlass().initialize();

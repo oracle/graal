@@ -75,7 +75,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         connection.close();
 
         // re-enable GC for all objects
-        GCPrevention.clearAll();
+        controller.getGCPrevention().clearAll();
 
         // end the current debugger session to avoid hitting any further breakpoints
         // when resuming all threads

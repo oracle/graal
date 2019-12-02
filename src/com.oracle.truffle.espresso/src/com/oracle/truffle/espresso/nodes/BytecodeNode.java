@@ -254,7 +254,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.jdwp.api.JDWPListeners;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
@@ -2385,7 +2384,10 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         @Children private final EspressoInstrumentableNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
+        private final EspressoContext context;
+
         InstrumentationSupport(Method method) {
+            this.context = method.getContext();
             LineNumberTable table = method.getLineNumberTable();
 
             if (table != LineNumberTable.EMPTY) {
@@ -2434,13 +2436,13 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
-            if (JDWPListeners.getListener().hasFieldModificationBreakpoint(field, receiver, value)) {
+            if (context.getJDWPListener().hasFieldModificationBreakpoint(field, receiver, value)) {
                 enterAt(frame, index);
             }
         }
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
-            if (JDWPListeners.getListener().hasFieldAccessBreakpoint(field, receiver)) {
+            if (context.getJDWPListener().hasFieldAccessBreakpoint(field, receiver)) {
                 enterAt(frame, index);
             }
         }

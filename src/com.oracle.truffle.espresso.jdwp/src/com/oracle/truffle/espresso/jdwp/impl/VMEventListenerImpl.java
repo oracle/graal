@@ -44,24 +44,27 @@ import java.util.regex.Pattern;
 
 public final class VMEventListenerImpl implements VMEventListener {
 
-    private final SocketConnection connection;
     private final Ids<Object> ids;
     private final JDWPContext context;
     private final JDWPDebuggerController debuggerController;
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final StableBoolean fieldBreakpointsActive = new StableBoolean(false);
+    private SocketConnection connection;
 
     private int threadStartedRequestId;
     private int threadDeathRequestId;
     private int vmDeathRequestId;
     private int vmStartRequestId;
 
-    public VMEventListenerImpl(SocketConnection connection, JDWPContext context, JDWPDebuggerController controller) {
-        this.connection = connection;
-        this.ids = context.getIds();
-        this.context = context;
+    public VMEventListenerImpl(JDWPDebuggerController controller) {
         this.debuggerController = controller;
+        this.context = controller.getContext();
+        this.ids = context.getIds();
+    }
+
+    public void setConnection(SocketConnection connection) {
+        this.connection = connection;
     }
 
     @Override
@@ -210,6 +213,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     @CompilerDirectives.TruffleBoundary
     public void classPrepared(KlassRef klass, Object guestThread) {
+        if (connection == null) {
+            return;
+        }
         // prepare the event and ship
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
@@ -263,7 +269,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void breakpointHIt(BreakpointInfo info, Object currentThread) {
+    public void breakpointHit(BreakpointInfo info, Object currentThread) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         stream.writeByte(info.getSuspendPolicy());
@@ -295,16 +301,13 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // value about to be set
         Object value = event.getValue();
-        byte tag = event.getInfo().getField().getTagConstant();
-        if (tag == TagConstants.OBJECT) {
-            tag = context.getTag(value);
-        }
+        byte tag = context.getTag(value);
         JDWP.writeValue(tag, value, stream, true, context);
-
+        System.out.println("sending packet to debugger with field BP hit!");
         connection.queuePacket(stream);
     }
 
-    private PacketStream writeSharedFieldInformation(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame, byte fieldModification) {
+    private PacketStream writeSharedFieldInformation(FieldBreakpointEvent event, Object currentThread, JDWPCallFrame callFrame, byte eventType) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
 
         FieldBreakpointInfo info = event.getInfo();
@@ -312,7 +315,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(info.getSuspendPolicy());
         stream.writeInt(1); // # events in reply
 
-        stream.writeByte(fieldModification);
+        stream.writeByte(eventType);
         stream.writeInt(info.getRequestId());
         long threadId = ids.getIdAsLong(currentThread);
         stream.writeLong(threadId);
@@ -399,6 +402,9 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void threadStarted(Object thread) {
+        if (connection == null) {
+            return;
+        }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(SuspendStrategy.NONE);
         stream.writeInt(1); // # events in reply
@@ -411,6 +417,9 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void threadDied(Object thread) {
+        if (connection == null) {
+            return;
+        }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(SuspendStrategy.NONE);
         stream.writeInt(1); // # events in reply
@@ -433,6 +442,9 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void vmDied() {
+        if (connection == null) {
+            return;
+        }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(SuspendStrategy.NONE);
         stream.writeInt(1);

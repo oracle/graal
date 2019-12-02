@@ -30,14 +30,14 @@ import java.util.Set;
 public final class ThreadSuspension {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static Object[] threads = new Object[0];
+    private Object[] threads = new Object[0];
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static int[] suspensionCount = new int[0];
+    private int[] suspensionCount = new int[0];
 
-    private static final Set<Object> hardSuspendedThreads = new HashSet<>();
+    private final Set<Object> hardSuspendedThreads = new HashSet<>();
 
-    public static void suspendThread(Object thread) {
+    public void suspendThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 // increase the suspension count
@@ -59,7 +59,7 @@ public final class ThreadSuspension {
         suspensionCount = temp;
     }
 
-    public static void resumeThread(Object thread) {
+    public void resumeThread(Object thread) {
         removeHardSuspendedThread(thread);
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
@@ -71,7 +71,7 @@ public final class ThreadSuspension {
         }
     }
 
-    public static int getSuspensionCount(Object thread) {
+    public int getSuspensionCount(Object thread) {
         // check if thread has been hard suspended
         if (hardSuspendedThreads.contains(thread)) {
             // suspended through a hard suspension, which means that thread is
@@ -89,15 +89,11 @@ public final class ThreadSuspension {
         return 0;
     }
 
-    public static void addHardSuspendedThread(Object thread) {
+    public void addHardSuspendedThread(Object thread) {
         hardSuspendedThreads.add(thread);
     }
 
-    public static void removeHardSuspendedThread(Object thread) {
+    public void removeHardSuspendedThread(Object thread) {
         hardSuspendedThreads.remove(thread);
-    }
-
-    public static void clearHardSuspend() {
-        hardSuspendedThreads.clear();
     }
 }

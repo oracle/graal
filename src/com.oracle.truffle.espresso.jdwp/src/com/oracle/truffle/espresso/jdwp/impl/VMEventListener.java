@@ -29,8 +29,9 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import java.util.concurrent.Callable;
 
 public interface VMEventListener extends JDWPListener {
+    void setConnection(SocketConnection connection);
     void classUnloaded(KlassRef klass);
-    void breakpointHIt(BreakpointInfo info, Object currentThread);
+    void breakpointHit(BreakpointInfo info, Object currentThread);
     void vmDied();
     void addClassUnloadRequestId(int id);
     void addThreadStartedRequestId(int id);

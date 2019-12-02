@@ -56,18 +56,21 @@ public final class RequestedJDWPEvents {
     public static final byte VM_DISCONNECTED = 100;
 
     private final VMEventListener eventListener;
+    private final JDWPDebuggerController controller;
     private final Ids<Object> ids;
 
-    RequestedJDWPEvents(JDWPContext context, SocketConnection connection, JDWPDebuggerController controller) {
-        this.eventListener = new VMEventListenerImpl(connection, context, controller);
-        VMEventListeners.getDefault().registerListener(eventListener);
-        this.ids = context.getIds();
+    RequestedJDWPEvents(SocketConnection connection, JDWPDebuggerController controller) {
+        this.controller = controller;
+        this.eventListener = controller.getEventListener();
+        this.ids = controller.getContext().getIds();
+        eventListener.setConnection(connection);
     }
 
-    public JDWPResult registerEvent(Packet packet, JDWPCommands callback, JDWPContext context) {
+    public JDWPResult registerEvent(Packet packet, JDWPCommands callback) {
         PacketStream reply = null;
         ArrayList<Callable<Void>> futures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
+        JDWPContext context = controller.getContext();
 
         byte eventKind = input.readByte();
         byte suspendPolicy = input.readByte();
@@ -157,7 +160,7 @@ public final class RequestedJDWPEvents {
         }
 
         // register the request filter for this event
-        EventFilters.getDefault().addFilter(filter);
+        controller.getEventFitlers().addFilter(filter);
         return new JDWPResult(reply, futures);
     }
 
@@ -294,7 +297,7 @@ public final class RequestedJDWPEvents {
 
         byte eventKind = input.readByte();
         int requestId = input.readInt();
-        RequestFilter requestFilter = EventFilters.getDefault().getRequestFilter(requestId);
+        RequestFilter requestFilter = controller.getEventFitlers().getRequestFilter(requestId);
 
         if (requestFilter != null) {
             byte kind = requestFilter.getEventKind();

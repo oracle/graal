@@ -22,10 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPDebuggerController;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 
 /**
  * Main entry point for setting up JDWP. The class looks up the JDWP instrument

@@ -5,6 +5,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
+import com.oracle.truffle.espresso.jdwp.api.JDWPListener;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -14,6 +15,7 @@ import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPDebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -31,7 +33,6 @@ public final class JDWPContextImpl implements JDWPContext {
     public static final String JAVA_LANG_CLASS_LOADER = "Ljava/lang/ClassLoader;";
     public static final String JAVA_LANG_THREAD_GROUP = "Ljava/lang/ThreadGroup;";
 
-
     private final EspressoContext context;
     private final Ids<Object> ids;
     private JDWPSetup setup;
@@ -42,13 +43,15 @@ public final class JDWPContextImpl implements JDWPContext {
         this.setup = new JDWPSetup();
     }
 
-    public void jdwpInit(TruffleLanguage.Env env) {
+    public JDWPListener jdwpInit(TruffleLanguage.Env env) {
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (context.JDWPOptions != null) {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
             JDWPDebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), JDWPDebuggerController.class);
             setup.setup(debugger, control, context.JDWPOptions, this);
+            return control.getEventListener();
         }
+        return new EmptyListener();
     }
 
     public void finalizeContext() {
