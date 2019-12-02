@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.TruffleLogger;
 
-import java.util.logging.Level;
-
 public final class JDWPLogger {
 
     private static final TruffleLogger logger = TruffleLogger.getLogger("JDWPLogger");
@@ -65,7 +63,6 @@ public final class JDWPLogger {
     public static void log(String msg, LogLevel level, Object... args) {
         if (shouldLog(level)) {
             String logRecord = String.format(msg, args);
-            System.out.println("We should log: " + logRecord);
             logger.info(logRecord);
         }
     }

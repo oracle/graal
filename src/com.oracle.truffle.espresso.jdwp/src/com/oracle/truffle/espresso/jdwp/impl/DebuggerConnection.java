@@ -190,12 +190,6 @@ public final class DebuggerConnection implements Commands {
                                     processPacket(Packet.fromByteArray(connection.readPacket()));
                                     time = System.currentTimeMillis();
                                     limit = time + GRACE_PERIOD;
-                                } else {
-                                    try {
-                                        Thread.sleep(10);
-                                    } catch (InterruptedException e) {
-                                        // fall through
-                                    }
                                 }
                             }
                         }
