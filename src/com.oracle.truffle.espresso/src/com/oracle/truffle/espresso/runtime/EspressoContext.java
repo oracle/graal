@@ -86,6 +86,7 @@ public final class EspressoContext {
     private boolean mainThreadCreated;
     private JDWPContextImpl jdwpContext;
     private VMListener eventListener;
+    private boolean contextReady;
 
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
@@ -594,6 +595,14 @@ public final class EspressoContext {
 
     public void prepareDispose() {
         jdwpContext.finalizeContext();
+    }
+
+    public void begin() {
+        this.contextReady = true;
+    }
+
+    public boolean canEnterOtherThread() {
+        return contextReady;
     }
 
     // endregion Options

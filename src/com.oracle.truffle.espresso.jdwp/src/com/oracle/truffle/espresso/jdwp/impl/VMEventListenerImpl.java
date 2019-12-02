@@ -303,7 +303,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         Object value = event.getValue();
         byte tag = context.getTag(value);
         JDWP.writeValue(tag, value, stream, true, context);
-        System.out.println("sending packet to debugger with field BP hit!");
         connection.queuePacket(stream);
     }
 

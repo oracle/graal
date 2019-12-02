@@ -30,6 +30,10 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public interface JDWPContext {
 
+    void enterTruffleContext();
+
+    void leaveTruffleContext();
+
     /**
      * Rerturns the guest language representation of a host thread
      * @param hostThread
