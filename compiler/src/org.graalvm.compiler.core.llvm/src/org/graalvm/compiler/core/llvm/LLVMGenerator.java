@@ -101,7 +101,7 @@ import jdk.vm.ci.meta.ValueKind;
 public abstract class LLVMGenerator implements LIRGeneratorTool {
     private final ArithmeticLLVMGenerator arithmetic;
     protected final LLVMIRBuilder builder;
-    private final LIRKindTool lirKindTool;
+    protected final LIRKindTool lirKindTool;
     private final Providers providers;
     private final LLVMGenerationResult generationResult;
     private final boolean returnsEnum;
