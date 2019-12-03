@@ -77,7 +77,7 @@ public final class RequestFilter {
     public boolean isKlassExcluded(KlassRef klass) {
         for (Pattern pattern : classExcludePatterns) {
             if (pattern != null) {
-                if (pattern.matcher(klass.getNameAsString()).matches()) {
+                if (pattern.matcher(klass.getNameAsString().replace('/', '.')).matches()) {
                     return true;
                 }
             }
