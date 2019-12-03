@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,14 +30,8 @@
 package com.oracle.truffle.llvm.tests;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -47,42 +41,15 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public class SulongSuite extends BaseSuiteHarness {
+public final class SulongLLSuite extends SulongSuite {
 
-    public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
+        Path suitesPath = new File(TestOptions.LL_TEST_SUITE_PATH).toPath();
         return getData(suitesPath);
-    }
-
-    protected static Collection<Object[]> getData(Path suitesPath) {
-        try (Stream<Path> files = Files.walk(suitesPath)) {
-            Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
-            return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new AssertionError("Test cases not found", e);
-        }
-    }
-
-    private static boolean isReference(Path path) {
-        return path.endsWith("ref.out") && (!IS_MAC || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
-    }
-
-    private static Stream<Path> pathStream(Path path) {
-        return StreamSupport.stream(path.spliterator(), false);
-    }
-
-    @Override
-    protected Predicate<? super Path> getIsSulongFilter() {
-        return f -> {
-            boolean isBC = f.getFileName().toString().endsWith(".bc");
-            boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !IS_MAC);
-        };
     }
 
     @Override
