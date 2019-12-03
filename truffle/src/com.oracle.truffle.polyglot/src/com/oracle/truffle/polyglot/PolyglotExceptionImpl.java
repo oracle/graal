@@ -51,6 +51,7 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -254,6 +255,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             if (isInternalError()) {
                 s.println("Original Internal Error: ");
                 s.printStackTrace(exception);
+                if (exception instanceof ControlFlowException) {
+                    s.println("(there is no stack trace because the error is a control flow exception)");
+                }
             }
         }
     }
