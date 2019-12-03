@@ -99,6 +99,7 @@ public final class RequestedJDWPEvents {
                         callback.stepOut(thread, filter);
                         break;
                 }
+                reply = toReply(packet);
                 break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
             case METHOD_ENTRY:
