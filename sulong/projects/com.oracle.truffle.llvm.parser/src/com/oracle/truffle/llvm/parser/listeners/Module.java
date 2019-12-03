@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -71,6 +72,8 @@ public final class Module implements ParserListener {
 
     private final LLSourceBuilder llSource;
 
+    private final AtomicInteger globalIndex;
+
     Module(ModelModule module, StringTable stringTable, IRScope scope, LLSourceBuilder llSource) {
         this.module = module;
         this.stringTable = stringTable;
@@ -79,6 +82,7 @@ public final class Module implements ParserListener {
         this.llSource = llSource;
         this.paramAttributes = new ParameterAttributes(types);
         functionQueue = new ArrayDeque<>();
+        globalIndex = new AtomicInteger(0);
     }
 
     // private static final int STRTAB_RECORD_OFFSET = 2;
@@ -178,7 +182,7 @@ public final class Module implements ParserListener {
             visibility = buffer.read();
         }
 
-        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser);
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser, globalIndex.getAndIncrement());
         assignNameFromStrTab(name, global);
         module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());

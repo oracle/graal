@@ -63,8 +63,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
@@ -116,7 +116,7 @@ public final class LLVMContext {
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
     private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
-                                                                            // after initialization
+    // after initialization
 
     private final HandleContainer handleContainer;
     private final HandleContainer derefHandleContainer;
@@ -133,7 +133,8 @@ public final class LLVMContext {
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
-    private final DynamicObject globalStorage;
+    // private for storing the globals of each bcode file;
+    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] globalStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -170,6 +171,7 @@ public final class LLVMContext {
         }
     }
 
+    @SuppressWarnings("unchecked")
     LLVMContext(LLVMLanguage language, Env env, Toolchain toolchain) {
         this.language = language;
         this.libsulongDatalayout = null;
@@ -189,7 +191,6 @@ public final class LLVMContext {
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
         this.toolchain = toolchain;
-        this.globalStorage = language.emptyGlobalShape.newInstance();
 
         this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getCapability(PlatformCapability.class).getSulongDefaultLibraries()));
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
@@ -203,6 +204,8 @@ public final class LLVMContext {
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
         pThreadContext = new LLVMPThreadContext(this);
+
+        globalStorage = new AssumedValue[10][];
     }
 
     boolean patchContext(Env newEnv) {
@@ -605,8 +608,24 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    public DynamicObject getGlobalStorage() {
-        return globalStorage;
+    public AssumedValue<LLVMPointer>[] findGlobalTable(int id) {
+        return globalStorage[id];
+    }
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    public void registerGlobalTable(int index, AssumedValue<LLVMPointer>[] target) {
+        synchronized (this) {
+            if (index < globalStorage.length) {
+                globalStorage[index] = target;
+            } else {
+                int newLength = (index + 1) + ((index + 1) / 2);
+                AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
+                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
+                globalStorage = temp;
+                globalStorage[index] = target;
+            }
+        }
     }
 
     @TruffleBoundary

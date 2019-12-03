@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
@@ -57,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
@@ -106,7 +108,10 @@ public final class LLVMDebuggerScopeFactory {
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
                 final LLVMGlobal global = symbol.asGlobalVariable();
-                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getGlobalStorage().get(global), dataLayout);
+                int id = global.getID();
+                int index = global.getIndex();
+                AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -117,7 +122,10 @@ public final class LLVMDebuggerScopeFactory {
     private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getGlobalStorage().get(global), dataLayout);
+            int id = global.getID();
+            int index = global.getIndex();
+            AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
             entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
         }
         return entries;
