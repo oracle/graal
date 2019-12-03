@@ -19,7 +19,7 @@
 
       common: {
         packages+: {
-          '00:pip:logilab-common": "==1.4.4', # forces installation of python2 compliant version of logilab before astroid
+          '00:pip:logilab-common': '==1.4.4', # forces installation of python2 compliant version of logilab before astroid
           '01:pip:astroid': '==1.1.0',
           'pip:pylint': '==1.1.0',
           'pip:ninja_syntax': '==1.7.2',
