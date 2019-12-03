@@ -159,7 +159,7 @@ public final class NearestSectionsFinder {
         public void onLoad(LoadSourceSectionEvent event) {
             SourceSection sourceSection = event.getSourceSection();
             if (sourceSection.getEndLine() > line || sourceSection.getEndLine() == line && sourceSection.getEndColumn() > column) {
-                return ;
+                return;
             }
             if (closestBefore == null || sourceSection.getEndLine() > closestBefore.getEndLine()) {
                 closestBefore = sourceSection;
@@ -167,15 +167,11 @@ public final class NearestSectionsFinder {
             } else if (sourceSection.getEndLine() == closestBefore.getEndLine()) {
                 if (sourceSection.getEndColumn() > closestBefore.getEndColumn() ||
                                 sourceSection.getEndColumn() == closestBefore.getEndColumn() &&
-                                sourceSection.getCharLength() > closestBefore.getCharLength()) {
+                                                sourceSection.getCharLength() > closestBefore.getCharLength()) {
                     closestBefore = sourceSection;
                     node = event.getNode();
                 }
             }
-        }
-
-        SourceSection getClosestBefore() {
-            return closestBefore;
         }
 
         NearestNode getNearestNode() {

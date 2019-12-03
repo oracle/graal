@@ -453,9 +453,9 @@ public class SLNodeFactory {
         declaration = frameSlot == null;
         if (declaration) {
             frameSlot = frameDescriptor.addFrameSlot(
-                        name,
-                        argumentIndex,
-                        FrameSlotKind.Illegal);
+                            name,
+                            argumentIndex,
+                            FrameSlotKind.Illegal);
         }
         lexicalScope.locals.put(name, frameSlot);
         final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, declaration);

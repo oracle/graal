@@ -240,7 +240,9 @@ public final class TextDocumentSurrogate {
         Source source = buildSource();
         declarationData.cleanDeclarations(source);
         // TODO: Bug: Must include StatementTag to receive nodes tagged with DeclarationTag.
-        loadDeclarationBinding = env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().sourceIs(source).tagIs(StandardTags.DeclarationTag.class, StandardTags.WriteVariableTag.class, StandardTags.StatementTag.class).build(), new LoadDeclarationListener(), false);
+        loadDeclarationBinding = env.getInstrumenter().attachLoadSourceSectionListener(
+                        SourceSectionFilter.newBuilder().sourceIs(source).tagIs(StandardTags.DeclarationTag.class, StandardTags.WriteVariableTag.class, StandardTags.StatementTag.class).build(),
+                        new LoadDeclarationListener(), false);
         sourceWrapper = new SourceWrapper(source);
         return sourceWrapper;
     }
@@ -280,14 +282,17 @@ public final class TextDocumentSurrogate {
             boolean writeVar = tags.contains(StandardTags.WriteVariableTag.class);
             // TODO: Bug: Had to include StatementTag to receive nodes tagged with DeclarationTag.
             if (declaration || writeVar) {
-                //System.err.println("HAVE DECLARATION!");
+                // We have declaration
             } else {
                 declarationObject = null;
             }
             if (declarationObject != null) {
                 assert interop.hasMembers(declarationObject) : declarationObject;
                 try {
-                    String name, kind, type, description;
+                    String name;
+                    String kind;
+                    String type;
+                    String description;
                     Boolean deprecation;
                     SourceSection symbolSection = ((Node) inode).getSourceSection();
                     int[] scopeSection;

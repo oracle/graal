@@ -394,8 +394,8 @@ public final class StandardTags {
         public static final String NAME = "writeVariableName";
 
         /**
-         * Type of the variable after write operation. The value is a name of other declared element that represents
-         * type of this variable.
+         * Type of the variable after write operation. The value is a name of other declared element
+         * that represents type of this variable.
          *
          * @since 20.0.0
          */

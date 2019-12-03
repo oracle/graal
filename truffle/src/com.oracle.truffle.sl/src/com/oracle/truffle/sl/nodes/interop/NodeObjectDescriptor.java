@@ -54,7 +54,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptor implements TruffleObject {
 
-    static final String NAME = "name";
+    static final String NAME = StandardTags.DeclarationTag.NAME;
     static final String KIND = StandardTags.DeclarationTag.KIND;
     private static final TruffleObject KEYS_NAME = new NodeObjectDescriptorKeys(false);
     private static final TruffleObject KEYS_NAME_KIND = new NodeObjectDescriptorKeys(true);
@@ -77,7 +77,9 @@ public final class NodeObjectDescriptor implements TruffleObject {
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
         switch (member) {
-            case NAME:
+            case StandardTags.DeclarationTag.NAME:
+            case StandardTags.ReadVariableTag.NAME:
+            case StandardTags.WriteVariableTag.NAME:
                 return name;
             case KIND:
                 if (kind != null) {
@@ -95,7 +97,9 @@ public final class NodeObjectDescriptor implements TruffleObject {
     @ExportMessage
     boolean isMemberReadable(String member) {
         switch (member) {
-            case NAME:
+            case StandardTags.DeclarationTag.NAME:
+            case StandardTags.ReadVariableTag.NAME:
+            case StandardTags.WriteVariableTag.NAME:
                 return true;
             case KIND:
                 return kind != null;

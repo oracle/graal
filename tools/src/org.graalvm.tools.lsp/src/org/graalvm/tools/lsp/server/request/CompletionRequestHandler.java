@@ -67,7 +67,6 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -84,10 +83,6 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, CompletionRequestHandler.class);
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private static final LSPLibrary LSP_INTEROP = LSPLibrary.getFactory().getUncached();
-
-    private static boolean isInstrumentable(Node node) {
-        return node instanceof InstrumentableNode && ((InstrumentableNode) node).isInstrumentable();
-    }
 
     private enum CompletionKind {
         UNKOWN,
@@ -129,7 +124,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
         CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column, surrogate.getCompletionTriggerCharacters(),
                         completionContext);
-        if (surrogate.isSourceCodeReadyForCodeCompletion() /*&& !completionKind.equals(CompletionKind.OBJECT_PROPERTY)*/) {
+        if (surrogate.isSourceCodeReadyForCodeCompletion() /*
+                                                            * &&
+                                                            * !completionKind.equals(CompletionKind.
+                                                            * OBJECT_PROPERTY)
+                                                            */) {
             return createCompletions(surrogate, line, column, completionKind);
         } else {
             // Try fixing the source code, parse again, then create the completions
@@ -225,7 +224,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return nearestNodeHolder.getNode();
     }
 
-    private void fillCompletionsWithObjectDeclaredProperties(TextDocumentSurrogate surrogate, int line, int column, List<CompletionItem> completions) throws DiagnosticsNotification {
+    private void fillCompletionsWithObjectDeclaredProperties(TextDocumentSurrogate surrogate, int line, int column, List<CompletionItem> completions) {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
         NearestNode nearestNodeHolder = NearestSectionsFinder.findNodeBeforePos(source, line, column, env);
@@ -246,8 +245,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         List<String> splitText = splitByTriggerCharacters(text, surrogate.getCompletionTriggerCharacters());
         Symbol symbol = null;
         for (String s : splitText) {
-            Collection<Symbol> declaredSymbols = (symbol == null) ? getDeclarationData().getDeclaredSymbols(section) :
-                            symbol.getChildren();
+            Collection<Symbol> declaredSymbols = (symbol == null) ? getDeclarationData().getDeclaredSymbols(section) : symbol.getChildren();
             symbol = null;
             for (Symbol ds : declaredSymbols) {
                 if (ds.getName().equals(s)) {
@@ -269,7 +267,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return symbol;
     }
 
-    private List<String> splitByTriggerCharacters(String text, List<String> triggerCharacters) {
+    private static List<String> splitByTriggerCharacters(String text, List<String> triggerCharacters) {
         List<String> split = null;
         int start = 0;
         String triggerCharacter;
@@ -332,7 +330,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                                                 DiagnosticSeverity.Information, null, "Graal", null));
             }
         } else {
-            LOG.fine("No object property completion possible. Caret is not directly at the end of a source section. Nearest section: " + nearestNode.getSourceSection());
+            LOG.fine("No object property completion possible. Caret is not directly at the end of a source section. Line: " + line + ", column: " + column);
         }
     }
 
@@ -383,7 +381,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         fillDeclaredSymbols(getDeclarationData().getGlobalDeclaredSymbols(), completions, SORTING_PRIORITY_GLOBALS, scopeCounter);
     }
 
-    private void fillDeclaredSymbols(Collection<Symbol> declaredSymbols, List<CompletionItem> completions, int displayPriority, int lastScopeCounter) {
+    private static void fillDeclaredSymbols(Collection<Symbol> declaredSymbols, List<CompletionItem> completions, int displayPriority, int lastScopeCounter) {
         String[] existingCompletions = completions.stream().map((item) -> item.getLabel()).toArray(String[]::new);
         // Filter duplicates
         Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
@@ -401,7 +399,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             // (the innermost scope has the lowest counter)
             completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, name));
             CompletionItemKind completionItemKind = CompletionItemKind.valueOf(symbol.getKind());
-            completion.setKind(completionItemKind/* != null ? completionItemKind : completionItemKindDefault*/);
+            completion.setKind(completionItemKind/*
+                                                  * != null ? completionItemKind :
+                                                  * completionItemKindDefault
+                                                  */);
             completion.setDetail(symbol.getType());
             completion.setDocumentation(symbol.getDescription());
             completion.setDeprecated(symbol.isDeprecated());

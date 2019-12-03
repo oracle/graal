@@ -34,14 +34,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 import org.graalvm.collections.Pair;
 
 /**
- * Data gathered from {@link StandardTags.DeclarationTag declaration tags}.
+ * Data gathered from {@link DeclarationTag declaration tags}.
  */
 public final class DeclarationData {
 
@@ -55,7 +55,7 @@ public final class DeclarationData {
         VARIABLE
     }
 
-    public synchronized void addDeclaration(String name, String/*SymbolKind*/ kind, String type, String description, Boolean deprecated, SourceSection symbolSection, int[] scopeSection) {
+    public synchronized void addDeclaration(String name, String/* SymbolKind */ kind, String type, String description, Boolean deprecated, SourceSection symbolSection, int[] scopeSection) {
         String uri = symbolSection.getSource().getURI().toString();
         SourceDeclarations sourceDeclarations = declarations.get(uri);
         if (sourceDeclarations == null) {
@@ -141,7 +141,7 @@ public final class DeclarationData {
                         container = p;
                         parents = p.children;
                         continue parents;
-                    } else if (symbolRange.equals(p.symbolRange) /*&& name.equals(p.name)*/) {
+                    } else if (symbolRange.equals(p.symbolRange) /* && name.equals(p.name) */) {
                         return; // it's there already
                     }
                 }
@@ -201,7 +201,7 @@ public final class DeclarationData {
     public static final class Symbol {
 
         private final String name;
-        private final String/*SymbolKind*/ kind;
+        private final String/* SymbolKind */ kind;
         private final String type;
         private final String description;
         private final boolean deprecated;
@@ -330,7 +330,7 @@ public final class DeclarationData {
 
         @Override
         public String toString() {
-            return "<"+startLine+":"+startColumn+" - "+endLine+":"+endColumn+">";
+            return "<" + startLine + ":" + startColumn + " - " + endLine + ":" + endColumn + ">";
         }
 
     }
