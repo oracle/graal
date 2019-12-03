@@ -67,7 +67,6 @@ public final class RequestedJDWPEvents {
     }
 
     public CommandResult registerEvent(Packet packet, Commands callback) {
-        PacketStream reply = null;
         ArrayList<Callable<Void>> futures = new ArrayList<>();
         PacketStream input = new PacketStream(packet);
         JDWPContext context = controller.getContext();
@@ -99,19 +98,16 @@ public final class RequestedJDWPEvents {
                         callback.stepOut(thread, filter);
                         break;
                 }
-                reply = toReply(packet);
                 break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
             case METHOD_ENTRY:
             case METHOD_EXIT:
-                reply = toReply(packet);
                 break;
             case BREAKPOINT:
                 BreakpointInfo info = filter.getBreakpointInfo();
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 futures.add(callback.createLineBreakpointCommand(info));
-                reply = toReply(packet);
                 break;
             case EXCEPTION:
                 info = filter.getBreakpointInfo();
@@ -119,7 +115,6 @@ public final class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 futures.add(callback.createExceptionBreakpoint(info));
                 JDWPLogger.log("Submitting new exception breakpoint", JDWPLogger.LogLevel.STEPPING);
-                reply = toReply(packet);
                 break;
             case CLASS_PREPARE:
                 Callable<Void> callable = eventListener.addClassPrepareRequest(new ClassPrepareRequest(filter));
@@ -127,7 +122,6 @@ public final class RequestedJDWPEvents {
                     futures.add(callable);
                 }
                 JDWPLogger.log("Class prepare request received", JDWPLogger.LogLevel.PACKET);
-                reply = toReply(packet);
                 break;
             case FIELD_ACCESS:
                 FieldBreakpointInfo fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
@@ -137,7 +131,6 @@ public final class RequestedJDWPEvents {
                 String location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 JDWPLogger.log("Submitting field access breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
                 eventListener.increaseFieldBreakpointCount();
-                reply = toReply(packet);
                 break;
             case FIELD_MODIFICATION:
                 fieldBreakpointInfo = (FieldBreakpointInfo) filter.getBreakpointInfo();
@@ -147,27 +140,21 @@ public final class RequestedJDWPEvents {
                 location = fieldBreakpointInfo.getKlass().getNameAsString() + "." + fieldBreakpointInfo.getField().getNameAsString();
                 JDWPLogger.log("Submitting field modification breakpoint: %s", JDWPLogger.LogLevel.STEPPING, location);
                 eventListener.increaseFieldBreakpointCount();
-                reply = toReply(packet);
                 break;
             case THREAD_START:
                 eventListener.addThreadStartedRequestId(packet.id);
-                reply = toReply(packet);
                 break;
             case THREAD_DEATH:
                 eventListener.addThreadDiedRequestId(packet.id);
-                reply = toReply(packet);
                 break;
             case CLASS_UNLOAD:
                 eventListener.addClassUnloadRequestId(packet.id);
-                reply = toReply(packet);
                 break;
             case VM_START: // no debuggers should ask for this event
                 eventListener.addVMStartRequest(packet.id);
-                reply = toReply(packet);
                 break;
             case VM_DEATH: // no debuggers should request this event
                 eventListener.addVMDeathRequest(packet.id);
-                reply = toReply(packet);
                 break;
             default:
                 JDWPLogger.log("unhandled event kind %d", JDWPLogger.LogLevel.PACKET, eventKind);
@@ -176,7 +163,7 @@ public final class RequestedJDWPEvents {
 
         // register the request filter for this event
         controller.getEventFilters().addFilter(filter);
-        return new CommandResult(reply, futures);
+        return new CommandResult(toReply(packet), futures);
     }
 
     private static PacketStream toReply(Packet packet) {
