@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -220,9 +221,9 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value) {
         LLVMGlobal global = value.getDescriptor();
         LLVMContext context = value.getContext();
-        LLVMPointer[] globals = context.findGlobal(global.getID());
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
         int index = global.getIndex();
-        Object target = globals[index];
+        Object target = globals[index].get();
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);

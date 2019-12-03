@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
@@ -58,8 +59,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
         int index = global.getIndex();
-        LLVMPointer[] globals = context.findGlobal(global.getID());
-        return globals[index] != null && currentValue != null && currentValue.canRead(bitOffset, bits);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        return globals[index].get() != null && currentValue != null && currentValue.canRead(bitOffset, bits);
     }
 
     private Object doRead(long offset, int size, String kind, Function<LLVMDebugValue, Object> readOperation) {
@@ -168,17 +169,17 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         int index = global.getIndex();
-        LLVMPointer[] globals = context.findGlobal(global.getID());
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
         if (isInNative()) {
-            return new LLDBMemoryValue(LLVMNativePointer.cast(globals[index]));
+            return new LLDBMemoryValue(LLVMNativePointer.cast(globals[index].get()));
         } else {
-            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(globals[index]);
+            return LLVMLanguage.getLLDBSupport().createDebugValueBuilder().build(globals[index].get());
         }
     }
 
     private boolean isInNative() {
         int index = global.getIndex();
-        LLVMPointer[] globals = context.findGlobal(global.getID());
-        return LLVMNativePointer.isInstance(globals[index]);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        return LLVMNativePointer.isInstance(globals[index].get());
     }
 }

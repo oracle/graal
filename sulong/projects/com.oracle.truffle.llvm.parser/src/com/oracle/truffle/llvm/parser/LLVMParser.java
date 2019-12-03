@@ -133,7 +133,6 @@ public final class LLVMParser {
         if (global.isExported()) {
             LLVMSymbol exportedDescriptor = runtime.getGlobalScope().get(global.getName());
             if (exportedDescriptor == null) {
-                // TODO (PLi): working on the scope for global -- differ from define and declare.
                 runtime.getGlobalScope().register(descriptor);
             } else if (exportedDescriptor.isGlobalVariable()) {
                 importedSymbols.add(global.getName());

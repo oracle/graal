@@ -30,9 +30,9 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -46,21 +46,15 @@ public abstract class LLVMCheckGlobalVariableStorageNode extends LLVMNode {
     @SuppressWarnings("unused")
     @Specialization
     boolean doCheck(LLVMGlobal descriptor,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached CheckDynamicObjectHelper checkHelper,
-                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
-        return checkHelper.execute(globals, descriptor);
-    }
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        int index = descriptor.getIndex();
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
 
-    abstract static class CheckDynamicObjectHelper extends LLVMNode {
-
-        public abstract boolean execute(LLVMPointer[] globals, LLVMGlobal descriptor);
-
-        @Specialization
-        protected boolean checkDirect(LLVMPointer[] globals, LLVMGlobal descriptor) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            int index = descriptor.getIndex();
-            return globals[index] == null ? false : true;
+        if (globals[index] == null) {
+            return false;
         }
+
+        return globals[index].get() == null ? false : true;
     }
 }

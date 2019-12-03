@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -47,24 +47,13 @@ public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
     @SuppressWarnings("unused")
     @Specialization
     void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached WriteDynamicObjectHelper writeHelper,
-                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
         synchronized (globals) {
-            writeHelper.execute(globals, descriptor, pointer);
-        }
-    }
-
-    abstract static class WriteDynamicObjectHelper extends LLVMNode {
-
-        public abstract void execute(LLVMPointer[] globals, LLVMGlobal descriptor, LLVMPointer value);
-
-        @Specialization
-        protected void doDirect(LLVMPointer[] globals, LLVMGlobal descriptor, LLVMPointer value) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
                 int index = descriptor.getIndex();
-                globals[index] = value;
+                globals[index] = new AssumedValue<>("LLVMGlobal." + descriptor.getName(), pointer);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException("Global write is inconsistent.");

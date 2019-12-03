@@ -30,14 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
@@ -62,21 +61,10 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
     @SuppressWarnings("unused")
     @Specialization
     Object doAccess(
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached ReadDynamicObjectHelper helper,
-                    @Cached(value = "context.findGlobal(descriptor.getID())", dimensions = 1) LLVMPointer[] globals) {
-        return helper.execute(globals, descriptor);
-    }
-
-    abstract static class ReadDynamicObjectHelper extends LLVMNode {
-
-        protected abstract Object execute(LLVMPointer[] globals, LLVMGlobal descriptor);
-
-        @Specialization
-        protected Object readDirectFinal(LLVMPointer[] globals, LLVMGlobal descriptor) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            int index = descriptor.getIndex();
-            return globals[index];
-        }
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
+        int index = descriptor.getIndex();
+        return globals[index].get();
     }
 }

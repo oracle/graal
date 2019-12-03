@@ -63,7 +63,9 @@ public final class GlobalVariable extends GlobalValueSymbol {
         return isReadOnly;
     }
 
-    public int getIndex() { return index;}
+    public int getIndex() {
+        return index;
+    }
 
     public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
         return new GlobalVariable(isReadOnly, type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value, index);

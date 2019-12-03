@@ -63,6 +63,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
@@ -115,7 +116,7 @@ public final class LLVMContext {
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
     private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
-                                                                            // after initialization
+    // after initialization
 
     private final HandleContainer handleContainer;
     private final HandleContainer derefHandleContainer;
@@ -133,7 +134,7 @@ public final class LLVMContext {
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
 
     // private for storing the globals of each bcode file;
-    private LLVMPointer[][] globalStorage = new LLVMPointer[10][];
+    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] globalStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -170,6 +171,7 @@ public final class LLVMContext {
         }
     }
 
+    @SuppressWarnings("unchecked")
     LLVMContext(LLVMLanguage language, Env env, Toolchain toolchain) {
         this.language = language;
         this.libsulongDatalayout = null;
@@ -202,6 +204,8 @@ public final class LLVMContext {
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
         pThreadContext = new LLVMPThreadContext(this);
+
+        globalStorage = new AssumedValue[10][];
     }
 
     boolean patchContext(Env newEnv) {
@@ -604,23 +608,22 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    public LLVMPointer[] findGlobal(int id) {
+    public AssumedValue<LLVMPointer>[] findGlobalTable(int id) {
         return globalStorage[id];
     }
-    
+
+    @SuppressWarnings("unchecked")
     @TruffleBoundary
-    public void registerGlobalMap(int index, LLVMPointer[] target) {
-        synchronized (globalStorage) {
+    public void registerGlobalTable(int index, AssumedValue<LLVMPointer>[] target) {
+        synchronized (this) {
             if (index < globalStorage.length) {
                 globalStorage[index] = target;
             } else {
                 int newLength = (index + 1) + ((index + 1) / 2);
-                LLVMPointer[][] temp = new LLVMPointer[newLength][];
-                synchronized (temp) {
-                    System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
-                    globalStorage = temp;
-                    globalStorage[index] = target;
-                }
+                AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
+                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
+                globalStorage = temp;
+                globalStorage[index] = target;
             }
         }
     }

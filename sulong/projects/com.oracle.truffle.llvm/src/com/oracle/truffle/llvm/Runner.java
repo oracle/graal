@@ -65,6 +65,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -413,11 +414,12 @@ final class Runner {
             return !ctx.isScopeLoaded(fileScope);
         }
 
+        @SuppressWarnings("unchecked")
         public LLVMPointer execute(LLVMContext ctx) {
             LLVMPointer roBase = allocOrNull(allocRoSection);
             LLVMPointer rwBase = allocOrNull(allocRwSection);
-            //Allocating the size of the global as determined from the module.
-            ctx.registerGlobalMap(id, new LLVMPointer[globalLength]);
+            // Allocating the size of the global as determined from the module.
+            ctx.registerGlobalTable(id, new AssumedValue[globalLength]);
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
@@ -768,8 +770,6 @@ final class Runner {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
                     globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getID());
-
-                    //globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
                     throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
@@ -789,9 +789,9 @@ final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                LLVMPointer[] globals = ctx.findGlobal(global.getID());
+                AssumedValue<LLVMPointer>[] globals = ctx.findGlobalTable(global.getID());
                 int index = global.getIndex();
-                globals[index] = LLVMNativePointer.create(pointerIntoLibrary.getAddress());
+                globals[index] = new AssumedValue<>("LLVMGlobal." + global.getName() + "(unresolved/external)", LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 
