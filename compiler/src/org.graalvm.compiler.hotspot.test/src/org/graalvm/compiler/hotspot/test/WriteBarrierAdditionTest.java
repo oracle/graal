@@ -31,12 +31,14 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.EnumSet;
 import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -63,15 +65,22 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
- * Normally, the tests check for compile time inserted barriers. However, there are the cases of
- * unsafe loads of the java.lang.ref.Reference.referent field where runtime checks have to be
- * performed also. For those cases, the unit tests check the presence of the compile-time inserted
- * barriers. Concerning the runtime checks, the results of variable inputs (object types and
- * offsets) passed as input parameters can be checked against printed output from the G1 write
- * barrier snippets. The runtime checks have been validated offline.
+ * The following unit tests assert the presence of write barriers for G1 and for the other GCs that
+ * use a simple card mark barrier, like Serial, CMS, ParallelGC and Pthe arNew/ParOld GCs. Normally,
+ * the tests check for compile time inserted barriers. However, there are the cases of unsafe loads
+ * of the java.lang.ref.Reference.referent field where runtime checks have to be performed also. For
+ * those cases, the unit tests check the presence of the compile-time inserted barriers. Concerning
+ * the runtime checks, the results of variable inputs (object types and offsets) passed as input
+ * parameters can be checked against printed output from the G1 write barrier snippets. The runtime
+ * checks have been validated offline.
  */
 public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
+
+    /**
+     * The set of GCs known at the time of writing of this test. The number of expected barrier
+     * might need to be adjusted for new GCs implementations.
+     */
+    private static EnumSet<HotSpotGC> knownSupport = EnumSet.of(HotSpotGC.G1, HotSpotGC.CMS, HotSpotGC.Parallel, HotSpotGC.Serial);
 
     private final GraalHotSpotVMConfig config = runtime().getVMConfig();
 
@@ -101,7 +110,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     private int expectedBarriers;
 
     /**
-     * Expected 2 barriers for the Serial GC and 4 for G1 (2 pre + 2 post).
+     * Expected 2 barriers for the card mark GCs and 4 for G1 (2 pre + 2 post).
      */
     @Test
     public void testAllocation() throws Exception {
@@ -119,7 +128,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post).
+     * Expected 4 barriers for the card mark GCs and 8 for G1 (4 pre + 4 post).
      */
     @Test
     public void testLoopAllocation1() throws Exception {
@@ -144,7 +153,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post).
+     * Expected 4 barriers for the card mark GCs and 8 for G1 (4 pre + 4 post).
      */
     @Test
     public void testLoopAllocation2() throws Exception {
@@ -166,9 +175,9 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     /**
-     * Expected 2 barriers for the Serial GC and 5 for G1 (3 pre + 2 post) The (2 or 4) barriers are
-     * emitted while initializing the fields of the WeakReference instance. The extra pre barrier of
-     * G1 concerns the read of the referent field.
+     * Expected 2 barriers for the card mark GCs and 5 for G1 (3 pre + 2 post) The (2 or 4) barriers
+     * are emitted while initializing the fields of the WeakReference instance. The extra pre
+     * barrier of G1 concerns the read of the referent field.
      */
     @Test
     public void testReferenceGet() throws Exception {
@@ -294,6 +303,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     private void verifyBarriers(StructuredGraph graph) {
+        Assert.assertTrue("Unknown collector selected", knownSupport.contains(runtime().getGarbageCollector()));
         Assert.assertNotEquals("test must set expected barrier count", expectedBarriers, -1);
         int barriers = 0;
         if (config.useG1GC) {
