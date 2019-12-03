@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.persist.test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.Proxy;
@@ -123,6 +124,6 @@ public class Handler extends URLStreamHandler {
         if (x != null) {
             return x.openConnection();
         }
-        throw new IOException("Unsupported");
+        throw new FileNotFoundException("Unsupported");
     }
 }
