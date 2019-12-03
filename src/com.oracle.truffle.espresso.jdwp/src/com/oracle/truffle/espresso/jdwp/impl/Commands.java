@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.util.concurrent.Callable;
 
 public interface Commands {
-    void stepOver(Object thread, int requestId);
-    void stepInto(Object thread, int requestId);
-    void stepOut(Object thread, int requestId);
+    void stepOver(Object thread, RequestFilter filter);
+    void stepInto(Object thread, RequestFilter filter);
+    void stepOut(Object thread, RequestFilter filter);
     Callable<Void> createLineBreakpointCommand(BreakpointInfo info);
     Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
 }

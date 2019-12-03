@@ -81,11 +81,25 @@ public final class RequestedJDWPEvents {
         for (int i = 0; i < modifiers; i++) {
             byte modKind = input.readByte();
             JDWPLogger.log("Handling modKind: %d", JDWPLogger.LogLevel.STEPPING, modKind);
-            handleModKind(filter, input, modKind, callback, context);
+            handleModKind(filter, input, modKind, context);
         }
 
         switch (eventKind) {
             case SINGLE_STEP:
+                StepInfo stepInfo = filter.getStepInfo();
+                Object thread = stepInfo.getThread();
+                switch (stepInfo.getDepth()) {
+                    case SteppingConstants.INTO:
+                        callback.stepInto(thread, filter);
+                        break;
+                    case SteppingConstants.OVER:
+                        callback.stepOver(thread, filter);
+                        break;
+                    case SteppingConstants.OUT:
+                        callback.stepOut(thread, filter);
+                        break;
+                }
+                break;
             case METHOD_EXIT_WITH_RETURN_VALUE:
             case METHOD_ENTRY:
             case METHOD_EXIT:
@@ -171,7 +185,7 @@ public final class RequestedJDWPEvents {
         return reply;
     }
 
-    private void handleModKind(RequestFilter filter, PacketStream input, byte modKind, Commands callback, JDWPContext context) {
+    private void handleModKind(RequestFilter filter, PacketStream input, byte modKind, JDWPContext context) {
         switch (modKind) {
             case 1:
                 int count = input.readInt();
@@ -258,25 +272,16 @@ public final class RequestedJDWPEvents {
                 JDWPLogger.log("limiting to field: %s", JDWPLogger.LogLevel.STEPPING, field.getNameAsString());
                 break;
             case 10:
-                filter.setStepping(true);
                 threadId = input.readLong();
                 thread = ids.fromId((int) threadId);
 
                 int size = input.readInt();
                 int depth = input.readInt();
 
+                StepInfo stepInfo = new StepInfo(size, depth, thread);
+                filter.addStepInfo(stepInfo);
+
                 JDWPLogger.log("Step command: size= %d, depth=%d", JDWPLogger.LogLevel.STEPPING, size, depth);
-                switch (depth) {
-                    case SteppingConstants.INTO:
-                        callback.stepInto(thread, filter.getRequestId());
-                        break;
-                    case SteppingConstants.OVER:
-                        callback.stepOver(thread, filter.getRequestId());
-                        break;
-                    case SteppingConstants.OUT:
-                        callback.stepOut(thread, filter.getRequestId());
-                        break;
-                }
                 break;
             case 11:
                 long thisId = input.readLong();

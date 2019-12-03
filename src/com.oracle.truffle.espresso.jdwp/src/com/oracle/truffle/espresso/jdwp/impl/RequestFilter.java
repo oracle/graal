@@ -33,12 +33,12 @@ public final class RequestFilter {
     private Pattern[] classExcludePatterns = new Pattern[0];
     private final KlassRef[] klassRefPatterns;
     private int nextIndex;
-    private boolean stepping;
     private int count = 0;
     private Object thread;
     private Pattern[] positivePatterns = new Pattern[0];
     private BreakpointInfo breakpointInfo;
     private long thisFilterId = 0;
+    private StepInfo stepInfo;
 
     public RequestFilter(int requestId, byte eventKind, int modifiers) {
         this.requestId = requestId;
@@ -61,12 +61,12 @@ public final class RequestFilter {
         classExcludePatterns = temp;
     }
 
-    public void setStepping(boolean stepping) {
-        this.stepping = stepping;
+    public void addStepInfo(StepInfo info) {
+        this.stepInfo = info;
     }
 
-    public boolean isStepping() {
-        return stepping;
+    public StepInfo getStepInfo() {
+        return stepInfo;
     }
 
     public void addRefTypeLimit(KlassRef klassRef) {

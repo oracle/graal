@@ -170,7 +170,8 @@ public class DebuggerController {
         info.setBreakpoint(bp);
     }
 
-    public void stepOver(Object thread) {
+    public void stepOver(RequestFilter filter) {
+        Object thread = filter.getStepInfo().getThread();
         JDWPLogger.log("STEP_OVER for thread: %s" , JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
@@ -191,7 +192,8 @@ public class DebuggerController {
         }
     }
 
-    public void stepInto(Object thread) {
+    public void stepInto(RequestFilter filter) {
+        Object thread = filter.getStepInfo().getThread();
         JDWPLogger.log("STEP_INTO for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
@@ -203,7 +205,8 @@ public class DebuggerController {
         }
     }
 
-    public void stepOut(Object thread) {
+    public void stepOut(RequestFilter filter) {
+        Object thread = filter.getStepInfo().getThread();
         JDWPLogger.log("STEP_OUT for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
@@ -496,7 +499,7 @@ public class DebuggerController {
             if (id != null) {
                 RequestFilter requestFilter = eventFilters.getRequestFilter(id);
 
-                if (requestFilter != null && requestFilter.isStepping()) {
+                if (requestFilter != null && requestFilter.getStepInfo() != null) {
                     // we're currently stepping, so check if suspension point
                     // matches any exclusion filters
                     if (requestFilter.getThisFilterId() != 0) {

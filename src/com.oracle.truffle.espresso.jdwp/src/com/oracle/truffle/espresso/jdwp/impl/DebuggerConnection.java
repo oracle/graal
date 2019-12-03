@@ -69,23 +69,23 @@ public final class DebuggerConnection implements Commands {
     }
 
     @Override
-    public void stepInto(Object thread, int requestId) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, thread);
-        controller.setCommandRequestId(thread, requestId);
+    public void stepInto(Object thread, RequestFilter filter) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
+        controller.setCommandRequestId(thread, filter.getRequestId());
         queue.add(debuggerCommand);
     }
 
     @Override
-    public void stepOver(Object thread, int requestId) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, thread);
-        controller.setCommandRequestId(thread, requestId);
+    public void stepOver(Object thread, RequestFilter filter) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
+        controller.setCommandRequestId(thread, filter.getRequestId());
         queue.add(debuggerCommand);
     }
 
     @Override
-    public void stepOut(Object thread, int requestId) {
-        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, thread);
-        controller.setCommandRequestId(thread, requestId);
+    public void stepOut(Object thread, RequestFilter filter) {
+        DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
+        controller.setCommandRequestId(thread, filter.getRequestId());
         queue.add(debuggerCommand);
     }
 
@@ -125,11 +125,11 @@ public final class DebuggerConnection implements Commands {
                 DebuggerCommand debuggerCommand = awaitNextCommand(); // blocking
 
                 if (debuggerCommand != null) {
-                    Object thread = debuggerCommand.getThread();
+                    RequestFilter filter = debuggerCommand.getRequestFilter();
                     switch (debuggerCommand.kind) {
-                        case STEP_INTO: controller.stepInto(thread); break;
-                        case STEP_OVER: controller.stepOver(thread); break;
-                        case STEP_OUT: controller.stepOut(thread); break;
+                        case STEP_INTO: controller.stepInto(filter); break;
+                        case STEP_OVER: controller.stepOver(filter); break;
+                        case STEP_OUT: controller.stepOut(filter); break;
                         case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand); break;
                         case SUBMIT_EXCEPTION_BREAKPOINT: controller.submitExceptionBreakpoint(debuggerCommand); break;
                     }

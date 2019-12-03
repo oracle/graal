@@ -33,13 +33,13 @@ final class DebuggerCommand {
     }
 
     final Kind kind;
-    private final Object thread;
+    private final RequestFilter requestFilter;
     private SourceLocation location;
     private BreakpointInfo breakpointInfo;
 
-    DebuggerCommand(Kind kind, Object thread) {
+    DebuggerCommand(Kind kind, RequestFilter filter) {
         this.kind = kind;
-        this.thread = thread;
+        this.requestFilter = filter;
     }
 
     void setSourceLocation(SourceLocation location) {
@@ -50,8 +50,8 @@ final class DebuggerCommand {
         return location;
     }
 
-    public Object getThread() {
-        return thread;
+    public RequestFilter getRequestFilter() {
+        return requestFilter;
     }
 
     public void setBreakpointInfo(BreakpointInfo info) {
