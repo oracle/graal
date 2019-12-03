@@ -112,6 +112,8 @@ public final class PolyglotNativeAPIEntryPoints {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "poly_detach_threads", documentation = {
+                    "- This function is DEPRECATED AND WILL BE REMOVED ENTIRELY in a future release -",
+                    "",
                     "Using the context of the isolate thread from the first argument, detaches the",
                     "threads in an array pointed to by the second argument, with the length of the",
                     "array given in the third argument. All of the passed threads must be in the",
@@ -121,7 +123,7 @@ public final class PolyglotNativeAPIEntryPoints {
                     "the array, however, using poly_detach_thread() should be preferred for detaching",
                     "only the current thread.",
                     "Returns poly_ok on success, or poly_generic_failure on failure."})
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class, publishAs = CEntryPointOptions.Publish.SymbolOnly)
     public static @CTypedef(name = "poly_status") int polyDetachThreads(PolyglotIsolateThread thread, PolyglotIsolateThreadPointer threads, int length) {
         return detachThreads(thread, threads, length) == 0 ? Poly.ok() : Poly.generic_failure();
     }

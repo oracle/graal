@@ -169,6 +169,8 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON, calleeMustBe = false)
     @CEntryPoint(name = "detach_threads", documentation = {
+                    "- This function is DEPRECATED AND WILL BE REMOVED ENTIRELY in a future release -",
+                    "",
                     "Using the context of the isolate thread from the first argument, detaches the",
                     "threads in an array pointed to by the second argument, with the length of the",
                     "array given in the third argument. All of the passed threads must be in the",
@@ -178,7 +180,7 @@ public final class CEntryPointNativeFunctions {
                     "the array, however, using detach_thread() should be preferred for detaching only",
                     "the current thread.",
                     "Returns 0 on success, or a non-zero value on failure."})
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class, publishAs = CEntryPointOptions.Publish.SymbolOnly)
     public static int detachThreads(IsolateThread thread, IsolateThreadPointer array, int length) {
         int result = CEntryPointActions.enter(thread);
         if (result != 0) {
