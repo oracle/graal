@@ -18,7 +18,7 @@
 		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
-		"vscode": "^1.32.0"
+		"vscode": "^1.33.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -89,14 +89,14 @@
 		"postinstall": "node ./node_modules/vscode/bin/install"
 	},
 	"devDependencies": {
-		"@types/mocha": "^2.2.42",
-		"@types/node": "^8.10.51",
-		"ts-loader": "^6.0.4",
-		"tslint": "^5.18.0",
-		"typescript": "^3.5.3",
+		"@types/mocha": "^5.2.7",
+		"@types/node": "^12.11.7",
+		"ts-loader": "^6.2.1",
+		"tslint": "^5.20.1",
+		"typescript": "^3.7.2",
 		"vscode": "^1.1.36",
-		"webpack": "^4.39.1",
-		"webpack-cli": "^3.3.6"
+		"webpack": "^4.41.2",
+		"webpack-cli": "^3.3.10"
 	},
 	"extensionDependencies": [
 		"oracle-labs-graalvm.graalvm",

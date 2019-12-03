@@ -50,9 +50,18 @@ import org.graalvm.tools.lsp.instrument.LSOptions.HostAndPort;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
+import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
+import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
 
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 @Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class})
 public final class LSPInstrument extends TruffleInstrument implements EnvironmentProvider {
@@ -60,15 +69,50 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
     private OptionValues options;
     private Env environment;
+    private EventBinding<ExecutionEventNodeFactory> eventFactoryBinding;
+    private volatile boolean waitForClose = false;
 
     @Override
     protected void onCreate(Env env) {
         env.registerService(this);
         options = env.getOptions();
         if (options.hasBeenSet(LSOptions.Lsp)) {
-            launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
+            final TruffleAdapter truffleAdapter = launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
+            SourceSectionFilter.SourcePredicate predicate = SourcePredicateBuilder.newBuilder().excludeInternal(env.getOptions()).build();
+            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(predicate).build();
+            eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(eventFilter, new ExecutionEventNodeFactory() {
+                private final long creatorThreadId = Thread.currentThread().getId();
+
+                public ExecutionEventNode create(final EventContext eventContext) {
+                    final SourceSection section = eventContext.getInstrumentedSourceSection();
+                    if (section != null && section.isAvailable()) {
+                        final Node instrumentedNode = eventContext.getInstrumentedNode();
+                        return new CoverageEventNode(section, instrumentedNode, null, truffleAdapter.surrogateGetter(instrumentedNode.getRootNode().getLanguageInfo()), creatorThreadId);
+                    } else {
+                        return new ExecutionEventNode() {
+                        };
+                    }
+                }
+            });
         } else {
             this.environment = env;
+        }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
+        if (eventFactoryBinding != null) {
+            eventFactoryBinding.dispose();
+        }
+    }
+
+    @Override
+    protected void onFinalize(Env env) {
+        if (waitForClose) {
+            PrintWriter info = new PrintWriter(env.out());
+            info.println("Waiting for the language client to disconnect...");
+            info.flush();
+            waitForClose();
         }
     }
 
@@ -82,9 +126,30 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         return environment;
     }
 
-    private void launchServer(PrintWriter info, PrintWriter err) {
+    private void setWaitForClose() {
+        waitForClose = true;
+    }
+
+    public synchronized void waitForClose() {
+        while (waitForClose) {
+            try {
+                wait();
+            } catch (InterruptedException ex) {
+                break;
+            }
+        }
+    }
+
+    private synchronized void notifyClose() {
+        waitForClose = false;
+        notifyAll();
+    }
+
+    private TruffleAdapter launchServer(PrintWriter info, PrintWriter err) {
         assert options != null;
         assert options.hasSetOptions();
+
+        setWaitForClose();
 
         LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LSOptions.LanguageSpecificHacksOption).booleanValue();
 
@@ -120,6 +185,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                     } catch (ExecutionException | InterruptedException ex) {
                     }
                     executorWrapper.shutdown();
+                    notifyClose();
                 });
             } catch (IOException e) {
                 String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
@@ -128,6 +194,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
 
             return null;
         });
+        return truffleAdapter;
     }
 
     private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {

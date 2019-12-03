@@ -75,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import java.util.function.Function;
 
 /**
  * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
@@ -465,6 +466,11 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return contextAwareExecutor.executeWithDefaultContext(() -> highlightHandler.highlightWithEnteredContext(uri, line, character));
     }
 
+    public boolean hasCoverageData(URI uri) {
+        TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+        return surrogate != null ? surrogate.hasCoverageData() : false;
+    }
+
     @Override
     public String getSourceText(Path path) {
         if (surrogateMap == null) {
@@ -478,5 +484,11 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     @Override
     public boolean isVirtualFile(Path path) {
         return surrogateMap.containsSurrogate(path.toUri());
+    }
+
+    public Function<URI, TextDocumentSurrogate> surrogateGetter(LanguageInfo languageInfo) {
+        return (sourceUri) -> {
+            return surrogateMap.getOrCreateSurrogate(sourceUri, () -> languageInfo);
+        };
     }
 }

@@ -100,8 +100,8 @@ public final class LanguageServerImpl extends LanguageServer {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, LanguageServer.class);
 
+    private static final String DRY_RUN = "dry_run";
     private static final String SHOW_COVERAGE = "show_coverage";
-    private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final String CLEAR_COVERAGE = "clear_coverage";
     private static final String CLEAR_ALL_COVERAGE = "clear_all_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
@@ -124,13 +124,13 @@ public final class LanguageServerImpl extends LanguageServer {
 
     public static LanguageServerImpl create(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         LanguageServerImpl server = new LanguageServerImpl(adapter, info, err);
+        adapter.initialize();
         return server;
     }
 
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         // TODO: Read params.getCapabilities();
-        truffleAdapter.initialize();
 
         List<String> signatureTriggerChars = waitForResultAndHandleExceptions(truffleAdapter.getSignatureHelpTriggerCharactersOfAllLanguages());
         List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharactersOfAllLanguages());
@@ -147,7 +147,7 @@ public final class LanguageServerImpl extends LanguageServer {
         capabilities.setSignatureHelpProvider(SignatureHelpOptions.create().setTriggerCharacters(signatureTriggerChars));
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(true);
-        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
+        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
         CompletableFuture.runAsync(() -> parseWorkspace(params.getRootUri()));
 
@@ -235,23 +235,23 @@ public final class LanguageServerImpl extends LanguageServer {
     @Override
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
         return CompletableFuture.supplyAsync(() -> {
-            CodeLens codeLens = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command command = Command.create("Analyse coverage", ANALYSE_COVERAGE, params.getTextDocument().getUri());
-            codeLens.setCommand(command);
+            String uri = params.getTextDocument().getUri();
+            if (truffleAdapter.hasCoverageData(URI.create(uri))) {
+                CodeLens codeLensShowCoverage = CodeLens.create(Range.create(0, 0, 0, 0), null);
+                Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, uri);
+                codeLensShowCoverage.setCommand(commandShowCoverage);
 
-            CodeLens codeLensShowCoverage = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, params.getTextDocument().getUri());
-            codeLensShowCoverage.setCommand(commandShowCoverage);
+                CodeLens codeLensClear = CodeLens.create(Range.create(0, 0, 0, 0), null);
+                Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, uri);
+                codeLensClear.setCommand(commandClear);
 
-            CodeLens codeLensClear = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, params.getTextDocument().getUri());
-            codeLensClear.setCommand(commandClear);
+                CodeLens codeLensClearAll = CodeLens.create(Range.create(0, 0, 0, 0), null);
+                Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, uri);
+                codeLensClearAll.setCommand(commandClearAll);
 
-            CodeLens codeLensClearAll = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, params.getTextDocument().getUri());
-            codeLensClearAll.setCommand(commandClearAll);
-
-            return Arrays.asList(codeLens, codeLensShowCoverage, codeLensClear, codeLensClearAll);
+                return Arrays.asList(/* codeLens, */ codeLensShowCoverage, codeLensClear, codeLensClearAll);
+            }
+            return Collections.emptyList();
         });
     }
 
@@ -362,22 +362,11 @@ public final class LanguageServerImpl extends LanguageServer {
     @Override
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         switch (params.getCommand()) {
-            case ANALYSE_COVERAGE:
-                client.showMessage(ShowMessageParams.create(MessageType.Info, "Running Coverage analysis..."));
+            case DRY_RUN:
                 String uri = (String) params.getArguments().get(0);
 
-                Future<Boolean> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
-                return CompletableFuture.supplyAsync(() -> {
-                    Boolean result = waitForResultAndHandleExceptions(future, Boolean.FALSE);
-                    if (result) {
-                        client.showMessage(ShowMessageParams.create(MessageType.Info, "Coverage analysis done."));
-                        Future<?> futureShowCoverage = truffleAdapter.showCoverage(URI.create(uri));
-                        waitForResultAndHandleExceptions(futureShowCoverage);
-                    } else {
-                        client.showMessage(ShowMessageParams.create(MessageType.Error, "Coverage analysis failed."));
-                    }
-                    return new Object();
-                });
+                Future<?> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
+                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future));
             case SHOW_COVERAGE:
                 uri = (String) params.getArguments().get(0);
 

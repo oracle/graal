@@ -18,7 +18,7 @@
 		"url": "https://github.com/oracle/graal/issues"
 	},
 	"engines": {
-		"vscode": "^1.32.0"
+		"vscode": "^1.33.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -44,6 +44,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Absolute path to the working directory of the GraalVM Language Server"
+				},
+				"graalvm.languageServer.inProcessServer": {
+					"type": "boolean",
+					"default": true,
+					"description": "Start GrallVM Language Server within processes being run or debugged"
 				}
 			}
 		},
@@ -321,21 +326,21 @@
 		"postinstall": "node ./node_modules/vscode/bin/install"
 	},
 	"dependencies": {
-		"tar": "^4.4.8",
 		"sax": "^1.2.4",
-		"vscode-chrome-debug-core": "^6.7.53",
+		"tar": "^4.4.13",
+		"vscode-chrome-debug-core": "^6.8.6",
 		"vscode-languageclient": "^5.2.1"
 	},
 	"devDependencies": {
-		"@types/mocha": "^2.2.42",
-		"@types/node": "^8.10.25",
-		"@types/tar": "^4.0.0",
+		"@types/mocha": "^5.2.7",
+		"@types/node": "^12.11.7",
 		"@types/sax": "^1.2.0",
-		"ts-loader": "^6.0.2",
-		"tslint": "^5.8.0",
-		"typescript": "^3.1.4",
+		"@types/tar": "^4.0.0",
+		"ts-loader": "^6.2.1",
+		"tslint": "^5.20.1",
+		"typescript": "^3.7.2",
 		"vscode": "^1.1.30",
-		"webpack": "^4.39.1",
-		"webpack-cli": "^3.3.6"
+		"webpack": "^4.41.2",
+		"webpack-cli": "^3.3.10"
 	}
 }
