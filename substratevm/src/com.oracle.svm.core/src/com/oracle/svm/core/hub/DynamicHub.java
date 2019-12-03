@@ -271,6 +271,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private AnnotatedSuperInfo annotatedSuperInfo;
 
     /**
+     * Field used for module information access at run-time The run time type of this field is
+     * java.lang.Module but can be casted to {@link Target_java_lang_Module} The module is of type
+     * Object to avoid ClassCastExceptions at image build time due to base module miss-match.
+     */
+    private Object module;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setModule(Object module) {
+        this.module = module;
+    }
+
+    /**
      * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
      * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
      * class, i.e., allPermDomain.
@@ -1249,9 +1261,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(name = "getModule", onlyWith = JDK11OrLater.class)
     public Target_java_lang_Module getModule() {
-        return singleModuleReference.get();
+        return (Target_java_lang_Module) module;
     }
 
     @Substitute //
