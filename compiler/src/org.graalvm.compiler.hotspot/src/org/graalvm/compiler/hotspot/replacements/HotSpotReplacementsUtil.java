@@ -155,7 +155,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    static int getFieldOffset(ResolvedJavaType type, String fieldName) {
+    public static int getFieldOffset(ResolvedJavaType type, String fieldName) {
         for (ResolvedJavaField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
                 return field.getOffset();
