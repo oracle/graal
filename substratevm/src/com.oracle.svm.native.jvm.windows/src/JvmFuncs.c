@@ -275,5 +275,3 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   return len;
 }
 #endif
-
-include "JvmFuncsFallbacks.c"
