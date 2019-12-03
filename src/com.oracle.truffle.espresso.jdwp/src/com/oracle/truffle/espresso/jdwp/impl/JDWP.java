@@ -1589,7 +1589,7 @@ final class JDWP {
             // let's check if the thread is RUNNING and give it a moment to reach
             // the suspended state
             SuspendedInfo result = suspendedInfo;
-            Thread hostThread = controller.getContext().getGuest2HostThread(thread);
+            Thread hostThread = controller.getContext().asHostThread(thread);
             if (hostThread.getState() == Thread.State.RUNNABLE) {
                 JDWPLogger.log("Awaiting suspended info for thread %s", JDWPLogger.LogLevel.THREAD, controller.getContext().getThreadName(thread));
 

@@ -236,7 +236,7 @@ public class DebuggerController {
                 if (!sessionClosed) {
                     try {
                         JDWPLogger.log("calling underlying resume method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-                        debuggerSession.resume(getContext().getGuest2HostThread(thread));
+                        debuggerSession.resume(getContext().asHostThread(thread));
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
                     }
@@ -285,9 +285,9 @@ public class DebuggerController {
         }
 
         try {
-            JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().getGuest2HostThread(thread).getState());
+            JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(thread).getState());
             JDWPLogger.log("calling underlying suspend method for thread: %s", JDWPLogger.LogLevel.THREAD,  getThreadName(thread));
-            debuggerSession.suspend(getContext().getGuest2HostThread(thread));
+            debuggerSession.suspend(getContext().asHostThread(thread));
 
             boolean suspended = threadSuspension.getSuspensionCount(thread) != 0;
             JDWPLogger.log("suspend success: %b", JDWPLogger.LogLevel.THREAD, suspended);
@@ -372,7 +372,7 @@ public class DebuggerController {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
-            Object currentThread = getContext().getHost2GuestThread(Thread.currentThread());
+            Object currentThread = getContext().asGuestThread(Thread.currentThread());
             JDWPLogger.log("Suspended at: %s in thread: %s", JDWPLogger.LogLevel.STEPPING, event.getSourceSection().toString(), getThreadName(currentThread));
 
             if (commandRequestIds.get(currentThread) != null) {

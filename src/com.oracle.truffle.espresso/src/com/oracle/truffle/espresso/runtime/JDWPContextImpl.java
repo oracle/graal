@@ -126,12 +126,12 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Object getHost2GuestThread(Thread hostThread) {
+    public Object asGuestThread(Thread hostThread) {
         return context.getGuestThreadFromHost(hostThread);
     }
 
     @Override
-    public Thread getGuest2HostThread(Object thread) {
+    public Thread asHostThread(Object thread) {
         return Target_java_lang_Thread.getHostFromGuestThread((StaticObject) thread);
     }
 

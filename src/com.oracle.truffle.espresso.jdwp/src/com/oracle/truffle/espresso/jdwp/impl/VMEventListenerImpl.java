@@ -173,7 +173,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             if (info.isModificationBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver, value));
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 return true;
             }
         }
@@ -203,7 +203,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             if (info.isAccessBreakpoint()) {
                 // OK, tell the Debug API to suspend the thread now
                 debuggerController.prepareFieldBreakpoint(new FieldBreakpointEvent((FieldBreakpointInfo) info, receiver));
-                debuggerController.suspend(context.getHost2GuestThread(Thread.currentThread()));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 return true;
             }
         }
