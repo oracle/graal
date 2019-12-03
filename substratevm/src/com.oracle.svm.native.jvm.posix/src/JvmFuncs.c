@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netdb.h>
@@ -273,16 +274,6 @@ JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is
     fprintf(stderr, "JVM_DefineModule called\n");
 }
 
-int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-  va_list args;
-  int len;
-  va_start(args, fmt);
-  len = jio_vsnprintf(str, count, fmt, args);
-  va_end(args);
-  return len;
-}
-#endif
-
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   int result;
 
@@ -297,4 +288,12 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
-include "JvmFuncsFallbacks.c"
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
+}
+#endif
