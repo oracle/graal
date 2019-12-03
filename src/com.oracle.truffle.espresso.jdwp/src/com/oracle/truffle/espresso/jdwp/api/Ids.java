@@ -42,7 +42,7 @@ public final class Ids<T> {
      * is requested.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private WeakReference<T>[] objects = new WeakReference[1];
+    private WeakReference<T>[] objects;
 
     /**
      * A special object representing the null value.
@@ -51,8 +51,8 @@ public final class Ids<T> {
     private final T nullObject;
 
     public Ids(T nullObject) {
-        objects[0] = new WeakReference<>(nullObject);
         this.nullObject = nullObject;
+        objects = new WeakReference[]{new WeakReference<>(nullObject)};
     }
 
     /**
