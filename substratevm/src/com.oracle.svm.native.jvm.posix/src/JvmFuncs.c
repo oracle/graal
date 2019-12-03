@@ -55,79 +55,79 @@
   return _result; \
 } while(0)
 
-JNIEXPORT void initialize() {
+JNIEXPORT void JNICALL initialize() {
 }
 
 /* Only called in java.lang.Runtime native methods. */
-JNIEXPORT void JVM_FreeMemory() {
+JNIEXPORT void JNICALL JVM_FreeMemory() {
     printf("JVM_FreeMemory called:  Unimplemented\n");
 }
 
-JNIEXPORT jlong JVM_TotalMemory() {
+JNIEXPORT jlong JNICALL JVM_TotalMemory() {
     printf("JVM_TotalMemory called:  Unimplemented\n");
     return 0L;
 }
 
-JNIEXPORT jlong JVM_MaxMemory() {
+JNIEXPORT jlong JNICALL JVM_MaxMemory() {
     printf("JVM_MaxMemory called:  Unimplemented\n");
     return 0L;
 }
 
-JNIEXPORT void JVM_GC() {
+JNIEXPORT void JNICALL JVM_GC() {
     printf("JVM_GC called:  Unimplemented\n");
 }
 
-JNIEXPORT void JVM_TraceInstructions(int on) {
+JNIEXPORT void JNICALL JVM_TraceInstructions(int on) {
     printf("JVM_TraceInstructions called:  Unimplemented\n");
 }
 
-JNIEXPORT void JVM_TraceMethodCalls(int on) {
+JNIEXPORT void JNICALL JVM_TraceMethodCalls(int on) {
     printf("JVM_TraceMethods called:  Unimplemented\n");
 }
 
-JNIEXPORT int JVM_ActiveProcessorCount() {
+JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-JNIEXPORT int JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
+JNIEXPORT int JNICALL JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
     RESTARTABLE_RETURN_INT(connect(fd, him, len));
 }
 
-JNIEXPORT void * JVM_FindLibraryEntry(void* handle, const char* name) {
+JNIEXPORT void* JNICALL JVM_FindLibraryEntry(void* handle, const char* name) {
     return dlsym(handle, name);
 }
 
-JNIEXPORT int JVM_GetHostName(char* name, int namelen) {
+JNIEXPORT int JNICALL JVM_GetHostName(char* name, int namelen) {
     return gethostname(name, namelen);
 }
 
-JNIEXPORT int JVM_GetSockOpt(int fd, int level, int optname,
+JNIEXPORT int JNICALL JVM_GetSockOpt(int fd, int level, int optname,
                             char *optval, socklen_t* optlen) {
     return getsockopt(fd, level, optname, optval, optlen);
 }
 
-JNIEXPORT int JVM_Socket(int domain, int type, int protocol) {
+JNIEXPORT int JNICALL JVM_Socket(int domain, int type, int protocol) {
     return socket(domain, type, protocol);
 }
 
-JNIEXPORT int JVM_GetSockName(int fd, struct sockaddr* him, socklen_t* len) {
+JNIEXPORT int JNICALL JVM_GetSockName(int fd, struct sockaddr* him, socklen_t* len) {
     return getsockname(fd, him, len);
 }
 
-JNIEXPORT int JVM_Listen(int fd, int count) {
+JNIEXPORT int JNICALL JVM_Listen(int fd, int count) {
     return listen(fd, count);
 }
 
-JNIEXPORT int JVM_Send(int fd, char* buf, size_t nBytes, uint flags) {
+JNIEXPORT int JNICALL JVM_Send(int fd, char* buf, size_t nBytes, uint flags) {
     RESTARTABLE_RETURN_INT(send(fd, buf, nBytes, flags));
 }
 
-JNIEXPORT int JVM_SetSockOpt(int fd, int level, int optname,
+JNIEXPORT int JNICALL JVM_SetSockOpt(int fd, int level, int optname,
                             const char* optval, socklen_t optlen) {
     return setsockopt(fd, level, optname, optval, optlen);
 }
 
-JNIEXPORT int JVM_SocketAvailable(int fd, int *pbytes) {
+JNIEXPORT int JNICALL JVM_SocketAvailable(int fd, int *pbytes) {
     int ret;
 
     if (fd < 0)
@@ -142,23 +142,23 @@ JNIEXPORT int JVM_SocketClose(int fd) {
     return close(fd);
 }
 
-JNIEXPORT int JVM_SocketShutdown(int fd, int howto) {
+JNIEXPORT int JNICALL JVM_SocketShutdown(int fd, int howto) {
     return shutdown(fd, howto);
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() {
+JNIEXPORT int JNICALL JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
 
-JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
     struct timeval time;
     int status = gettimeofday(&time, NULL);
     return (jlong)(time.tv_sec * 1000)  +  (jlong)(time.tv_usec / 1000);
 }
 
-JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_java_lang_System_nanoTime(void *env, void * ignored) {
     // get implementation from hotspot/os/bsd/os_bsd.cpp
     // for now, just return 1000 * microseconds
     struct timeval time;
@@ -166,15 +166,15 @@ JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
     return (jlong)(time.tv_sec * 1000000000)  +  (jlong)(time.tv_usec * 1000);
 }
 
-JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
-JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_NanoTime(void *env, void * ignored) {
     return Java_java_lang_System_nanoTime(env, ignored);
 }
 
-JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
     long maxDiffSecs = 0x0100000000L;
     long minDiffSecs = -maxDiffSecs;
     struct timeval time;
@@ -190,18 +190,18 @@ JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offse
     return diff * 1000000000 + nanos;
 }
 
-JNIEXPORT jlong Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
     return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
-JNIEXPORT void JVM_Halt(int retcode) {
+JNIEXPORT void JNICALL JVM_Halt(int retcode) {
     exit(retcode);
 }
 
-JNIEXPORT void JVM_BeforeHalt() {
+JNIEXPORT void JNICALL JVM_BeforeHalt() {
 }
 
-JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
+JNIEXPORT int JNICALL JVM_GetLastErrorString(char *buf, int len) {
     const char *s;
     size_t n;
 
@@ -252,23 +252,23 @@ JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass c
 }
 
 #ifdef JNI_VERSION_9
-JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
     fprintf(stderr, "JVM_AddModuleExports called\n");
 }
 
-JNIEXPORT void JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
     fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
 }
 
-JNIEXPORT void JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
     fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
 }
 
-JNIEXPORT void JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
     fprintf(stderr, "JVM_AddReadsModule called\n");
 }
 
-JNIEXPORT void JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
                  jstring location, const char* const* packages, jsize num_packages) {
     fprintf(stderr, "JVM_DefineModule called\n");
 }
