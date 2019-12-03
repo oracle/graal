@@ -41,6 +41,7 @@ import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
 import fnmatch
+from collections import OrderedDict
 
 import mx
 import mx_compiler
@@ -719,6 +720,95 @@ def _cinterfacetutorial(native_image, args=None):
     # Start the C executable
     mx.run([join(build_dir, 'cinterfacetutorial')])
 
+def gen_fallbacks():
+    print('Generate fallbacks')
+
+    def collect_missing_symbols():
+        symbols = OrderedDict()
+
+        def collect_symbols_fn(symbol_prefix)
+            def collector(line):
+                try:
+                    mx.logvv('Processing line: ' + line.rstrip())
+                    line_tokens = line.split()
+                    if mx.is_windows():
+                        # Windows dumpbin /SYMBOLS output
+                        # 030 00000000 UNDEF  notype ()    External     | JVM_GetArrayLength
+                        found_undef = line_tokens[2] == 'UNDEF'
+                    else:
+                        # Linux objdump objdump --wide --syms
+                        # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
+                        found_undef = line_tokens[1] = '*UND*'
+                    if found_undef:
+                        symbol_candiate = line_tokens[-1]
+                        mx.logv('Found undefined symbol: ' + symbol_candiate)
+                        platform_prefix = '_' if mx.is_darwin() else '' + symbol_prefix
+                        if symbol_candiate.startswith(platform_prefix):
+                            mx.logv('Pick symbol: ' + symbol_candiate)
+                            symbols[symbol_candiate[len(platform_prefix):]] = symbol_prefix
+                except:
+                    mx.logv('Skipping line: ' + line.rstrip())
+            return collector
+
+        libjava_so = mx_subst.path_substitutions.substitute('<staticlib:java>')
+        libjava_so_path = join(mx_compiler.jdk.home, "lib", libjava_so)
+        if not mx.is_windows():
+            native_project = 'posix'
+            symbol_dump_command = 'objdump --wide --syms'
+        else:
+            native_project = 'windows'
+            symbol_dump_command = 'dumpbin /SYMBOLS'
+        mx.run(symbol_dump_command.split() + [libjava_so_path], out=collect_symbols_fn('JVM_'))
+        print('Collected symbols')
+        print('\n'.join(symbols.keys()))
+
+        return symbols
+
+    def collect_implementations():
+        impls = OrderedDict()
+
+        native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + native_project).dir, 'src')
+        jvm_funcs_path = join(native_project_dir, 'JvmFuncs.c')
+        jvm_fallbacks_path = join(native_project_dir, 'JvmFuncsFallbacks.c')
+
+        def collect_impls_fn(symbol_prefix):
+            def collector(line):
+                try:
+                    mx.logvv('Processing line: ' + line.rstrip())
+                    # JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version
+                    tokens = line.split()
+                    try:
+                        index = tokens.index('JNICALL')
+                        name_part = tokens[index + 1]
+                        if name_part.startswith(symbol_prefix):
+                            impl_name = name_part.split('(')[0].rstrip()
+                            mx.logv('Found matching implementation: ' + impl_name)
+                            impls[impl_name] = symbol_prefix
+                    except:
+                        mx.logv('Skipping line: ' + line.rstrip())
+
+        with open(jvm_funcs_path) as f:
+            collector = collect_impls_fn('JVM_')
+            for line in f:
+                collector(line)
+
+        print('Collected implementations')
+        print('\n'.join(impls.keys()))
+
+        return impls
+
+    def write_fallbacks():
+        function_stub = '''
+        JNIEXPORT jobject JNICALL
+        {0}(JNIEnv *env) {
+            (*env)->FatalError(env, "{0} called:  Unimplemented");
+            return NULL;
+        }
+        '''
+
+    collect_missing_symbols()
+    collect_implementations()
+    write_fallbacks()
 
 def _helloworld(native_image, javac_command, path, args):
     mkpath(path)
@@ -1128,6 +1218,8 @@ def build(args, vm=None):
     update_if_needed("versions", GRAAL_COMPILER_FLAGS_MAP.keys())
     for version_tag in GRAAL_COMPILER_FLAGS_MAP:
         update_if_needed(version_tag, GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[version_tag])
+
+    gen_fallbacks()
 
     orig_command_build(args, vm)
 
