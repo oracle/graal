@@ -2418,11 +2418,11 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
             enterAt(frame, nextStatementIndex);
         }
 
-        public void notifyEntry(VirtualFrame frame) {
+        public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame) {
             // TODO(Gregersen) - implement method entry breakpoint hooks
         }
 
-        public void notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
+        public void notifyReturn(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") int statementIndex, @SuppressWarnings("unused") Object toReturn) {
             // TODO(Gregersen) - implement method return breakpoint hooks
         }
 

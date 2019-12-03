@@ -41,7 +41,7 @@ public final class Ids<T> {
      * The array will be expanded whenever an ID for a new entity
      * is requested.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private WeakReference<T>[] objects = new WeakReference[1];
 
     /**
@@ -103,7 +103,7 @@ public final class Ids<T> {
     Generate a unique ID for a given object. Expand the underlying array and
     insert the object at the last index in the new array.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private synchronized long generateUniqueId(T object) {
         long id = uniqueID++;
         assert objects.length == id - 1;
