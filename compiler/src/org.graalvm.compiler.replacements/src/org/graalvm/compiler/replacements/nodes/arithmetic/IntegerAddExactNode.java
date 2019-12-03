@@ -140,6 +140,9 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
         if (!IntegerStamp.addCanOverflow((IntegerStamp) forX.stamp(NodeView.DEFAULT), (IntegerStamp) forY.stamp(NodeView.DEFAULT))) {
             return new AddNode(forX, forY).canonical(tool);
         }
+        if (getGuard() == null) {
+            return new AddNode(forX, forY).canonical(tool);
+        }
         return this;
     }
 
