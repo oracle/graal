@@ -683,6 +683,114 @@ public class BytecodeParser implements GraphBuilderContext {
                 // Restore the original return value
                 parser.frameState.push(returnKind, returnValue);
             }
+            boolean inlinedIntrinsic = parser.getInvokeReturnType() != null;
+            if (inlinedIntrinsic) {
+                for (Node n : parser.graph.getNewNodes(mark)) {
+                    if (n instanceof FrameState) {
+                        GraalError.guarantee(((FrameState) n).bci != BytecodeFrame.INVALID_FRAMESTATE_BCI,
+                                        "Inlined call to intrinsic (callee %s) produced invalid framestate %s. " +
+                                                        "Such framestates must never be used as deoptimizing targets, thus they cannot be part of a high-tier graph, " +
+                                                        "and must only be used after framestate assignment. A common error is invalid usage of foreign call nodes in method " +
+                                                        "substitutions, which can be avoided by ensuring such calls are either replaced with nodes that are snippet " +
+                                                        "lowered after framestate assignment (see FastNotifyNode.java for example) or by ensuring all foreign use the state after of the " +
+                                                        "original call instruction.",
+                                        callee, n);
+                    }
+                }
+            } else {
+
+                /*
+                 * Special case root compiled method substitutions
+                 *
+                 * Root compiled intrinsics with self recursive calls (partial intrinsic exit) must
+                 * never produce more than one state except the start framestate since we do not
+                 * compile calls to the original method (or inline them) but deopt
+                 *
+                 * See ByteCodeParser::inline and search for compilationRoot
+                 */
+                assert intrinsic == null || intrinsic.isIntrinsicEncoding() || verifyIntrinsicRootCompileEffects();
+            }
+        }
+
+        private boolean verifyIntrinsicRootCompileEffects() {
+            int invalidBCIsInRootCompiledIntrinsic = 0;
+            for (Node n : parser.graph.getNewNodes(mark)) {
+                if (n instanceof FrameState) {
+                    if (((FrameState) n).bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                        invalidBCIsInRootCompiledIntrinsic++;
+                    }
+                }
+            }
+            if (invalidBCIsInRootCompiledIntrinsic > 1) {
+                int invalidBCIsToFind = invalidBCIsInRootCompiledIntrinsic;
+                List<ReturnNode> returns = parser.getGraph().getNodes(ReturnNode.TYPE).snapshot();
+                if (returns.size() > 1) {
+                    outer: for (ReturnNode ret : returns) {
+                        for (FixedNode f : GraphUtil.predecessorIterable(ret)) {
+                            if (f instanceof StateSplit) {
+                                StateSplit split = (StateSplit) f;
+                                if (split.hasSideEffect()) {
+                                    assert ((StateSplit) f).stateAfter() != null;
+                                    if (split.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                                        invalidBCIsToFind--;
+                                        continue outer;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    GraalError.guarantee(invalidBCIsToFind == 0, "Root compiled intrinsic with invalid states has more than one return. " +
+                                    "This is allowed, however one path down a sink has more than one state, this is prohibited. " +
+                                    "Intrinsic %s", parser.method);
+                    return true;
+                }
+                ReturnNode ret = returns.get(0);
+                MergeNode merge = null;
+                int mergeCount = parser.graph.getNodes(MergeNode.TYPE).count();
+                if (mergeCount != 1) {
+                    throw new GraalError("Root compiled intrinsic with invalid states %s:Must have exactly one merge node. %d found", parser.method, mergeCount);
+                }
+                if (ret.predecessor() instanceof MergeNode) {
+                    merge = (MergeNode) ret.predecessor();
+                }
+                if (merge == null) {
+                    throw new GraalError("Root compiled intrinsic with invalid state: Unexpected node between return and merge.");
+                }
+                //@formatter:off
+                GraalError.guarantee(invalidBCIsInRootCompiledIntrinsic <= merge.phiPredecessorCount() + 1 /* merge itself */,
+                                "Root compiled intrinsic with invalid states %s must at maximum produce (0,1 or if the last instruction is a merge |merge.predCount|" +
+                                                " invalid BCI state, however %d where found.",
+                                parser.method, invalidBCIsInRootCompiledIntrinsic);
+                //@formatter:on
+                if (merge.stateAfter() != null && merge.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                    invalidBCIsToFind--;
+                }
+                for (EndNode pred : merge.cfgPredecessors()) {
+                    Node lastPred = pred.predecessor();
+                    for (FixedNode f : GraphUtil.predecessorIterable((FixedNode) lastPred)) {
+                        if (f instanceof StateSplit) {
+                            StateSplit split = (StateSplit) f;
+                            if (split.hasSideEffect()) {
+                                assert ((StateSplit) f).stateAfter() != null;
+                                if (split.stateAfter().bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                                    invalidBCIsToFind--;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (invalidBCIsToFind != 0) {
+                    throw new GraalError(
+                                    "Invalid BCI state missmatch: This root compiled method substitution %s " +
+                                                    "uses invalid side-effecting nodes resulting in invalid deoptimization information. " +
+                                                    "Method substitutions must never have more than one state (the after state) for deoptimization." +
+                                                    " Multiple states are only allowed if they are dominated by a control-flow split, there is only" +
+                                                    " a single effect per branch and a post dominating merge with the same invalid_bci state " +
+                                                    "(that must only be different in its return value).",
+                                    parser.method);
+                }
+            }
+            return true;
         }
 
         private void updateSplitFrameState(StateSplit split, JavaKind returnKind, ValueNode returnValue) {
@@ -1819,7 +1927,6 @@ public class BytecodeParser implements GraphBuilderContext {
         } finally {
             currentInvoke = null;
         }
-
         int invokeBci = bci();
         JavaTypeProfile profile = getProfileForInvoke(invokeKind);
         ExceptionEdgeAction edgeAction = getActionForInvokeExceptionEdge(inlineInfo);

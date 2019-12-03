@@ -74,6 +74,7 @@ import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
@@ -86,8 +87,11 @@ import org.graalvm.compiler.hotspot.replacements.LoadExceptionObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.MonitorSnippets;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
+import org.graalvm.compiler.hotspot.replacements.ObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
+import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
+import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
@@ -108,6 +112,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -205,7 +210,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected HashCodeSnippets.Templates hashCodeSnippets;
     protected ResolveConstantSnippets.Templates resolveConstantSnippets;
     protected ProfileSnippets.Templates profileSnippets;
-
+    protected ObjectSnippets.Templates objectSnippets;
+    protected UnsafeSnippets.Templates unsafeSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
 
@@ -238,6 +244,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
+        objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
+        unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
@@ -413,10 +421,19 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 profileSnippets.lower((ProfileNode) n, tool);
             } else if (n instanceof KlassBeingInitializedCheckNode) {
                 newObjectSnippets.lower((KlassBeingInitializedCheckNode) n, registers, tool);
+            } else if (n instanceof FastNotifyNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    objectSnippets.lower(n, tool);
+                }
+            } else if (n instanceof UnsafeCopyMemoryNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
+                }
             } else {
                 super.lower(n, tool);
             }
         }
+
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
