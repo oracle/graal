@@ -160,7 +160,7 @@ public final class RequestedJDWPEvents {
         }
 
         // register the request filter for this event
-        controller.getEventFitlers().addFilter(filter);
+        controller.getEventFilters().addFilter(filter);
         return new CommandResult(reply, futures);
     }
 
@@ -297,7 +297,7 @@ public final class RequestedJDWPEvents {
 
         byte eventKind = input.readByte();
         int requestId = input.readInt();
-        RequestFilter requestFilter = controller.getEventFitlers().getRequestFilter(requestId);
+        RequestFilter requestFilter = controller.getEventFilters().getRequestFilter(requestId);
 
         if (requestFilter != null) {
             byte kind = requestFilter.getEventKind();

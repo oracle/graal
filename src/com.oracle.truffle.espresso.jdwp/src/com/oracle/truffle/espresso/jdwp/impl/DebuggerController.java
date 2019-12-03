@@ -353,7 +353,7 @@ public class DebuggerController {
         return threadSuspension;
     }
 
-    public EventFilters getEventFitlers() {
+    public EventFilters getEventFilters() {
         return eventFilters;
     }
 
