@@ -57,7 +57,7 @@ public final class StableBoolean {
      * @param value
      */
     @CompilerDirectives.TruffleBoundary
-    public void set(boolean value) {
+    public synchronized void set(boolean value) {
         if (this.value != value) {
             this.value = value;
             Assumption old = this.unchanged;
