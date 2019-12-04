@@ -1260,7 +1260,8 @@ public class NativeImage {
                 build(FallbackBuildConfiguration.create(nativeImage), nativeImageProvider);
                 showWarning("Image '" + nativeImage.imageName +
                                 "' is a fallback image that requires a JDK for execution " +
-                                "(use --" + SubstrateOptions.OptionNameNoFallback + " to suppress fallback image generation).");
+                                "(use --" + SubstrateOptions.OptionNameNoFallback +
+                                " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
             } else if (buildStatus != 0) {
                 throw showError("Image build request failed with exit status " + buildStatus, null, buildStatus);
             }
