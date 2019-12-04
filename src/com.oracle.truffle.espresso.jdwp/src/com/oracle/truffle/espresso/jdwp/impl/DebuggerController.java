@@ -254,7 +254,7 @@ public class DebuggerController {
             ThreadLock lock = getSuspendLock(thread);
             synchronized (lock) {
                 JDWPLogger.log("Waiking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-                lock.unlock();
+                lock.release();
                 lock.notifyAll();
                 threadSuspension.removeHardSuspendedThread(thread);
             }
@@ -719,7 +719,7 @@ public class DebuggerController {
 
         synchronized (lock) {
             try {
-                lock.lock();
+                lock.acquire();
                 // in case a thread job is already posted on this thread
                 checkThreadJobsAndRun(thread);
                 while (lock.isLocked()) {
@@ -749,7 +749,7 @@ public class DebuggerController {
         threadJobs.put(job.getThread(), job);
         ThreadLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
-            lock.unlock();
+            lock.release();
             lock.notifyAll();
         }
     }
