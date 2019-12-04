@@ -578,15 +578,9 @@ public final class EspressoContext {
         return false;
     }
 
-    public boolean isValidThreadGroup(Object threadGroup) {
+    public boolean isValidThreadGroup(@SuppressWarnings("unused") Object threadGroup) {
         // TODO(Gregersen) - validate if this is a valid threadgroup
-        // below fixes ECJ warnings for unused threadgroup until this gets
-        // properly implemented
-        if (!initialized) {
-            return true;
-        }
-        Object temp = threadGroup;
-        return temp == threadGroup;
+        return true;
     }
 
     public Object getSystemThreadGroup() {

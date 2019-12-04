@@ -32,27 +32,33 @@ public final class EventFilters {
     private RequestFilter[] requestFilters = new RequestFilter[0];
 
     public void addFilter(RequestFilter filter) {
-        lock.writeLock().lock();
-        RequestFilter[] temp = new RequestFilter[requestFilters.length + 1];
-        System.arraycopy(requestFilters, 0, temp, 0, requestFilters.length);
-        temp[requestFilters.length] = filter;
-        requestFilters = temp;
-        lock.writeLock().unlock();
+        try {
+            lock.writeLock().lock();
+            RequestFilter[] temp = new RequestFilter[requestFilters.length + 1];
+            System.arraycopy(requestFilters, 0, temp, 0, requestFilters.length);
+            temp[requestFilters.length] = filter;
+            requestFilters = temp;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public RequestFilter getRequestFilter(int requestId) {
-        lock.readLock().lock();
-        // likely the filters are required from last inserted
-        for (int i = requestFilters.length - 1; i > -1; i--) {
-            RequestFilter filter = requestFilters[i];
-            if (filter != null) {
-                if (filter.getRequestId() == requestId) {
-                    lock.readLock().unlock();
-                    return filter;
+        try {
+            lock.readLock().lock();
+            // likely the filters are required from last inserted
+            for (int i = requestFilters.length - 1; i > -1; i--) {
+                RequestFilter filter = requestFilters[i];
+                if (filter != null) {
+                    if (filter.getRequestId() == requestId) {
+                        lock.readLock().unlock();
+                        return filter;
+                    }
                 }
             }
+        } finally {
+            lock.readLock().unlock();
         }
-        lock.readLock().unlock();
         return null;
     }
 }
