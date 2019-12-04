@@ -92,7 +92,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isValidThreadGroup(Object threadGroup) {
-        return EspressoContext.isValidThreadGroup(threadGroup);
+        return context.isValidThreadGroup(threadGroup);
     }
 
     @Override

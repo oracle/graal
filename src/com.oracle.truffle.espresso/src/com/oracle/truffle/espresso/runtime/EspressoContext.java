@@ -578,7 +578,8 @@ public final class EspressoContext {
         return false;
     }
 
-    public static boolean isValidThreadGroup(@SuppressWarnings("unused") Object threadGroup) {
+    @SuppressWarnings("static-method")
+    public boolean isValidThreadGroup(@SuppressWarnings("unused") Object threadGroup) {
         // TODO(Gregersen) - validate if this is a valid threadgroup
         return true;
     }
