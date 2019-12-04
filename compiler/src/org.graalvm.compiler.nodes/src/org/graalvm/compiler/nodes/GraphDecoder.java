@@ -207,7 +207,7 @@ public class GraphDecoder {
         protected LoopScope(MethodScope methodScope) {
             this.methodScope = methodScope;
             this.outer = null;
-            this.nextIterationFromLoopExitDuplication = methodScope.loopExplosion.duplicateLoopExits() ? new ArrayDeque<>(2) : null;
+            this.nextIterationFromLoopExitDuplication = methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null;
             this.nextIterationFromLoopEndDuplication = methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null;
             this.nextIterationsFromUnrolling = methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null;
             this.loopDepth = 0;
@@ -619,6 +619,7 @@ public class GraphDecoder {
             boolean requiresMergeOfOuterLoop = methodScope.loopExplosion.unrollLoops() &&
                             methodScope.loopExplosion.duplicateLoopExits() &&
                             (!methodScope.loopExplosion.duplicateLoopEnds()) &&
+                            (!methodScope.loopExplosion.mergeLoops()) &&
                             node instanceof LoopEndNode &&
                             loopScope.trigger == LoopScopeTrigger.LOOP_EXIT_DUPLICATION;
 
@@ -672,7 +673,7 @@ public class GraphDecoder {
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.LOOP_BEGIN_UNROLLING,
                                     methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
                                     methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
-                                    methodScope.loopExplosion.duplicateLoopExits() ? new ArrayDeque<>(2) : null,
+                                    methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null,
                                     methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null,
                                     methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null, //
                                     methodScope.loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null);
