@@ -189,8 +189,10 @@ public final class DebuggerConnection implements Commands {
                             if (currentTime > limit) {
                                 started = true;
                                 // allow the main thread to continue starting up the program
-                                synchronized (JDWPInstrument.suspendStartupLock) {
-                                    JDWPInstrument.suspendStartupLock.notifyAll();
+                                Object lock = controller.getInstrument().getSuspendStartupLock();
+                                synchronized (lock) {
+                                    controller.getInstrument().setStarted();
+                                    lock.notifyAll();
                                 }
                                 processPacket(Packet.fromByteArray(connection.readPacket()));
                             } else {
