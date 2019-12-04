@@ -41,14 +41,12 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.EncodeStringNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsStringNodeGen.WriteStringNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -111,7 +109,6 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
 
     abstract static class WriteStringNode extends LLVMNode {
 
-        @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
         @Child private LLVMStoreNode write = LLVMI8StoreNodeGen.create(null, null);
 
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
@@ -125,7 +122,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
             LLVMPointer ptr = target;
             while (source.hasRemaining() && bytesWritten < targetLen) {
                 write.executeWithTarget(ptr, source.get());
-                ptr = inc.executeWithTarget(ptr, Byte.BYTES);
+                ptr = ptr.increment(Byte.BYTES);
                 bytesWritten++;
             }
 
@@ -133,7 +130,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
 
             for (int i = 0; i < zeroTerminatorLen && bytesWritten < targetLen; i++) {
                 write.executeWithTarget(ptr, (byte) 0);
-                ptr = inc.executeWithTarget(ptr, Byte.BYTES);
+                ptr = ptr.increment(Byte.BYTES);
                 bytesWritten++;
             }
 

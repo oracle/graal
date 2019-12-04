@@ -713,7 +713,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         if (offset != 0) {
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            targetAddress = nodeFactory.createTypedElementPointer(targetAddress, oneLiteralNode, offset, extract.getType());
+            targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
         }
 
         final LLVMExpressionNode result = nodeFactory.createExtractValue(resultType, targetAddress);

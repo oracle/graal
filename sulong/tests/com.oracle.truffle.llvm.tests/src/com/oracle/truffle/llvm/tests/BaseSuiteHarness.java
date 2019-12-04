@@ -109,7 +109,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         try {
             result = ProcessUtil.executeSulongTestMain(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(), getCaptureOutput());
         } catch (Exception e) {
-            throw fail(getTestName(), e);
+            throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
 
         int sulongRet = result.getReturnValue();
