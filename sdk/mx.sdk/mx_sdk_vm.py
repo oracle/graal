@@ -617,7 +617,7 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         mx.run([jlink_exe, '--list-plugins'], out=output)
         if '--add-options=' in output.data:
             assert '--vendor-version=' in output.data
-            jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions')
+            jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions -XX:ThreadPriorityPolicy=1')
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)

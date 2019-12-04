@@ -473,7 +473,7 @@ final class PolyglotLimits {
 
             private static final long serialVersionUID = -3787334681973775704L;
 
-            public TimeLimitUnsupportedException(String message) {
+            TimeLimitUnsupportedException(String message) {
                 super(message);
             }
 

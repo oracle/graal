@@ -203,9 +203,6 @@ def _unittest_config_participant(config):
         # Needed for object model tests.
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
 
-    # required to set thread priorities
-    vmArgs = vmArgs + ['-XX:ThreadPriorityPolicy=1']
-
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
         config = _unittest_config_participant_tck(config)

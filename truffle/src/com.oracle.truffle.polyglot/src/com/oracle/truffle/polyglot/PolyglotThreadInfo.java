@@ -98,6 +98,7 @@ final class PolyglotThreadInfo {
 
     @TruffleBoundary
     private void raisePriority() {
+        // this will be ineffective unless the JVM runs with corresponding system privileges
         getThread().setPriority(Thread.NORM_PRIORITY);
     }
 
@@ -174,7 +175,7 @@ final class PolyglotThreadInfo {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
-    static boolean canLowerThreadPriority() {
+    static synchronized boolean canLowerThreadPriority() {
 
         class ThreadPriorityCheck extends Thread {
             boolean canLower = false;
@@ -189,8 +190,8 @@ final class PolyglotThreadInfo {
                     canLower = true;
                 }
             }
-
         }
+
         if (canLowerPriority == null) {
             ThreadPriorityCheck tpc = new ThreadPriorityCheck();
             tpc.start();
@@ -201,6 +202,7 @@ final class PolyglotThreadInfo {
                 throw new HostException(e);
             }
             canLowerPriority = tpc.canLower;
+
         }
         return canLowerPriority;
     }

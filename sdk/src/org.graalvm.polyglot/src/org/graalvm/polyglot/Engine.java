@@ -303,7 +303,6 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
-        private boolean deprioritize = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
