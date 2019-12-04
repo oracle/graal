@@ -76,12 +76,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
 import com.oracle.truffle.api.instrumentation.AllocationListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
@@ -1911,6 +1913,224 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         String getEnteredNodes() {
             return enteredNodes.toString();
         }
+    }
+
+    @SuppressWarnings("serial")
+    static class TestException extends RuntimeException implements TruffleException {
+
+        final Node location;
+
+        TestException(Node location) {
+            super("test");
+            this.location = location;
+        }
+
+        public Node getLocation() {
+            return location;
+        }
+    }
+
+    @Test
+    public void testErrorPropagationCreate() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
+        accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, new ExecutionEventNodeFactory() {
+            public ExecutionEventNode create(EventContext c) {
+                throw c.createError(new TestException(c.getInstrumentedNode()));
+            }
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isInternalError());
+            assertEquals("java.lang.IllegalStateException: Error propagation is not supported in ExecutionEventNodeFactory.create(EventContext). " +
+                            "Errors caused in create may result in ASTs that never stabilize. " +
+                            "Propagate the error in one of the execution event node events like onEnter, onInputValue, onReturn or onReturnExceptional to resolve this problem.",
+                            e.getMessage());
+        }
+    }
+
+    @Test
+    public void testErrorPropagationOnEnter() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
+        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                throw c.createError(new TestException(c.getInstrumentedNode()));
+            }
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+        }
+        b.dispose();
+    }
+
+    @Test
+    public void testErrorPropagationOnReturn() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
+        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                throw c.createError(new TestException(c.getInstrumentedNode()));
+            }
+
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onEnter(EventContext c, VirtualFrame frame) {
+            }
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+        }
+        b.dispose();
+    }
+
+    @Test
+    public void testErrorPropagationOnReturnExceptional() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION(THROW(test, test))");
+        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                throw c.createError(new TestException(c.getInstrumentedNode()));
+            }
+
+            public void onEnter(EventContext c, VirtualFrame frame) {
+            }
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+        }
+        b.dispose();
+    }
+
+    @Test
+    public void testErrorPropagationOnInputValue() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION(EXPRESSION)");
+        EventBinding<?> b = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, SourceSectionFilter.ANY, (c) -> {
+            return new ExecutionEventNode() {
+                @Override
+                protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                }
+            };
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+        }
+        b.dispose();
+    }
+
+    @Test
+    public void testErrorPropagationOnUnwind() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
+        EventBinding<?> b = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+            return new ExecutionEventNode() {
+
+                @Override
+                public void onReturnValue(VirtualFrame frame, Object result) {
+                    throw c.createUnwind("test");
+                }
+
+                @Override
+                @TruffleBoundary
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    assertEquals("test", info);
+                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                }
+            };
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+        }
+        b.dispose();
+    }
+
+    @Test
+    public void testErrorPropagationOnReturnSuppressed() throws Exception {
+        Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
+        EventBinding<?> b0 = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+            return new ExecutionEventNode() {
+
+                @Override
+                public void onReturnValue(VirtualFrame frame, Object result) {
+                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                }
+            };
+        });
+
+        EventBinding<?> b1 = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+            return new ExecutionEventNode() {
+
+                @Override
+                public void onReturnValue(VirtualFrame frame, Object result) {
+                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                }
+            };
+        });
+        try {
+            context.eval(source);
+            fail();
+        } catch (PolyglotException e) {
+            assertFalse(e.toString(), e.isInternalError());
+            assertEquals("test", e.getMessage());
+            assertEquals(source.getCharacters(), e.getSourceLocation().getCharacters());
+            e.getSuppressed();
+        }
+        b0.dispose();
+        b1.dispose();
+    }
+
+    private Instrumenter accessInstrumenter() {
+        return engine.getInstruments().get("accessInstrumenter").lookup(AccessInstrumenter.class).getLastEnv().getInstrumenter();
+    }
+
+    @Registration(id = "accessInstrumenter", services = {AccessInstrumenter.class})
+    public static class AccessInstrumenter extends TruffleInstrument {
+
+        private Env lastEnv;
+
+        @Override
+        protected void onCreate(Env env) {
+            this.lastEnv = env;
+            this.lastEnv.registerService(this);
+        }
+
+        public Env getLastEnv() {
+            return lastEnv;
+        }
+
     }
 
     @Test
