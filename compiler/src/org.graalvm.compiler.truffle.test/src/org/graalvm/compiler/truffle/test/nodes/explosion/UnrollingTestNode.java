@@ -316,6 +316,56 @@ public class UnrollingTestNode {
         }
     }
 
+    public class FullUnrollUntilReturnNestedLoopsContinueOuter05 extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
+        @Override
+        public int execute(VirtualFrame frame) {
+            for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                GraalDirectives.blackhole(OUTSIDE_LOOP_MARKER);
+                GraalDirectives.blackhole(i);
+                CompilerAsserts.partialEvaluationConstant(i);
+            }
+            outer: for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
+                CompilerAsserts.partialEvaluationConstant(i);
+                for (int j = 0; j < count; j++) {
+                    GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                    if (j == SideEffect3) {
+                        GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        int x = i * j + 2 * i;
+                        CompilerAsserts.partialEvaluationConstant(x);
+                        SideEffect = x;
+                        SideEffect1 = x;
+                        continue outer;
+                    }
+                    if (j == SideEffect2) {
+                        GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        int x = i * j + 2 * i;
+                        CompilerAsserts.partialEvaluationConstant(x);
+                        SideEffect = x;
+                        SideEffect1 = x;
+                        break;
+                    }
+                    if (j == SideEffect1) {
+                        GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
+                        CompilerAsserts.partialEvaluationConstant(j);
+                        int x = i * j + 2 * i;
+                        CompilerAsserts.partialEvaluationConstant(x);
+                        SideEffect = x;
+                        SideEffect1 = x;
+                        continue outer;
+                    }
+                }
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
     public class Unroll0 extends AbstractTestNode {
 
         @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
