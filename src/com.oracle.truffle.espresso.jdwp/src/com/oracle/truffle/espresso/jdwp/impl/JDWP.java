@@ -1427,20 +1427,16 @@ final class JDWP {
 
                 if ((masked & JVMTI_THREAD_STATE_TERMINATED) != 0) {
                     return ThreadStatusConstants.ZOMBIE;
-                }
-                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_RUNNABLE) != 0) {
+                } else if ((masked & JVMTI_THREAD_STATE_ALIVE) != 0) {
+                    if ((masked & JVMTI_THREAD_STATE_RUNNABLE) != 0) {
+                        return ThreadStatusConstants.RUNNING;
+                    } else if ((masked & JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER) != 0) {
+                        return ThreadStatusConstants.WAIT;
+                    }
                     return ThreadStatusConstants.RUNNING;
-                }
-                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER) != 0) {
+                } else if ((masked & JVMTI_THREAD_STATE_WAITING) != 0) {
                     return ThreadStatusConstants.WAIT;
-                }
-                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_WAITING | JVMTI_THREAD_STATE_WAITING_INDEFINITELY) != 0) {
-                    return ThreadStatusConstants.WAIT;
-                }
-                if ((masked & JVMTI_THREAD_STATE_ALIVE | JVMTI_THREAD_STATE_WAITING | JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT) != 0) {
-                    return ThreadStatusConstants.WAIT;
-                }
-                if (masked == 0) {
+                } else if (masked == 0) {
                     // new threads are returned as running
                     return ThreadStatusConstants.RUNNING;
                 }
