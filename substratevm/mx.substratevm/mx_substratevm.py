@@ -32,6 +32,7 @@ import os
 import time
 import re
 import tempfile
+from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname
@@ -741,7 +742,7 @@ def gen_fallbacks():
                         found_undef = line_tokens[1] = '*UND*'
                     if found_undef:
                         symbol_candiate = line_tokens[-1]
-                        mx.logv('Found undefined symbol: ' + symbol_candiate)
+                        mx.logvv('Found undefined symbol: ' + symbol_candiate)
                         platform_prefix = '_' if mx.is_darwin() else ''
                         if symbol_candiate.startswith(platform_prefix + symbol_prefix):
                             mx.logv('Pick symbol: ' + symbol_candiate)
@@ -750,15 +751,16 @@ def gen_fallbacks():
                     mx.logv('Skipping line: ' + line.rstrip())
             return collector
 
-        libjava_so = mx_subst.path_substitutions.substitute('<staticlib:java>')
-        libjava_so_path = join(mx_compiler.jdk.home, "lib", libjava_so)
         if not mx.is_windows():
-            native_project = 'posix'
             symbol_dump_command = 'objdump --wide --syms'
         else:
-            native_project = 'windows'
             symbol_dump_command = 'dumpbin /SYMBOLS'
-        mx.run(symbol_dump_command.split() + [libjava_so_path], out=collect_symbols_fn('JVM_'))
+
+        staticlib_wildcard = mx_subst.path_substitutions.substitute('<staticlib:*>')
+        staticlib_wildcard_path = join(mx_compiler.jdk.home, "lib", staticlib_wildcard)
+        for staticlib_path in glob(staticlib_wildcard_path):
+            mx.logv('Collect from : ' + staticlib_path)
+            mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
 
         return symbols
 
