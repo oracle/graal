@@ -468,7 +468,7 @@ suite = {
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/<lib:sulong>",
+        "bin/<lib:sulong-native>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
@@ -477,7 +477,7 @@ suite = {
       ],
       "buildEnv" : {
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
-        "LIBSULONG" : "<lib:sulong>",
+        "LIBSULONG" : "<lib:sulong-native>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",

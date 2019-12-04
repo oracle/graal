@@ -134,10 +134,10 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        context.addInternalLibrary("libsulong." + getNativeLibrarySuffix(), true);
+        context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), true);
         if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
             // dummy library for C++, see {@link #handleSpecialLibraries}
-            context.addInternalLibrary("libsulong++." + getNativeLibrarySuffix(), true);
+            context.addInternalLibrary("libsulong++-native." + getNativeLibrarySuffix(), true);
         }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
@@ -177,7 +177,7 @@ public final class NFIContextExtension implements ContextExtension {
         } else if (fileName.startsWith("libpolyglot-mock.")) {
             // special mock library for polyglot intrinsics
             return true;
-        } else if (fileName.startsWith("libsulong++.") || fileName.startsWith("libc++.")) {
+        } else if (fileName.startsWith("libsulong++-native.") || fileName.startsWith("libc++.")) {
             /*
              * Dummy library that doesn't actually exist, but is implicitly replaced by libc++ if
              * available. The libc++ dependency is optional. The bitcode interpreter will still work
