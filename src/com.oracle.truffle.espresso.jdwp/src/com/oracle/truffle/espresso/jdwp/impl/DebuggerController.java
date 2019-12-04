@@ -54,7 +54,7 @@ public class DebuggerController {
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
-    private final Map<Object, Object> suspendLocks = new HashMap<>();
+    private final Map<Object, ThreadLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private final Map<Object, Integer> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
@@ -251,10 +251,10 @@ public class DebuggerController {
                 suspendedInfos.put(thread, null);
             }
 
-            Object lock = getSuspendLock(thread);
+            ThreadLock lock = getSuspendLock(thread);
             synchronized (lock) {
                 JDWPLogger.log("Waiking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
-
+                lock.unlock();
                 lock.notifyAll();
                 threadSuspension.removeHardSuspendedThread(thread);
             }
@@ -313,10 +313,10 @@ public class DebuggerController {
         }
     }
 
-    private Object getSuspendLock(Object thread) {
-        Object lock = suspendLocks.get(thread);
+    private ThreadLock getSuspendLock(Object thread) {
+        ThreadLock lock = suspendLocks.get(thread);
         if (lock == null) {
-            lock = new Object();
+            lock = new ThreadLock();
             suspendLocks.put(thread, lock);
         }
         return lock;
@@ -715,13 +715,16 @@ public class DebuggerController {
     }
 
     private void lockThread(Object thread) {
-        Object lock = getSuspendLock(thread);
+        ThreadLock lock = getSuspendLock(thread);
 
         synchronized (lock) {
             try {
+                lock.lock();
                 // in case a thread job is already posted on this thread
                 checkThreadJobsAndRun(thread);
-                lock.wait();
+                while (lock.isLocked()) {
+                    lock.wait();
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException("not able to suspend thread: " + getThreadName(thread), e);
             }
@@ -744,8 +747,9 @@ public class DebuggerController {
 
     public void postJobForThread(ThreadJob job) {
         threadJobs.put(job.getThread(), job);
-        Object lock = getSuspendLock(job.getThread());
+        ThreadLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
+            lock.unlock();
             lock.notifyAll();
         }
     }
