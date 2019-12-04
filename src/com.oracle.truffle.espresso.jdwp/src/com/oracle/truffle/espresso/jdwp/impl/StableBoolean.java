@@ -41,6 +41,7 @@ public final class StableBoolean {
         this.unchanged = Truffle.getRuntime().createAssumption("Unchanged boolean");
     }
 
+    @SuppressFBWarnings(value = "UG_SYNC_SET_UNSYNC_GET", justification = "The get method returns a volatile field.")
     public boolean get() {
         if (unchanged.isValid()) {
             return value;
