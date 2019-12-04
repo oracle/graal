@@ -49,6 +49,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1139,9 +1140,10 @@ public final class Value {
      * <li>If {@link #isDate()} and {@link #isTime()} returns <code>false</code>, then it represents
      * just timezone information.
      * </ul>
-     * Objects with only time or only date information must not have timezone information attached,
-     * as aware date or time information always consist of both date and time. If this rule is
-     * violated then an {@link AssertionError} is thrown if assertions are enabled.
+     * Objects with only date information must not have timezone information attached and objects
+     * with only time information must have either none, or {@link ZoneRules#isFixedOffset() fixed
+     * zone} only. If this rule is violated then an {@link AssertionError} is thrown if assertions
+     * are enabled.
      * <p>
      * If this method is implemented then also {@link #asTimeZone()} must be implemented.
      *

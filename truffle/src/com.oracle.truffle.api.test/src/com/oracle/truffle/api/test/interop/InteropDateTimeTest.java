@@ -85,51 +85,91 @@ public final class InteropDateTimeTest extends InteropLibraryBaseTest {
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("static-method")
-    static class InvalidCombinationTest implements TruffleObject {
+    static class CombinationTest implements TruffleObject {
 
-        final boolean missingTime;
+        private final boolean hasDate;
+        private final boolean hasTime;
+        private final boolean hasTimeZone;
+        private final boolean hasFixedOffset;
 
-        InvalidCombinationTest(boolean missingTime) {
-            this.missingTime = missingTime;
+        CombinationTest(boolean hasDate, boolean hasTime, boolean hasTimeZone, boolean hasFixedOffset) {
+            this.hasDate = hasDate;
+            this.hasTime = hasTime;
+            this.hasTimeZone = hasTimeZone;
+            this.hasFixedOffset = hasFixedOffset;
         }
 
         @ExportMessage
         final boolean isDate() {
-            return missingTime;
+            return hasDate;
         }
 
         @ExportMessage
         final boolean isTime() {
-            return !missingTime;
+            return hasTime;
         }
 
         @ExportMessage
         final boolean isTimeZone() {
-            return true;
+            return hasTimeZone;
         }
 
         @ExportMessage
         @TruffleBoundary
-        final ZoneId asTimeZone() {
-            return ZoneId.of("UTC");
+        final ZoneId asTimeZone() throws UnsupportedMessageException {
+            if (!hasTimeZone) {
+                throw UnsupportedMessageException.create();
+            }
+            if (hasFixedOffset) {
+                return ZoneId.of("+04:00");
+            } else {
+                return ZoneId.of("US/Pacific");
+            }
         }
 
         @ExportMessage
         @TruffleBoundary
-        final LocalDate asDate() {
+        final LocalDate asDate() throws UnsupportedMessageException {
+            if (!hasDate) {
+                throw UnsupportedMessageException.create();
+            }
             return LocalDate.now();
         }
 
         @ExportMessage
+        @TruffleBoundary
         final LocalTime asTime() throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
+            if (!hasTime) {
+                throw UnsupportedMessageException.create();
+            }
+            return LocalTime.now();
         }
     }
 
     @Test
-    public void testInvalidCombination() {
-        testInvalidCombination(new InvalidCombinationTest(true));
-        testInvalidCombination(new InvalidCombinationTest(false));
+    public void testCombinations() throws InteropException {
+        boolean hasDate = true;
+        do {
+            boolean hasTime = true;
+            do {
+                boolean hasTimeZone = true;
+                do {
+                    boolean hasFixedOffset = hasTimeZone;
+                    do {
+                        Object o = new CombinationTest(hasDate, hasTime, hasTimeZone, hasFixedOffset);
+                        if (hasDate && !hasTime && hasTimeZone || !hasDate && hasTime && hasTimeZone && !hasFixedOffset) {
+                            testInvalidCombination(o);
+                        } else {
+                            testValidCombination(o, hasDate, hasTime, hasTimeZone);
+                        }
+                        hasFixedOffset = !hasFixedOffset;
+                    } while (!hasFixedOffset);
+                    hasTimeZone = !hasTimeZone;
+                } while (!hasTimeZone);
+                hasTime = !hasTime;
+            } while (!hasTime);
+            hasDate = !hasDate;
+        } while (!hasDate);
     }
 
     private void testInvalidCombination(Object o) {
@@ -141,6 +181,28 @@ public final class InteropDateTimeTest extends InteropLibraryBaseTest {
         assertFails(() -> library.asDate(o), AssertionError.class);
         assertFails(() -> library.asTimeZone(o), AssertionError.class);
         assertFails(() -> library.asTime(o), AssertionError.class);
+    }
+
+    private void testValidCombination(Object o, boolean hasDate, boolean hasTime, boolean hasTimeZone) throws InteropException {
+        InteropLibrary library = createLibrary(InteropLibrary.class, o);
+        assertEquals(hasDate, library.isDate(o));
+        assertEquals(hasTime, library.isTime(o));
+        assertEquals(hasTimeZone, library.isTimeZone(o));
+        if (hasDate) {
+            library.asDate(o);
+        } else {
+            assertFails(() -> library.asDate(o), UnsupportedMessageException.class);
+        }
+        if (hasTime) {
+            library.asTime(o);
+        } else {
+            assertFails(() -> library.asTime(o), UnsupportedMessageException.class);
+        }
+        if (hasTimeZone) {
+            library.asTimeZone(o);
+        } else {
+            assertFails(() -> library.asTimeZone(o), UnsupportedMessageException.class);
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

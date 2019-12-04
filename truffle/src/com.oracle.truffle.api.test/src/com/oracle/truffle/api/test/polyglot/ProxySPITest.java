@@ -707,7 +707,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     static class Invalid2 implements ProxyTime, ProxyTimeZone {
 
         public ZoneId asTimeZone() {
-            return ZoneId.of("UTC");
+            return ZoneId.of("US/Pacific");
         }
 
         public LocalTime asTime() {
