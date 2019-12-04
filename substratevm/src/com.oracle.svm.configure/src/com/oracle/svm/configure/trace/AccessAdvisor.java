@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.trace;
 
 import java.util.Arrays;
+
 import org.graalvm.compiler.phases.common.LazyValue;
 
 public class AccessAdvisor {
@@ -76,10 +77,9 @@ public class AccessAdvisor {
                 return true;
             }
         }
-        // Ignore libjvmcicompiler internal JNI calls
-        // 1. Lookup of jdk.vm.ci.services.Services.getJVMCIClassLoader
-        // 2. Lookup of
-        // org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints methods
+        // Ignore libjvmcicompiler internal JNI calls:
+        // * jdk.vm.ci.services.Services.getJVMCIClassLoader
+        // * org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMToHotSpotEntryPoints
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(queriedClass.get()) && "getJVMCIClassLoader".equals(name.get()) &&
                         "()Ljava/lang/ClassLoader;".equals(signature.get())) {
             return true;
@@ -102,9 +102,25 @@ public class AccessAdvisor {
         if (shouldIgnore(callerClass)) {
             return true;
         }
-        // Ignore libjvmcicompiler internal JNI calls
-        // 1. Lookup of jdk.vm.ci.services.Services
+        // Ignore libjvmcicompiler internal JNI calls: jdk.vm.ci.services.Services
         if (callerClass.get() == null && "jdk.vm.ci.services.Services".equals(name.get())) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean shouldIgnoreJniNewObjectArray(LazyValue<String> arrayClass, LazyValue<String> callerClass) {
+        if (!ignoreInternalAccesses) {
+            return false;
+        }
+        if (shouldIgnore(callerClass)) {
+            return true;
+        }
+        if (callerClass.get() == null && "[Ljava.lang.String;".equals(arrayClass.get())) {
+            /*
+             * For command-line argument arrays created before the Java main method is called. We
+             * cannot detect this only via launchPhase on Java 8.
+             */
             return true;
         }
         return false;
