@@ -29,6 +29,7 @@ public interface LineNumberTableRef {
 
     /**
      * Returns all entries in the line number table
+     * 
      * @return an array of EntryRef for all entries.
      */
     EntryRef[] getEntries();
@@ -40,12 +41,14 @@ public interface LineNumberTableRef {
 
         /**
          * Returns the code index for an entry in a line number table.
+         * 
          * @return the bci
          */
         int getBCI();
 
         /**
          * Returns the line number for an entry in a line number table.
+         * 
          * @return the line number
          */
         int getLineNumber();

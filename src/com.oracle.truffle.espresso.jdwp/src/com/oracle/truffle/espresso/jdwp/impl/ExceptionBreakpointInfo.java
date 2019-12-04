@@ -8,7 +8,6 @@ public final class ExceptionBreakpointInfo extends AbstractBreakpointInfo {
     private final boolean caught;
     private final boolean unCaught;
 
-
     public ExceptionBreakpointInfo(RequestFilter filter, KlassRef klass, boolean caught, boolean unCaught) {
         super(filter);
         this.klass = klass;

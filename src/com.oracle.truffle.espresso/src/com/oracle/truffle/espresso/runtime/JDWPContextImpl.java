@@ -142,7 +142,7 @@ public final class JDWPContextImpl implements JDWPContext {
         for (StaticObject activeThread : activeThreads) {
             // don't expose the finalizer and reference handler thread
             if ("Ljava/lang/ref/Reference$ReferenceHandler;".equals(activeThread.getKlass().getType().toString()) ||
-                "Ljava/lang/ref/Finalizer$FinalizerThread;".equals(activeThread.getKlass().getType().toString())) {
+                            "Ljava/lang/ref/Finalizer$FinalizerThread;".equals(activeThread.getKlass().getType().toString())) {
                 continue;
             }
             result.add(activeThread);
@@ -240,7 +240,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object[] getTopLevelThreadGroups() {
-        return new Object[] {context.getSystemThreadGroup()};
+        return new Object[]{context.getSystemThreadGroup()};
     }
 
     @Override
@@ -300,7 +300,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object getStaticFieldValue(FieldRef field) {
-        return field.getValue(((ObjectKlass)field.getDeclaringKlass()).tryInitializeAndGetStatics());
+        return field.getValue(((ObjectKlass) field.getDeclaringKlass()).tryInitializeAndGetStatics());
     }
 
     @Override
@@ -348,8 +348,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (exception instanceof EspressoException) {
             EspressoException ex = (EspressoException) exception;
             return ex.getExceptionObject();
-        }
-        else {
+        } else {
             throw new RuntimeException("unknown exception type: " + exception.getClass());
         }
     }

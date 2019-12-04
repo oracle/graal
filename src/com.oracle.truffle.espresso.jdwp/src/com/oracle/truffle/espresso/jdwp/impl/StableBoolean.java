@@ -27,16 +27,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 
 /**
- * Helper class that uses an assumption to switch between two "stable" states
- * efficiently. Copied from DebuggerSession with modifications to the set method
- * to make it thread safe (but slower on the slow path).
+ * Helper class that uses an assumption to switch between two "stable" states efficiently. Copied
+ * from DebuggerSession with modifications to the set method to make it thread safe (but slower on
+ * the slow path).
  */
 public final class StableBoolean {
 
-    @CompilerDirectives.CompilationFinal
-    private volatile Assumption unchanged;
-    @CompilerDirectives.CompilationFinal
-    private volatile boolean value;
+    @CompilerDirectives.CompilationFinal private volatile Assumption unchanged;
+    @CompilerDirectives.CompilationFinal private volatile boolean value;
 
     public StableBoolean(boolean initialValue) {
         this.value = initialValue;
@@ -53,8 +51,9 @@ public final class StableBoolean {
     }
 
     /**
-     * This method needs to be behind a boundary due to the fact that compiled code
-     * will constant fold the value, hence the first check might yield a wrong result.
+     * This method needs to be behind a boundary due to the fact that compiled code will constant
+     * fold the value, hence the first check might yield a wrong result.
+     * 
      * @param value
      */
     @CompilerDirectives.TruffleBoundary

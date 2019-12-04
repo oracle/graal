@@ -28,25 +28,22 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
 /**
- * Class that keeps an ID representation of all entities when
- * communicating with a debugger through JDWP.
- * Each entity will be assigned a unique ID.
- * Only weak references are kept for entities.
+ * Class that keeps an ID representation of all entities when communicating with a debugger through
+ * JDWP. Each entity will be assigned a unique ID. Only weak references are kept for entities.
  */
 public final class Ids<T> {
 
     private volatile long uniqueID = 1;
 
     /**
-     * All entities stored while communicating with the debugger.
-     * The array will be expanded whenever an ID for a new entity
-     * is requested.
+     * All entities stored while communicating with the debugger. The array will be expanded
+     * whenever an ID for a new entity is requested.
      */
     private WeakReference<T>[] objects;
 
     /**
-     * A special object representing the null value.
-     * This object must be passed on by the implementing language.
+     * A special object representing the null value. This object must be passed on by the
+     * implementing language.
      */
     private final T nullObject;
 
@@ -58,6 +55,7 @@ public final class Ids<T> {
 
     /**
      * Returns the unique ID representing the input object.
+     * 
      * @param object
      * @return the ID of the object
      */
@@ -69,8 +67,7 @@ public final class Ids<T> {
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
-            Object obj = objects[i].get();
-            if (obj == object) {
+            if (objects[i].get() == object) {
                 JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
                 return i;
             }
@@ -81,6 +78,7 @@ public final class Ids<T> {
 
     /**
      * Returns the object that is stored under the input ID.
+     * 
      * @param id the ID assigned to a object by {@code getIdAsLong()}
      * @return the object stored under the ID
      */
@@ -101,13 +99,13 @@ public final class Ids<T> {
     }
 
     /*
-    Generate a unique ID for a given object. Expand the underlying array and
-    insert the object at the last index in the new array.
+     * Generate a unique ID for a given object. Expand the underlying array and insert the object at
+     * the last index in the new array.
      */
     private synchronized long generateUniqueId(T object) {
         long id = uniqueID++;
         assert objects.length == id - 1;
-        
+
         WeakReference<T>[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
         System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
@@ -116,5 +114,3 @@ public final class Ids<T> {
         return id;
     }
 }
-
-

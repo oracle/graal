@@ -35,6 +35,7 @@ public final class HandshakeController {
 
     /**
      * Initializes a Socket connection which serves as a transport for jdwp communication.
+     * 
      * @param port the listening port that the debugger should attach to
      * @throws IOException
      */
@@ -69,7 +70,7 @@ public final class HandshakeController {
         while (received < hello.length) {
             int n;
             try {
-                n = s.getInputStream().read(b, received, hello.length-received);
+                n = s.getInputStream().read(b, received, hello.length - received);
             } catch (SocketTimeoutException x) {
                 throw new IOException("handshake timeout");
             }
@@ -79,7 +80,7 @@ public final class HandshakeController {
             }
             received += n;
         }
-        for (int i=0; i<hello.length; i++) {
+        for (int i = 0; i < hello.length; i++) {
             if (b[i] != hello[i]) {
                 throw new IOException("handshake failed - unrecognized message from the debugger");
             }

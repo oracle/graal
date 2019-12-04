@@ -30,7 +30,8 @@ public final class TypeTag {
     public static final byte INTERFACE = 2;
     public static final byte ARRAY = 3;
 
-    private TypeTag() {}
+    private TypeTag() {
+    }
 
     public static byte getKind(KlassRef klassRef) {
         if (klassRef.isArray()) {

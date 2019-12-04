@@ -29,6 +29,7 @@ public interface LocalVariableTableRef {
 
     /**
      * Returns all local variables declared within a local variable table.
+     * 
      * @return an array of all locals.
      */
     LocalRef[] getLocals();

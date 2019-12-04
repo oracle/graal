@@ -127,11 +127,21 @@ public final class DebuggerConnection implements Commands {
                 if (debuggerCommand != null) {
                     RequestFilter filter = debuggerCommand.getRequestFilter();
                     switch (debuggerCommand.kind) {
-                        case STEP_INTO: controller.stepInto(filter); break;
-                        case STEP_OVER: controller.stepOver(filter); break;
-                        case STEP_OUT: controller.stepOut(filter); break;
-                        case SUBMIT_BREAKPOINT: controller.submitLineBreakpoint(debuggerCommand); break;
-                        case SUBMIT_EXCEPTION_BREAKPOINT: controller.submitExceptionBreakpoint(debuggerCommand); break;
+                        case STEP_INTO:
+                            controller.stepInto(filter);
+                            break;
+                        case STEP_OVER:
+                            controller.stepOver(filter);
+                            break;
+                        case STEP_OUT:
+                            controller.stepOut(filter);
+                            break;
+                        case SUBMIT_BREAKPOINT:
+                            controller.submitLineBreakpoint(debuggerCommand);
+                            break;
+                        case SUBMIT_EXCEPTION_BREAKPOINT:
+                            controller.submitExceptionBreakpoint(debuggerCommand);
+                            break;
                     }
                 }
             }
@@ -150,8 +160,7 @@ public final class DebuggerConnection implements Commands {
 
     private class JDWPTransportThread implements Runnable {
 
-        @CompilerDirectives.CompilationFinal
-        private boolean started;
+        @CompilerDirectives.CompilationFinal private boolean started;
         private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(connection, controller);
         // constant used to allow for initial startup sequence debugger commands to occur before
         // waking up the main Espresso startup thread
@@ -166,7 +175,7 @@ public final class DebuggerConnection implements Commands {
             long time = -1;
             long limit = 0;
 
-            while(!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
                     if (!started) {
                         // in startup sequence
@@ -186,7 +195,7 @@ public final class DebuggerConnection implements Commands {
                                 processPacket(Packet.fromByteArray(connection.readPacket()));
                             } else {
                                 // check if a packet is available
-                                if(connection.isAvailable()) {
+                                if (connection.isAvailable()) {
                                     processPacket(Packet.fromByteArray(connection.readPacket()));
                                     time = System.currentTimeMillis();
                                     limit = time + GRACE_PERIOD;

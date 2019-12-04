@@ -26,8 +26,8 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 /**
- * Main entry point for setting up JDWP. The class looks up the JDWP instrument
- * and initializes communication with the debugger.
+ * Main entry point for setting up JDWP. The class looks up the JDWP instrument and initializes
+ * communication with the debugger.
  */
 public final class JDWPSetup {
 

@@ -29,49 +29,57 @@ public interface KlassRef {
 
     /**
      * Determines if the class is an array.
+     * 
      * @return true if class is an array, false otherwise
      */
     boolean isArray();
 
     /**
      * Determines if the underlying class is an interface.
+     * 
      * @return true if class is an interface, false otherwise
      */
     boolean isInterface();
 
     /**
      * Returns a String representation of the name of the class.
+     * 
      * @return the name of the class
      */
     String getNameAsString();
 
     /**
      * Returns the String representation of the type of the class.
+     * 
      * @return the class type descriptor name
      */
     String getTypeAsString();
 
     /**
      * Returns all declared methods of the class.
+     * 
      * @return array of MethodRef
      */
     MethodRef[] getDeclaredMethods();
 
     /**
      * Returns a guest-language representation of the classloader for which loaded the class
+     * 
      * @return the class loader object
      */
     Object getDefiningClassLoader();
 
     /**
      * Returns all declared fields of the class.
+     * 
      * @return array of FieldRef
      */
     FieldRef[] getDeclaredFields();
 
     /**
-     * Returns all direct implemented interfaces for the class. Note that interfaces
-     * inherited from a super type is not included in the returned array.
+     * Returns all direct implemented interfaces for the class. Note that interfaces inherited from
+     * a super type is not included in the returned array.
+     * 
      * @return the array of implemented interfaces
      */
     KlassRef[] getImplementedInterfaces();
@@ -87,27 +95,31 @@ public interface KlassRef {
     KlassRef getSuperClass();
 
     /**
-     * Returns the TypeTag constant as defined in the JDWP protocol.
-     * See https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_TypeTag
+     * Returns the TypeTag constant as defined in the JDWP protocol. See
+     * https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_TypeTag
+     * 
      * @return the TypeTag constant
      */
     byte getTagConstant();
 
     /**
      * Determines if the class is a class for a primitive type.
+     * 
      * @return true if class is primitive, false otherwise.
      */
     boolean isPrimitive();
 
     /**
-     * Returns the guest-language object representing the thread that was running
-     * when the class was prepared within the VM.
+     * Returns the guest-language object representing the thread that was running when the class was
+     * prepared within the VM.
+     * 
      * @return the guest-language object of the thread
      */
     Object getPrepareThread();
 
     /**
      * Determines if the input this klass is assignable from the given input klass.
+     * 
      * @param klass
      * @return true if this klass is assignable from the input klass
      */
@@ -115,12 +127,14 @@ public interface KlassRef {
 
     /**
      * Returns the object representing this klass type.
+     * 
      * @return guest language object for the klass type
      */
     Object getKlassObject();
 
     /**
      * Returns the modifiers of this klass.
+     * 
      * @return klass modifier bitmask.
      */
     int getModifiers();

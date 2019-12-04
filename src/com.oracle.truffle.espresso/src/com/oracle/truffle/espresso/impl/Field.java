@@ -267,7 +267,7 @@ public final class Field extends Member<Type> implements FieldRef {
     @Override
     public void addFieldBreakpointInfo(FieldBreakpoint info) {
         if (infos == null) {
-            infos = new FieldBreakpoint[] {info};
+            infos = new FieldBreakpoint[]{info};
             return;
         }
 
@@ -283,7 +283,8 @@ public final class Field extends Member<Type> implements FieldRef {
     public void removeFieldBreakpointInfo(int requestId) {
         // shrink the array to avoid null values
         switch (infos.length) {
-            case 0: throw new RuntimeException("Field: " + getNameAsString() + " should contain field breakpoint info");
+            case 0:
+                throw new RuntimeException("Field: " + getNameAsString() + " should contain field breakpoint info");
             case 1:
                 infos = null;
                 hasActiveBreakpoints.set(false);
@@ -308,16 +309,14 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     /**
-     * Helper class that uses an assumption to switch between two "stable" states
-     * efficiently. Copied from DebuggerSession with modifications to the set method
-     * to make it thread safe (but slower on the slow path).
+     * Helper class that uses an assumption to switch between two "stable" states efficiently.
+     * Copied from DebuggerSession with modifications to the set method to make it thread safe (but
+     * slower on the slow path).
      */
     private final class StableBoolean {
 
-        @CompilerDirectives.CompilationFinal
-        private volatile Assumption unchanged;
-        @CompilerDirectives.CompilationFinal
-        private volatile boolean value;
+        @CompilerDirectives.CompilationFinal private volatile Assumption unchanged;
+        @CompilerDirectives.CompilationFinal private volatile boolean value;
 
         public StableBoolean(boolean initialValue) {
             this.value = initialValue;
@@ -334,8 +333,9 @@ public final class Field extends Member<Type> implements FieldRef {
         }
 
         /**
-         * This method needs to be behind a boundary due to the fact that compiled code
-         * will constant fold the value, hence the first check might yield a wrong result.
+         * This method needs to be behind a boundary due to the fact that compiled code will
+         * constant fold the value, hence the first check might yield a wrong result.
+         * 
          * @param value
          */
         @CompilerDirectives.TruffleBoundary
@@ -349,5 +349,5 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    //endregion jdwp-specific
+    // endregion jdwp-specific
 }

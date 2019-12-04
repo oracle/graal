@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.classfile;
 
 import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
 
-
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;

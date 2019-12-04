@@ -26,8 +26,8 @@ import com.oracle.truffle.espresso.jdwp.impl.AbstractBreakpointInfo;
 import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
 
 /**
- * Class holding information about a breakpoint that cannot be obtained from
- * the Truffle Breakpoint instance.
+ * Class holding information about a breakpoint that cannot be obtained from the Truffle Breakpoint
+ * instance.
  */
 public final class LineBreakpointInfo extends AbstractBreakpointInfo {
 

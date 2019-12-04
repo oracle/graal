@@ -23,8 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 /**
- * A simple virtual machine interface used to retrieve basic
- * information about the VM through JDWP.
+ * A simple virtual machine interface used to retrieve basic information about the VM through JDWP.
  */
 public interface VirtualMachine {
 
@@ -40,28 +39,28 @@ public interface VirtualMachine {
     /**
      * @return the number of bytes for representing a MethodRef.
      */
-    default int getSizeOfMethodRef(){
+    default int getSizeOfMethodRef() {
         return DEFAULT_SIZE;
     }
 
     /**
      * @return the number of bytes for representing a Object.
      */
-    default int getSizeofObjectRef(){
+    default int getSizeofObjectRef() {
         return DEFAULT_SIZE;
     }
 
     /**
      * @return the number of bytes for representing a class.
      */
-    default int getSizeOfClassRef(){
+    default int getSizeOfClassRef() {
         return DEFAULT_SIZE;
     }
 
     /**
      * @return the number of bytes for representing a frame.
      */
-    default int getSizeOfFrameRef(){
+    default int getSizeOfFrameRef() {
         return DEFAULT_SIZE;
     }
 

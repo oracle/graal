@@ -156,7 +156,7 @@ public final class PacketStream {
         b1 = packet.data[readPosition++] & 0xff;
         b2 = packet.data[readPosition++] & 0xff;
 
-        return (char)((b1 << 8) + b2);
+        return (char) ((b1 << 8) + b2);
     }
 
     short readShort() {
@@ -165,11 +165,11 @@ public final class PacketStream {
         b1 = packet.data[readPosition++] & 0xff;
         b2 = packet.data[readPosition++] & 0xff;
 
-        return (short)((b1 << 8) + b2);
+        return (short) ((b1 << 8) + b2);
     }
 
     int readInt() {
-        int b1,b2,b3,b4;
+        int b1, b2, b3, b4;
 
         b1 = packet.data[readPosition++] & 0xff;
         b2 = packet.data[readPosition++] & 0xff;
@@ -180,8 +180,8 @@ public final class PacketStream {
     }
 
     long readLong() {
-        long b1,b2,b3,b4;
-        long b5,b6,b7,b8;
+        long b1, b2, b3, b4;
+        long b5, b6, b7, b8;
 
         b1 = packet.data[readPosition++] & 0xff;
         b2 = packet.data[readPosition++] & 0xff;
@@ -193,8 +193,7 @@ public final class PacketStream {
         b7 = packet.data[readPosition++] & 0xff;
         b8 = packet.data[readPosition++] & 0xff;
 
-        return ((b1 << 56) + (b2 << 48) + (b3 << 40) + (b4 << 32)
-                + (b5 << 24) + (b6 << 16) + (b7 << 8) + b8);
+        return ((b1 << 56) + (b2 << 48) + (b3 << 40) + (b4 << 32) + (b5 << 24) + (b6 << 16) + (b7 << 8) + b8);
     }
 
     float readFloat() {
@@ -211,7 +210,7 @@ public final class PacketStream {
 
         try {
             ret = new String(packet.data, readPosition, len, "UTF8");
-        } catch(java.io.UnsupportedEncodingException e) {
+        } catch (java.io.UnsupportedEncodingException e) {
             ret = "Conversion error!";
         }
         readPosition += len;

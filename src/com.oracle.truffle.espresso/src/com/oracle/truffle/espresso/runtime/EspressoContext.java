@@ -350,7 +350,7 @@ public final class EspressoContext {
     private void createMainThread() {
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
-                .invokeDirect(systemThreadGroup);
+                        .invokeDirect(systemThreadGroup);
         StaticObject mainThread = meta.Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
         mainThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
@@ -361,16 +361,16 @@ public final class EspressoContext {
 
         // Guest Thread.currentThread() must work as this point.
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
-                .invokeDirect(mainThreadGroup,
-                        /* parent */ systemThreadGroup,
-                        /* name */ meta.toGuestString("main"));
+                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .invokeDirect(mainThreadGroup,
+                                        /* parent */ systemThreadGroup,
+                                        /* name */ meta.toGuestString("main"));
 
         meta.Thread // public Thread(ThreadGroup group, String name)
-                .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
-                .invokeDirect(mainThread,
-                        /* group */ mainThreadGroup,
-                        /* name */ meta.toGuestString("main"));
+                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
+                        .invokeDirect(mainThread,
+                                        /* group */ mainThreadGroup,
+                                        /* name */ meta.toGuestString("main"));
         mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
 
         mainThreadCreated = true;

@@ -891,5 +891,5 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return lastLine == lineAt;
     }
 
-    //endregion jdwp-specific
+    // endregion jdwp-specific
 }

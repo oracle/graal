@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
-
 public class DebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
@@ -129,8 +128,8 @@ public class DebuggerController {
 
     /**
      * Installs a line breakpoint within a given method.
-     * @param command the command that represents the
-     * breakpoint
+     * 
+     * @param command the command that represents the breakpoint
      */
     public void submitLineBreakpoint(DebuggerCommand command) {
         SourceLocation location = command.getSourceLocation();
@@ -172,7 +171,7 @@ public class DebuggerController {
 
     public void stepOver(RequestFilter filter) {
         Object thread = filter.getStepInfo().getThread();
-        JDWPLogger.log("STEP_OVER for thread: %s" , JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
+        JDWPLogger.log("STEP_OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
@@ -286,7 +285,7 @@ public class DebuggerController {
 
         try {
             JDWPLogger.log("State: %s", JDWPLogger.LogLevel.THREAD, getContext().asHostThread(thread).getState());
-            JDWPLogger.log("calling underlying suspend method for thread: %s", JDWPLogger.LogLevel.THREAD,  getThreadName(thread));
+            JDWPLogger.log("calling underlying suspend method for thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
             debuggerSession.suspend(getContext().asHostThread(thread));
 
             boolean suspended = threadSuspension.getSuspensionCount(thread) != 0;
@@ -418,11 +417,15 @@ public class DebuggerController {
                     Throwable exception = getRawException(event.getException());
                     Object guestException = getContext().getGuestException(exception);
                     JDWPLogger.log("checking exception breakpoint for exception: %s", JDWPLogger.LogLevel.STEPPING, exception);
-                    // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is completed
+                    // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is
+                    // completed
                     // See /browse/GR-10371
-                    // Currently, the Truffle Debug API doesn't filter on type, so we end up here having to check
-                    // also, the ignore count set on the breakpoint will not work properly due to this.
-                    // we need to do a real type check here, since subclasses of the specified exception
+                    // Currently, the Truffle Debug API doesn't filter on type, so we end up here
+                    // having to check
+                    // also, the ignore count set on the breakpoint will not work properly due to
+                    // this.
+                    // we need to do a real type check here, since subclasses of the specified
+                    // exception
                     // should also hit
                     if (klass == null || getContext().isInstanceOf(guestException, klass)) {
                         JDWPLogger.log("Exception type matched the klass type: %s", JDWPLogger.LogLevel.STEPPING, klass.getNameAsString());
@@ -570,7 +573,7 @@ public class DebuggerController {
                     Object thisValue = null;
                     ArrayList<Object> realVariables = new ArrayList<>();
 
-                    if (scope != null ) {
+                    if (scope != null) {
                         Iterator<DebugValue> variables = scope.getDeclaredValues().iterator();
                         while (variables.hasNext()) {
                             DebugValue var = variables.next();
@@ -637,7 +640,7 @@ public class DebuggerController {
         private void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs) {
             JDWPLogger.log("suspending from callback in thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
 
-            switch(suspendPolicy) {
+            switch (suspendPolicy) {
                 case SuspendStrategy.NONE:
                     runJobs(jobs);
                     break;
@@ -662,7 +665,8 @@ public class DebuggerController {
                                     DebuggerController.this.suspend(activeThread);
                                 }
                             }
-                            // send any breakpoint events here, since now all threads that are expected to be suspended
+                            // send any breakpoint events here, since now all threads that are
+                            // expected to be suspended
                             // have increased suspension count
                             runJobs(jobs);
                         }

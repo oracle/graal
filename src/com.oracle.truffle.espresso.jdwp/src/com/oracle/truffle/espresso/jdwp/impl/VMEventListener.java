@@ -30,22 +30,40 @@ import java.util.concurrent.Callable;
 
 public interface VMEventListener extends VMListener {
     void setConnection(SocketConnection connection);
+
     void classUnloaded(KlassRef klass);
+
     void breakpointHit(BreakpointInfo info, Object currentThread);
+
     void vmDied();
+
     void addClassUnloadRequestId(int id);
+
     void addThreadStartedRequestId(int id);
+
     void addThreadDiedRequestId(int id);
+
     void addVMStartRequest(int id);
+
     void addVMDeathRequest(int id);
+
     Callable<Void> addClassPrepareRequest(ClassPrepareRequest request);
+
     void removeClassPrepareRequest(int requestId);
+
     void addBreakpointRequest(int requestId, BreakpointInfo info);
+
     void removeBreakpointRequest(int requestId);
+
     void stepCompleted(int commandRequestId, CallFrame currentFrame);
+
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame callFrame);
+
     void increaseFieldBreakpointCount();
+
     void decreaseFieldBreakpointCount();
+
     void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
+
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 }

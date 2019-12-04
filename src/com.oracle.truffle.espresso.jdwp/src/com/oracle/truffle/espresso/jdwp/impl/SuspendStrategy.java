@@ -27,5 +27,6 @@ public final class SuspendStrategy {
     public static final byte EVENT_THREAD = 1;
     public static final byte ALL = 2;
 
-    private SuspendStrategy() {}
+    private SuspendStrategy() {
+    }
 }

@@ -32,5 +32,6 @@ public final class SteppingConstants {
     public static final int MIN = 0;
     public static final int LINE = 1;
 
-    private SteppingConstants() {}
+    private SteppingConstants() {
+    }
 }

@@ -97,7 +97,7 @@ public final class SocketConnection implements Runnable {
             throw new ConnectionClosedException();
         }
         synchronized (receiveLock) {
-            int b1,b2,b3,b4;
+            int b1, b2, b3, b4;
 
             // length
             try {
@@ -114,11 +114,11 @@ public final class SocketConnection implements Runnable {
             }
 
             // EOF
-            if (b1<0) {
+            if (b1 < 0) {
                 return new byte[0];
             }
 
-            if (b2<0 || b3<0 || b4<0) {
+            if (b2 < 0 || b3 < 0 || b4 < 0) {
                 throw new IOException("protocol error - premature EOF");
             }
 
@@ -129,10 +129,10 @@ public final class SocketConnection implements Runnable {
             }
 
             byte b[] = new byte[len];
-            b[0] = (byte)b1;
-            b[1] = (byte)b2;
-            b[2] = (byte)b3;
-            b[3] = (byte)b4;
+            b[0] = (byte) b1;
+            b[1] = (byte) b2;
+            b[2] = (byte) b3;
+            b[3] = (byte) b4;
 
             int off = 4;
             len -= off;
@@ -189,8 +189,7 @@ public final class SocketConnection implements Runnable {
         synchronized (sendLock) {
             try {
                 /*
-                 * Send the packet (ignoring any bytes that follow
-                 * the packet in the byte array).
+                 * Send the packet (ignoring any bytes that follow the packet in the byte array).
                  */
                 socketOutput.write(b, 0, len);
             } catch (IOException ioe) {

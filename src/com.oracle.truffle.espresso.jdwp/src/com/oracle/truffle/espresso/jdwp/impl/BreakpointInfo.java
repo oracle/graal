@@ -15,7 +15,7 @@ public interface BreakpointInfo {
 
     KlassRef getKlass();
 
-    boolean isCaught() ;
+    boolean isCaught();
 
     boolean isUnCaught();
 

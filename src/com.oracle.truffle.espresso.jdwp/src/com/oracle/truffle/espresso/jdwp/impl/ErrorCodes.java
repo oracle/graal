@@ -42,5 +42,6 @@ public final class ErrorCodes {
     public static final int INVALID_CLASS_LOADER = 507;
     public static final int INVALID_ARRAY = 508;
 
-    private ErrorCodes() {}
+    private ErrorCodes() {
+    }
 }

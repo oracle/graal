@@ -29,11 +29,9 @@ import java.util.Set;
 
 public final class ThreadSuspension {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private Object[] threads = new Object[0];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] threads = new Object[0];
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private int[] suspensionCount = new int[0];
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] suspensionCount = new int[0];
 
     private final Set<Object> hardSuspendedThreads = new HashSet<>();
 

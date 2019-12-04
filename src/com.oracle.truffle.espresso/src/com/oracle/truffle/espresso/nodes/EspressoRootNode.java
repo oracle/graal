@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
  * Java. Regular (concrete) Java methods, native methods and intrinsics/substitutions.
@@ -117,8 +116,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 Method method = getMethod();
                 assert method.isSynchronized();
                 StaticObject monitor = method.isStatic()
-                        ? /* class */ method.getDeclaringKlass().mirror()
-                        : /* receiver */ (StaticObject) frame.getArguments()[0];
+                                ? /* class */ method.getDeclaringKlass().mirror()
+                                : /* receiver */ (StaticObject) frame.getArguments()[0];
                 // No owner checks in SVM. Manual monitor accesses is a safeguard against unbalanced
                 // monitor accesses until Espresso has its own monitor handling.
                 //

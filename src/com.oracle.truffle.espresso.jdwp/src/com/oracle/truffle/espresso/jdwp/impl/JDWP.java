@@ -41,7 +41,8 @@ final class JDWP {
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
-    private JDWP() {}
+    private JDWP() {
+    }
 
     static class VirtualMachine {
         public static final int ID = 1;
@@ -207,8 +208,8 @@ final class JDWP {
                 // currently, we don't free up IDs
                 int count = input.readInt();
                 for (int i = 0; i < count; i++) {
-                    /*long objectID =*/ input.readLong();
-                    /*int refCount =*/ input.readInt();
+                    /* long objectID = */ input.readLong();
+                    /* int refCount = */ input.readInt();
                 }
                 return new CommandResult(reply);
             }
@@ -458,7 +459,6 @@ final class JDWP {
 
         }
 
-
         static class INTERFACES {
             public static final int ID = 10;
 
@@ -704,7 +704,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /*int invocationOptions =*/ input.readInt();
+                /* int invocationOptions = */ input.readInt();
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -763,7 +763,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /*int invocationOptions =*/ input.readInt();
+                /* int invocationOptions = */ input.readInt();
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -856,7 +856,7 @@ final class JDWP {
                     args[i] = readValue(valueKind, input, context);
                 }
 
-                /*int invocationOptions =*/ input.readInt();
+                /* int invocationOptions = */ input.readInt();
                 try {
                     // we have to call the method in the correct thread, so post a
                     // Callable to the controller and wait for the result to appear
@@ -1184,7 +1184,7 @@ final class JDWP {
                 }
                 // TODO(Gregersen) - handle invocation options
                 // tracked by /browse/GR-19819
-                /*int options = */ input.readInt();
+                /* int options = */ input.readInt();
 
                 Object callee = context.getIds().fromId((int) objectId);
                 MethodRef method = verifyMethodRef(methodId, reply, context);
@@ -1391,8 +1391,7 @@ final class JDWP {
             public static final int JVMTI_THREAD_STATE_INTERRUPTED = 0x200000;
             public static final int JVMTI_THREAD_STATE_IN_NATIVE = 0x400000;
 
-            public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK =
-                            JVMTI_THREAD_STATE_TERMINATED |
+            public static final int JVMTI_JAVA_LANG_THREAD_STATE_MASK = JVMTI_THREAD_STATE_TERMINATED |
                             JVMTI_THREAD_STATE_ALIVE |
                             JVMTI_THREAD_STATE_RUNNABLE |
                             JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER |
@@ -1419,7 +1418,6 @@ final class JDWP {
                 reply.writeInt(suspended);
 
                 JDWPLogger.log("status command for thread: %s with status: %s, suspended: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread), threadStatus, suspended);
-
 
                 return new CommandResult(reply, null);
             }
@@ -1804,7 +1802,8 @@ final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                // TODO(Gregersen) - we will need all classes for which this classloader was the initiating loader
+                // TODO(Gregersen) - we will need all classes for which this classloader was the
+                // initiating loader
                 // tracked by /browse/GR-19820
                 KlassRef[] klasses = context.getInitiatedClasses(classLoader);
 
@@ -2240,4 +2239,3 @@ final class JDWP {
         return object;
     }
 }
-

@@ -21,6 +21,7 @@
  * questions.
  */
 package com.oracle.truffle.espresso.jdwp.impl;
+
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 

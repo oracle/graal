@@ -41,17 +41,17 @@ public final class TagConstants {
     public static final byte CLASS_LOADER = 'l';
     public static final byte CLASS_OBJECT = 'c';
 
-    private TagConstants() {}
+    private TagConstants() {
+    }
 
     public static boolean isPrimitive(byte tag) {
-        return
-                tag != OBJECT &&
-                tag != STRING &&
-                tag != ARRAY &&
-                tag != THREAD &&
-                tag != THREAD_GROUP &&
-                tag != CLASS_OBJECT &&
-                tag != CLASS_LOADER;
+        return tag != OBJECT &&
+                        tag != STRING &&
+                        tag != ARRAY &&
+                        tag != THREAD &&
+                        tag != THREAD_GROUP &&
+                        tag != CLASS_OBJECT &&
+                        tag != CLASS_LOADER;
     }
 
     public static byte getTagFromPrimitive(Object boxed) {

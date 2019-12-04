@@ -111,8 +111,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                         throw new RuntimeException("JDWP connection interrupted");
                     }
                 }
-            }
-            else {
+            } else {
                 // don't suspend until debugger attaches, so fire up deamon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");
                 handshakeThread.setDaemon(true);
@@ -135,7 +134,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         try {
             doConnect();
         } catch (IOException e) {
-            throw new RuntimeException("JDWP connection setup failed" , e);
+            throw new RuntimeException("JDWP connection setup failed", e);
         }
     }
 

@@ -2217,7 +2217,6 @@ public final class BytecodeNode extends EspressoMethodNode implements CustomNode
 
         assert field.isStatic() == (opcode == GETSTATIC);
 
-
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekAndReleaseObject(frame, top - 1));

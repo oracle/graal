@@ -28,46 +28,52 @@ package com.oracle.truffle.espresso.jdwp.api;
 public interface FieldRef {
 
     /**
-     * Returns the TypeTag constant as defined in the JDWP protocol.
-     * See https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_TypeTag
+     * Returns the TypeTag constant as defined in the JDWP protocol. See
+     * https://docs.oracle.com/javase/8/docs/platform/jpda/jdwp/jdwp-protocol.html#JDWP_TypeTag
+     * 
      * @return the TypeTag constant
      */
     byte getTagConstant();
 
     /**
      * Returns a String representation of the name of the field.
+     * 
      * @return the field name
      */
     String getNameAsString();
 
     /**
-     * Returns the String representation of the type of the field according to the field
-     * descriptor grammar.
-     * See https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.2
+     * Returns the String representation of the type of the field according to the field descriptor
+     * grammar. See https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.2
+     * 
      * @return the field type descriptor name
      */
     String getTypeAsString();
 
     /**
      * Returns the generic String representation of the type of the field according to the field.
+     * 
      * @return the field type descriptor name including generics information
      */
     String getGenericSignatureAsString();
 
     /**
      * Returns the modifiers mask of the field.
+     * 
      * @return the field modifiers
      */
     int getModifiers();
 
     /**
      * Returns the declaring class of the field.
+     * 
      * @return the {@KlassRef} which declared this field
      */
     KlassRef getDeclaringKlass();
 
     /**
      * Gets the field value for a specified object.
+     * 
      * @param self the object (or class/null) for which to read the field value from.
      * @return the value of the field
      */
@@ -75,6 +81,7 @@ public interface FieldRef {
 
     /**
      * Sets the value of the field on the specified object.
+     * 
      * @param self the object (or class/null) for which to read the field value from.
      * @param value the value to set
      */
@@ -82,24 +89,28 @@ public interface FieldRef {
 
     /**
      * Returns all information about potential field breakpoints set on this field.
+     * 
      * @return array of field breakpoint info
      */
     FieldBreakpoint[] getFieldBreakpointInfos();
 
     /**
      * Add a new field breakpoint with the given info on this field.
+     * 
      * @param info the info that describes the breakpoint
      */
     void addFieldBreakpointInfo(FieldBreakpoint info);
 
     /**
      * Remove a field breakpoint with the given info on this field.
+     * 
      * @param requestId the ID for the request that set the breakpoint
      */
     void removeFieldBreakpointInfo(int requestId);
 
     /**
      * Determines if there are any breakpoints set on this field
+     * 
      * @return true if this field has any breakpoints, false otherwise
      */
     boolean hasActiveBreakpoint();

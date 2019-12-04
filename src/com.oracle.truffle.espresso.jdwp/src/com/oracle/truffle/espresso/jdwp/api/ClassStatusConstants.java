@@ -31,5 +31,6 @@ public final class ClassStatusConstants {
     public static final int INITIALIZED = 4;
     public static final int ERROR = 8;
 
-    private ClassStatusConstants() {}
+    private ClassStatusConstants() {
+    }
 }

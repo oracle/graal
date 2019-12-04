@@ -90,7 +90,7 @@ public final class ClassRegistries {
         }
         // continue search in all other registries
         for (ClassRegistry registry : registries.values()) {
-            if (registry!= null && registry.classes != null && registry.classes.containsKey(type)) {
+            if (registry != null && registry.classes != null && registry.classes.containsKey(type)) {
                 klasses.add(registry.classes.get(type));
             }
         }

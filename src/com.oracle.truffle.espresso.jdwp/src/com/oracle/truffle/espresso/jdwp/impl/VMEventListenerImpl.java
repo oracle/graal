@@ -163,7 +163,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (!field.hasActiveBreakpoint()) {
             return false;
         } else {
-           return checkFieldModificationSlowPath(field, receiver, value);
+            return checkFieldModificationSlowPath(field, receiver, value);
         }
     }
 
@@ -249,7 +249,8 @@ public final class VMEventListenerImpl implements VMEventListener {
                 stream.writeLong(ids.getIdAsLong(klass));
                 stream.writeString(klass.getTypeAsString());
                 // only send PREPARED status for class prepare events.
-                // if using ClassStatusConstants.INITIALIZED the debugger doesn't submit a breakpoint!
+                // if using ClassStatusConstants.INITIALIZED the debugger doesn't submit a
+                // breakpoint!
                 stream.writeInt(ClassStatusConstants.PREPARED);
                 classPrepareRequests.remove(cpr.getRequestId());
             }
