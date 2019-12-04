@@ -92,6 +92,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
                             new ExecutionEventNodeFactory() {
                                 private final long creatorThreadId = Thread.currentThread().getId();
 
+                                @Override
                                 public ExecutionEventNode create(final EventContext eventContext) {
                                     final SourceSection section = eventContext.getInstrumentedSourceSection();
                                     if (section != null && section.isAvailable()) {
@@ -102,8 +103,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
 
                                         return new CoverageEventNode(section, instrumentedNode, runScriptUri, func, creatorThreadId);
                                     } else {
-                                        return new ExecutionEventNode() {
-                                        };
+                                        return null;
                                     }
                                 }
                             });
@@ -184,7 +184,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
             throw new DiagnosticsNotification(mapDiagnostics);
         } else {
             throw DiagnosticsNotification.create(uri,
-                            Diagnostic.create(Range.create(0, 0, 0, 0), // TODO: LSP4J removal
+                            Diagnostic.create(Range.create(0, 0, 0, 0),
                                             "No coverage information available", DiagnosticSeverity.Error, null, "Coverage Analysis", null));
         }
     }

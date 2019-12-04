@@ -51,7 +51,6 @@ import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
-import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -78,19 +77,18 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         options = env.getOptions();
         if (options.hasBeenSet(LSOptions.Lsp)) {
             final TruffleAdapter truffleAdapter = launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
-            SourceSectionFilter.SourcePredicate predicate = SourcePredicateBuilder.newBuilder().excludeInternal(env.getOptions()).build();
-            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(predicate).build();
+            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().includeInternal(options.get(LSOptions.Internal)).build();
             eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(eventFilter, new ExecutionEventNodeFactory() {
                 private final long creatorThreadId = Thread.currentThread().getId();
 
+                @Override
                 public ExecutionEventNode create(final EventContext eventContext) {
                     final SourceSection section = eventContext.getInstrumentedSourceSection();
                     if (section != null && section.isAvailable()) {
                         final Node instrumentedNode = eventContext.getInstrumentedNode();
                         return new CoverageEventNode(section, instrumentedNode, null, truffleAdapter.surrogateGetter(instrumentedNode.getRootNode().getLanguageInfo()), creatorThreadId);
                     } else {
-                        return new ExecutionEventNode() {
-                        };
+                        return null;
                     }
                 }
             });
@@ -150,8 +148,6 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         assert options.hasSetOptions();
 
         setWaitForClose();
-
-        LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LSOptions.LanguageSpecificHacksOption).booleanValue();
 
         TruffleAdapter truffleAdapter = new TruffleAdapter();
 

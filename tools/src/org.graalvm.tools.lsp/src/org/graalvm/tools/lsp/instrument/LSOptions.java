@@ -42,15 +42,11 @@ public final class LSOptions {
         // no instances
     }
 
-    @Option(name = "Languagespecific.hacks", help = "Enable language specific hacks to get features which are not supported by some languages yet. (default:true)", category = OptionCategory.EXPERT) //
-    // TODO: Remove
-    public static final OptionKey<Boolean> LanguageSpecificHacksOption = new OptionKey<>(true);
-
     @Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags. (default:false)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DeveloperMode = new OptionKey<>(false);
 
-    @Option(help = "Include sources with isInternal()==true in goto-definition, references and symbols search. (default:false)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InternalSources = new OptionKey<>(false);
+    @Option(help = "Include internal sources in goto-definition, references and symbols search. (default:false)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
     private static final int DEFAULT_PORT = 8123;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);

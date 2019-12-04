@@ -308,7 +308,10 @@ public final class LanguageServerImpl extends LanguageServer {
     private void processChanges(final String documentUri,
                     final List<? extends TextDocumentContentChangeEvent> list) {
         String langId = openedFileUri2LangId.get(URI.create(documentUri));
-        assert langId != null : documentUri; // TODO: Are we sure we want to throw AssertionError?
+        if (langId == null) {
+            LOG.warning("Changed document that was not opened: " + documentUri);
+            return;
+        }
 
         URI uri = URI.create(documentUri);
         Future<?> future;
@@ -331,9 +334,7 @@ public final class LanguageServerImpl extends LanguageServer {
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
         URI uri = URI.create(params.getTextDocument().getUri());
-        String removed = openedFileUri2LangId.remove(uri);
-        assert removed != null : uri.toString();
-
+        openedFileUri2LangId.remove(uri);
         truffleAdapter.didClose(uri);
     }
 
@@ -343,9 +344,11 @@ public final class LanguageServerImpl extends LanguageServer {
         URI uri = URI.create(params.getTextDocument().getUri());
         if (params.getText() != null) {
             String langId = openedFileUri2LangId.get(uri);
-            assert langId != null : uri;
+            if (langId == null) {
+                LOG.warning("Saved document that was not opened: " + uri);
+                return;
+            }
             future = truffleAdapter.parse(params.getText(), langId, uri);
-
         } else {
             future = truffleAdapter.reparse(uri);
         }

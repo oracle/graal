@@ -115,6 +115,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         LOG.log(Level.FINER, "Start finding completions for {0}:{1}:{2}", new Object[]{uri, line, column});
 
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+        if (surrogate == null) {
+            LOG.info("Completion requested in an unknown document: " + uri);
+            return emptyList;
+        }
         Source source = surrogate.getSource();
 
         if (!SourceUtils.isLineValid(line, source) || !SourceUtils.isColumnValid(line, column, source)) {
@@ -124,11 +128,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
         CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), column, surrogate.getCompletionTriggerCharacters(),
                         completionContext);
-        if (surrogate.isSourceCodeReadyForCodeCompletion() /*
-                                                            * &&
-                                                            * !completionKind.equals(CompletionKind.
-                                                            * OBJECT_PROPERTY)
-                                                            */) {
+        if (surrogate.isSourceCodeReadyForCodeCompletion()) {
             return createCompletions(surrogate, line, column, completionKind);
         } else {
             // Try fixing the source code, parse again, then create the completions
