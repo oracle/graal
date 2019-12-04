@@ -67,7 +67,7 @@ public enum DiagnosticSeverity {
         }
     }
 
-    public static DiagnosticSeverity get(int intValue) {
+    public static DiagnosticSeverity get(Integer intValue) {
         return lookup.get(intValue);
     }
 }

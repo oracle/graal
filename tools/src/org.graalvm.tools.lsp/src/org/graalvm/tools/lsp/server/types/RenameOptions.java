@@ -41,6 +41,7 @@ public class RenameOptions {
     /**
      * Renames should be checked and tested before being executed.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getPrepareProvider() {
         return jsonData.has("prepareProvider") ? jsonData.getBoolean("prepareProvider") : null;
     }

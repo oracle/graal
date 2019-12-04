@@ -457,6 +457,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether text document synchronization supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -469,6 +470,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports sending will save notifications.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getWillSave() {
             return jsonData.has("willSave") ? jsonData.getBoolean("willSave") : null;
         }
@@ -482,6 +484,7 @@ public class TextDocumentClientCapabilities {
          * The client supports sending a will save request and waits for a response providing text
          * edits which will be applied to the document before it is saved.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getWillSaveWaitUntil() {
             return jsonData.has("willSaveWaitUntil") ? jsonData.getBoolean("willSaveWaitUntil") : null;
         }
@@ -494,6 +497,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports did save notifications.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDidSave() {
             return jsonData.has("didSave") ? jsonData.getBoolean("didSave") : null;
         }
@@ -560,6 +564,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether completion supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -594,6 +599,7 @@ public class TextDocumentClientCapabilities {
          * The client supports to send additional context information for a
          * `textDocument/completion` requestion.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getContextSupport() {
             return jsonData.has("contextSupport") ? jsonData.getBoolean("contextSupport") : null;
         }
@@ -663,6 +669,7 @@ public class TextDocumentClientCapabilities {
              * defines the final tab stop, it defaults to the end of the snippet. Placeholders with
              * equal identifiers are linked, that is typing in one will update others too.
              */
+            @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
             public Boolean getSnippetSupport() {
                 return jsonData.has("snippetSupport") ? jsonData.getBoolean("snippetSupport") : null;
             }
@@ -675,6 +682,7 @@ public class TextDocumentClientCapabilities {
             /**
              * Client supports commit characters on a completion item.
              */
+            @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
             public Boolean getCommitCharactersSupport() {
                 return jsonData.has("commitCharactersSupport") ? jsonData.getBoolean("commitCharactersSupport") : null;
             }
@@ -714,6 +722,7 @@ public class TextDocumentClientCapabilities {
             /**
              * Client supports the deprecated property on a completion item.
              */
+            @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
             public Boolean getDeprecatedSupport() {
                 return jsonData.has("deprecatedSupport") ? jsonData.getBoolean("deprecatedSupport") : null;
             }
@@ -726,6 +735,7 @@ public class TextDocumentClientCapabilities {
             /**
              * Client supports the preselect property on a completion item.
              */
+            @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
             public Boolean getPreselectSupport() {
                 return jsonData.has("preselectSupport") ? jsonData.getBoolean("preselectSupport") : null;
             }
@@ -866,6 +876,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether hover supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -947,6 +958,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether signature help supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1092,6 +1104,7 @@ public class TextDocumentClientCapabilities {
                 /**
                  * The client supports processing label offsets instead of a simple label string.
                  */
+                @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
                 public Boolean getLabelOffsetSupport() {
                     return jsonData.has("labelOffsetSupport") ? jsonData.getBoolean("labelOffsetSupport") : null;
                 }
@@ -1142,6 +1155,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether references supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1190,6 +1204,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether document highlight supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1238,6 +1253,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether document symbol supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1262,6 +1278,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client support hierarchical document symbols.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getHierarchicalDocumentSymbolSupport() {
             return jsonData.has("hierarchicalDocumentSymbolSupport") ? jsonData.getBoolean("hierarchicalDocumentSymbolSupport") : null;
         }
@@ -1389,6 +1406,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether formatting supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1437,6 +1455,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether range formatting supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1485,6 +1504,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether on type formatting supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1535,6 +1555,7 @@ public class TextDocumentClientCapabilities {
          * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
          * value for the corresponding server capability as well.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1547,6 +1568,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports additional metadata in the form of declaration links.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getLinkSupport() {
             return jsonData.has("linkSupport") ? jsonData.getBoolean("linkSupport") : null;
         }
@@ -1601,6 +1623,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether definition supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1613,6 +1636,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports additional metadata in the form of definition links.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getLinkSupport() {
             return jsonData.has("linkSupport") ? jsonData.getBoolean("linkSupport") : null;
         }
@@ -1669,6 +1693,7 @@ public class TextDocumentClientCapabilities {
          * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
          * value for the corresponding server capability as well.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1681,6 +1706,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports additional metadata in the form of definition links.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getLinkSupport() {
             return jsonData.has("linkSupport") ? jsonData.getBoolean("linkSupport") : null;
         }
@@ -1737,6 +1763,7 @@ public class TextDocumentClientCapabilities {
          * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
          * value for the corresponding server capability as well.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1749,6 +1776,7 @@ public class TextDocumentClientCapabilities {
         /**
          * The client supports additional metadata in the form of definition links.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getLinkSupport() {
             return jsonData.has("linkSupport") ? jsonData.getBoolean("linkSupport") : null;
         }
@@ -1803,6 +1831,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether code action supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -1973,6 +2002,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether code lens supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -2021,6 +2051,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether document link supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -2071,6 +2102,7 @@ public class TextDocumentClientCapabilities {
          * supports the new `(ColorProviderOptions & TextDocumentRegistrationOptions &
          * StaticRegistrationOptions)` return value for the corresponding server capability as well.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -2119,6 +2151,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether rename supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -2131,6 +2164,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Client supports testing for validity of rename operations before execution.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getPrepareSupport() {
             return jsonData.has("prepareSupport") ? jsonData.getBoolean("prepareSupport") : null;
         }
@@ -2185,6 +2219,7 @@ public class TextDocumentClientCapabilities {
         /**
          * Whether the clients accepts diagnostics with related information.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getRelatedInformation() {
             return jsonData.has("relatedInformation") ? jsonData.getBoolean("relatedInformation") : null;
         }
@@ -2236,6 +2271,7 @@ public class TextDocumentClientCapabilities {
          * TextDocumentRegistrationOptions & StaticRegistrationOptions)` return value for the
          * corresponding server capability as well.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -2262,6 +2298,7 @@ public class TextDocumentClientCapabilities {
          * If set, the client signals that it only supports folding complete lines. If set, client
          * will ignore specified `startCharacter` and `endCharacter` properties in a FoldingRange.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getLineFoldingOnly() {
             return jsonData.has("lineFoldingOnly") ? jsonData.getBoolean("lineFoldingOnly") : null;
         }

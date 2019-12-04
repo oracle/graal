@@ -41,6 +41,7 @@ public class DocumentLinkOptions {
     /**
      * Document links have a resolve provider as well.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getResolveProvider() {
         return jsonData.has("resolveProvider") ? jsonData.getBoolean("resolveProvider") : null;
     }

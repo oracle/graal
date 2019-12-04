@@ -83,6 +83,7 @@ public class DocumentSymbol {
     /**
      * Indicates if this symbol is deprecated.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDeprecated() {
         return jsonData.has("deprecated") ? jsonData.getBoolean("deprecated") : null;
     }

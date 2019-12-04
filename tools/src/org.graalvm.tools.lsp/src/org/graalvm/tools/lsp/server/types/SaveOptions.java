@@ -41,6 +41,7 @@ public class SaveOptions {
     /**
      * The client is supposed to include the content on save.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getIncludeText() {
         return jsonData.has("includeText") ? jsonData.getBoolean("includeText") : null;
     }

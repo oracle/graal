@@ -69,6 +69,7 @@ public class ServerCapabilities {
     /**
      * The server provides hover support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getHoverProvider() {
         return jsonData.has("hoverProvider") ? jsonData.getBoolean("hoverProvider") : null;
     }
@@ -105,6 +106,7 @@ public class ServerCapabilities {
     /**
      * The server provides goto definition support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDefinitionProvider() {
         return jsonData.has("definitionProvider") ? jsonData.getBoolean("definitionProvider") : null;
     }
@@ -141,6 +143,7 @@ public class ServerCapabilities {
     /**
      * The server provides find references support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getReferencesProvider() {
         return jsonData.has("referencesProvider") ? jsonData.getBoolean("referencesProvider") : null;
     }
@@ -153,6 +156,7 @@ public class ServerCapabilities {
     /**
      * The server provides document highlight support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDocumentHighlightProvider() {
         return jsonData.has("documentHighlightProvider") ? jsonData.getBoolean("documentHighlightProvider") : null;
     }
@@ -165,6 +169,7 @@ public class ServerCapabilities {
     /**
      * The server provides document symbol support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDocumentSymbolProvider() {
         return jsonData.has("documentSymbolProvider") ? jsonData.getBoolean("documentSymbolProvider") : null;
     }
@@ -177,6 +182,7 @@ public class ServerCapabilities {
     /**
      * The server provides workspace symbol support.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWorkspaceSymbolProvider() {
         return jsonData.has("workspaceSymbolProvider") ? jsonData.getBoolean("workspaceSymbolProvider") : null;
     }
@@ -222,6 +228,7 @@ public class ServerCapabilities {
     /**
      * The server provides document formatting.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDocumentFormattingProvider() {
         return jsonData.has("documentFormattingProvider") ? jsonData.getBoolean("documentFormattingProvider") : null;
     }
@@ -234,6 +241,7 @@ public class ServerCapabilities {
     /**
      * The server provides document range formatting.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDocumentRangeFormattingProvider() {
         return jsonData.has("documentRangeFormattingProvider") ? jsonData.getBoolean("documentRangeFormattingProvider") : null;
     }
@@ -679,6 +687,7 @@ public class ServerCapabilities {
             /**
              * The Server has support for workspace folders.
              */
+            @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
             public Boolean getSupported() {
                 return jsonData.has("supported") ? jsonData.getBoolean("supported") : null;
             }

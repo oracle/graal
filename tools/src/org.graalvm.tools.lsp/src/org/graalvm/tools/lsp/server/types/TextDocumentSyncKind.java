@@ -64,7 +64,7 @@ public enum TextDocumentSyncKind {
         }
     }
 
-    public static TextDocumentSyncKind get(int intValue) {
+    public static TextDocumentSyncKind get(Integer intValue) {
         return lookup.get(intValue);
     }
 }

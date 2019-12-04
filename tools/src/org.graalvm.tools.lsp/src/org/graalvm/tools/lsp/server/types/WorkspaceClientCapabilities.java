@@ -46,6 +46,7 @@ public class WorkspaceClientCapabilities {
      * The client supports applying batch edits to the workspace by supporting the request
      * 'workspace/applyEdit'.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getApplyEdit() {
         return jsonData.has("applyEdit") ? jsonData.getBoolean("applyEdit") : null;
     }
@@ -118,6 +119,7 @@ public class WorkspaceClientCapabilities {
     /**
      * The client has support for workspace folders.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWorkspaceFolders() {
         return jsonData.has("workspaceFolders") ? jsonData.getBoolean("workspaceFolders") : null;
     }
@@ -130,6 +132,7 @@ public class WorkspaceClientCapabilities {
     /**
      * The client supports `workspace/configuration` requests.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getConfiguration() {
         return jsonData.has("configuration") ? jsonData.getBoolean("configuration") : null;
     }
@@ -224,6 +227,7 @@ public class WorkspaceClientCapabilities {
         /**
          * The client supports versioned document changes in `WorkspaceEdit`s.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDocumentChanges() {
             return jsonData.has("documentChanges") ? jsonData.getBoolean("documentChanges") : null;
         }
@@ -323,6 +327,7 @@ public class WorkspaceClientCapabilities {
         /**
          * Did change configuration notification supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -371,6 +376,7 @@ public class WorkspaceClientCapabilities {
         /**
          * Did change watched files notification supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -419,6 +425,7 @@ public class WorkspaceClientCapabilities {
         /**
          * Symbol request supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }
@@ -552,6 +559,7 @@ public class WorkspaceClientCapabilities {
         /**
          * Execute command supports dynamic registration.
          */
+        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
         public Boolean getDynamicRegistration() {
             return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
         }

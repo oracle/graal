@@ -76,7 +76,7 @@ public enum CompletionItemKind {
         }
     }
 
-    public static CompletionItemKind get(int intValue) {
+    public static CompletionItemKind get(Integer intValue) {
         return lookup.get(intValue);
     }
 }

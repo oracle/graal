@@ -69,7 +69,7 @@ public enum InsertTextFormat {
         }
     }
 
-    public static InsertTextFormat get(int intValue) {
+    public static InsertTextFormat get(Integer intValue) {
         return lookup.get(intValue);
     }
 }

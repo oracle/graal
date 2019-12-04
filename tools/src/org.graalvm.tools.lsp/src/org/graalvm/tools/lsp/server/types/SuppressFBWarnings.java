@@ -24,46 +24,18 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
- * A document highlight kind.
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
  */
-public enum DocumentHighlightKind {
-
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
     /**
-     * A textual occurrence.
+     * The set of FindBugs
+     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
      */
-    Text(1),
-    /**
-     * Read-access of a symbol, like reading a variable.
-     */
-    Read(2),
-    /**
-     * Write-access of a symbol, like writing to a variable.
-     */
-    Write(3);
-
-    private final int intValue;
-
-    DocumentHighlightKind(int intValue) {
-        this.intValue = intValue;
-    }
-
-    public int getIntValue() {
-        return intValue;
-    }
-
-    private static final Map<Integer, DocumentHighlightKind> lookup = new HashMap<>();
-
-    static {
-        for (DocumentHighlightKind value : DocumentHighlightKind.values()) {
-            lookup.put(value.getIntValue(), value);
-        }
-    }
-
-    public static DocumentHighlightKind get(Integer intValue) {
-        return lookup.get(intValue);
-    }
+    java.lang.String[] value();
 }

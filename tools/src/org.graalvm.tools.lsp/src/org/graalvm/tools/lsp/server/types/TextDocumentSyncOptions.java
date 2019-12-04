@@ -38,6 +38,7 @@ public class TextDocumentSyncOptions {
     /**
      * Open and close notifications are sent to the server.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getOpenClose() {
         return jsonData.has("openClose") ? jsonData.getBoolean("openClose") : null;
     }
@@ -63,6 +64,7 @@ public class TextDocumentSyncOptions {
     /**
      * Will save notifications are sent to the server.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWillSave() {
         return jsonData.has("willSave") ? jsonData.getBoolean("willSave") : null;
     }
@@ -75,6 +77,7 @@ public class TextDocumentSyncOptions {
     /**
      * Will save wait until requests are sent to the server.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWillSaveWaitUntil() {
         return jsonData.has("willSaveWaitUntil") ? jsonData.getBoolean("willSaveWaitUntil") : null;
     }

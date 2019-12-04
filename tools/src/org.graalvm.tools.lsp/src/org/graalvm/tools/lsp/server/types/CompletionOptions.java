@@ -78,6 +78,7 @@ public class CompletionOptions {
     /**
      * The server provides support to resolve additional information for a completion item.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getResolveProvider() {
         return jsonData.has("resolveProvider") ? jsonData.getBoolean("resolveProvider") : null;
     }

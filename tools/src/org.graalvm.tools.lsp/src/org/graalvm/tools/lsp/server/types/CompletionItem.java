@@ -104,6 +104,7 @@ public class CompletionItem {
     /**
      * Indicates if this item is deprecated.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getDeprecated() {
         return jsonData.has("deprecated") ? jsonData.getBoolean("deprecated") : null;
     }
@@ -119,6 +120,7 @@ public class CompletionItem {
      * *Note* that only one completion item can be selected and that the tool / client decides which
      * item that is. The rule is that the *first* item of those that match best is selected.
      */
+    @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getPreselect() {
         return jsonData.has("preselect") ? jsonData.getBoolean("preselect") : null;
     }
