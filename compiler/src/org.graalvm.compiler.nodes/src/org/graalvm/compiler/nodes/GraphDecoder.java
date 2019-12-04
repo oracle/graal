@@ -450,7 +450,7 @@ public class GraphDecoder {
         return loopScope;
     }
 
-    public static final boolean PRINT_DEBUG_STDOUT = true;
+    public static final boolean PRINT_DEBUG_STDOUT = false;
 
     protected final void decode(LoopScope initialLoopScope) {
         LoopScope loopScope = initialLoopScope;
@@ -474,9 +474,6 @@ public class GraphDecoder {
 
                 /* Finished with a loop. */
                 if (loopScope.hasIterationsToProccess()) {
-                    /* Loop explosion: process the loop iteration. */
-                    // assert loopScope.getNextIterationToProcess(false).loopIteration ==
-                    // loopScope.loopIteration + 1;
                     loopScope = loopScope.getNextIterationToProcess(true);
                 } else {
                     propagateCreatedNodes(loopScope);
@@ -516,7 +513,7 @@ public class GraphDecoder {
         }
     }
 
-    public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = true;
+    public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = false;
 
     protected LoopScope processNextNode(MethodScope methodScope, LoopScope loopScope) {
         int nodeOrderId = loopScope.nodesToProcess.nextSetBit(0);
@@ -662,7 +659,7 @@ public class GraphDecoder {
             } else if (methodScope.loopExplosion.useExplosion() && node instanceof LoopEndNode) {
                 int loopEndDuplicationsBefore = loopScope.numberOfNextIterationsFromLoopEndDuplication();
                 node = handleLoopExplosionEnd(methodScope, loopScope, (LoopEndNode) node);
-                Deque<LoopScope> phiScope = loopScope.numberOfNextIterationsFromLoopEndDuplication() > loopEndDuplicationsBefore ?//
+                Deque<LoopScope> phiScope = loopScope.numberOfNextIterationsFromLoopEndDuplication() > loopEndDuplicationsBefore ? //
                                 loopScope.nextIterationFromLoopEndDuplication
                                 : loopScope.nextIterationsFromUnrolling;
                 phiNodeScope = phiScope.getLast();

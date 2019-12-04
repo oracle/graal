@@ -259,12 +259,25 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
-        Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 6, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
         Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
     }
 
     @Test
     public void unrollUntilReturnNestedLoopsContinueOuter06() {
+        FrameDescriptor fd = new FrameDescriptor();
+        final int loopIterations = 2;
+        UnrollingTestNode t = new UnrollingTestNode(loopIterations);
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter06(), new ConstantTestNode(37));
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        StructuredGraph peResult = lastCompiledGraph;
+        Assert.assertEquals(UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER, 30, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.CONTINUE_LOOP_MARKER, 68, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.CONTINUE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
+    }
+
+    @Test
+    public void unrollUntilReturnNestedLoopsContinueOuter07() {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
