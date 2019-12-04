@@ -424,14 +424,13 @@ public class DebuggerController {
                     // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is
                     // completed
                     // See /browse/GR-10371
-                    // Currently, the Truffle Debug API doesn't filter on type, so we end up here
-                    // having to check
-                    // also, the ignore count set on the breakpoint will not work properly due to
-                    // this.
-                    // we need to do a real type check here, since subclasses of the specified
-                    // exception
-                    // should also hit
-                    if (klass == null || getContext().isInstanceOf(guestException, klass)) {
+                    // Currently, the Truffle Debug API doesn't filter on
+                    // type, so we end up here having to check also, the
+                    // ignore count set on the breakpoint will not work
+                    // properly due to this.
+                    // we need to do a real type check here, since subclasses
+                    // of the specified exception should also hit.
+                    if (getContext().isInstanceOf(guestException, klass)) {
                         JDWPLogger.log("Exception type matched the klass type: %s", JDWPLogger.LogLevel.STEPPING, klass.getNameAsString());
                         // check filters if we should not suspend
                         Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
