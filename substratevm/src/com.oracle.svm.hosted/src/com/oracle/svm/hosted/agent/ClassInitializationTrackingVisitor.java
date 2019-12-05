@@ -66,7 +66,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        ldcClassLiteralSupported = (version & 0x0000FFFF) >= Opcodes.V1_7;
+        ldcClassLiteralSupported = (version & 0x0000FFFF) >= Opcodes.V1_5;
     }
 
     @Override
@@ -104,7 +104,11 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
         return ldcClassLiteralSupported;
     }
 
-    private static Set<String> trackedJDKClasses = new HashSet<>(Arrays.asList("java.lang.Thread", "java.util.zip.ZipFile", "java.nio.MappedByteBuffer", "java.io.FileDescriptor"));
+    private static Set<String> trackedJDKClasses = new HashSet<>(Arrays.asList(
+                    "java/lang/Thread",
+                    "java/util/zip/ZipFile",
+                    "java/nio/MappedByteBuffer",
+                    "java/io/FileDescriptor"));
 
     private boolean initInstrumentationSupported(String name) {
         if (!"<init>".equals(name)) {
