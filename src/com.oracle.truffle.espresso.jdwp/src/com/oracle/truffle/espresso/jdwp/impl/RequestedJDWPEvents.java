@@ -86,7 +86,7 @@ public final class RequestedJDWPEvents {
         switch (eventKind) {
             case SINGLE_STEP:
                 StepInfo stepInfo = filter.getStepInfo();
-                Object thread = stepInfo.getThread();
+                Object thread = stepInfo.getGuestThread();
                 switch (stepInfo.getDepth()) {
                     case SteppingConstants.INTO:
                         callback.stepInto(thread, filter);

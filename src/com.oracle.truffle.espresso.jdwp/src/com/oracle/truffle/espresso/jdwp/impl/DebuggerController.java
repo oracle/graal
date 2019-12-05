@@ -174,7 +174,7 @@ public final class DebuggerController {
     }
 
     public void stepOver(RequestFilter filter) {
-        Object thread = filter.getStepInfo().getThread();
+        Object thread = filter.getStepInfo().getGuestThread();
         JDWPLogger.log("STEP_OVER for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
@@ -196,7 +196,7 @@ public final class DebuggerController {
     }
 
     public void stepInto(RequestFilter filter) {
-        Object thread = filter.getStepInfo().getThread();
+        Object thread = filter.getStepInfo().getGuestThread();
         JDWPLogger.log("STEP_INTO for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);
@@ -209,7 +209,7 @@ public final class DebuggerController {
     }
 
     public void stepOut(RequestFilter filter) {
-        Object thread = filter.getStepInfo().getThread();
+        Object thread = filter.getStepInfo().getGuestThread();
         JDWPLogger.log("STEP_OUT for thread: %s", JDWPLogger.LogLevel.STEPPING, getThreadName(thread));
 
         SuspendedInfo susp = suspendedInfos.get(thread);

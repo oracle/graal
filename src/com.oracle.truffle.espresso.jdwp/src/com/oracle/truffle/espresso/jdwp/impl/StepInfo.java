@@ -28,10 +28,10 @@ public final class StepInfo {
     private final int depth;
     private final Object thread;
 
-    public StepInfo(int size, int depth, Object thread) {
+    public StepInfo(int size, int depth, Object guestThread) {
         this.size = size;
         this.depth = depth;
-        this.thread = thread;
+        this.thread = guestThread;
     }
 
     public int getSize() {
@@ -42,7 +42,7 @@ public final class StepInfo {
         return depth;
     }
 
-    public Object getThread() {
+    public Object getGuestThread() {
         return thread;
     }
 }
