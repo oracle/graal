@@ -267,7 +267,7 @@ public final class RequestedJDWPEvents {
                 int depth = input.readInt();
 
                 StepInfo stepInfo = new StepInfo(size, depth, thread);
-                filter.addStepInfo(stepInfo);
+                filter.setStepInfo(stepInfo);
 
                 JDWPLogger.log("Step command: size= %d, depth=%d", JDWPLogger.LogLevel.STEPPING, size, depth);
                 break;

@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class StepInfo {
+public final class StepInfo {
 
     private final int size;
     private final int depth;
-    private Object thread;
+    private final Object thread;
 
     public StepInfo(int size, int depth, Object thread) {
         this.size = size;

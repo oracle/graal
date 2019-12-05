@@ -61,7 +61,7 @@ public final class RequestFilter {
         classExcludePatterns = temp;
     }
 
-    public void addStepInfo(StepInfo info) {
+    public void setStepInfo(StepInfo info) {
         this.stepInfo = info;
     }
 
