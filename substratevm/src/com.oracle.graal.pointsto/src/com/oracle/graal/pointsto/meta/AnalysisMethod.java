@@ -476,7 +476,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public String toString() {
-        return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ">";
+        return "AnalysisMethod<" + format("%H.%n") + " -> " + wrapped.toString() + ">";
     }
 
     @Override
