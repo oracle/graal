@@ -763,6 +763,7 @@ def gen_fallbacks():
         return symbols
 
     def collect_implementations():
+        # Use OrderedDict to ensure the order of the collected function names does not change from one run to the next.
         impls = OrderedDict()
 
         jvm_funcs_path = join(native_project_dir, 'JvmFuncs.c')
