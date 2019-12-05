@@ -62,6 +62,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
@@ -315,6 +316,8 @@ final class JNIFunctions {
         if (clazz == null) {
             throw new NoClassDefFoundError(name);
         }
+        /* Ensure that native code can't access the uninitialized native state, if any. */
+        DynamicHub.fromClass(clazz).ensureInitialized();
         return JNIObjectHandles.createLocal(clazz);
     }
 
