@@ -740,6 +740,8 @@ def gen_fallbacks():
                     else:
                         # Linux objdump objdump --wide --syms
                         # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
+                        # Darwin objdump -t
+                        # 0000000000000000         *UND*  JVM_InitStackTraceElement
                         found_undef = line_tokens[1] = '*UND*'
                     if found_undef:
                         symbol_candiate = line_tokens[-1]
@@ -752,10 +754,14 @@ def gen_fallbacks():
                     mx.logv('Skipping line: ' + line.rstrip())
             return collector
 
-        if not mx.is_windows():
+        if mx.is_windows():
+            symbol_dump_command = 'dumpbin /SYMBOLS'
+        elif mx.is_darwin():
+            symbol_dump_command = 'objdump -t'
+        elif mx.is_linux():
             symbol_dump_command = 'objdump --wide --syms'
         else:
-            symbol_dump_command = 'dumpbin /SYMBOLS'
+            mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
         staticlib_wildcard = mx_subst.path_substitutions.substitute('<staticlib:*>')
         staticlib_wildcard_path = join(mx_compiler.jdk.home, "lib", staticlib_wildcard)
