@@ -333,7 +333,7 @@ suite = {
    "com.oracle.truffle.api.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.profiles"],
+      "dependencies" : ["com.oracle.truffle.api"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "API,Truffle",
