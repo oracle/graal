@@ -583,7 +583,7 @@ public final class ProbeNode extends Node {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(
                                 String.format("Error propagation is not supported in %s.create(%s). "//
-                                                + "Errors caused in create may result in ASTs that never stabilize. "//
+                                                + "Errors propagated in this method may result in an AST that never stabilizes. "//
                                                 + "Propagate the error in one of the execution event node events like onEnter, onInputValue, onReturn or onReturnExceptional to resolve this problem.",
                                                 ExecutionEventNodeFactory.class.getSimpleName(),
                                                 EventContext.class.getSimpleName()));

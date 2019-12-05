@@ -1944,7 +1944,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         } catch (PolyglotException e) {
             assertTrue(e.isInternalError());
             assertEquals("java.lang.IllegalStateException: Error propagation is not supported in ExecutionEventNodeFactory.create(EventContext). " +
-                            "Errors caused in create may result in ASTs that never stabilize. " +
+                            "Errors propagated in this method may result in an AST that never stabilizes. " +
                             "Propagate the error in one of the execution event node events like onEnter, onInputValue, onReturn or onReturnExceptional to resolve this problem.",
                             e.getMessage());
         }
