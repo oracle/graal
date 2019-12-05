@@ -398,11 +398,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    license_files=["LICENSE"],
+    license_files=["LICENSE_WASM.txt"],
     third_party_license_files=[],
     dependencies=["Truffle"],
     truffle_jars=["wasm:WASM"],
-    support_distributions=[],
+    support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
     launcher_configs=[
         mx_sdk_vm.LanguageLauncherConfig(
             destination="bin/<exe:wasm>",
