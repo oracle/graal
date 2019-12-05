@@ -197,6 +197,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             Object result = executableNode.execute(coverageData.getFrame());
             return EvaluationResult.createResult(result);
         } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             coverageEventNode.clearChild();
         }

@@ -26,6 +26,7 @@ package org.graalvm.tools.lsp.server.utils;
 
 import java.util.Objects;
 
+import org.graalvm.tools.lsp.server.types.Position;
 import org.graalvm.tools.lsp.server.types.Range;
 
 import com.oracle.truffle.api.source.Source;
@@ -112,23 +113,29 @@ public final class SourceSectionReference {
 
     @Override
     public String toString() {
-        return String.format("Location[line=%d-%d, column=%d-%d]", startLine, endLine, startColumn, endColumn);
+        return String.format("Location[%d:%d - %d:%d]", startLine, startColumn, endLine, endColumn);
     }
 
     public boolean includes(Range range) {
-        int otherStartLine = range.getStart().getLine() + 1;
-        int otherEndLine = range.getStart().getLine() + 1;
+        Position start = range.getStart();
+        Position end = range.getEnd();
+        int otherStartLine = start.getLine() + 1;
+        int otherEndLine = end.getLine() + 1;
         if (this.startLine < otherStartLine && otherEndLine < this.endLine) {
             // range is fully included and we do not have to check the columns
             return true;
         }
-        // TODO(ds) edge cases this.startLine == startLine etc.
-        return false;
+        int otherStartColumn = start.getCharacter() + 1;
+        int otherEndColumn = end.getCharacter() + 1;
+        return (startLine < otherStartLine || startLine == otherStartLine && startColumn <= otherStartColumn) &&
+                        (otherEndLine < endLine || otherEndLine == endLine && otherEndColumn <= endColumn);
     }
 
     public boolean before(Range range) {
-        int otherStartLine = range.getStart().getLine() + 1;
-        if (this.endLine < otherStartLine) {
+        Position start = range.getStart();
+        int otherStartLine = start.getLine() + 1;
+        int otherStartColumn = start.getCharacter() + 1;
+        if (this.endLine < otherStartLine || this.endLine == otherStartLine && this.endColumn < otherStartColumn) {
             // range is fully behind us in the text
             return true;
         }
@@ -136,8 +143,10 @@ public final class SourceSectionReference {
     }
 
     public boolean behind(Range range) {
-        int otherEndLine = range.getStart().getLine() + 1;
-        if (otherEndLine < this.startLine) {
+        Position end = range.getEnd();
+        int otherEndLine = end.getLine() + 1;
+        int otherEndColumn = end.getCharacter() + 1;
+        if (otherEndLine < this.startLine || otherEndLine == this.startLine && otherEndColumn < this.startColumn) {
             // range is fully before us in the text
             return true;
         }

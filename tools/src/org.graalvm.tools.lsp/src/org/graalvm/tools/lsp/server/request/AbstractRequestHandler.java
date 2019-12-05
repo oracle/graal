@@ -42,13 +42,12 @@ import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NearestSections;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.tools.lsp.server.utils.DeclarationData;
 
 public abstract class AbstractRequestHandler {
 
@@ -102,7 +101,7 @@ public abstract class AbstractRequestHandler {
 
     protected final LinkedList<Scope> getScopesOuterToInner(TextDocumentSurrogate surrogate, InstrumentableNode node) {
         List<CoverageData> coverageData = surrogate.getCoverageData(((Node) node).getSourceSection());
-        VirtualFrame frame = null;
+        MaterializedFrame frame = null;
         if (coverageData != null) {
             CoverageData data = coverageData.stream().findFirst().orElse(null);
             if (data != null) {
@@ -121,7 +120,4 @@ public abstract class AbstractRequestHandler {
         return SourcePredicateBuilder.newBuilder().excludeInternal(env.getOptions()).newestSource(surrogateMap);
     }
 
-    protected final DeclarationData getDeclarationData() {
-        return surrogateMap.getDeclarationData();
-    }
 }

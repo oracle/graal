@@ -29,6 +29,8 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -90,9 +92,14 @@ public final class InteropUtils {
 
     public static String getNodeObjectName(InstrumentableNode node) {
         Object nodeObject = node.getNodeObject();
-        if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, "name")) {
+        if (nodeObject instanceof TruffleObject) {
             try {
-                return INTEROP.readMember(nodeObject, "name").toString();
+                if (INTEROP.isMemberReadable(nodeObject, ReadVariableTag.NAME)) {
+                    return INTEROP.readMember(nodeObject, ReadVariableTag.NAME).toString();
+                }
+                if (INTEROP.isMemberReadable(nodeObject, WriteVariableTag.NAME)) {
+                    return INTEROP.readMember(nodeObject, WriteVariableTag.NAME).toString();
+                }
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {

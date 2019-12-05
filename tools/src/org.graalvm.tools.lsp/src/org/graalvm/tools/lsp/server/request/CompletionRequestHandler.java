@@ -27,7 +27,6 @@ package org.graalvm.tools.lsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +50,6 @@ import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.interop.LSPLibrary;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
-import org.graalvm.tools.lsp.server.utils.DeclarationData.Symbol;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.NearestNode;
@@ -224,88 +222,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return nearestNodeHolder.getNode();
     }
 
-    private void fillCompletionsWithObjectDeclaredProperties(TextDocumentSurrogate surrogate, int line, int column, List<CompletionItem> completions) {
-        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
-        Source source = sourceWrapper.getSource();
-        NearestNode nearestNodeHolder = NearestSectionsFinder.findNodeBeforePos(source, line, column, env);
-        SourceSection nearestSection = nearestNodeHolder.getSourceSection();
-        if (nearestSection == null) {
-            LOG.fine("No object property completion possible. No section found before " + line + ":" + column);
-            return;
-        }
-
-        Symbol symbol = findDeclaredSymbol(surrogate, nearestSection);
-        if (symbol != null) {
-            fillDeclaredSymbols(symbol.getChildren(), completions, SORTING_PRIORITY_LOCALS, 0);
-        }
-    }
-
-    private Symbol findDeclaredSymbol(TextDocumentSurrogate surrogate, SourceSection section) {
-        String text = section.getCharacters().toString().trim();
-        List<String> splitText = splitByTriggerCharacters(text, surrogate.getCompletionTriggerCharacters());
-        Symbol symbol = null;
-        for (String s : splitText) {
-            Collection<Symbol> declaredSymbols = (symbol == null) ? getDeclarationData().getDeclaredSymbols(section) : symbol.getChildren();
-            symbol = null;
-            for (Symbol ds : declaredSymbols) {
-                if (ds.getName().equals(s)) {
-                    symbol = ds;
-                    break;
-                }
-            }
-            if (symbol != null) {
-                String type = symbol.getType();
-                if (type != null) {
-                    // The symbol has a type, we need to find a symbol that represents that type:
-                    symbol = getDeclarationData().findType(type, section);
-                }
-            }
-            if (symbol == null) {
-                break;
-            }
-        }
-        return symbol;
-    }
-
-    private static List<String> splitByTriggerCharacters(String text, List<String> triggerCharacters) {
-        List<String> split = null;
-        int start = 0;
-        String triggerCharacter;
-        do {
-            triggerCharacter = null;
-            int i = text.length();
-            for (String tc : triggerCharacters) {
-                int tci = text.indexOf(tc, start);
-                if (tci > 0) {
-                    i = Math.min(i, tci);
-                    triggerCharacter = tc;
-                }
-            }
-            if (triggerCharacter != null) {
-                if (split == null) {
-                    split = new ArrayList<>();
-                }
-                split.add(text.substring(start, i));
-                start = i + triggerCharacter.length();
-            } else {
-                if (split == null) {
-                    split = Collections.singletonList(text);
-                } else {
-                    split.add(text.substring(start));
-                }
-            }
-        } while (triggerCharacter != null);
-        return split;
-    }
-
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int column, List<CompletionItem> completions) throws DiagnosticsNotification {
-        if (!surrogate.hasCoverageData()) {
-            fillCompletionsWithObjectDeclaredProperties(surrogate, line, column, completions);
-            return;
-        }
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
-        NearestNode nearestNodeHolder = NearestSectionsFinder.findNodeBeforePos(source, line, column, env);
+        NearestNode nearestNodeHolder = NearestSectionsFinder.findExprNodeBeforePos(source, line, column, env);
         Node nearestNode = nearestNodeHolder.getNode();
 
         if (nearestNode != null) {
@@ -364,54 +284,14 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, List<CompletionItem> completions, MaterializedFrame frame) {
-        int scopeCounter = fillCompletionsWithScopesValues(surrogate, completions, env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
-        fillDeclarationCompletion(nearestNode, completions, scopeCounter);
+        fillCompletionsWithScopesValues(surrogate, completions, env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
     }
 
     private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, List<CompletionItem> completions) {
-        int scopeCounter = fillCompletionsWithScopesValues(surrogate, completions, env.findTopScopes(surrogate.getLanguageId()), null, SORTING_PRIORITY_GLOBALS);
-        fillGlobalDeclarationCompletion(completions, scopeCounter);
+        fillCompletionsWithScopesValues(surrogate, completions, env.findTopScopes(surrogate.getLanguageId()), null, SORTING_PRIORITY_GLOBALS);
     }
 
-    private void fillDeclarationCompletion(Node nearestNode, List<CompletionItem> completions, int scopeCounter) {
-        fillDeclaredSymbols(getDeclarationData().getDeclaredSymbols(nearestNode.getSourceSection()), completions, SORTING_PRIORITY_LOCALS, scopeCounter);
-    }
-
-    private void fillGlobalDeclarationCompletion(List<CompletionItem> completions, int scopeCounter) {
-        fillDeclaredSymbols(getDeclarationData().getGlobalDeclaredSymbols(), completions, SORTING_PRIORITY_GLOBALS, scopeCounter);
-    }
-
-    private static void fillDeclaredSymbols(Collection<Symbol> declaredSymbols, List<CompletionItem> completions, int displayPriority, int lastScopeCounter) {
-        String[] existingCompletions = completions.stream().map((item) -> item.getLabel()).toArray(String[]::new);
-        // Filter duplicates
-        Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
-        int scopeCounter = lastScopeCounter;
-        for (Symbol symbol : declaredSymbols) {
-            ++scopeCounter;
-            String name = symbol.getName();
-            if (completionKeys.contains(name)) {
-                continue;
-            } else {
-                completionKeys.add(name);
-            }
-            CompletionItem completion = CompletionItem.create(name);
-            // Inner scopes should be displayed first, so sort by priority and scopeCounter
-            // (the innermost scope has the lowest counter)
-            completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, name));
-            CompletionItemKind completionItemKind = CompletionItemKind.valueOf(symbol.getKind());
-            completion.setKind(completionItemKind/*
-                                                  * != null ? completionItemKind :
-                                                  * completionItemKindDefault
-                                                  */);
-            completion.setDetail(symbol.getType());
-            completion.setDocumentation(symbol.getDescription());
-            completion.setDeprecated(symbol.isDeprecated());
-
-            completions.add(completion);
-        }
-    }
-
-    private int fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, List<CompletionItem> completions, Iterable<Scope> scopes,
+    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, List<CompletionItem> completions, Iterable<Scope> scopes,
                     CompletionItemKind completionItemKindDefault, int displayPriority) {
         LanguageInfo langInfo = surrogate.getLanguageInfo();
         String[] existingCompletions = completions.stream().map((item) -> item.getLabel()).toArray(String[]::new);
@@ -465,7 +345,6 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 completions.add(completion);
             }
         }
-        return scopeCounter;
     }
 
     private static CompletionItemKind findCompletionItemKind(Object object) {

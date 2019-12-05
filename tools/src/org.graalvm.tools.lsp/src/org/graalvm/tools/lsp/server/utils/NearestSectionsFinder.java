@@ -34,6 +34,7 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -54,9 +55,10 @@ public final class NearestSectionsFinder {
     private NearestSectionsFinder() {
     }
 
-    public static NearestNode findNearestNode(Source source, int line, int character, Env env, Class<?>... tag) {
+    public static NearestNode findNearestNode(Source source, int line, int character, Env env) {
         int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-        NearestNode nearestNode = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
+        int oneBasedColumn = SourceUtils.zeroBasedColumnToOneBasedColumn(line, oneBasedLineNumber, character, source);
+        NearestNode nearestNode = findNearestNodeOneBased(oneBasedLineNumber, oneBasedColumn, source, env);
 
         Node node = nearestNode.getNode();
 
@@ -70,17 +72,18 @@ public final class NearestSectionsFinder {
         return nearestNode;
     }
 
-    public static NearestNode findNodeBeforePos(Source source, int line, int column, Env env) {
+    public static NearestNode findExprNodeBeforePos(Source source, int line, int column, Env env) {
         int oneBasedLine = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-        int oneBasedColumn = SourceUtils.zeroBasedColumnToOneBasedColumn(oneBasedLine, column, source);
+        int oneBasedColumn = SourceUtils.zeroBasedColumnToOneBasedColumn(line, oneBasedLine, column, source);
         SectionsBefore sectionsBefore = new SectionsBefore(oneBasedLine, oneBasedColumn);
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).build();
+        Class<?>[] exprTags = new Class<?>[]{StandardTags.ExpressionTag.class, StandardTags.ReadVariableTag.class, StandardTags.StatementTag.class};
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).tagIs(exprTags).build();
         env.getInstrumenter().attachLoadSourceSectionListener(filter, sectionsBefore, true).dispose();
         return sectionsBefore.getNearestNode();
     }
 
-    private static NearestNode findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?>... tag) {
-        NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false, tag);
+    private static NearestNode findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env) {
+        NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
         NearestNode nearestNode;
@@ -149,6 +152,7 @@ public final class NearestSectionsFinder {
         private final int column;
         private SourceSection closestBefore;
         private Node node;
+        private boolean hasExpression;
 
         SectionsBefore(int line, int column) {
             this.line = line;
@@ -159,19 +163,61 @@ public final class NearestSectionsFinder {
         public void onLoad(LoadSourceSectionEvent event) {
             SourceSection sourceSection = event.getSourceSection();
             if (sourceSection.getEndLine() > line || sourceSection.getEndLine() == line && sourceSection.getEndColumn() > column) {
+                // The section ends after line:column
                 return;
             }
             if (closestBefore == null || sourceSection.getEndLine() > closestBefore.getEndLine()) {
                 closestBefore = sourceSection;
                 node = event.getNode();
+                hasExpression = isExpression(event);
             } else if (sourceSection.getEndLine() == closestBefore.getEndLine()) {
                 if (sourceSection.getEndColumn() > closestBefore.getEndColumn() ||
                                 sourceSection.getEndColumn() == closestBefore.getEndColumn() &&
                                                 sourceSection.getCharLength() > closestBefore.getCharLength()) {
-                    closestBefore = sourceSection;
-                    node = event.getNode();
+                    boolean isExpression = isExpression(event);
+                    // Prefer expressions:
+                    if (!hasExpression || isExpression) {
+                        closestBefore = sourceSection;
+                        node = event.getNode();
+                        hasExpression = isExpression;
+                    }
                 }
             }
+
+            if (closestBefore == null) {
+                closestBefore = sourceSection;
+                node = event.getNode();
+                hasExpression = isExpression(event);
+            } else {
+                boolean sameLine = sourceSection.getEndLine() == closestBefore.getEndLine();
+                boolean sameColumn = sourceSection.getEndColumn() == closestBefore.getEndColumn();
+                if (sourceSection.getEndLine() > closestBefore.getEndLine() ||
+                                sameLine && sourceSection.getEndColumn() >= closestBefore.getEndColumn()) {
+                    boolean isExpression = isExpression(event);
+                    // Prefer expressions:
+                    if (!hasExpression || isExpression) {
+                        if (!sameLine || !sameColumn ||
+                                        // Ends at the same position, prefer the longest expression,
+                                        // if we don't have expressions, prefer not statements
+                                        hasExpression && sourceSection.getCharLength() > closestBefore.getCharLength() ||
+                                        !hasExpression && !isStatement(event)) {
+                            closestBefore = sourceSection;
+                            node = event.getNode();
+                            hasExpression = isExpression;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static boolean isExpression(LoadSourceSectionEvent event) {
+            InstrumentableNode inode = (InstrumentableNode) event.getNode();
+            return inode.hasTag(StandardTags.ExpressionTag.class);
+        }
+
+        private static boolean isStatement(LoadSourceSectionEvent event) {
+            InstrumentableNode inode = (InstrumentableNode) event.getNode();
+            return inode.hasTag(StandardTags.StatementTag.class);
         }
 
         NearestNode getNearestNode() {

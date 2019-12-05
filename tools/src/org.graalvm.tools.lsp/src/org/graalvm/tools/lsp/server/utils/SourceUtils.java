@@ -87,7 +87,10 @@ public final class SourceUtils {
         return line + 1;
     }
 
-    public static int zeroBasedColumnToOneBasedColumn(int oneBasedLine, int zeroBasedColumn, Source source) {
+    public static int zeroBasedColumnToOneBasedColumn(int zeroBasedLine, int oneBasedLine, int zeroBasedColumn, Source source) {
+        if (zeroBasedLine >= oneBasedLine) { // line overflow
+            return source.getLineLength(oneBasedLine) + 1;
+        }
         int lc = source.getLineLength(oneBasedLine);
         if (lc <= zeroBasedColumn && zeroBasedColumn > 0) {
             LOG.log(Level.WARNING, "Column is out of range: {0}", zeroBasedColumn);

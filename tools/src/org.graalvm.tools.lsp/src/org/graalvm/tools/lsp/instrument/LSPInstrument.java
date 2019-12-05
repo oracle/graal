@@ -45,7 +45,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
-import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
 import org.graalvm.tools.lsp.instrument.LSOptions.HostAndPort;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.LSPFileSystem;

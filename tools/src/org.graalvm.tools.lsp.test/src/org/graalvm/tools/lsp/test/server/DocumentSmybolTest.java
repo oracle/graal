@@ -24,7 +24,6 @@
  */
 package org.graalvm.tools.lsp.test.server;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
@@ -47,7 +46,7 @@ public class DocumentSmybolTest extends TruffleLSPTest {
         Future<List<? extends SymbolInformation>> futureSymbol = truffleAdapter.documentSymbol(uri);
         List<? extends SymbolInformation> symbols = futureSymbol.get();
 
-        assertEquals(2, symbols.size());
+        assertTrue(Integer.toString(symbols.size()), symbols.size() >= 2);
 
         Optional<? extends SymbolInformation> symbolOptMain = symbols.stream().filter(symbol -> symbol.getName().equals("main")).findFirst();
         assertTrue(symbolOptMain.isPresent());
