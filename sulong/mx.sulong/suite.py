@@ -423,8 +423,8 @@ suite = {
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/libsulong.bc",
-        "bin/libsulong++.bc",
+        "bin/<lib:sulong>",
+        "bin/<lib:sulong++>",
       ],
       "headers" : [
         "include/polyglot.h",
@@ -438,6 +438,8 @@ suite = {
         "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
         "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
         "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
+        "LIBSULONG" : "<lib:sulong>",
+        "LIBSULONGXX" : "<lib:sulong++>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -972,8 +974,8 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
           {

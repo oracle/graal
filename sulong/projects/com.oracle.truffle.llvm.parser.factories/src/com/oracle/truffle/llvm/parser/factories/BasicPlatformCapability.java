@@ -52,8 +52,8 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
-    public static final String LIBSULONG_FILENAME = "libsulong.bc";
-    public static final String LIBSULONGXX_FILENAME = "libsulong++.bc";
+    public static final String LIBSULONG_FILENAME = "libsulong." + NFIContextExtension.getNativeLibrarySuffix();
+    public static final String LIBSULONGXX_FILENAME = "libsulong++." + NFIContextExtension.getNativeLibrarySuffix();
 
     private final boolean loadCxxLibraries;
 
