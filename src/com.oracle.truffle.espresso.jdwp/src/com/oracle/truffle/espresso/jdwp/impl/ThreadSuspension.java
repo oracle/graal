@@ -23,15 +23,17 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 public final class ThreadSuspension {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] threads = new Object[0];
+    private Object[] threads = new Object[0];
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] suspensionCount = new int[0];
+    private int[] suspensionCount = new int[0];
 
     private final Set<Object> hardSuspendedThreads = new HashSet<>();
 
@@ -43,13 +45,16 @@ public final class ThreadSuspension {
                 return;
             }
         }
+        expandCapacity(thread);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void expandCapacity(Object thread) {
         // not yet registered, so add to array
-        Object[] expanded = new Object[threads.length + 1];
-        System.arraycopy(threads, 0, expanded, 0, threads.length);
+        Object[] expanded = Arrays.copyOf(threads, threads.length + 1);
         expanded[threads.length] = thread;
 
-        int[] temp = new int[threads.length + 1];
-        System.arraycopy(suspensionCount, 0, temp, 0, threads.length);
+        int[] temp = Arrays.copyOf(suspensionCount, threads.length + 1);
         // set the thread as suspended with suspension count 1
         temp[threads.length] = 1;
 
