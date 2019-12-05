@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -59,8 +60,8 @@ final class AgentExecutionNode extends ExecutionEventNode {
         if (enter != null) {
             try {
                 enterDispatch.execute(enter, ctx, new VariablesObject(env, this, frame));
-            } catch (InteropException ex) {
-                throw AgentException.raise(ex);
+            } catch (InteropException | RuntimeException ex) {
+                throw ctx.rethrow(ex);
             }
         }
     }
@@ -70,8 +71,8 @@ final class AgentExecutionNode extends ExecutionEventNode {
         if (exit != null) {
             try {
                 exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
-            } catch (InteropException ex) {
-                throw AgentException.raise(ex);
+            } catch (InteropException | RuntimeException ex) {
+                throw ctx.rethrow(ex);
             }
         }
     }
@@ -80,9 +81,9 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         if (exit != null) {
             try {
-                enterDispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
-            } catch (InteropException ex) {
-                throw AgentException.raise(ex);
+                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
+            } catch (InteropException | RuntimeException ex) {
+                throw ctx.rethrow(ex);
             }
         }
     }
