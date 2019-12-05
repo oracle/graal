@@ -68,9 +68,9 @@ NATIVE_BENCH_DIR = "native"
 
 
 class GraalWasmDefaultTags:
-    buildall = 'buildall'
-    wasmtest = 'wasmtest'
-    wasmextratest = 'wasmextratest'
+    buildall = "buildall"
+    wasmtest = "wasmtest"
+    wasmextratest = "wasmextratest"
 
 
 def _graal_wasm_gate_runner(args, tasks):
@@ -398,7 +398,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    license_files=[],
+    license_files=["LICENSE"],
     third_party_license_files=[],
     dependencies=["Truffle"],
     truffle_jars=["wasm:WASM"],
