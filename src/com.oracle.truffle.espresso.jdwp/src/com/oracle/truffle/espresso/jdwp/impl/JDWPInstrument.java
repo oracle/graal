@@ -92,7 +92,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
             try {
                 doConnect();
             } catch (IOException e) {
-                throw new RuntimeException("Failed to prepare for a new JDWP connection", e);
+                JDWPLogger.log("Critical failure in establishing jdwp connection: %s", JDWPLogger.LogLevel.ALL, e.getLocalizedMessage());
             }
         }
     }
@@ -121,7 +121,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
                 handshakeThread.start();
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed JDWP transsport setup", e);
+            JDWPLogger.log("Critical failure in establishing jdwp connection: %s", JDWPLogger.LogLevel.ALL, e.getLocalizedMessage());
         }
     }
 
@@ -137,7 +137,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         try {
             doConnect();
         } catch (IOException e) {
-            throw new RuntimeException("JDWP connection setup failed", e);
+            JDWPLogger.log("Critical failure in establishing jdwp connection: %s", JDWPLogger.LogLevel.ALL, e.getLocalizedMessage());
         }
     }
 
