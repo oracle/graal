@@ -40,8 +40,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
@@ -168,8 +168,8 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                  *
                  * Any other access results in materialization.
                  */
-                int nextIndex = virtual.entryIndexForOffset(getMetaAccess(), offset + accessKind.getByteCount() - 1, JavaKind.Byte);
-                if (nextIndex != -1 && !oldIsIllegal && canStoreOverOldValue((VirtualArrayNode) virtual, oldValue, accessKind, index)) {
+                int accessLastIndex = virtual.entryIndexForOffset(getMetaAccess(), offset + accessKind.getByteCount() - 1, JavaKind.Byte);
+                if (accessLastIndex != -1 && !oldIsIllegal && canStoreOverOldValue((VirtualArrayNode) virtual, oldValue, accessKind, index)) {
                     canVirtualize = true;
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for %s word stored in byte array", current, accessKind);
                 }

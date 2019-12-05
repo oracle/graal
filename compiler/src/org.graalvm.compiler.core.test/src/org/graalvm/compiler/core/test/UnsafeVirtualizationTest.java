@@ -290,6 +290,16 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
+    public static long unsafeSnippet18(int i1, boolean c) {
+        byte[] t = new byte[8];
+        UNSAFE.putInt(t, getUnsafeByteArrayOffset(3), i1);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
+    }
+
     @Test
     public void testUnsafePEA01() {
         performTest("unsafeSnippet1", 1.0);
@@ -377,6 +387,11 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     @Test
     public void testUnsafePEA17() {
         performTest("unsafeSnippet17", 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA18() {
+        performTest("unsafeSnippet18", 0x01020304);
     }
 
     private void performTest(String snippet, int arg) {
