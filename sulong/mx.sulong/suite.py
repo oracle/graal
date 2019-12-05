@@ -425,7 +425,6 @@ suite = {
       "results" : [
         "bin/libsulong.bc",
         "bin/libsulong++.bc",
-        "bin/libsulong-src.tar.gz",
       ],
       "headers" : [
         "include/polyglot.h",
@@ -992,20 +991,6 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
-      ],
-      "license" : "BSD-new",
-    },
-
-    "SULONG_LIB_SRC" : {
-      "native" : True,
-      "overlaps" : [
-        "SULONG_HOME"
-      ],
-      "layout" : {
-        "./" : "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong-src.tar.gz",
-      },
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
       ],
       "license" : "BSD-new",
     },

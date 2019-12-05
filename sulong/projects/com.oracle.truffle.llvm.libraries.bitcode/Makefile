@@ -30,7 +30,7 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz bin/$(LIB_POLYGLOT)
+default: bin/libsulong.bc bin/libsulong++.bc bin/$(LIB_POLYGLOT)
 
 CLANG?=clang
 CLANGXX?=clang++
@@ -74,9 +74,6 @@ bin/%.noopt.bc: src/%.c deps/%.d
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
-
-bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h
-	$(QUIETLY) tar -czf $@ -C ${VPATH} .
 
 deps/%.d: ;
 .PRECIOUS: deps/%.d
