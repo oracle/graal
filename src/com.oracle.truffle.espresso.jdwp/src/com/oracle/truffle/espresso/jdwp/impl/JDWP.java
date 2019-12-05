@@ -40,6 +40,7 @@ import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
 final class JDWP {
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
+    public static final Object INVALID_VALUE = new Object();
 
     private JDWP() {
     }
@@ -1851,6 +1852,12 @@ final class JDWP {
                 }
 
                 Object thisValue = frame.getThisValue();
+
+                if (thisValue == INVALID_VALUE) {
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
+
                 Object[] variables = frame.getVariables();
                 int offset = thisValue != null ? 1 : 0;
 
@@ -1859,6 +1866,11 @@ final class JDWP {
                     for (int i = 0; i < slots; i++) {
                         int slot = input.readInt();
                         Object value = variables[slot - offset];
+
+                        if (value == INVALID_VALUE) {
+                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                            return new CommandResult(reply);
+                        }
 
                         byte sigbyte = input.readByte();
                         byte realTag = context.getTag(value);
@@ -1901,6 +1913,12 @@ final class JDWP {
                 }
 
                 Object thisValue = frame.getThisValue();
+
+                if (thisValue == INVALID_VALUE) {
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
+
                 Object[] variables = frame.getVariables();
                 int offset = thisValue != null ? 1 : 0;
 
@@ -1933,6 +1951,12 @@ final class JDWP {
                 }
 
                 Object thisValue = frame.getThisValue();
+
+                if (thisValue == INVALID_VALUE) {
+                    reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                    return new CommandResult(reply);
+                }
+
                 reply.writeByte(TagConstants.OBJECT);
 
                 if (thisValue != null) {
