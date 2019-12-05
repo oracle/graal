@@ -97,7 +97,7 @@ bench-renaissance-hwloc-forks-c2-batch1 : ${bench-renaissance-hwloc} ${weeklys-b
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch0.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch1.json"
   }
 }
 
@@ -106,7 +106,7 @@ bench-renaissance-hwloc-forks-c2-batch2 : ${bench-renaissance-hwloc} ${weeklys-b
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch0.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch2.json"
   }
 }
 
@@ -115,7 +115,7 @@ bench-renaissance-hwloc-forks-c2-batch3 : ${bench-renaissance-hwloc} ${weeklys-b
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch0.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks_batch3.json"
   }
 }
 
