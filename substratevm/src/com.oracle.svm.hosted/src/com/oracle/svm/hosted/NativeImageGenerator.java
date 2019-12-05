@@ -51,7 +51,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -156,6 +155,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -174,23 +174,21 @@ import com.oracle.svm.core.graal.phases.MethodSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionCallsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
-import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.MonitorSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
@@ -393,12 +391,15 @@ public class NativeImageGenerator {
                 features.add(AMD64.CPUFeature.SSE);
                 features.add(AMD64.CPUFeature.SSE2);
 
-                features.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue()));
+                features.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue(), AMD64.CPUFeature.values()));
 
-                architecture = new AMD64(features, SubstrateTargetDescription.allFlags());
+                architecture = new AMD64(features, SubstrateTargetDescription.allAMD64Flags());
             }
-            assert architecture instanceof AMD64 : "SVM supports only AMD64 architectures.";
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
+            assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
+                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, false);
+            }
+            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
@@ -407,10 +408,17 @@ public class NativeImageGenerator {
                 architecture = GraalAccess.getOriginalTarget().arch;
             } else {
                 EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
-                features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue()));
+                features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue(), AArch64.CPUFeature.values()));
                 architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
             }
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
+            assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
+                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, true);
+            }
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == false) {
+                throw UserError.abort("Code cache has to be writeable on AARCH64");
+            }
+            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
@@ -563,7 +571,8 @@ public class NativeImageGenerator {
                     throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
                 }
 
-                heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess);
+                ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
+                heap = new NativeImageHeap(aUniverse, hUniverse, hMetaAccess, heapLayouter);
 
                 BeforeCompilationAccessImpl config = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug, runtime);
                 featureHandler.forEachFeature(feature -> feature.beforeCompilation(config));
@@ -617,11 +626,15 @@ public class NativeImageGenerator {
                         // Finish building the model of the native image heap.
                         heap.addTrailingObjects();
 
+                        ImageHeapLayouter heapLayouter = ImageSingletons.lookup(ImageHeapLayouter.class);
+                        heapLayouter.initialize();
+                        heapLayouter.assignPartitionRelativeOffsets(heap);
+
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
-                        image.build(debug);
+                        image.build(debug, heapLayouter);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
                              * This debug output must be printed _after_ and not _during_ image
@@ -938,19 +951,6 @@ public class NativeImageGenerator {
             bigbang.addSystemClass(CFunctionPointer[].class, false, false).registerAsInHeap();
             bigbang.addSystemClass(PointerBase[].class, false, false).registerAsInHeap();
 
-            /*
-             * Fields of BootImageInfo that get patched via relocation to addresses to the
-             * partitions of the native image heap.
-             */
-            bigbang.addSystemStaticField(NativeImageInfo.class, "firstReadOnlyPrimitiveObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "lastReadOnlyPrimitiveObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "firstReadOnlyReferenceObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "lastReadOnlyReferenceObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "firstWritablePrimitiveObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "lastWritablePrimitiveObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "firstWritableReferenceObject").registerAsInHeap();
-            bigbang.addSystemStaticField(NativeImageInfo.class, "lastWritableReferenceObject").registerAsInHeap();
-
             try {
                 bigbang.addRootMethod(ArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
                 bigbang.addRootMethod(Object.class.getDeclaredMethod("getClass"));
@@ -1145,7 +1145,9 @@ public class NativeImageGenerator {
         }
 
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
-        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks);
+        final boolean arrayEqualsSubstitution = !SubstrateOptions.CompilerBackend.getValue().equals("llvm");
+        registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements, !hosted, explicitUnsafeNullChecks,
+                        arrayEqualsSubstitution);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
@@ -1191,15 +1193,8 @@ public class NativeImageGenerator {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
-            Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
-            if (hosted) {
-                mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
-            }
-
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
-            ArithmeticSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             MonitorSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
             ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
@@ -1685,13 +1680,13 @@ public class NativeImageGenerator {
         }
     }
 
-    private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String[] csvEnumValues) {
+    private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String[] csvEnumValues, T[] availValues) {
         EnumSet<T> result = EnumSet.noneOf(enumType);
         for (String enumValue : OptionUtils.flatten(",", csvEnumValues)) {
             try {
                 result.add(Enum.valueOf(enumType, enumValue));
             } catch (IllegalArgumentException iae) {
-                throw VMError.shouldNotReachHere("Value '" + enumValue + "' does not exist. Available values are:\n" + Arrays.toString(AMD64.CPUFeature.values()));
+                throw VMError.shouldNotReachHere("Value '" + enumValue + "' does not exist. Available values are:\n" + Arrays.toString(availValues));
             }
         }
         return result;

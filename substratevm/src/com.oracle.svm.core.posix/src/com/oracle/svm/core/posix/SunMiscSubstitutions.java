@@ -36,22 +36,21 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Time;
@@ -69,7 +68,6 @@ class Package_jdk_internal_misc implements Function<TargetClass, String> {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
 final class Target_jdk_internal_misc_Signal {
 
@@ -108,7 +106,6 @@ final class Target_jdk_internal_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -169,7 +166,7 @@ final class Util_jdk_internal_misc_Signal {
                     /* Open the C signal handling mechanism. */
                     final int openResult = CSunMiscSignal.open();
                     if (openResult != 0) {
-                        final int openErrno = Errno.errno();
+                        final int openErrno = CErrorNumber.getCErrorNumber();
                         /* Check for the C signal handling mechanism already being open. */
                         if (openErrno == Errno.EBUSY()) {
                             throw new IllegalArgumentException("C signal handling mechanism is in use.");
@@ -389,35 +386,6 @@ final class Util_jdk_internal_misc_Signal {
     }
 }
 
-/** Translated from: jdk/src/share/native/sun/misc/NativeSignalHandler.c?v=Java_1.8.0_40_b10. */
-@TargetClass(className = "sun.misc.NativeSignalHandler", onlyWith = JDK8OrEarlier.class)
-@Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
-final class Target_sun_misc_NativeSignalHandler {
-
-    /**
-     * This method gets called from the runnable created in the dispatch(int) method of
-     * {@link sun.misc.Signal}. It is running in a Java thread, but the handler is a C function. So
-     * I transition to native before making the call, and transition back to Java after the call.
-     *
-     * This looks really dangerous: Taking a long parameter and calling through it. If the only way
-     * to get a NativeSignalHandler is from previously-registered native signal handler (see
-     * {@link sun.misc.Signal#handle(sun.misc.Signal, sun.misc.SignalHandler)} then maybe this is
-     * not quite as dangerous as it first seems.
-     */
-    // 033 typedef void (*sig_handler_t)(jint, void *, void *);
-    // 034
-    // 035 JNIEXPORT void JNICALL
-    // 036 Java_sun_misc_NativeSignalHandler_handle0(JNIEnv *env, jclass cls, jint sig, jlong f) {
-    @Substitute
-    static void handle0(int sig, long f) {
-        // 038 /* We've lost the siginfo and context */
-        // 039 (*(sig_handler_t)jlong_to_ptr(f))(sig, NULL, NULL);
-        final Signal.AdvancedSignalDispatcher handler = WordFactory.pointer(f);
-        handler.dispatch(sig, WordFactory.nullPointer(), WordFactory.nullPointer());
-    }
-}
-
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class IgnoreSIGPIPEFeature implements Feature {
 
@@ -445,7 +413,6 @@ class IgnoreSIGPIPEFeature implements Feature {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_misc_VM {
 

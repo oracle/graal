@@ -41,14 +41,17 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
     public final Supplier<byte[]> bytesSupplier;
     public final IntSupplier sizeSupplier;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, Supplier<byte[]> bytesSupplier) {
         this(symbolName, bytesSupplier, null); // pre-existing data
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName, IntSupplier sizeSupplier) {
         this(symbolName, null, sizeSupplier); // zero-initialized data
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     CGlobalDataImpl(String symbolName) {
         this(symbolName, null, null); // reference to symbol
     }

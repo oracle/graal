@@ -11,7 +11,10 @@ include "truffle/ci.hocon"
 
 #Compiler
 compiler-suite-root = "./compiler"
-logPatterns = ["*.bgv"]
+logPatterns = [
+    "*.bgv"
+    ${compiler-suite-root}"/graal_dumps/*/*"
+]
 
 #Tools
 include "tools/ci.hocon"

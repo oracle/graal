@@ -24,21 +24,19 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
-/** Declarations of method from <sys/syslimits.h>. */
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
+// Checkstyle: stop
+
+/**
+ * Definitions manually translated from the C header file sys/syslimits.h.
+ */
 @CContext(PosixDirectives.class)
 public class DarwinSyslimits {
-    // { Allow names with underscores: Checkstyle: stop
 
     @CConstant
     public static native int OPEN_MAX();
-
-    // } Allow names with underscores: Checkstyle: resume
 }

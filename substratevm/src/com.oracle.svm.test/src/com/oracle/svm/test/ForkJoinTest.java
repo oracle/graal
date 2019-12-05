@@ -45,11 +45,19 @@ public class ForkJoinTest {
         try {
             Object result = task.get();
             Assert.fail("should have thrown an exception");
-        } catch (ExecutionException e) {
-            RuntimeException rte = (RuntimeException) e.getCause();
-            FileNotFoundException fnfe = (FileNotFoundException) rte.getCause();
-            Assert.assertNotNull(fnfe);
-            Assert.assertEquals("no substitution required", fnfe.getMessage());
+        } catch (final ExecutionException e) {
+            // find FileNotFoundException within the exception hierarchy
+            FileNotFoundException expected = null;
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause instanceof FileNotFoundException) {
+                    expected = (FileNotFoundException) cause;
+                    break;
+                }
+                cause = cause.getCause();
+            }
+            Assert.assertNotNull("FileNotFoundException wasn't thrown", expected);
+            Assert.assertEquals("Unexpected message in thrown exception", "no substitution required", expected.getMessage());
         } catch (Throwable t) {
             Assert.fail("expected a FileNotFoundException but got " + t);
         }

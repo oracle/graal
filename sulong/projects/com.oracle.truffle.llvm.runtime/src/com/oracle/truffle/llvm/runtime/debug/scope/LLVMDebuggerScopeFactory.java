@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
@@ -57,8 +58,10 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMDebuggerScopeFactory {
 
@@ -84,13 +87,16 @@ public final class LLVMDebuggerScopeFactory {
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            final String identifier = String.valueOf(slot.getIdentifier());
-            Object slotValue = frame.getValue(slot);
-            if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
-                slotValue = "<unavailable>";
+            if (slot.getInfo() instanceof SSAValue) {
+                SSAValue stackValue = (SSAValue) slot.getInfo();
+                String identifier = stackValue.getName();
+                Object slotValue = frame.getValue(slot);
+                if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
+                    slotValue = "<unavailable>";
+                }
+                TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(stackValue.getType(), slotValue, dataLayout);
+                entries.add(convertIdentifier(identifier, context), value);
             }
-            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(slot.getInfo(), slotValue, dataLayout);
-            entries.add(convertIdentifier(identifier, context), value);
         }
 
         return entries;
@@ -102,7 +108,10 @@ public final class LLVMDebuggerScopeFactory {
         for (LLVMSymbol symbol : scope.values()) {
             if (symbol.isGlobalVariable()) {
                 final LLVMGlobal global = symbol.asGlobalVariable();
-                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getGlobalStorage().get(global), dataLayout);
+                int id = global.getID();
+                int index = global.getIndex();
+                AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+                final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), globals[index].get(), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -113,7 +122,10 @@ public final class LLVMDebuggerScopeFactory {
     private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMSourceLocation.TextModule irScope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
-            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getGlobalStorage().get(global), dataLayout);
+            int id = global.getID();
+            int index = global.getIndex();
+            AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(id);
+            final TruffleObject value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), globals[index].get(), dataLayout);
             entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
         }
         return entries;
@@ -131,7 +143,7 @@ public final class LLVMDebuggerScopeFactory {
 
     @TruffleBoundary
     public static Iterable<Scope> createIRLevelScope(Node node, Frame frame, LLVMContext context) {
-        DataLayout dataLayout = ((LLVMNode) node).getDataLayout();
+        DataLayout dataLayout = LLVMNode.findDataLayout(node);
         final Scope localScope = Scope.newBuilder("function", getIRLevelEntries(frame, context, dataLayout)).node(node).build();
         final Scope globalScope = Scope.newBuilder("module", getIRLevelEntries(node, context, dataLayout)).build();
         return Arrays.asList(localScope, globalScope);

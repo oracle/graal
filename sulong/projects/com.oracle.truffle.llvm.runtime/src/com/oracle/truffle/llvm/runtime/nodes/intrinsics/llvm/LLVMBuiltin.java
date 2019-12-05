@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
@@ -59,9 +57,5 @@ public abstract class LLVMBuiltin extends LLVMExpressionNode {
 
     protected static LLVMStoreNode createStoreI64() {
         return LLVMI64StoreNodeGen.create(null, null);
-    }
-
-    protected LLVMIncrementPointerNode getIncrementPointerNode() {
-        return LLVMIncrementPointerNodeGen.create();
     }
 }

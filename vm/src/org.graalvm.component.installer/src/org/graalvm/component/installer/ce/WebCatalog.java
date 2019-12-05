@@ -133,7 +133,10 @@ public class WebCatalog implements SoftwareChannel {
         } catch (NoRouteToHostException | ConnectException ex) {
             throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalogProxy", ex, catalogURL, ex.getLocalizedMessage());
         } catch (FileNotFoundException ex) {
-            throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalogNotFound", ex, catalogURL);
+            // treat missing resources as non-fatal errors, print warning
+            feedback.error("REMOTE_WarningErrorDownloadCatalogNotFoundSkip", ex, catalogURL);
+            this.storage = newStorage;
+            return storage;
         } catch (IOException ex) {
             throw savedException = feedback.failure("REMOTE_ErrorDownloadCatalog", ex, catalogURL, ex.getLocalizedMessage());
         }
@@ -172,6 +175,11 @@ public class WebCatalog implements SoftwareChannel {
                 if (s.startsWith("Component.")) {
                     componentFound = true;
                 }
+            }
+            if (!(graalPrefixFound || componentFound)) {
+                // no graal prefix, no components
+                feedback.error("REMOTE_CatalogDoesNotContainComponents", null, catalogURL);
+                return newStorage;
             }
             if (!(graalPrefixFound && componentFound)) {
                 throw feedback.failure("REMOTE_CorruptedCatalogFile", null, catalogURL);

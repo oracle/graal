@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.parser.model.functions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
@@ -46,8 +44,6 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -122,36 +118,6 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
         final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
         parameters.add(parameter);
         return parameter;
-    }
-
-    public void exitLocalScope() {
-        int symbolIndex = 0;
-
-        // in K&R style function declarations the parameters are not assigned names
-        for (final FunctionParameter parameter : parameters) {
-            if (LLVMIdentifier.UNKNOWN.equals(parameter.getName())) {
-                parameter.setName(String.valueOf(symbolIndex++));
-            }
-        }
-
-        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.isUnknown(blockName)).collect(Collectors.toSet());
-        for (final InstructionBlock block : blocks) {
-            if (LLVMIdentifier.isUnknown(block.getName())) {
-                do {
-                    block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
-                    // avoid name clashes
-                } while (explicitBlockNames.contains(block.getName()));
-            }
-            for (int i = 0; i < block.getInstructionCount(); i++) {
-                final Instruction instruction = block.getInstruction(i);
-                if (instruction instanceof ValueInstruction) {
-                    final ValueInstruction value = (ValueInstruction) instruction;
-                    if (LLVMIdentifier.isUnknown(value.getName())) {
-                        value.setName(String.valueOf(symbolIndex++));
-                    }
-                }
-            }
-        }
     }
 
     public InstructionBlock generateBlock() {

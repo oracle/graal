@@ -139,7 +139,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
          */
         long start = address;
         // The call below is not a safepoint as it is intrinsified in TruffleGraphBuilderPlugins.
-        if (!inInlinedCode() && start != 0) {
+        if (start != 0) {
             CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             return KnownIntrinsics.convertUnknownValue(target.invoke(this, args), Object.class);
         } else {

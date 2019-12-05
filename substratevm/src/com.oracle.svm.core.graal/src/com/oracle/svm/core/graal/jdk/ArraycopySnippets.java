@@ -105,7 +105,7 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
 
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > KnownIntrinsics.readArrayLength(fromArray) - length || toIndex > KnownIntrinsics.readArrayLength(toArray) - length) {
-            throw new IndexOutOfBoundsException();
+            throw new ArrayIndexOutOfBoundsException();
         }
     }
 

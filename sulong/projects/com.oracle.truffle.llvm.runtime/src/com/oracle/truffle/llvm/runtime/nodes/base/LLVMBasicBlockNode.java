@@ -29,20 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.base;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 /**
@@ -57,8 +57,8 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
 
-    public static LLVMBasicBlockNode createBasicBlockNode(LLVMContext context, LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
-        if (context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
+    public static LLVMBasicBlockNode createBasicBlockNode(OptionValues options, LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
+        if (options.get(SulongEngineOption.LAZY_PARSING)) {
             return new LazyBlock(statements, termInstruction, blockId, blockName);
         } else {
             return new InitializedBlock(statements, termInstruction, blockId, blockName);
@@ -67,6 +67,9 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
     private final int blockId;
     private final String blockName;
+
+    @CompilationFinal(dimensions = 1) public FrameSlot[] nullableBefore;
+    @CompilationFinal(dimensions = 1) public FrameSlot[] nullableAfter;
 
     public LLVMBasicBlockNode(int blockId, String blockName) {
         this.blockId = blockId;
@@ -81,6 +84,11 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {
         return new LLVMBasicBlockNodeWrapper(this, this, probeNode);
+    }
+
+    public void setNullableFrameSlots(FrameSlot[] nullableBefore, FrameSlot[] nullableAfter) {
+        this.nullableBefore = nullableBefore;
+        this.nullableAfter = nullableAfter;
     }
 
     public abstract LLVMBasicBlockNode initialize();
@@ -98,17 +106,6 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         return blockName;
     }
 
-    @Override
-    public String getSourceDescription() {
-        LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
-        assert functionStartNode != null : getParent().getClass();
-        return String.format("Function: %s - Block: %s", functionStartNode.getBcName(), blockName());
-    }
-
-    private String blockName() {
-        return String.format("id: %d name: %s", blockId, blockName == null ? "N/A" : blockName);
-    }
-
     /**
      * Gets the branch probability of the given successor.
      *
@@ -121,8 +118,7 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
     @Override
     public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        return String.format("basic block %s", getBlockId());
+        return getShortString("blockId", "nullableBefore", "nullableAfter");
     }
 
     private static final class InitializedBlock extends LLVMBasicBlockNode {
@@ -228,10 +224,18 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         }
 
         @Override
+        public void setNullableFrameSlots(FrameSlot[] nullableBefore, FrameSlot[] nullableAfter) {
+            this.nullableBefore = nullableBefore;
+            this.nullableAfter = nullableAfter;
+        }
+
+        @Override
         public LLVMBasicBlockNode initialize() {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             final LLVMBasicBlockNode materializedBlock = new InitializedBlock(statements, termInstruction, getBlockId(), getBlockName());
-            materializedBlock.setSourceDescriptor(this.getSourceDescriptor());
+            materializedBlock.setNullableFrameSlots(nullableBefore, nullableAfter);
+            materializedBlock.setSourceLocation(this.getSourceLocation());
+            materializedBlock.setHasStatementTag(this.hasStatementTag());
             replace(materializedBlock, "Lazily Inserting LLVM Basic Block");
             notifyInserted(materializedBlock);
             return materializedBlock;

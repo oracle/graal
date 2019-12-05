@@ -41,7 +41,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -60,7 +59,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     private static final long HANDLE_SPACE_START = 0x8000000000000000L;
     private static final long HANDLE_SPACE_END = 0xC000000000000000L;
     private static final long DEREF_HANDLE_SPACE_START = HANDLE_SPACE_END;
-    public static final long DEREF_HANDLE_SPACE_END = 0x0000000000000000L;
+    private static final long DEREF_HANDLE_SPACE_END = 0x0000000000000000L;
 
     static {
         assert (DEREF_HANDLE_SPACE_START & HANDLE_HEADER_MASK) != (DEREF_HANDLE_SPACE_END & HANDLE_HEADER_MASK);
@@ -78,9 +77,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     private static final Unsafe unsafe = getUnsafe();
-
-    private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle assumption");
-    private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
 
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
@@ -533,31 +529,29 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     /**
-     * A fast check if the provided address is within the handle space.
+     * A fast bit-check if the provided address is within the handle space.
      */
     public static boolean isHandleMemory(long address) {
         return (address & HANDLE_SPACE_START) != 0;
     }
 
     /**
-     * A fast check if the provided address is within the normal handle space.
+     * A fast bit-check if the provided address is within the normal handle space.
      */
-    @Override
-    public boolean isCommonHandleMemory(long address) {
-        return !noCommonHandleAssumption.isValid() && ((address & HANDLE_HEADER_MASK) == HANDLE_SPACE_START);
+    public static boolean isCommonHandleMemory(long address) {
+        return ((address & HANDLE_HEADER_MASK) == HANDLE_SPACE_START);
     }
 
     /**
-     * A fast check if the provided address is within the auto-deref handle space.
+     * A fast bit-check if the provided address is within the auto-deref handle space.
      */
-    @Override
-    public boolean isDerefHandleMemory(long address) {
-        return !noDerefHandleAssumption.isValid() && ((address & HANDLE_HEADER_MASK) == DEREF_HANDLE_SPACE_START);
+    public static boolean isDerefHandleMemory(long address) {
+        return ((address & HANDLE_HEADER_MASK) == DEREF_HANDLE_SPACE_START);
     }
 
     @Override
-    public HandleContainer createHandleContainer(boolean deref) {
-        return deref ? new DerefHandleContainer(noDerefHandleAssumption) : new CommonHandleContainer(noCommonHandleAssumption);
+    public HandleContainer createHandleContainer(boolean deref, Assumption noHandleAssumption) {
+        return deref ? new DerefHandleContainer(noHandleAssumption) : new CommonHandleContainer(noHandleAssumption);
     }
 
     private abstract static class AbstractHandleContainer extends HandleContainer {

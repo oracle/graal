@@ -35,7 +35,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMDebugTrapNode extends LLVMStatementNode {
+public final class LLVMDebugTrapNode extends LLVMStatementNode {
 
     public LLVMDebugTrapNode() {
     }

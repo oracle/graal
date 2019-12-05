@@ -30,10 +30,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Formatter;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -99,9 +102,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 try {
                     List<String> exportedSymbols = new ArrayList<>();
                     exportedSymbols.add("{");
-                    StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
-                                    .filter(ObjectFile.Symbol::isGlobal)
-                                    .filter(ObjectFile.Symbol::isDefined)
+                    codeCache.getGlobalSymbols(getOrCreateDebugObjectFile()).stream()
                                     .map(symbol -> "\"" + symbol.getName() + "\";")
                                     .forEachOrdered(exportedSymbols::add);
                     exportedSymbols.add("};");
@@ -140,7 +141,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
-            additionalPreOptions.add("-Wl,-no_compact_unwind");
+            if (!SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+                additionalPreOptions.add("-Wl,-no_compact_unwind");
+            }
 
             if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
@@ -152,13 +155,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
              * as global symbols in the dynamic symbol table of the image.
              */
             try {
-                List<String> exportedSymbols = StreamSupport.stream(getOrCreateDebugObjectFile().getSymbolTable().spliterator(), false)
-                                .filter(ObjectFile.Symbol::isGlobal)
-                                .filter(ObjectFile.Symbol::isDefined)
-                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
-                                .collect(Collectors.toList());
+                List<ObjectFile.Symbol> exportedSymbols = codeCache.getGlobalSymbols(getOrCreateDebugObjectFile());
                 Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                Files.write(exportedSymbolsPath, exportedSymbols);
+                Files.write(exportedSymbolsPath, exportedSymbols.stream()
+                                .map(symbol -> ((MachOSymtab.Entry) symbol).getNameInObject())
+                                .collect(Collectors.toList()));
                 additionalPreOptions.add("-Wl,-exported_symbols_list");
                 additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
@@ -308,11 +309,26 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         return inv;
     }
 
+    private static List<String> diagnoseLinkerFailure(String linkerOutput) {
+        List<String> potentialCauses = new ArrayList<>();
+        if (linkerOutput.contains("access beyond end of merged section")) {
+            potentialCauses.add("Native Image is using a linker that appears to be incompatible with the tool chain used to build the JDK static libraries. " +
+                            "The latter is typically shown in the output of `java -Xinternalversion`.");
+        }
+        Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
+        Matcher m = p.matcher(linkerOutput);
+        if (m.matches()) {
+            OS os = OS.getCurrent();
+            String libPrefix = os == OS.WINDOWS ? "" : "lib";
+            String libSuffix = os == OS.WINDOWS ? ".lib" : ".a";
+            potentialCauses.add(String.format("It appears as though %s%s%s is missing. Please install it.", libPrefix, m.group(1), libSuffix));
+        }
+        return potentialCauses;
+    }
+
     @Override
     @SuppressWarnings("try")
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
-        String cmdstr = "";
-        String outputstr = "";
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 1. write the relocatable file
 
@@ -334,53 +350,79 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 return null;
             }
             // 2. run a command to make an executable of it
-            int status;
-            try {
-                /*
-                 * To support automated stub generation, we first search for a libsvm.a in the
-                 * images directory. FIXME: make this a per-image directory, to avoid clobbering on
-                 * multiple runs. It actually doesn't matter, because it's a .a file which will get
-                 * absorbed into the executable, but avoiding clobbering will help debugging.
-                 */
+            /*
+             * To support automated stub generation, we first search for a libsvm.a in the images
+             * directory. FIXME: make this a per-image directory, to avoid clobbering on multiple
+             * runs. It actually doesn't matter, because it's a .a file which will get absorbed into
+             * the executable, but avoiding clobbering will help debugging.
+             */
 
-                LinkerInvocation inv = getLinkerInvocation(outputDirectory, tempDirectory, imageName);
-                for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
-                    inv = fn.apply(inv);
-                }
-                List<String> cmd = inv.getCommand();
-                StringBuilder sb = new StringBuilder("Running command:");
-                for (String s : cmd) {
-                    sb.append(' ');
+            LinkerInvocation inv = getLinkerInvocation(outputDirectory, tempDirectory, imageName);
+            for (Function<LinkerInvocation, LinkerInvocation> fn : config.getLinkerInvocationTransformers()) {
+                inv = fn.apply(inv);
+            }
+            List<String> cmd = inv.getCommand();
+            StringBuilder sb = new StringBuilder();
+            for (String s : cmd) {
+                if (s.indexOf(' ') != -1) {
+                    // Quote command line arguments that contain a space
+                    sb.append('\'').append(s).append('\'');
+                } else {
                     sb.append(s);
                 }
-                cmdstr = sb.toString();
-                try (DebugContext.Scope s = debug.scope("InvokeCC")) {
-                    debug.log("%s", sb);
+                sb.append(' ');
+            }
+            String commandLine = sb.toString().trim();
+            try (DebugContext.Scope s = debug.scope("InvokeCC")) {
+                debug.log("Running command: %s", sb);
 
-                    if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
-                        System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", cmdstr);
-                    } else {
-                        ProcessBuilder pb = new ProcessBuilder().command(cmd);
-                        pb.directory(tempDirectory.toFile());
-                        pb.redirectErrorStream(true);
+                if (NativeImageOptions.MachODebugInfoTesting.getValue()) {
+                    System.out.printf("Testing Mach-O debuginfo generation - SKIP %s%n", commandLine);
+                    return inv;
+                } else {
+                    ProcessBuilder pb = new ProcessBuilder().command(cmd);
+                    pb.directory(tempDirectory.toFile());
+                    pb.redirectErrorStream(true);
+                    int status;
+                    ByteArrayOutputStream output;
+                    try {
                         Process p = pb.start();
 
-                        ByteArrayOutputStream output = new ByteArrayOutputStream();
+                        output = new ByteArrayOutputStream();
                         FileUtils.drainInputStream(p.getInputStream(), output);
                         status = p.waitFor();
+                    } catch (IOException | InterruptedException e) {
+                        throw handleLinkerFailure(e.toString(), commandLine, null);
+                    }
 
-                        outputstr = output.toString();
-                        debug.log("%s", output);
+                    debug.log("%s", output);
 
-                        if (status != 0) {
-                            throw new RuntimeException("returned " + status);
-                        }
+                    if (status != 0) {
+                        throw handleLinkerFailure("Linker command exited with " + status, commandLine, output.toString());
                     }
                 }
-                return inv;
-            } catch (Exception ex) {
-                throw new RuntimeException("host C compiler or linker does not seem to work: " + ex.toString() + "\n\n" + cmdstr + "\n\n" + outputstr);
             }
+            return inv;
         }
+    }
+
+    private static RuntimeException handleLinkerFailure(String message, String commandLine, String output) {
+        Formatter buf = new Formatter();
+        buf.format("There was an error linking the native image: %s%n%n", message);
+        List<String> potentialCauses = output == null ? Collections.emptyList() : diagnoseLinkerFailure(output);
+        if (!potentialCauses.isEmpty()) {
+            int causeNum = 1;
+            buf.format("Based on the linker command output, possible reasons for this include:%n");
+            for (String cause : potentialCauses) {
+                buf.format("%d. %s%n", causeNum, cause);
+                causeNum++;
+            }
+            buf.format("%n");
+        }
+        buf.format("Linker command executed:%n%s", commandLine);
+        if (output != null) {
+            buf.format("%n%nLinker command ouput:%n%s", output);
+        }
+        throw new RuntimeException(buf.toString());
     }
 }

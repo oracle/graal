@@ -41,7 +41,7 @@ public final class InstructionBlock {
 
     private final int blockIndex;
 
-    private final List<Instruction> instructions = new ArrayList<>();
+    private final ArrayList<Instruction> instructions = new ArrayList<>();
 
     private String name = LLVMIdentifier.UNKNOWN;
 
@@ -65,6 +65,10 @@ public final class InstructionBlock {
 
     public String getName() {
         return name;
+    }
+
+    public List<Instruction> getInstructions() {
+        return instructions;
     }
 
     public Instruction getInstruction(int index) {

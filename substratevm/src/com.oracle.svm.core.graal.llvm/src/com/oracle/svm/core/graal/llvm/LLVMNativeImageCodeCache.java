@@ -100,6 +100,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private int batchSize;
     private Map<String, Integer> textSymbolOffsets = new HashMap<>();
     private Map<Integer, String> offsetToSymbolMap = new TreeMap<>();
+    private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
 
     public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
@@ -367,7 +368,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     int offset = reference.getDataInfo().getOffset();
 
                     String symbolName = (String) dataPatch.note;
-                    if (objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
+                    if (reference.getDataInfo().getData().symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
                         objectFile.createDefinedSymbol(symbolName, dataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {
@@ -463,20 +464,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
 
-            /*
-             * The x86 backend of LLVM has a bug which prevents the use of bitcode-level
-             * optimizations. This bug will be fixed in the LLVM 9.0.0 release.
-             */
-            if (!Platform.includedIn(Platform.AMD64.class)) {
+            if (LLVMOptions.BitcodeOptimizations.getValue()) {
                 cmd.add("-disable-inlining");
                 cmd.add("-O2");
+            } else {
+                /*
+                 * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
+                 * are not supported for statepoints.
+                 */
+                cmd.add("-mem2reg");
             }
-
-            /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
-             * not supported for statepoints.
-             */
-            cmd.add("-mem2reg");
             cmd.add("-rewrite-statepoints-for-gc");
             cmd.add("-always-inline");
 
@@ -506,6 +503,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
             cmd.add("-relocation-model=pic");
+            cmd.add("--trap-unreachable");
             cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
             cmd.addAll(TargetSpecific.get().getLLCAdditionalOptions());
             cmd.add("-O2");
@@ -616,7 +614,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
             protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
-                objectFile.createUndefinedSymbol(name, 0, true);
+                ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, 0, true);
+                if (global) {
+                    globalSymbols.add(symbol);
+                }
             }
         };
     }
@@ -626,5 +627,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         String bitcodeFileName = getLinkedPath().toString();
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
         return new String[]{relocatableFileName, bitcodeFileName};
+    }
+
+    @Override
+    public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
+        return globalSymbols;
     }
 }

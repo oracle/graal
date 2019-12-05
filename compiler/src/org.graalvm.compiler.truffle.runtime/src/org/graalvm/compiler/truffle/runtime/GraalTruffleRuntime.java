@@ -329,6 +329,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         switch (explodeLoop.kind()) {
             case FULL_UNROLL:
                 return LoopExplosionKind.FULL_UNROLL;
+            case FULL_UNROLL_UNTIL_RETURN:
+                return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
             case FULL_EXPLODE:
                 return LoopExplosionKind.FULL_EXPLODE;
             case FULL_EXPLODE_UNTIL_RETURN:
@@ -351,6 +353,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         OptimizedAssumption.class,
                         CompilerDirectives.class,
                         GraalCompilerDirectives.class,
+                        InlineDecision.class,
                         CompilerAsserts.class,
                         ExactMath.class,
                         ArrayUtils.class,

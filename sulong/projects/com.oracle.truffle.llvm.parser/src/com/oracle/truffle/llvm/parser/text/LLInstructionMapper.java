@@ -30,12 +30,15 @@
 package com.oracle.truffle.llvm.parser.text;
 
 import java.util.ArrayDeque;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
@@ -189,6 +192,36 @@ final class LLInstructionMapper {
         }
     }
 
+    private static void fillInNames(FunctionDefinition function) {
+        int symbolIndex = 0;
+
+        // in K&R style function declarations the parameters are not assigned names
+        for (final FunctionParameter parameter : function.getParameters()) {
+            if (LLVMIdentifier.UNKNOWN.equals(parameter.getName())) {
+                parameter.setName(String.valueOf(symbolIndex++));
+            }
+        }
+
+        final Set<String> explicitBlockNames = function.getBlocks().stream().map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.isUnknown(blockName)).collect(Collectors.toSet());
+        for (final InstructionBlock block : function.getBlocks()) {
+            if (LLVMIdentifier.isUnknown(block.getName())) {
+                do {
+                    block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
+                    // avoid name clashes
+                } while (explicitBlockNames.contains(block.getName()));
+            }
+            for (int i = 0; i < block.getInstructionCount(); i++) {
+                final Instruction instruction = block.getInstruction(i);
+                if (instruction instanceof ValueInstruction) {
+                    final ValueInstruction value = (ValueInstruction) instruction;
+                    if (LLVMIdentifier.isUnknown(value.getName())) {
+                        value.setName(String.valueOf(symbolIndex++));
+                    }
+                }
+            }
+        }
+    }
+
     static void setSourceLocations(LLSourceMap sourceMap, FunctionDefinition functionDefinition, LLVMParserRuntime runtime) {
         final LLSourceMap.Function function = sourceMap.getFunction(functionDefinition.getName());
         if (function == null) {
@@ -200,6 +233,7 @@ final class LLInstructionMapper {
         sourceFunction = new SourceFunction(location, sourceFunction.getSourceType());
         functionDefinition.setSourceFunction(sourceFunction);
 
+        fillInNames(functionDefinition);
         functionDefinition.accept((FunctionVisitor) new Mapper(sourceMap.getLLSource(), location, function.getInstructionList()));
 
         sourceMap.clearFunction(function);

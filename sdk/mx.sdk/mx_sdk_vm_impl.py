@@ -46,7 +46,7 @@ from argparse import ArgumentParser
 import io
 import json
 import os
-from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir, islink, isabs
 import pprint
 import re
 import subprocess
@@ -269,6 +269,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         _layout_provenance = {}
 
+        self._post_build_warnings = []
+
         def _add(_layout, dest, src, component=None, with_sources=False):
             """
             :type _layout: dict[str, list[str] | str]
@@ -316,6 +318,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             """
             :rtype: list[(str, source_dict)], list[str]
             """
+            _incl_list = []
+            _excl_list = []
             orig_info_plist = join(_src_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
                 from mx import etreeParse
@@ -330,14 +334,22 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         graalvm_bundle_name += ' ' + graalvm_version()
                         el.text = graalvm_bundle_name
                         bio = io.BytesIO()
-                        root.write(bio) # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
+                        root.write(bio)  # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
                             'source_type': 'string',
                             'value': _decode(bio.getvalue()),
                             'ignore_value_subst': True
                         }
-                        return [(base_dir + '/Contents/Info.plist', plist_src)], [orig_info_plist]
-            return [], []
+                        _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
+                        _excl_list.append(orig_info_plist)
+                        break
+                if _src_jdk_version != 8:
+                    libjli_symlink = {
+                        'source_type': 'link',
+                        'path': '../Home/lib/jli/libjli.dylib'
+                    }
+                    _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
+            return _incl_list, _excl_list
 
         svm_component = get_component('svm', stage1=True)
 
@@ -374,6 +386,23 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _dest, 'link:{}'.format(_linkname), _component)
                     return _dest + basename(_target)
 
+        def _find_escaping_links(root_dir):
+            escaping_links = []
+            for root, dirs, files in os.walk(root_dir, followlinks=True):
+                for _file in dirs + files:
+                    _abs_file = join(root, _file)
+                    if islink(_abs_file):
+                        _link_target = os.readlink(_abs_file)
+                        if isabs(_link_target):
+                            self._post_build_warnings.append("The base JDK contains an absolute symbolic link that has been excluded from the build: '{}' points to '{}".format(_abs_file, _link_target))
+                            escaping_links.append(_abs_file)
+                        else:
+                            _resolved_link_target = join(dirname(_abs_file), _link_target)
+                            if not normpath(join(root_dir, relpath(_resolved_link_target, root_dir))).startswith(root_dir):
+                                self._post_build_warnings.append("The base JDK contains a symbolic link that escapes the root dir '{}' and has been excluded from the build: '{}' points to '{}'.".format(root_dir, _abs_file, _link_target))
+                                escaping_links.append(_abs_file)
+            return escaping_links
+
         if is_graalvm:
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
@@ -394,15 +423,17 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             if _src_jdk_version == 8:
+                _escaping_links = _find_escaping_links(_src_jdk_dir)
                 _add(layout, base_dir, {
                     'source_type': 'file',
                     'path': _src_jdk_dir,
-                    'exclude': exclusion_list + [
+                    'exclude': exclusion_list + _escaping_links + [
                         exclude_base + '/COPYRIGHT',
                         exclude_base + '/LICENSE',
                         exclude_base + '/README.html',
                         exclude_base + '/THIRDPARTYLICENSEREADME.txt',
                         exclude_base + '/THIRDPARTYLICENSEREADME-JAVAFX.txt',
+                        exclude_base + '/THIRD_PARTY_README',
                         exclude_base + '/release',
                         exclude_base + '/bin/jvisualvm',
                         exclude_base + '/bin/jvisualvm.exe',
@@ -413,6 +444,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/lib/missioncontrol',
                     ] if mx.get_os() == 'darwin' else [])
                 })
+                if exists(join(exclude_base, "THIRD_PARTY_README")):
+                    _add(layout, "THIRD_PARTY_README_JDK" if base_dir == '.' else base_dir + '/THIRD_PARTY_README_JDK', "file:" + exclude_base + "/THIRD_PARTY_README")
             else:
                 # TODO(GR-8329): add exclusions
                 _add(layout, self.jdk_base + '/', {
@@ -608,6 +641,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         self.reset_user_group = True
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
+    def getBuildTask(self, args):
+        return BaseGraalVmLayoutDistributionTask(args, self)
+
     @staticmethod
     def _get_metadata(suites):
         """
@@ -646,6 +682,17 @@ GRAALVM_VERSION={version}""".format(
             _metadata += "\ncomponent_catalog={}".format(catalog)
 
         return _metadata
+
+
+class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+    def __init__(self, args, dist):
+        super(BaseGraalVmLayoutDistributionTask, self).__init__(args, dist)
+
+    def build(self):
+        assert isinstance(self.subject, BaseGraalVmLayoutDistribution)
+        super(BaseGraalVmLayoutDistributionTask, self).build()
+        for warning in self.subject._post_build_warnings:
+            mx.warn(warning, context=self)
 
 
 if mx.is_windows():
@@ -749,7 +796,7 @@ def _get_graalvm_configuration(base_name, stage1=False):
     return _graal_vm_configs_cache[key]
 
 
-class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
     def __init__(self, args, dist, root_link_name, home_link_name):
         self._root_link_path = join(_suite.dir, root_link_name)
         self._home_link_path = join(_suite.dir, home_link_name)
@@ -1296,7 +1343,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def build(self):
         with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
-        vendor_info = {'vendor-version' : graalvm_vendor_version(get_final_graalvm_distribution())}
+        vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
         mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source, vendor_info=vendor_info)
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
@@ -1328,7 +1375,11 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def _config(self):
-        return ['include sources: {}'.format(_include_sources()), 'strip jars: {}'.format(mx.get_opts().strip_jars)]
+        return [
+            'include sources: {}'.format(_include_sources()),
+            'strip jars: {}'.format(mx.get_opts().strip_jars),
+            'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+        ]
 
     def _config_file(self):
         return self.subject.output_directory() + '.config'
@@ -1606,12 +1657,6 @@ _known_missing_jars = {
     'TRUFFLE_DEBUG',
     'NANO_HTTPD',
     'NANO_HTTPD_WEBSERVER',
-    'JFFI',
-    'JNR_FFI',
-    'JNR_INVOKE',
-    'JFFI_NATIVE',
-    'JNR_POSIX',
-    'JNR_CONSTANTS',
     'JDK_TOOLS',
 }
 

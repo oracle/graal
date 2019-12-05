@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Time;
@@ -40,10 +38,8 @@ import com.oracle.svm.core.posix.headers.Time;
  * Definitions manually translated from the C header file sys/time.h.
  */
 @CContext(PosixDirectives.class)
-@Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
 public class LinuxTime extends Time {
 
-    /** Monotonic system-wide clock. */
     @CConstant
     public static native int CLOCK_MONOTONIC();
 

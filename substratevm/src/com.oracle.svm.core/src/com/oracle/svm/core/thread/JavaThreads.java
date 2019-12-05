@@ -53,6 +53,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -133,6 +134,11 @@ public abstract class JavaThreads {
         systemGroup = mainGroup.getParent();
         VMError.guarantee(systemGroup.getParent() == null && systemGroup.getName().equals("system"), "Wrong ThreadGroup for system");
 
+        /*
+         * The mainThread's contextClassLoader is set to the current thread's contextClassLoader
+         * which is a NativeImageClassLoader. The ClassLoaderFeature object replacer will unwrap the
+         * original AppClassLoader from the NativeImageClassLoader.
+         */
         mainThread = new Thread(mainGroup, "main");
         mainThread.setDaemon(false);
 
@@ -183,6 +189,23 @@ public abstract class JavaThreads {
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
+    }
+
+    /** Before detaching a thread, run any Java cleanup code. */
+    static void cleanupBeforeDetach(IsolateThread thread) {
+        if (thread.equal(CurrentIsolate.getCurrentThread())) {
+            Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
+            javaThread.exit();
+        } else {
+            /*
+             * We cannot call Thread.exit() for another thread: it may use synchronization, which is
+             * not permitted since we must be at a safepoint here, and any TerminatingThreadLocal
+             * instances access the current thread's thread-local values, so we would end up
+             * cleaning up the wrong thread's resources. Of course, not calling Thread.exit() means
+             * that there will be leaks. Since the Java thread code is not designed for detaching
+             * other threads, we shouldn't support this in the first place.
+             */
+        }
     }
 
     /**
@@ -263,6 +286,7 @@ public abstract class JavaThreads {
      */
     public static boolean ensureJavaThread(String name, ThreadGroup group, boolean asDaemon) {
         if (currentThread.get() == null) {
+            Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             assignJavaThread(JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon)), true);
             return true;
         }
@@ -329,7 +353,7 @@ public abstract class JavaThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
         assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
 
-        Heap.getHeap().disableAllocation(vmThread);
+        Heap.getHeap().detachThread(vmThread);
 
         // Detach ParkEvents for this thread, if any.
         final Thread thread = currentThread.get(vmThread);
@@ -482,6 +506,7 @@ public abstract class JavaThreads {
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
+        Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
         assignJavaThread(thread, false);
         ObjectHandles.getGlobal().destroy(threadHandle);
 

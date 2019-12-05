@@ -355,6 +355,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return null;
     }
 
+    @Override
     public HotSpotGC getGarbageCollector() {
         return garbageCollector;
     }

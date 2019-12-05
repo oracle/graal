@@ -43,12 +43,13 @@ import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
+// Checkstyle: stop
+
 /**
- * Contains definitions from signal.h that we actually need.
+ * Definitions manually translated from the C header file signal.h.
  */
 @CContext(PosixDirectives.class)
 public class Signal {
-    /* Allow lower-case type names, underscores in names, etc.: Checkstyle: stop. */
 
     @CFunction
     public static native int kill(int pid, int sig);
@@ -65,14 +66,11 @@ public class Signal {
     @CFunction
     public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
 
-    /** A pointer to a signal set. The implementation of a signal set is platform-specific. */
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
     }
 
     public interface SignalDispatcher extends CFunctionPointer {
-
-        /** From signal(2): typedef void (*sig_t) (int). */
         @InvokeCFunctionPointer
         void dispatch(int sig);
     }
@@ -94,7 +92,6 @@ public class Signal {
 
     @CStruct
     public interface siginfo_t extends PointerBase {
-        /* Fields unused */
     }
 
     @Platforms(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)
@@ -135,56 +132,12 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CStruct
     public interface ucontext_t extends PointerBase {
-        /*-
-            // AMD64 userlevel context.
-            typedef struct ucontext
-              {
-                unsigned long int uc_flags;
-                struct ucontext *uc_link;
-                stack_t uc_stack;
-                mcontext_t uc_mcontext;
-                __sigset_t uc_sigmask;
-                struct _libc_fpstate __fpregs_mem;
-              } ucontext_t;
-        
-            // Context to describe whole processor state.
-            typedef struct
-              {
-                gregset_t gregs;
-                // Note that fpregs is a pointer.
-                fpregset_t fpregs;
-                __extension__ unsigned long long __reserved1 [8];
-            } mcontext_t;
-         */
         @CFieldAddress("uc_mcontext.gregs")
         @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
         GregsPointer uc_mcontext_gregs();
 
-        /*-
-        // AArch64 userlevel context.
-        typedef struct ucontext
-        {
-            unsigned long uc_flags;
-            struct ucontext *uc_link;
-            stack_t uc_stack;
-            __sigset_t uc_sigmask;
-            mcontext_t uc_mcontext;
-        } ucontext_t;
-        typedef struct sigcontext mcontext_t;
-        struct sigcontext {
-                __u64 fault_address;
-                // AArch64 registers
-                __u64 regs[31];
-                __u64 sp;
-                __u64 pc;
-                __u64 pstate;
-                // 4K reserved for FP/SIMD state and future expansion
-                __u8 __reserved[4096] __attribute__((__aligned__(16)));
-        };
-        */
         @CFieldAddress("uc_mcontext")
         @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64.class, Platform.LINUX_AARCH64.class})
         mcontext_t uc_mcontext();
@@ -192,7 +145,6 @@ public class Signal {
         @CField("uc_mcontext")
         @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
         MContext64 uc_mcontext64();
-
     }
 
     @Platforms({DeprecatedPlatform.DARWIN_SUBSTITUTION_AMD64.class, Platform.DARWIN_AMD64.class})
@@ -274,28 +226,15 @@ public class Signal {
     }
 
     public interface AdvancedSignalDispatcher extends CFunctionPointer {
-
-        /** From SIGACTION(2): void (*sa_sigaction)(int, siginfo_t *, void *). */
         @InvokeCFunctionPointer
         void dispatch(int signum, siginfo_t siginfo, WordPointer opaque);
     }
 
-    @Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
     @CConstant
     public static native int SA_SIGINFO();
 
     @CStruct(addStructKeyword = true)
     public interface sigaction extends PointerBase {
-        /*-
-           struct sigaction {
-               void     (*sa_handler)(int);
-               void     (*sa_sigaction)(int, siginfo_t *, void *);
-               sigset_t   sa_mask;
-               int        sa_flags;
-               void     (*sa_restorer)(void);
-           };
-         */
-
         @CField
         SignalDispatcher sa_handler();
 
@@ -383,6 +322,4 @@ public class Signal {
 
     @CFunction
     public static native int sigemptyset(sigset_tPointer set);
-
-    /* Allow lower-case type names, underscores in names, etc.: Checkstyle: resume. */
 }

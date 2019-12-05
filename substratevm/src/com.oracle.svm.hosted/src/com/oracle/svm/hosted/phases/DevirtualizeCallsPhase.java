@@ -62,6 +62,19 @@ public class DevirtualizeCallsPhase extends Phase {
         for (Invoke invoke : graph.getInvokes()) {
             if (invoke.callTarget() instanceof SubstrateMethodCallTargetNode) {
                 SubstrateMethodCallTargetNode callTarget = (SubstrateMethodCallTargetNode) invoke.callTarget();
+
+                if (callTarget.invokeKind().isDirect() && !((HostedMethod) callTarget.targetMethod()).getWrapped().isSimplyImplementationInvoked()) {
+                    /*
+                     * This is a direct call to a method that the static analysis did not see as
+                     * invoked. This can happen when the receiver is always null. In most cases, the
+                     * method profile also has a length of 0 and the below code to kill the invoke
+                     * would trigger. But not all methods have profiles, for example methods with
+                     * manually constructed graphs.
+                     */
+                    unreachableInvoke(graph, invoke, callTarget);
+                    continue;
+                }
+
                 JavaMethodProfile methodProfile = callTarget.getMethodProfile();
                 if (methodProfile != null) {
                     if (methodProfile.getMethods().length == 0) {

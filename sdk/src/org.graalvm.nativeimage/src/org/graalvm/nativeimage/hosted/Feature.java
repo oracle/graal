@@ -477,7 +477,7 @@ public interface Feature {
     }
 
     /**
-     * Handler for code that needs to run after the analysis, even if an error has occured, e.g.,
+     * Handler for code that needs to run after the analysis, even if an error has occurred, e.g.,
      * like reporting code.
      *
      * @param access The supported operations that the feature can perform at this time

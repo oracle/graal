@@ -1,5 +1,15 @@
 [
   {
+    "name" : "java.io.FileDescriptor",
+    "methods" : [
+        { "name" : "closeAll",
+          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is  megamorphic.",
+          "parameterTypes" : [
+              "java.io.Closeable"
+        ]}
+    ]
+  },
+  {
     "name" : "java.lang.StringCoding",
     "methods" : [
         { "name" : "encode" ,
@@ -13,6 +23,17 @@
               "byte[]",
               "int",
               "int"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.lang.UNIXProcess",
+    "methods" : [
+        { "name" : "lambda$null$0" ,
+          "justification" : "UNIXProcess internal processReaperExecutor.",
+          "parameterTypes" : [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable"
         ]}
     ]
   },
@@ -57,6 +78,25 @@
           "parameterTypes" : [
               "java.lang.Class",
               "java.net.URL"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.FutureTask",
+    "methods" : [
+        { "name" : "cancel" ,
+          "justification" : "Interrups the executor threads to cancel execution of FutureTask.",
+          "parameterTypes" : [
+            "boolean"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ThreadPoolExecutor",
+    "methods" : [
+        { "name" : "tryTerminate" ,
+          "justification" : "Stops the thread pool threads on shutdown.",
+          "parameterTypes" : [
         ]}
     ]
   },

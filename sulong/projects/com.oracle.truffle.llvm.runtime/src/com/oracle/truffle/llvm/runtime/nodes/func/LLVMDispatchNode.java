@@ -78,6 +78,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         this.type = type;
     }
 
+    @Override
+    public String toString() {
+        return getShortString("type", "signature");
+    }
+
     private String getSignature() {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

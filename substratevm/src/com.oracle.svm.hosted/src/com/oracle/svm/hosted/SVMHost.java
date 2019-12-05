@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
@@ -64,8 +65,6 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -256,7 +255,12 @@ public final class SVMHost implements HostVM {
         Class<?> javaClass = type.getJavaClass();
         int modifiers = javaClass.getModifiers();
 
-        Target_java_lang_ClassLoader hubClassLoader = ClassLoaderSupport.getInstance().getOrCreate(javaClass.getClassLoader());
+        /*
+         * If the class is an application class then it was loaded by NativeImageClassLoader. The
+         * ClassLoaderFeature object replacer will unwrap the original AppClassLoader from the
+         * NativeImageClassLoader.
+         */
+        ClassLoader hubClassLoader = javaClass.getClassLoader();
 
         /* Class names must be interned strings according to the Java specification. */
         String className = type.toClassName().intern();
@@ -266,7 +270,11 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        final DynamicHub dynamicHub = new DynamicHub(className, type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
+        }
+        return dynamicHub;
     }
 
     private boolean isAnonymousClass(Class<?> javaClass) {

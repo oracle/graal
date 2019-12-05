@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.trace;
 
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,8 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import org.graalvm.compiler.phases.common.LazyValue;
+
+import jdk.vm.ci.meta.MetaUtil;
 
 class ReflectionProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -84,7 +87,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnore(new LazyValue<>(() -> callerClass))) {
+        if (advisor.shouldIgnore(lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
@@ -182,7 +185,12 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "newInstance": {
-                configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
+                if (clazz.equals("java.lang.reflect.Array")) { // reflective array instantiation
+                    String qualifiedJavaName = MetaUtil.internalNameToJava((String) args.get(0), true, false);
+                    configuration.getOrCreateType(qualifiedJavaName);
+                } else {
+                    configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
+                }
                 break;
             }
         }

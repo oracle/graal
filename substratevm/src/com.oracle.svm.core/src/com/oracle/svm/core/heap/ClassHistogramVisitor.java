@@ -24,17 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.Pointer;
-
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /**
  * Build a histogram of class counts.
@@ -59,8 +54,7 @@ public class ClassHistogramVisitor implements ObjectVisitor {
 
     /** Constructor. */
     protected ClassHistogramVisitor() {
-        classList = new ArrayList<>();
-        initializeClassList();
+        classList = Heap.getHeap().getClassList();
         entryArray = new HistogramEntry[classList.size()];
         initializeFromClassList();
     }
@@ -184,32 +178,6 @@ public class ClassHistogramVisitor implements ObjectVisitor {
             }
         }
         return filteredArray;
-    }
-
-    /* TODO: This could be done once, since the boot image heap doesn't change. */
-    protected void initializeClassList() {
-        /* Classes are read-only, reference-containing. */
-        initializeClassList(NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject);
-    }
-
-    /*
-     * This can be "interruptible" because all the pointers are to boot image heap objects, which do
-     * not move. In particular, it can allocate.
-     */
-    private void initializeClassList(Object firstObject, Object lastObject) {
-        if ((firstObject == null) || (lastObject == null)) {
-            return;
-        }
-        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        Pointer currentPointer = firstPointer;
-        while (currentPointer.belowOrEqual(lastPointer)) {
-            Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
-            if ((currentObject != null) && (currentObject instanceof Class<?>)) {
-                classList.add((Class<?>) currentObject);
-            }
-            currentPointer = LayoutEncoding.getObjectEnd(currentObject);
-        }
     }
 
     private void initializeFromClassList() {

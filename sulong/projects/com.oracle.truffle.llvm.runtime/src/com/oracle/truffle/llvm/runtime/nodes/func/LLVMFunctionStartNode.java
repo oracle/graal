@@ -44,12 +44,14 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 
-public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayoutNode {
+public final class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayoutNode {
 
     @Child private LLVMExpressionNode node;
     private final String name;
     private final int explicitArgumentsCount;
-    private final DebugInformation debugInformation;
+    private final String originalName;
+    private final Source bcSource;
+    private final LLVMSourceLocation sourceLocation;
 
     private final DataLayout dataLayout;
 
@@ -57,37 +59,38 @@ public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayout
                     LLVMSourceLocation location, DataLayout dataLayout) {
         super(language, frameDescriptor);
         this.dataLayout = dataLayout;
-        this.debugInformation = new DebugInformation(originalName, bcSource, location);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
         this.name = name;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return debugInformation.sourceLocation.getSourceSection();
-    }
-
-    @Override
-    public boolean isInternal() {
-        return debugInformation.bcSource.isInternal();
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object result = node.executeGeneric(frame);
-        return result;
+        this.originalName = originalName;
+        this.bcSource = bcSource;
+        this.sourceLocation = location;
     }
 
     @Override
     public String toString() {
-        return getName();
+        return name;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceLocation.getSourceSection();
+    }
+
+    @Override
+    public boolean isInternal() {
+        return bcSource.isInternal();
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return node.executeGeneric(frame);
     }
 
     @Override
     public String getName() {
-        if (debugInformation.originalName != null) {
-            return debugInformation.originalName;
+        if (originalName != null) {
+            return originalName;
         }
         return name;
     }
@@ -97,7 +100,7 @@ public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayout
     }
 
     public String getOriginalName() {
-        return debugInformation.originalName;
+        return originalName;
     }
 
     public String getBcName() {
@@ -105,7 +108,7 @@ public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayout
     }
 
     public Source getBcSource() {
-        return debugInformation.bcSource;
+        return bcSource;
     }
 
     @Override
@@ -117,31 +120,15 @@ public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayout
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         final HashMap<String, Object> properties = new HashMap<>();
-        if (debugInformation.originalName != null) {
-            properties.put("originalName", debugInformation.originalName);
+        if (originalName != null) {
+            properties.put("originalName", originalName);
         }
-        if (debugInformation.bcSource != null) {
-            properties.put("bcSource", debugInformation.bcSource);
+        if (bcSource != null) {
+            properties.put("bcSource", bcSource);
         }
-        if (debugInformation.sourceLocation != null) {
-            properties.put("sourceLocation", debugInformation.sourceLocation);
+        if (sourceLocation != null) {
+            properties.put("sourceLocation", sourceLocation);
         }
         return properties;
-    }
-
-    /*
-     * Encapsulation of these 4 objects keeps memory footprint low in case no debug info is
-     * available.
-     */
-    private static final class DebugInformation {
-        private final String originalName;
-        private final Source bcSource;
-        private final LLVMSourceLocation sourceLocation;
-
-        DebugInformation(String originalName, Source bcSource, LLVMSourceLocation sourceLocation) {
-            this.originalName = originalName;
-            this.bcSource = bcSource;
-            this.sourceLocation = sourceLocation;
-        }
     }
 }

@@ -27,6 +27,7 @@ package org.graalvm.component.installer;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.AccessDeniedException;
@@ -515,7 +516,23 @@ public class ComponentInstaller {
         if (envVar != null) {
             def = envVar;
         }
-        return input.getParameter(CommonConstants.SYSPROP_CATALOG_URL, def, true);
+        String s = input.getParameter(CommonConstants.SYSPROP_CATALOG_URL, def, true);
+        if (s == null) {
+            return null;
+        }
+        try {
+            URI check = URI.create(s);
+            if (check.getScheme() == null || check.getScheme().length() < 2) {
+                Path p = SystemUtils.fromUserString(s);
+                // convert plain filename to file:// URL.
+                if (Files.isReadable(p)) {
+                    return p.toFile().toURI().toString();
+                }
+            }
+        } catch (IllegalArgumentException ex) {
+            // expected, use the argument as it is.
+        }
+        return s;
     }
 
     private String getReleaseCatalogURL() {

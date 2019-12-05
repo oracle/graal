@@ -271,16 +271,26 @@ def _collect_class_path_entries(cp_entries_filter, entries_collector, properties
                         collector[cpPath] = None
     suite_collector(mx.primary_suite(), cp_entries_filter, entries_collector, properties_collector, set())
 
-def _collect_class_path_entries_by_resource(requiredResource, entries_collector, properties_collector):
+def _collect_class_path_entries_by_resource(requiredResources, entries_collector, properties_collector):
+    """
+    Collects class path for JAR distributions containing any resource from requiredResources.
+
+    :param requiredResources: an iterable of resources. At least one of them has to exist to include the
+            distribution class path entries.
+    :param entries_collector: the list to add the class paths entries into.
+    :properties_collector: the list to add the distribution Java properties into.
+    """
     def has_resource(dist):
         if dist.isJARDistribution() and exists(dist.path):
             with zipfile.ZipFile(dist.path, "r") as zf:
-                try:
-                    zf.getinfo(requiredResource)
-                except KeyError:
-                    return False
-                else:
-                    return True
+                for requiredResource in requiredResources:
+                    try:
+                        zf.getinfo(requiredResource)
+                    except KeyError:
+                        pass
+                    else:
+                        return True
+                return False
         else:
             return False
     _collect_class_path_entries(has_resource, entries_collector, properties_collector)
@@ -290,10 +300,10 @@ def _collect_class_path_entries_by_name(distributionName, entries_collector, pro
     _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
 
 def _collect_languages(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource("META-INF/truffle/language", entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource(["META-INF/truffle/language", "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider"], entries_collector, properties_collector)
 
 def _collect_tck_providers(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider", entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector, properties_collector)
 
 def _unittest_config_participant_tck(config):
 

@@ -138,7 +138,8 @@ final class LLSourceMap {
                 if (actualSymbol != null && actualSymbol.isGlobalVariable()) {
                     globalScope.addGlobal(actualSymbol.asGlobalVariable());
                 } else {
-                    globalScope.addGlobal(LLVMGlobal.create(globalName + " (unavailable)", PointerType.VOID, null, true));
+                    LLVMGlobal global = LLVMGlobal.create(globalName + " (unavailable)", PointerType.VOID, null, true, -1, -1);
+                    globalScope.addGlobal(global);
                 }
             }
             globals.clear();
