@@ -105,8 +105,11 @@ public final class CEntryPointErrors {
     @Description("Mapping the auxiliary image file into memory failed.") //
     public static final int MAP_AUX_IMAGE_FAILED = 16;
 
+    @Description("Insufficient memory for the auxiliary image.") //
+    public static final int INSUFFICIENT_AUX_IMAGE_MEMORY = 17;
+
     @Description("Auxiliary images are not supported on this platform or edition.") //
-    public static final int AUX_IMAGE_UNSUPPORTED = 17;
+    public static final int AUX_IMAGE_UNSUPPORTED = 18;
 
     public static String getDescription(int code) {
         String result = null;

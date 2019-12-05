@@ -56,4 +56,10 @@ public interface CEntryPointCreateIsolateParameters extends PointerBase {
 
     @CField("auxiliary_image_path")
     void setAuxiliaryImagePath(CCharPointer filePath);
+
+    @CField("auxiliary_image_reserved_space_size")
+    UnsignedWord auxiliaryImageReservedSpaceSize();
+
+    @CField("auxiliary_image_reserved_space_size")
+    void setAuxiliaryImageReservedSpaceSize(UnsignedWord auxImageReservedSize);
 }

@@ -89,6 +89,7 @@ public final class Isolates {
         public static final class Builder {
             private UnsignedWord reservedAddressSpaceSize;
             private String auxiliaryImagePath;
+            private UnsignedWord auxiliaryImageReservedSpaceSize;
 
             /**
              * Creates a new builder with default values.
@@ -120,13 +121,24 @@ public final class Isolates {
             }
 
             /**
+             * Sets the size in bytes of an address space to reserve for loading an auxiliary image
+             * in addition to the main image, or 0 if no space should be reserved.
+             *
+             * @since 20.0
+             */
+            public Builder auxiliaryImageReservedSpaceSize(UnsignedWord size) {
+                this.auxiliaryImageReservedSpaceSize = size;
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize);
             }
         }
 
@@ -143,10 +155,12 @@ public final class Isolates {
 
         private final UnsignedWord reservedAddressSpaceSize;
         private final String auxiliaryImagePath;
+        private final UnsignedWord auxiliaryImageReservedSpaceSize;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
+            this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
         }
 
         /**
@@ -166,6 +180,16 @@ public final class Isolates {
          */
         public String getAuxiliaryImagePath() {
             return auxiliaryImagePath;
+        }
+
+        /**
+         * Returns the size in bytes of an address space to reserve for loading an auxiliary image
+         * in addition to the main image, or 0 if no space should be reserved.
+         *
+         * @since 20.0
+         */
+        public UnsignedWord getAuxiliaryImageReservedSpaceSize() {
+            return auxiliaryImageReservedSpaceSize;
         }
     }
 

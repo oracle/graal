@@ -61,6 +61,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
             CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
+            params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
             params.setVersion(2);
 
             IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
