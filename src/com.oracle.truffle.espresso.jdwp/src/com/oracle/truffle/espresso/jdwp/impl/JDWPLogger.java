@@ -26,7 +26,7 @@ import com.oracle.truffle.api.TruffleLogger;
 
 public final class JDWPLogger {
 
-    private static final TruffleLogger logger = TruffleLogger.getLogger("JDWPLogger");
+    private static final TruffleLogger logger = TruffleLogger.getLogger(JDWPInstrument.ID);
 
     public static LogLevel LEVEL;
 
