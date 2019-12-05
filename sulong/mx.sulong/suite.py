@@ -517,6 +517,7 @@ suite = {
         "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
         "LIBSULONG" : "<lib:sulong>",
         "LIBSULONGXX" : "<lib:sulong++>",
+        "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_LIBCXX_SRC>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
