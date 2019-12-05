@@ -794,7 +794,6 @@ final class InstrumentationHandler {
         Set<Class<?>> providedTags = getProvidedTags(rootNode);
         EventChainNode root = null;
         EventChainNode parent = null;
-
         for (EventBinding.Source<?> binding : executionBindings) {
             if (binding.isChildInstrumentedFull(providedTags, rootNode, parentInstrumentable, parentInstrumentableSourceSection, instrumentedNode, sourceSection)) {
                 if (TRACE) {
@@ -1912,6 +1911,7 @@ final class InstrumentationHandler {
             return InstrumentationHandler.this.attachFactory(this, filter, inputFilter, factory);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter filter, SourceSectionFilter inputFilter, T listener) {
             verifyFilter(filter);
