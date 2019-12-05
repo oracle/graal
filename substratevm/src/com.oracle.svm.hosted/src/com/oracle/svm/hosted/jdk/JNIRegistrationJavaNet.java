@@ -81,6 +81,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
          * the actual network implementation. Therefore, we register them unconditionally.
          */
         registerForThrowNew(a, "java.net.SocketException", "java.net.ConnectException", "java.net.BindException", "java.net.UnknownHostException",
+                        "java.net.ProtocolException", "java.net.NoRouteToHostException",
                         "java.net.SocketTimeoutException", "java.net.PortUnreachableException", "sun.net.ConnectionResetException");
 
         /* Reuse same lambda for registerInitInetAddressIDs to ensure it only gets called once */
