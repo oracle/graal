@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -55,17 +53,16 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(2, SLFunction.INLINE_CACHE_SIZE);
 
         // doWhile must run isolated and should not affect other compilation thresholds
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold), null, doWhile);
+        testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 
     @Test
     public void testPolyglotCompilerOptionsAreUsed() {
-        Context context = Context.newBuilder() //
-                        .allowExperimentalOptions(true) //
-                        .option("engine.CompilationThreshold", "27") //
+        Context context = defaultContextBuilder().option("engine.CompilationThreshold", "27") //
                         .option("engine.TraceCompilation", "true") //
                         .option("engine.TraceCompilationDetails", "true") //
                         .option("engine.Inlining", "false") //
@@ -94,7 +91,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     }
 
     private static void testCompilationThreshold(int iterations, String compilationThresholdOption, Runnable doWhile) {
-        Context.Builder builder = Context.newBuilder("sl");
+        Context.Builder builder = defaultContextBuilder("sl");
         if (compilationThresholdOption != null) {
             builder.allowExperimentalOptions(true).option("engine.CompilationThreshold", compilationThresholdOption);
         }

@@ -28,10 +28,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -47,22 +45,28 @@ import org.junit.BeforeClass;
  */
 public abstract class TestWithSynchronousCompiling {
 
-    private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
-    private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
-    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+    private static Context context;
 
     @BeforeClass
     public static void before() {
-        backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-        compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+        context = defaultContextBuilder().build();
+        context.enter();
     }
 
     @AfterClass
     public static void after() {
-        immediateCompilationScope.close();
-        backgroundCompilationScope.close();
-        compilationThresholdScope.close();
+        if (context != null) {
+            try {
+                context.leave();
+            } finally {
+                context.close();
+            }
+        }
+    }
+
+    public static Context.Builder defaultContextBuilder(String... permittedLanguages) {
+        return Context.newBuilder(permittedLanguages).allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option(
+                        "engine.CompilationThreshold", "10").option("engine.CompileImmediately", Boolean.FALSE.toString());
     }
 
     protected static void assertCompiled(OptimizedCallTarget target) {
