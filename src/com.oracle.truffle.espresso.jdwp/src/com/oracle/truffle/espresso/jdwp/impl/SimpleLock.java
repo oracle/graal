@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-public class ThreadLock {
+public class SimpleLock {
 
     private volatile boolean locked;
 

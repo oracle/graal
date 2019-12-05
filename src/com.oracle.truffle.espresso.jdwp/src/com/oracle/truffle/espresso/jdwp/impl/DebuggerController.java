@@ -49,12 +49,12 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
-public class DebuggerController {
+public final class DebuggerController {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
-    private final Map<Object, ThreadLock> suspendLocks = new HashMap<>();
+    private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
     private final Map<Object, SuspendedInfo> suspendedInfos = new HashMap<>();
     private final Map<Object, Integer> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob> threadJobs = new HashMap<>();
@@ -251,7 +251,7 @@ public class DebuggerController {
                 suspendedInfos.put(thread, null);
             }
 
-            ThreadLock lock = getSuspendLock(thread);
+            SimpleLock lock = getSuspendLock(thread);
             synchronized (lock) {
                 JDWPLogger.log("Waiking up thread: %s", JDWPLogger.LogLevel.THREAD, getThreadName(thread));
                 lock.release();
@@ -313,10 +313,10 @@ public class DebuggerController {
         }
     }
 
-    private ThreadLock getSuspendLock(Object thread) {
-        ThreadLock lock = suspendLocks.get(thread);
+    private SimpleLock getSuspendLock(Object thread) {
+        SimpleLock lock = suspendLocks.get(thread);
         if (lock == null) {
-            lock = new ThreadLock();
+            lock = new SimpleLock();
             suspendLocks.put(thread, lock);
         }
         return lock;
@@ -715,7 +715,7 @@ public class DebuggerController {
     }
 
     private void lockThread(Object thread) {
-        ThreadLock lock = getSuspendLock(thread);
+        SimpleLock lock = getSuspendLock(thread);
 
         synchronized (lock) {
             try {
@@ -747,7 +747,7 @@ public class DebuggerController {
 
     public void postJobForThread(ThreadJob job) {
         threadJobs.put(job.getThread(), job);
-        ThreadLock lock = getSuspendLock(job.getThread());
+        SimpleLock lock = getSuspendLock(job.getThread());
         synchronized (lock) {
             lock.release();
             lock.notifyAll();

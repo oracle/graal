@@ -180,7 +180,7 @@ public final class DebuggerConnection implements Commands {
 
     private class JDWPTransportThread implements Runnable {
 
-        @CompilerDirectives.CompilationFinal private boolean started;
+        private boolean started;
         private RequestedJDWPEvents requestedJDWPEvents = new RequestedJDWPEvents(connection, controller);
         // constant used to allow for initial startup sequence debugger commands to occur before
         // waking up the main Espresso startup thread
