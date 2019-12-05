@@ -122,31 +122,31 @@ endif
 
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.cpp.dir/ref.out: %.cpp $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.cc.dir/ref.out: %.cc $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.C.dir/ref.out: %.C $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.f.dir/ref.out: %.f $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.f90.dir/ref.out: %.f90 $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.f03.dir/ref.out: %.f03 $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -o $@ $^
+	$(QUIETLY) $(FC) -w -J$(shell dirname $@) $(CPPFLAGS) $(FFLAGS) $(LDFLAGS) -g -o $@ $^
 
 %.bc: %.dragonegg.ll
 	$(QUIETLY) $(DRAGONEGG_LLVMAS) -o $@ $<
