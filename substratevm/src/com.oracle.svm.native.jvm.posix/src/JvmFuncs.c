@@ -273,6 +273,7 @@ JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is
                  jstring location, const char* const* packages, jsize num_packages) {
     fprintf(stderr, "JVM_DefineModule called\n");
 }
+#endif
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   int result;
@@ -296,4 +297,3 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_end(args);
   return len;
 }
-#endif
