@@ -1298,7 +1298,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl) {
+                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory) {
         PolyglotContextImpl context;
         synchronized (this) {
             checkState();
@@ -1330,6 +1330,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         } else {
             fs = FileSystems.newNoIOFileSystem();
             internalFs = FileSystems.newLanguageHomeFileSystem();
+        }
+        if (currentWorkingDirectory != null) {
+            fs.setCurrentWorkingDirectory(fs.parsePath(currentWorkingDirectory));
+            internalFs.setCurrentWorkingDirectory(internalFs.parsePath(currentWorkingDirectory));
         }
         final OutputStream useOut;
         if (configOut == null || configOut == INSTRUMENT.getOut(this.out)) {
