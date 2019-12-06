@@ -6,6 +6,7 @@ The following language implementations exist already:
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [Graal.Python](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *
+* [grCUDA](https://github.com/NVIDIA/grcuda), a polyglot CUDA integration.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [Sulong](https://github.com/oracle/graal/tree/master/sulong), an LLVM bitcode interpreter. *
