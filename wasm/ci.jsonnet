@@ -1,13 +1,7 @@
+local common = import 'ci_common/common.jsonnet';
+
 {
   local base = {
-      local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b04', platformspecific: true},
-
-      jdk8: {
-        downloads+: {
-          JAVA_HOME: labsjdk8,
-        },
-      },
-
       gate:        {targets+: ['gate']},
 
       common: {
@@ -110,9 +104,9 @@
     timelimit: '35:00',
   },
 
-  local jdk8_gate_linux_wabt        = base.jdk8 + base.gate + base.linux + base.wabt,
-  local jdk8_gate_linux_wabt_emsdk  = base.jdk8 + base.gate + base.linux + base.wabt + base.emsdk,
-  local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate + base.linux + base.eclipse + base.jdt,
+  local jdk8_gate_linux_wabt        = common.jdk8 + base.gate + base.linux + base.wabt,
+  local jdk8_gate_linux_wabt_emsdk  = common.jdk8 + base.gate + base.linux + base.wabt + base.emsdk,
+  local jdk8_gate_linux_eclipse_jdt = common.jdk8 + base.gate + base.linux + base.eclipse + base.jdt,
 
   builds: [
     jdk8_gate_linux_eclipse_jdt + gate_graalwasm             + {environment+: {GATE_TAGS: 'style,fullbuild'}}         + {name: 'gate-graalwasm-style-fullbuild-linux-amd64'},
