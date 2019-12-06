@@ -760,6 +760,8 @@ def gen_fallbacks():
             mx.logv('Collect from : ' + staticlib_path)
             mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
 
+        if len(symbols) == 0:
+            mx.abort('Could not find any unresolved JVM_* symbols in static JDK libraries')
         return symbols
 
     def collect_implementations():
@@ -789,6 +791,8 @@ def gen_fallbacks():
             for line in f:
                 collector(line)
 
+        if len(impls) == 0:
+            mx.abort('Could not find any implementations for JVM_* symbols in JvmFuncs.c')
         return impls
 
     def write_fallbacks(required_fallbacks):
