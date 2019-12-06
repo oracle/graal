@@ -39,6 +39,7 @@ import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.*;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -619,7 +620,8 @@ public final class DebuggerController {
                 java.lang.reflect.Method getMethod = DebugValue.class.getDeclaredMethod(DEBUG_VALUE_GET);
                 getMethod.setAccessible(true);
                 return getMethod.invoke(value);
-            } catch (Throwable e) {
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                JDWPLogger.log("Failed to reflectively get real value for %s", JDWPLogger.LogLevel.ALL, value);
                 // use a static object to signal that the value could not be retrieved
                 // callers will send appropriate jdwp error codes when discovered
                 return JDWP.INVALID_VALUE;
@@ -634,7 +636,8 @@ public final class DebuggerController {
                 java.lang.reflect.Method getRoot = DebugStackFrame.class.getDeclaredMethod(DEBUG_STACK_FRAME_FIND_CURRENT_ROOT);
                 getRoot.setAccessible(true);
                 return (RootNode) getRoot.invoke(frame);
-            } catch (Throwable e) {
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                JDWPLogger.log("Failed to reflectively find current root for %s", JDWPLogger.LogLevel.ALL, frame);
                 // null signals that we're unable to retrieve the current root instance
                 return null;
             }
@@ -647,7 +650,8 @@ public final class DebuggerController {
                 Method method = DebugException.class.getDeclaredMethod(DEBUG_EXCEPTION_GET_RAW_EXCEPTION);
                 method.setAccessible(true);
                 return (Throwable) method.invoke(exception);
-            } catch (Exception e) {
+            } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                JDWPLogger.log("Failed to reflectively get raw exception for %s", JDWPLogger.LogLevel.ALL, exception);
                 // null signals that we're unable to retrieve the raw exception instance
                 return null;
             }
