@@ -16,6 +16,7 @@ This page documents the limitations.
 | [Lambda Expressions](#lambda-expressions) | Supported|
 | [Synchronized, wait, and notify](#synchronized-wait-and-notify) | Supported|
 | [Finalizers](#finalizers) | Not supported|
+| [Serialization](#serialization) | Not supported|
 | [References](#references) | Mostly supported|
 | [Threads](#threads) | Supported|
 | [Identity Hash Code](#identity-hash-code) | Supported|
@@ -157,6 +158,16 @@ Finalizers are an ancient relict of the early days of Java that are complicated 
 For example, the finalizer can make the object reachable again by storing it in a static field.
 
 Alternatives: Use weak references and reference queues.
+
+Serialization
+----------
+
+**Support Status: Not Supported**
+
+What: Java serialization is currently not supported with native image. Thus classes implementing `java.io.Serializable` or using java serialization primitives
+eg : `Object[Input|Output]Stream.[read|write]Object` will report an error  
+
+Notice this limitation extends to packages that rely on serialization, such as: [java.rmi](https://docs.oracle.com/javase/8/docs/technotes/guides/rmi)
 
 
 References
