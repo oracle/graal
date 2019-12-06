@@ -43,7 +43,6 @@ import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
 import fnmatch
-from collections import OrderedDict
 
 import mx
 import mx_compiler
@@ -726,7 +725,7 @@ def gen_fallbacks():
     native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix')).dir, 'src')
 
     def collect_missing_symbols():
-        symbols = OrderedDict()
+        symbols = set()
 
         def collect_symbols_fn(symbol_prefix):
             def collector(line):
@@ -749,7 +748,7 @@ def gen_fallbacks():
                         platform_prefix = '_' if mx.is_darwin() else ''
                         if symbol_candiate.startswith(platform_prefix + symbol_prefix):
                             mx.logv('Pick symbol: ' + symbol_candiate)
-                            symbols[symbol_candiate[len(platform_prefix):]] = symbol_prefix
+                            symbols.add(symbol_candiate[len(platform_prefix):])
                 except:
                     mx.logv('Skipping line: ' + line.rstrip())
             return collector
@@ -776,8 +775,7 @@ def gen_fallbacks():
         return symbols
 
     def collect_implementations():
-        # Use OrderedDict to ensure the order of the collected function names does not change from one run to the next.
-        impls = OrderedDict()
+        impls = set()
 
         jvm_funcs_path = join(native_project_dir, 'JvmFuncs.c')
 
@@ -792,7 +790,7 @@ def gen_fallbacks():
                     if name_part.startswith(symbol_prefix):
                         impl_name = name_part.split('(')[0].rstrip()
                         mx.logv('Found matching implementation: ' + impl_name)
-                        impls[impl_name] = symbol_prefix
+                        impls.add(impl_name)
                 except:
                     mx.logv('Skipping line: ' + line.rstrip())
             return collector
@@ -817,7 +815,7 @@ JNIEXPORT jobject JNICALL {0}(JNIEnv *env) {{
     return NULL;
 }}
 '''
-            for name in required_fallbacks.keys():
+            for name in required_fallbacks:
                 new_fallback.write(function_stub.format(name))
 
             native_project_src_gen_dir = join(native_project_dir, 'src_gen')
@@ -835,10 +833,8 @@ JNIEXPORT jobject JNICALL {0}(JNIEnv *env) {{
             if new_fallback:
                 new_fallback.close()
 
-    required_fallbacks = collect_missing_symbols()
-    for impl in collect_implementations():
-        required_fallbacks.pop(impl, None)
-    write_fallbacks(required_fallbacks)
+    required_fallbacks = collect_missing_symbols() - collect_implementations()
+    write_fallbacks(sorted(required_fallbacks))
 
 def _helloworld(native_image, javac_command, path, args):
     mkpath(path)
