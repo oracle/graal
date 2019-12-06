@@ -55,33 +55,6 @@ JNIEXPORT void JNICALL initialize() {
   }
 }
 
-/* Only called in java.lang.Runtime native methods. */
-JNIEXPORT void JNICALL JVM_FreeMemory() {
-    printf("JVM_FreeMemory called:  Unimplemented\n");
-}
-
-JNIEXPORT jlong JNICALL JVM_TotalMemory() {
-    printf("JVM_TotalMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT jlong JNICALL JVM_MaxMemory() {
-    printf("JVM_MaxMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT void JNICALL JVM_GC() {
-    printf("JVM_GC called:  Unimplemented\n");
-}
-
-JNIEXPORT void JNICALL JVM_TraceInstructions(int on) {
-    printf("JVM_TraceInstructions called:  Unimplemented\n");
-}
-
-JNIEXPORT void JNICALL JVM_TraceMethodCalls(int on) {
-    printf("JVM_TraceMethods called:  Unimplemented\n");
-}
-
 JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
     DWORD_PTR lpProcessAffinityMask = 0;
     DWORD_PTR lpSystemAffinityMask = 0;
@@ -234,38 +207,6 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
     return NULL;
 }
 
-JNIEXPORT jobject JNICALL JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
-    fprintf(stderr, "JVM_GetInheritedAccessControlContext called:  Unimplemented\n");
-    return NULL;
-}
-
-JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
-    fprintf(stderr, "JVM_GetStackAccessControlContext called:  Unimplemented\n");
-    return NULL;
-}
-
-#ifdef JNI_VERSION_9
-JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
-    fprintf(stderr, "JVM_AddModuleExports called\n");
-}
-
-JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
-    fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
-}
-
-JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
-    fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
-}
-
-JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
-    fprintf(stderr, "JVM_AddReadsModule called\n");
-}
-
-JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
-                 jstring location, const char* const* packages, jsize num_packages) {
-    fprintf(stderr, "JVM_DefineModule called\n");
-}
-
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;
@@ -274,4 +215,3 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_end(args);
   return len;
 }
-#endif
