@@ -284,6 +284,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
 
+        /*
+         * Libraries defined via @CLibrary annotations are added at the end of the list of libraries
+         * so that the written object file AND the static JDK libraries can depend on them.
+         */
+        nativeLibs.processAnnotated();
+
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
