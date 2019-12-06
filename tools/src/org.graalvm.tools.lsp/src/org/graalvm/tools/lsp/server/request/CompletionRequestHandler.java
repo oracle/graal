@@ -336,7 +336,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 CompletionItem completion = CompletionItem.create(key);
                 // Inner scopes should be displayed first, so sort by priority and scopeCounter
                 // (the innermost scope has the lowest counter)
-                completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
+                completion.setSortText(String.format("%s%d.%04d.%s", "+", displayPriority, scopeCounter, key));
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
                 completion.setDetail(createCompletionDetail(object, langInfo));
@@ -410,7 +410,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             CompletionItem completion = CompletionItem.create(key);
             ++counter;
             // Keep the order in which the keys were provided
-            completion.setSortText(String.format("%06d.%s", counter, key));
+            completion.setSortText(String.format("$s%06d.%s", "+", counter, key));
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(value, langInfo));
