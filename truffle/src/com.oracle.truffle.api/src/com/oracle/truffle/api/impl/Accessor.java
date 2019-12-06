@@ -397,6 +397,12 @@ public abstract class Accessor {
         public abstract boolean isIOAllowed();
 
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
+
+        public abstract Set<String> getLanguageIds();
+
+        public abstract Set<String> getInstrumentIds();
+
+        public abstract Set<String> getInternalIds();
     }
 
     public abstract static class LanguageSupport {

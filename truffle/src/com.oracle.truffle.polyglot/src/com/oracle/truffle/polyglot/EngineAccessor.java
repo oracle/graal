@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -763,6 +764,25 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw new AssertionError();
             }
+        }
+
+        @Override
+        public Set<String> getLanguageIds() {
+            return LanguageCache.languages().keySet();
+        }
+
+        @Override
+        public Set<String> getInstrumentIds() {
+            Set<String> ids = new HashSet<>();
+            for (InstrumentCache cache : InstrumentCache.load()) {
+                ids.add(cache.getId());
+            }
+            return ids;
+        }
+
+        @Override
+        public Set<String> getInternalIds() {
+            return Collections.singleton(PolyglotEngineImpl.OPTION_GROUP_ENGINE);
         }
 
         @Override

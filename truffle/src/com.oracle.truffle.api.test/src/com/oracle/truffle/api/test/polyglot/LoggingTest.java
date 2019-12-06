@@ -858,8 +858,8 @@ public class LoggingTest {
                 Assert.assertNotSame(logger1, logger2);
                 Assert.assertSame(logger1, env.getLogger("a.b.c"));
                 Assert.assertSame(logger2, env.getLogger("a.b"));
-                Assert.assertNotSame(logger1, TruffleLogger.getLogger("a.b.c"));
-                Assert.assertNotSame(logger2, TruffleLogger.getLogger("a.b"));
+                Assert.assertNotSame(logger1, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b.c"));
+                Assert.assertNotSame(logger2, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b"));
                 eng1Loggers.set(0, logger1);
                 eng1Loggers.set(1, logger2);
             }
@@ -910,6 +910,39 @@ public class LoggingTest {
         }
         Assert.assertNotEquals(0, err.toByteArray().length);
         Assert.assertEquals(0, errConsumer.toByteArray().length);
+    }
+
+    @Test
+    public void testInvalidId() {
+        Context.Builder builder = Context.newBuilder();
+        TestHandler handler = new TestHandler();
+        LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+            @Override
+            public boolean test(LoggingContext ctx, Collection<TruffleLogger> defaultLoggers) {
+                try {
+                    TruffleLogger.getLogger("LoggingTest-Invalid-Id");
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException iae) {
+                    // Expected exception
+                }
+                try {
+                    TruffleLogger.getLogger("LoggingTest-Invalid-Id", LoggingTest.class);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException iae) {
+                    // Expected exception
+                }
+                try {
+                    TruffleLogger.getLogger("LoggingTest-Invalid-Id", "global");
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException iae) {
+                    // Expected exception
+                }
+                return false;
+            }
+        };
+        try (Context ctx = builder.logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
     }
 
     @SuppressWarnings("all")
