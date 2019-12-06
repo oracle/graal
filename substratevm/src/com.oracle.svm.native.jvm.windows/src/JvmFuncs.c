@@ -207,6 +207,7 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
+#ifdef JNI_VERSION_9
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;
@@ -215,3 +216,4 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_end(args);
   return len;
 }
+#endif
