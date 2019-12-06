@@ -763,8 +763,10 @@ def gen_fallbacks():
         else:
             mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
-        staticlib_wildcard = mx_subst.path_substitutions.substitute('<staticlib:*>')
-        staticlib_wildcard_path = join(mx_compiler.jdk.home, "lib", staticlib_wildcard)
+        staticlib_wildcard = ['lib', mx_subst.path_substitutions.substitute('<staticlib:*>')]
+        if svm_java8():
+            staticlib_wildcard[0:0] = ['jre']
+        staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
         for staticlib_path in glob(staticlib_wildcard_path):
             mx.logv('Collect from : ' + staticlib_path)
             mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
