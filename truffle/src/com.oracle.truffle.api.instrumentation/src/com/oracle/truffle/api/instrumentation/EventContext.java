@@ -136,7 +136,7 @@ public final class EventContext {
 
     /**
      * Returns a language provided object that represents the instrumented node properties. The
-     * returned is alwasy a valid interop object. The returned object is never <code>null</code> and
+     * returned is always a valid interop object. The returned object is never <code>null</code> and
      * always returns <code>true</code> for the HAS_KEYS message. Multiple calls to
      * {@link #getNodeObject()} return the same node object instance.
      *
@@ -297,10 +297,42 @@ public final class EventContext {
         return new UnwindException(info, unwindBinding);
     }
 
-    /*
-     * TODO (chumer) a way to parse code in the current language and return something like a node
-     * that is directly embeddable into the AST as a @Child.
+    /**
+     * Creates a runtime exception that when thrown is observable to the guest language application.
+     * Be aware that errors propagated to the guest application may significantly alter the behavior
+     * of the guest application influencing other instruments which may limit them ability of them
+     * to be composed. If not wrapped using this method any exception caused by an execution event
+     * instrumentation is printed to the {@link TruffleInstrument.Env#out() error stream}.
+     * <p>
+     * Propagating runtime errors is supported in the following events:
+     * <ul>
+     * <li>{@link ExecutionEventNode#onEnter(VirtualFrame) onEnter}
+     * <li>{@link ExecutionEventNode#onInputValue(VirtualFrame, EventContext, int, Object)
+     * onInputValue}
+     * <li>{@link ExecutionEventNode#onReturnExceptional(VirtualFrame, Throwable)
+     * onReturnExceptional}
+     * <li>{@link ExecutionEventNode#onReturnValue(VirtualFrame, Object) onReturnValue}
+     * <li>{@link ExecutionEventNode#onUnwind(VirtualFrame, Object) onUnwind}
+     * <li>{@link ExecutionEventNode#onDispose(VirtualFrame) onDispose}
+     * </ul>
+     * Errors may not be propagated in {@link ExecutionEventNodeFactory#create(EventContext)} as
+     * this may lead to unstable ASTs.
+     * <p>
+     * If an error is propagated all other installed execution event listeners will continue to be
+     * notified. If multiple listeners propagate errors then the first error will be propagated and
+     * later errors will be attached to the first as {@link Exception#addSuppressed(Throwable)
+     * suppressed} exception. The notification order relates to the order the bindings were
+     * installed.
+     * <p>
+     * Example usage: {@link PropagateErrorSnippets#onCreate}
+     *
+     * @param e the exception to propagate.
+     * @since 20.0
      */
+    public RuntimeException createError(RuntimeException e) {
+        return new InstrumentException(this, e);
+    }
+
     /** @since 0.12 */
     @Override
     public String toString() {
@@ -309,9 +341,67 @@ public final class EventContext {
 
 }
 
-class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
+class PropagateErrorSnippets extends TruffleInstrument {
 
     // Checkstyle: stop
+    // @formatter:off
+    @Override
+    // BEGIN: PropagateErrorSnippets#onCreate
+    protected void onCreate(TruffleInstrument.Env env) {
+        env.getInstrumenter().attachExecutionEventListener(
+            SourceSectionFilter.newBuilder().
+                                tagIs(StandardTags.CallTag.class).build(),
+            new ExecutionEventListener() {
+                public void onEnter(EventContext context, VirtualFrame f) {
+                    throw context.createError(
+                          new RuntimeException("propagated to the guest"));
+                }
+                public void onReturnValue(EventContext context,
+                                          VirtualFrame f, Object result) {
+                }
+                public void onReturnExceptional(EventContext context,
+                                                VirtualFrame f, Throwable ex) {}
+            });
+    }
+    // END: PropagateErrorSnippets#onCreate
+    // @formatter:on
+}
+
+class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
+
+    // @formatter:off
+    @Override
+    // BEGIN: UnwindInstrumentationReturnSnippets#onCreate
+    protected void onCreate(TruffleInstrument.Env env) {
+        // Register a listener that checks the return value to all call nodes
+        // If the return value is not 42, it forces to return 42.
+        env.getInstrumenter().attachExecutionEventListener(
+            SourceSectionFilter.newBuilder().
+                                tagIs(StandardTags.CallTag.class).build(),
+            new ExecutionEventListener() {
+                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onReturnValue(EventContext context,
+                                          VirtualFrame f, Object result) {
+                    if (!Objects.equals(result, 42)) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw context.createUnwind(42);
+                    }
+                }
+                public Object onUnwind(EventContext context,
+                                       VirtualFrame f, Object info) {
+                    // return 42 on unwind
+                    return info;
+                }
+                public void onReturnExceptional(EventContext context,
+                                                VirtualFrame f, Throwable ex) {}
+            });
+    }
+    // END: UnwindInstrumentationReturnSnippets#onCreate
+    // @formatter:on
+}
+
+class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
+
     // @formatter:off
     @Override
     // BEGIN: UnwindInstrumentationReenterSnippets#onCreate
@@ -356,39 +446,6 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
             });
     }
     // END: UnwindInstrumentationReenterSnippets#onCreate
-    // @formatter:on
-}
-
-class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
-
-    // @formatter:off
-    @Override
-    // BEGIN: UnwindInstrumentationReturnSnippets#onCreate
-    protected void onCreate(TruffleInstrument.Env env) {
-        // Register a listener that checks the return value to all call nodes
-        // If the return value is not 42, it forces to return 42.
-        env.getInstrumenter().attachExecutionEventListener(
-            SourceSectionFilter.newBuilder().
-                                tagIs(StandardTags.CallTag.class).build(),
-            new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {}
-                public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {
-                    if (!Objects.equals(result, 42)) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw context.createUnwind(42);
-                    }
-                }
-                public Object onUnwind(EventContext context,
-                                       VirtualFrame f, Object info) {
-                    // return 42 on unwind
-                    return info;
-                }
-                public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
-            });
-    }
-    // END: UnwindInstrumentationReturnSnippets#onCreate
     // @formatter:on
     // Checkstyle: resume
 }
