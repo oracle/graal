@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 import java.io.IOException;

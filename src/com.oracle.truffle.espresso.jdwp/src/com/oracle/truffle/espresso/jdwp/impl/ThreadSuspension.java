@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 import java.util.Arrays;
 import java.util.HashSet;
