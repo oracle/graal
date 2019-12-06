@@ -62,4 +62,53 @@
     },
   },
 
+  local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+
+  gate_graalwasm: {
+    setup+: [
+      ['cd', 'wasm'],
+      ['mx', 'sversions'],
+    ],
+    run+: [
+      gate_cmd,
+    ],
+    timelimit: '35:00',
+  },
+
+  gate_graalwasm_jvmci: {
+    setup+: [
+      ['cd', 'wasm'],
+      ['mx', 'sversions'],
+    ],
+    run+: [
+      gate_cmd_jvmci
+    ],
+    timelimit: '35:00',
+  },
+
+  gate_graalwasm_emsdk_jvmci: {
+    setup+: [
+      ['set-export', 'ROOT_DIR', ['pwd']],
+      ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
+      ['cd', 'wasm'],
+      [
+        './generate_em_config',
+        '$EM_CONFIG',
+        '$EMSDK_DIR/myfastcomp/emscripten-fastcomp/bin/',
+        '$EMSDK_DIR/myfastcomp/old-binaryen/',
+        '$EMSDK_DIR/fastcomp/emscripten/',
+        ['which', 'node'],
+      ],
+      ['mx', 'sversions'],
+    ],
+    run+: [
+      gate_cmd_jvmci
+    ],
+    timelimit: '35:00',
+  },
+
+  jdk8_gate_linux_wabt        : self.jdk8 + self.gate + self.linux + self.wabt,
+  jdk8_gate_linux_wabt_emsdk  : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
 }
