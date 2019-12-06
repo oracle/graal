@@ -31,11 +31,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
@@ -51,6 +54,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Can be used to debug object liveness.
@@ -131,6 +135,18 @@ public class PathExhibitor {
         Pointer sp = readCallerStackPointer();
         JavaStackWalker.walkCurrentThread(sp, stackFrameVisitor);
         stackFrameVisitor.reset();
+
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            IsolateThread thread = VMThreads.firstThread();
+            while (result.isSpaceAvailable() && thread.isNonNull()) {
+                if (thread.notEqual(CurrentIsolate.getCurrentThread())) { // walked above
+                    stackFrameVisitor.initialize(obj, result);
+                    JavaStackWalker.walkThread(thread, stackFrameVisitor);
+                    stackFrameVisitor.reset();
+                }
+                thread = VMThreads.nextThread(thread);
+            }
+        }
     }
 
     protected void findPathInBootImageHeap(final Object targetObject, PathElements result) {
