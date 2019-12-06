@@ -76,15 +76,6 @@ bench-specjvm2008-Single-forks-batch4 : ${bench-specjvm2008-Single} ${weeklys-be
   }
 }
 
-bench-renaissance-hwloc-forks : ${bench-renaissance-hwloc} ${weeklys-bench-notifications} {
-  targets: [bench, weekly],
-  setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
-  timelimit: "06:30:00"
-  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/compiler/renaissance_forks.json"
-  }
-}
-
 bench-renaissance-hwloc-forks-batch0 : ${bench-renaissance-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}

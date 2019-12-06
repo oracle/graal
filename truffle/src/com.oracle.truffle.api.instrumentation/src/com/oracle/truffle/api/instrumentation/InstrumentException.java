@@ -38,55 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.constants;
+package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+@SuppressWarnings("serial")
+final class InstrumentException extends RuntimeException {
 
-public final class TargetOffset {
-    public final int value;
+    final EventContext context;
+    final RuntimeException delegate;
 
-    private TargetOffset(int value) {
-        this.value = value;
+    InstrumentException(EventContext context, RuntimeException delegate) {
+        this.context = context;
+        this.delegate = delegate;
     }
 
-    public boolean isGreaterThanZero() {
-        return value > 0;
+    EventContext getContext() {
+        return context;
     }
 
-    public boolean isZero() {
-        return value == 0;
-    }
-
-    public boolean isMinusOne() {
-        return value == -1;
-    }
-
-    public TargetOffset decrement() {
-        final int resultValue = value - 1;
-        return createOrCached(resultValue);
-    }
-
-    public static TargetOffset createOrCached(int value) {
-        // The cache index starts with value -1, so we need a +1 offset.
-        final int resultCacheIndex = value + 1;
-        if (resultCacheIndex < CACHE.length) {
-            return CACHE[resultCacheIndex];
-        }
-        return new TargetOffset(value);
-    }
-
-    public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
-    public static final TargetOffset ZERO = new TargetOffset(0);
-
-    private static final int CACHE_SIZE = 256;
-    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE;
-
-    static {
-        CACHE = new TargetOffset[CACHE_SIZE];
-        CACHE[0] = MINUS_ONE;
-        CACHE[1] = ZERO;
-        for (int i = 2; i < CACHE_SIZE; i++) {
-            CACHE[i] = new TargetOffset(i - 1);
-        }
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
     }
 }

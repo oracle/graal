@@ -304,7 +304,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    protected final class SubstrateAMD64LIRGenerator extends AMD64LIRGenerator implements SubstrateLIRGenerator {
+    protected class SubstrateAMD64LIRGenerator extends AMD64LIRGenerator implements SubstrateLIRGenerator {
 
         public SubstrateAMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
             super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
@@ -861,7 +861,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
     }
 
-    private static Register getHeapBaseRegister(LIRGenerationResult lirGenRes) {
+    protected static Register getHeapBaseRegister(LIRGenerationResult lirGenRes) {
         return getRegisterConfig(lirGenRes).getHeapBaseRegister();
     }
 
@@ -905,7 +905,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return new SubstrateAMD64NodeLIRBuilder(graph, lirGen, nodeMatchRules);
     }
 
-    private static boolean useLinearPointerCompression() {
+    protected static boolean useLinearPointerCompression() {
         return SubstrateOptions.SpawnIsolates.getValue();
     }
 

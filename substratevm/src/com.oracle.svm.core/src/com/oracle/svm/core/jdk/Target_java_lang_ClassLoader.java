@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -139,6 +140,27 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_ClassLoader {
+
+    /**
+     * This field can be safely deleted, but that would require substituting the entire constructor
+     * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by
+     * this class loader. The only purpose of this table is to keep the classes from being GC'ed
+     * until the loader is GC'ed". This field is only accessed by ClassLoader.addClass() which is "
+     * invoked by the VM to record every loaded class with this loader".
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private Vector<Class<?>> classes;
+
+    /**
+     * Reset ClassLoader.packages; accessing packages via ClassLoader is currently not supported and
+     * the SystemClassLoader may capture some hosted packages.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
+    @TargetElement(name = "packages", onlyWith = JDK8OrEarlier.class)//
+    private HashMap<String, Package> packagesJDK8;
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @TargetElement(name = "packages", onlyWith = JDK11OrLater.class)//
+    private ConcurrentHashMap<String, Package> packagesJDK11;
 
     @Alias //
     private static ClassLoader scl;
