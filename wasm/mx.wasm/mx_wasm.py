@@ -73,7 +73,7 @@ class GraalWasmDefaultTags:
     wasmextratest = 'wasmextratest'
 
 
-def _graal_wasm_gate_runner(args, tasks):
+def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
@@ -86,7 +86,7 @@ def _graal_wasm_gate_runner(args, tasks):
             unittest(["WatSuite"])
 
 
-add_gate_runner(_suite, _graal_wasm_gate_runner)
+add_gate_runner(_suite, graal_wasm_gate_runner)
 
 
 #

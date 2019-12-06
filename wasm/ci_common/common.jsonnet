@@ -91,7 +91,7 @@
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
-      ['cd', 'wasm'],
+      ['cd', '$SUITE'],
       [
         './generate_em_config',
         '$EM_CONFIG',
