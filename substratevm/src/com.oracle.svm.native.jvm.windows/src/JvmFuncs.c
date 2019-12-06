@@ -171,24 +171,6 @@ JNIEXPORT int JNICALL JVM_GetLastErrorString(char *buf, int len) {
   return 0;
 }
 
-int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
-  return vfprintf(f, fmt, args);
-}
-
-int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
-  int result;
-
-  if ((intptr_t)count <= 0) return -1;
-
-  result = vsnprintf(str, count, fmt, args);
-  if ((result > 0 && (size_t)result >= count) || result == -1) {
-    str[count - 1] = '\0';
-    result = -1;
-  }
-
-  return result;
-}
-
 JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
     jclass errorClass;
     jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
@@ -205,6 +187,24 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
         (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
     }
     return NULL;
+}
+
+int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
+  return vfprintf(f, fmt, args);
+}
+
+int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
+  int result;
+
+  if ((intptr_t)count <= 0) return -1;
+
+  result = vsnprintf(str, count, fmt, args);
+  if ((result > 0 && (size_t)result >= count) || result == -1) {
+    str[count - 1] = '\0';
+    result = -1;
+  }
+
+  return result;
 }
 
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {

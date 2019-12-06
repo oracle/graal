@@ -194,10 +194,6 @@ JNIEXPORT int JNICALL JVM_GetLastErrorString(char *buf, int len) {
     return n;
 }
 
-int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
-  return vfprintf(f, fmt, args);
-}
-
 JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
     jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
     if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
@@ -213,6 +209,10 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
         (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
     }
     return NULL;
+}
+
+int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
+  return vfprintf(f, fmt, args);
 }
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
