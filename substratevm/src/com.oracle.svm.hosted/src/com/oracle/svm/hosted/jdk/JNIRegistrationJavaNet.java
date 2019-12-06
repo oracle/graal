@@ -25,8 +25,8 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.net.DatagramPacket;
+import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
@@ -55,7 +55,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         if (isWindows()) {
             rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
             if (JavaVersionUtil.JAVA_SPEC < 11) {
-                rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl");
+                rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl",
+                                /* Caches networking properties. */
+                                "java.net.PlainSocketImpl");
             } else {
                 /* The other implementations are merged into PlainSocketImpl. */
                 rerunClassInit(a, "java.net.PlainSocketImpl");
@@ -100,8 +102,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
          * InetAddress, Inet4Address, and Inet6Address are registered from many places in the JDK,
          * so it does not make sense to separate them.
          */
-        Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
-        a.registerReachabilityHandler(registerInitInetAddressIDs,
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerInitInetAddressIDs,
                         method(a, "java.net.InetAddress", "init"),
                         /* The next two methods call initInetAddressIDs directly. */
                         method(a, "java.net.Inet4AddressImpl", "lookupAllHostAddr", String.class),
@@ -124,20 +125,24 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplSocketGetOption,
                         method(a, "java.net." + plainDatagramSocketImpl, "socketGetOption", int.class));
 
+        if (JavaVersionUtil.JAVA_SPEC < 11 || isPosix()) {
+            String plainSocketImpl = isWindows() ? "TwoStacksPlainSocketImpl" : "PlainSocketImpl";
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
+                            method(a, "java.net." + plainSocketImpl, "initProto"));
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplSocketGetOption,
+                            method(a, "java.net." + plainSocketImpl, "socketGetOption", int.class, Object.class));
+        }
         if (isWindows()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainDatagramSocketImplInitIDs,
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
-            String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
-            a.registerReachabilityHandler(registerInitInetAddressIDs,
-                            method(a, "java.net." + plainSocketImpl, "initIDs"));
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
-                            method(a, "java.net." + plainSocketImpl, "initIDs"));
+
+            String dualStackPlainSocketImpl = JavaVersionUtil.JAVA_SPEC < 11 ? "DualStackPlainSocketImpl" : "PlainSocketImpl";
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplInitIDs,
+                            method(a, "java.net." + dualStackPlainSocketImpl, "initIDs"));
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplLocalAddress,
+                            method(a, "java.net." + dualStackPlainSocketImpl, "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
         } else {
             assert isPosix();
-            a.registerReachabilityHandler(registerInitInetAddressIDs,
-                            method(a, "java.net.PlainSocketImpl", "initProto"));
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
-                            method(a, "java.net.PlainSocketImpl", "initProto"));
             if (JavaVersionUtil.JAVA_SPEC < 9) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
@@ -245,14 +250,25 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     private static void registerPlainSocketImplInitProto(DuringAnalysisAccess a) {
         JNIRuntimeAccess.register(fields(a, "java.net.SocketImpl", "fd", "address", "port", "localport", "serverSocket"));
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "timeout", "trafficClass"));
-        if (isPosix()) {
-            JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "fdLock", "closePending"));
-        }
         if (isWindows()) {
             JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainSocketImpl", "fd1", "lastfd"));
+        } else {
+            JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "fdLock", "closePending"));
+            registerInitInetAddressIDs(a);
         }
-        JNIRuntimeAccess.register(clazz(a, "java.net.SocketInputStream"));
-        JNIRuntimeAccess.register(clazz(a, "java.net.SocketOutputStream"));
+    }
+
+    private static void registerPlainSocketImplSocketGetOption(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
+    }
+
+    private static void registerDualStackPlainSocketImplInitIDs(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
+        registerInitInetAddressIDs(a);
+    }
+
+    private static void registerDualStackPlainSocketImplLocalAddress(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
     }
 
     private static void registerExtendedOptionsImplInit(DuringAnalysisAccess a) {
