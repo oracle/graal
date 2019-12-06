@@ -25,10 +25,7 @@
 
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -50,21 +47,16 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Can be used to debug object liveness.
- *
- * <pre>
- * PathElements pathElements = new PathElements(10);
- * PathExhibitor pathFinder = PathExhibitor.factory();
- * PathExhibitor.TestingBackDoor.findPathToObject(pathFinder, jarEntry, pathElements);
- * pathElements.toLog(Log.log());
- * </pre>
  */
 public class PathExhibitor {
 
@@ -72,18 +64,43 @@ public class PathExhibitor {
         return new PathExhibitor();
     }
 
-    public boolean findPathToRoot(final Object leaf) {
-        PathElements singleElement = new PathElements(1);
-        // Put the obj in the path as a leaf.
-        PathElement currentElement = LeafElement.factory(leaf);
-        Object currentObject = leaf;
+    public void findPathToRange(Pointer rangeBegin, Pointer rangeEnd) {
+        assert VMOperation.isInProgressAtSafepoint();
+        if (rangeBegin.isNull() || rangeBegin.aboveThan(rangeEnd)) {
+            return;
+        }
+        PathEdge edge = new PathEdge();
+        findPathToTarget(new RangeTargetMatcher(rangeBegin, rangeEnd), edge);
+        if (edge.isFilled()) {
+            path.add(edge.getTo());
+            path.add(edge.getFrom());
+            Object fromObj = KnownIntrinsics.convertUnknownValue(edge.getFrom().getObject(), Object.class);
+            findPathToRoot(fromObj, edge); // adds the rest of the path
+        }
+    }
+
+    public void findPathToRoot(Object leaf) {
+        findPathToRoot(leaf, new PathEdge());
+    }
+
+    void findPathToRoot(Object leaf, PathEdge currentEdge) {
+        assert VMOperation.isInProgressAtSafepoint();
+        if (leaf == null) {
+            return;
+        }
+        Object currentTargetObj = leaf;
         for (; /* break */;) {
-            // Current is an element of the path.
-            path.add(currentElement);
             // Walk backwards one step.
-            singleElement.clear();
-            findPathToObject(currentObject, singleElement);
-            currentElement = singleElement.isEmpty() ? null : singleElement.get(0);
+            currentEdge.reset();
+            findPathToTarget(new ObjectTargetMatcher(currentTargetObj), currentEdge);
+
+            PathElement currentElement = null;
+            if (currentEdge.isFilled()) {
+                currentElement = currentEdge.getFrom();
+                if (path.isEmpty()) {
+                    path.add(currentEdge.getTo());
+                }
+            }
             // Look for reasons to stop walking.
             // - I didn't find a path to the current object.
             if (currentElement == null) {
@@ -91,21 +108,25 @@ public class PathExhibitor {
                 break;
             }
             // Update the current object.
-            currentObject = KnownIntrinsics.convertUnknownValue(currentElement.getObject(), Object.class);
+            currentTargetObj = KnownIntrinsics.convertUnknownValue(currentElement.getObject(), Object.class);
             // - The current element is a root.
-            if (currentObject == null) {
+            if (currentTargetObj == null) {
                 // Add element to path and stop.
                 path.add(currentElement);
                 break;
             }
             // - I have seen this object before.
-            if (checkForCycles(currentObject)) {
-                final CyclicElement cyclic = CyclicElement.factory(currentObject);
+            if (checkForCycles(currentTargetObj)) {
+                final CyclicElement cyclic = CyclicElement.factory(currentTargetObj);
                 path.add(cyclic);
                 break;
             }
+            path.add(currentElement);
         }
-        return true;
+    }
+
+    public PathElement[] getPath() {
+        return path.toArray(new PathElement[0]);
     }
 
     public void toLog(final Log log) {
@@ -115,32 +136,30 @@ public class PathExhibitor {
         }
     }
 
-    protected void findPathToObject(Object obj, PathElements result) {
-        if (obj == null || !result.isSpaceAvailable()) {
-            return;
-        }
+    protected void findPathToTarget(TargetMatcher target, PathEdge edge) {
+        assert target != null && !edge.isFilled();
         // Look in all the roots.
-        findPathInHeap(obj, result);
-        findPathInBootImageHeap(obj, result);
-        findPathInStack(obj, result);
+        findPathInHeap(target, edge);
+        findPathInBootImageHeap(target, edge);
+        findPathInStack(target, edge);
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
-    protected void findPathInStack(final Object obj, PathElements result) {
-        if (!result.isSpaceAvailable()) {
+    protected void findPathInStack(TargetMatcher target, PathEdge edge) {
+        if (edge.isFilled()) {
             return;
         }
 
-        stackFrameVisitor.initialize(obj, result);
-        Pointer sp = readCallerStackPointer();
+        stackFrameVisitor.initialize(target, edge);
+        Pointer sp = KnownIntrinsics.readCallerStackPointer();
         JavaStackWalker.walkCurrentThread(sp, stackFrameVisitor);
         stackFrameVisitor.reset();
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             IsolateThread thread = VMThreads.firstThread();
-            while (result.isSpaceAvailable() && thread.isNonNull()) {
+            while (!edge.isFilled() && thread.isNonNull()) {
                 if (thread.notEqual(CurrentIsolate.getCurrentThread())) { // walked above
-                    stackFrameVisitor.initialize(obj, result);
+                    stackFrameVisitor.initialize(target, edge);
                     JavaStackWalker.walkThread(thread, stackFrameVisitor);
                     stackFrameVisitor.reset();
                 }
@@ -149,26 +168,24 @@ public class PathExhibitor {
         }
     }
 
-    protected void findPathInBootImageHeap(final Object targetObject, PathElements result) {
+    protected void findPathInBootImageHeap(TargetMatcher target, PathEdge result) {
         Heap.getHeap().walkImageHeapObjects(new ObjectVisitor() {
             @Override
             public boolean visitObject(Object obj) {
-                if (!result.isSpaceAvailable()) {
+                if (result.isFilled()) {
                     return false;
                 }
-
-                bootImageHeapObjRefVisitor.initialize(obj, targetObject, result);
+                bootImageHeapObjRefVisitor.initialize(obj, target, result);
                 return InteriorObjRefWalker.walkObject(obj, bootImageHeapObjRefVisitor);
             }
         });
     }
 
-    protected void findPathInHeap(final Object obj, PathElements result) {
-        if (!result.isSpaceAvailable()) {
+    protected void findPathInHeap(TargetMatcher target, PathEdge result) {
+        if (result.isFilled()) {
             return;
         }
-
-        heapObjectVisitor.initialize(obj, result);
+        heapObjectVisitor.initialize(target, result);
         HeapImpl.getHeapImpl().walkObjects(heapObjectVisitor);
     }
 
@@ -208,88 +225,112 @@ public class PathExhibitor {
 
         /** Return the base object for this path element, or null. */
         public abstract Object getObject();
+
+        @Override
+        public String toString() {
+            StringBuilderLog log = new StringBuilderLog();
+            toLog(log);
+            return log.getResult();
+        }
     }
 
-    /** A reusable StackFrameVisitor. */
-    public static class FrameVisitor implements StackFrameVisitor {
+    interface TargetMatcher {
+        boolean matches(Object obj);
+    }
 
-        // Lazily-initialized state,
-        // so I do not allocate one of these for each target for each frame.
-        /** A pointer to the object I am looking for. */
-        protected Pointer targetPointer;
-        private PathElements result;
+    static class ObjectTargetMatcher implements TargetMatcher {
+        final Object target;
 
-        protected FrameVisitor() {
-        }
-
-        public void initialize(final Object targetObject, PathElements res) {
-            this.targetPointer = Word.objectToUntrackedPointer(targetObject);
-            this.result = res;
+        ObjectTargetMatcher(Object target) {
+            this.target = target;
         }
 
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            frameSlotVisitor.initialize(ip, deoptimizedFrame, targetPointer, result);
-            return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, frameSlotVisitor);
-        }
-
-        public void reset() {
-            targetPointer = WordFactory.nullPointer();
+        public boolean matches(Object obj) {
+            return (obj == target);
         }
     }
 
-    private static class FrameSlotVisitor implements ObjectReferenceVisitor {
-        // Lazily-initialized state,
-        // so I do not allocate one of these for each target for each frame.
-        /** The instruction pointer of the current frame. */
-        protected CodePointer ip;
-        protected DeoptimizedFrame deoptFrame;
-        /** A pointer to the object I am looking for. */
-        protected Pointer targetPointer;
-        private PathElements result;
+    static class RangeTargetMatcher implements TargetMatcher {
+        final Pointer targetBegin;
+        final Pointer targetEnd;
 
-        protected FrameSlotVisitor() {
+        RangeTargetMatcher(Pointer rangeBegin, Pointer rangeEndExclusive) {
+            this.targetBegin = rangeBegin;
+            this.targetEnd = rangeEndExclusive;
         }
 
-        public void initialize(final CodePointer ipArg, final DeoptimizedFrame deoptFrameArg, final Pointer targetArg, PathElements res) {
+        @Override
+        public boolean matches(Object obj) {
+            Pointer objAddr = Word.objectToUntrackedPointer(obj);
+            return objAddr.aboveOrEqual(targetBegin) && objAddr.belowThan(targetEnd);
+        }
+    }
+
+    static class AbstractVisitor {
+        TargetMatcher target;
+        PathEdge result;
+
+        void initialize(TargetMatcher targetMatcher, PathEdge resultPath) {
+            this.target = targetMatcher;
+            this.result = resultPath;
+        }
+
+        void reset() {
+            initialize(null, null);
+        }
+    }
+
+    public static class FrameVisitor extends AbstractVisitor implements StackFrameVisitor {
+        FrameVisitor() {
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting stack frames.")
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+            frameSlotVisitor.initialize(ip, deoptimizedFrame, target, result);
+            return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, frameSlotVisitor);
+        }
+    }
+
+    private static class FrameSlotVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
+        CodePointer ip;
+        DeoptimizedFrame deoptFrame;
+
+        FrameSlotVisitor() {
+        }
+
+        void initialize(CodePointer ipArg, DeoptimizedFrame deoptFrameArg, TargetMatcher targetMatcher, PathEdge edge) {
+            super.initialize(targetMatcher, edge);
             ip = ipArg;
             deoptFrame = deoptFrameArg;
-            targetPointer = targetArg;
-            result = res;
         }
 
         @Override
         public boolean visitObjectReference(final Pointer stackSlot, boolean compressed) {
-            final Log trace = Log.noopLog();
+            Log trace = Log.noopLog();
             if (stackSlot.isNull()) {
                 return true;
             }
-
-            final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
+            Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
             trace.string("  referentPointer: ").hex(referentPointer);
-            if (referentPointer.equal(targetPointer)) {
-                result.add(StackElement.factory(stackSlot, ip, deoptFrame));
-                return result.isSpaceAvailable();
+            if (target.matches(referentPointer.toObject())) {
+                result.fill(StackElement.factory(stackSlot, ip, deoptFrame), LeafElement.factory(referentPointer.toObject()));
+                return false;
             }
             return true;
         }
     }
 
-    private static class BootImageHeapObjRefVisitor implements ObjectReferenceVisitor {
-        // Lazily-initialized instance state.
-        protected Object target;
-        protected Object container;
-        private PathElements result;
+    private static class BootImageHeapObjRefVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
+        Object container;
 
-        protected BootImageHeapObjRefVisitor() {
+        BootImageHeapObjRefVisitor() {
         }
 
-        @SuppressWarnings("hiding")
-        public void initialize(Object container, Object target, PathElements result) {
-            this.container = container;
-            this.target = target;
-            this.result = result;
+        void initialize(Object containerObj, TargetMatcher targetMatcher, PathEdge resultPath) {
+            super.initialize(targetMatcher, resultPath);
+            this.container = containerObj;
         }
 
         @Override
@@ -297,56 +338,37 @@ public class PathExhibitor {
             if (objRef.isNull()) {
                 return true;
             }
-            final Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
-            if (referent == target) {
+            Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
+            if (target.matches(referent)) {
                 final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
-                result.add(BootImageHeapElement.factory(container, offset));
-                return result.isSpaceAvailable();
+                result.fill(BootImageHeapElement.factory(container, offset), LeafElement.factory(referent));
+                return false;
             }
             return true;
         }
     }
 
-    private static class HeapObjectVisitor implements ObjectVisitor {
-
-        // Lazily-initialized instance state.
-        // - A pointer to the target object.
-        protected Pointer targetPointer;
-        private PathElements result;
-
-        protected HeapObjectVisitor() {
-        }
-
-        public void initialize(final Object targetObject, PathElements res) {
-            targetPointer = Word.objectToUntrackedPointer(targetObject);
-            result = res;
+    private static class HeapObjectVisitor extends AbstractVisitor implements ObjectVisitor {
+        HeapObjectVisitor() {
         }
 
         @Override
         public boolean visitObject(final Object containerObject) {
             final Pointer containerPointer = Word.objectToUntrackedPointer(containerObject);
-            heapObjRefVisitor.initialize(containerPointer, targetPointer, result);
+            heapObjRefVisitor.initialize(containerPointer, target, result);
             return InteriorObjRefWalker.walkObject(containerObject, heapObjRefVisitor);
         }
     }
 
-    private static class HeapObjRefVisitor implements ObjectReferenceVisitor {
+    private static class HeapObjRefVisitor extends AbstractVisitor implements ObjectReferenceVisitor {
+        Pointer containerPointer;
 
-        // Lazily-initialized state.
-        // - A pointer to the container of the object reference to the target.
-        protected Pointer containerPointer;
-        // - A pointer to the target object.
-        protected Pointer targetPointer;
-        private PathElements result;
-
-        protected HeapObjRefVisitor() {
+        HeapObjRefVisitor() {
         }
 
-        public void initialize(final Pointer container, final Pointer target, PathElements res) {
-            // Initialize lazily-initialized state.
+        public void initialize(Pointer container, TargetMatcher targetMatcher, PathEdge edge) {
+            super.initialize(targetMatcher, edge);
             containerPointer = container;
-            targetPointer = target;
-            result = res;
         }
 
         @Override
@@ -354,14 +376,20 @@ public class PathExhibitor {
             if (objRef.isNull()) {
                 return true;
             }
-            final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-            if (referentPointer.equal(targetPointer)) {
-                final UnsignedWord offset = objRef.subtract(containerPointer);
-                final Object containerObject = containerPointer.toObject();
-                result.add(HeapElement.factory(containerObject, offset));
-                return result.isSpaceAvailable();
+            Object containerObject = containerPointer.toObject();
+            if (!isInterfering(containerObject)) {
+                Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
+                if (target.matches(referentPointer.toObject())) {
+                    UnsignedWord offset = objRef.subtract(containerPointer);
+                    result.fill(HeapElement.factory(containerObject, offset), LeafElement.factory(referentPointer.toObject()));
+                    return false;
+                }
             }
             return true;
+        }
+
+        static boolean isInterfering(Object currentObject) {
+            return currentObject instanceof PathElement || currentObject instanceof FindPathToObjectOperation || currentObject instanceof TargetMatcher;
         }
     }
 
@@ -537,23 +565,19 @@ public class PathExhibitor {
         }
 
         public static PathElement findPathToObject(PathExhibitor exhibitor, Object obj) {
-            PathElements result = new PathElements(1);
-            findPathToObject(exhibitor, obj, result);
-            return result.isEmpty() ? null : result.get(0);
-        }
-
-        public static void findPathToObject(PathExhibitor exhibitor, Object obj, PathElements result) {
+            PathEdge result = new PathEdge();
             FindPathToObjectOperation op = new FindPathToObjectOperation(exhibitor, obj, result);
             op.enqueue();
+            return result.isFilled() ? result.getFrom() : null;
         }
     }
 
     private static final class FindPathToObjectOperation extends JavaVMOperation {
         private final PathExhibitor exhibitor;
         private final Object object;
-        private PathElements result;
+        private PathEdge result;
 
-        FindPathToObjectOperation(PathExhibitor exhibitor, Object object, PathElements result) {
+        FindPathToObjectOperation(PathExhibitor exhibitor, Object object, PathEdge result) {
             super("FindPathToObjectOperation", SystemEffect.SAFEPOINT);
             this.exhibitor = exhibitor;
             this.object = object;
@@ -562,54 +586,42 @@ public class PathExhibitor {
 
         @Override
         protected void operate() {
-            exhibitor.findPathToObject(object, result);
+            exhibitor.findPathToRoot(object, result);
         }
     }
 
-    public static class PathElements {
-        private PathElement[] elements;
-        private int size;
+    public static class PathEdge {
+        private PathElement from;
+        private PathElement to;
 
-        public PathElements(int maxSize) {
-            elements = new PathElement[maxSize];
-            size = 0;
+        public PathEdge() {
         }
 
-        public boolean isSpaceAvailable() {
-            return size < elements.length;
+        public boolean isFilled() {
+            return from != null && to != null;
         }
 
-        public boolean isEmpty() {
-            return size == 0;
+        public PathElement getFrom() {
+            return from;
         }
 
-        public int size() {
-            return size;
+        public PathElement getTo() {
+            return to;
         }
 
-        public PathElement get(int index) {
-            return elements[index];
+        public void fill(PathElement fromElem, PathElement toElem) {
+            from = fromElem;
+            to = toElem;
         }
 
-        public void add(PathElement elem) {
-            if (!isInterfering(elem.getObject())) {
-                elements[size++] = elem;
-            }
-        }
-
-        public void clear() {
-            Arrays.fill(elements, null);
-            size = 0;
+        public void reset() {
+            from = null;
+            to = null;
         }
 
         public void toLog(Log log) {
-            for (int i = 0; i < size; i++) {
-                elements[i].toLog(log);
-            }
-        }
-
-        private static boolean isInterfering(Object currentObject) {
-            return currentObject instanceof PathElement || currentObject instanceof FindPathToObjectOperation;
+            from.toLog(log);
+            to.toLog(log);
         }
     }
 }
