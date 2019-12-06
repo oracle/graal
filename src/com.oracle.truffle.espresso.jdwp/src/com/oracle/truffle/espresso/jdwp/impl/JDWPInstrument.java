@@ -48,6 +48,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         controller = new DebuggerController(this);
         this.env = instrumentEnv;
         this.env.registerService(controller);
+        this.env.getInstrumenter().attachContextsListener(controller, false);
     }
 
     public void reset(boolean prepareForReconnect) {

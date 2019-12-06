@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
@@ -36,6 +37,8 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.api.*;
 
@@ -50,7 +53,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 
-public final class DebuggerController {
+public final class DebuggerController implements ContextsListener {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
@@ -73,6 +76,8 @@ public final class DebuggerController {
     private final ThreadSuspension threadSuspension;
     private final EventFilters eventFilters;
     private VMEventListener eventListener;
+    private TruffleContext truffleContext;
+    private Object previous;
 
     public DebuggerController(JDWPInstrument instrument) {
         this.instrument = instrument;
@@ -80,7 +85,6 @@ public final class DebuggerController {
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
-
     }
 
     public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, boolean reconnect) {
@@ -366,6 +370,23 @@ public final class DebuggerController {
 
     public VMEventListener getEventListener() {
         return eventListener;
+    }
+
+    public void enterTruffleContext() {
+        if (previous == null && truffleContext != null) {
+            previous = truffleContext.enter();
+        }
+    }
+
+    public void leaveTruffleContext() {
+        if (previous != null && truffleContext != null) {
+            truffleContext.leave(previous);
+        }
+    }
+
+    @Override
+    public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+        truffleContext = con;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
@@ -770,4 +791,30 @@ public final class DebuggerController {
             lock.notifyAll();
         }
     }
+
+    @Override
+    public void onContextCreated(@SuppressWarnings("unused") TruffleContext con) {
+
+    }
+
+    @Override
+    public void onLanguageContextCreated(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+
+    }
+
+    @Override
+    public void onLanguageContextFinalized(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+
+    }
+
+    @Override
+    public void onLanguageContextDisposed(@SuppressWarnings("unused") TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+
+    }
+
+    @Override
+    public void onContextClosed(@SuppressWarnings("unused") TruffleContext con) {
+
+    }
+
 }
