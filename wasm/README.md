@@ -165,9 +165,43 @@ Result "com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run":
 
 ## Running WebAssembly programs using a launcher
 
-We are working on adding a launcher for GraalWasm, which will allow running binary WebAssembly programs
-directly from the command line.
-Stay tuned!
+For the latest GraalWasm release, see
+[the GraalVM dev builds page](https://github.com/graalvm/graalvm-ce-dev-builds/releases).
+If downloading GraalWasm as a separate GraalVM component,
+you can download it as follows (replace JDK and GraalVM versions with appropriate values):
+
+```
+# graalvm-ce-java8-19.3.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
+```
+
+This will install a launcher, which runs WebAssembly modules.
+For example, assuming that compiled the following C program with Emscripten:
+
+```
+#include <stdio.h>
+
+int main() {
+  int number = 1;
+  int rows = 10;
+  for (int i = 1; i <= rows; i++) {
+    for (int j = 1; j <= i; j++) {
+      printf("%d ", number);
+      ++number;
+    }
+    printf(".\n");
+  }
+  return 0;
+}
+```
+
+You can run the compiled WebAssembly binary as follows:
+
+```
+graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
+```
+
+In this example, the flag `--Builtins` specifies builtin modules
+that the Emscripten toolchain assumes.
 
 
 ## Embedding GraalWasm inside other programs
