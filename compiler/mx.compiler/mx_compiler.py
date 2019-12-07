@@ -1246,7 +1246,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
 
-        vm_name = 'Graal'
+        vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
             s = ':' + d.suite.name + '_' + d.suite.version()
             if s not in vm_name:
