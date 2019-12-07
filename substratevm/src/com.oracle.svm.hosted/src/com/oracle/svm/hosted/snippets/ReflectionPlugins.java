@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -53,6 +54,7 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -234,7 +236,7 @@ public class ReflectionPlugins {
     private static boolean processGetField(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode name,
                     SnippetReflectionProvider snippetReflection, boolean declared, boolean analysis, boolean hosted) {
         if (receiver.isConstant() && name.isConstant()) {
-            Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+            Class<?> clazz = getReceiverClass(b, receiver);
             String fieldName = snippetReflection.asObject(String.class, name.asJavaConstant());
 
             String target = clazz.getTypeName() + "." + fieldName;
@@ -274,7 +276,7 @@ public class ReflectionPlugins {
             Class<?>[] paramTypes = SubstrateGraphBuilderPlugins.extractClassArray(annotationSubstitutions, snippetReflection, parameterTypes, true);
 
             if (paramTypes != null) {
-                Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+                Class<?> clazz = getReceiverClass(b, receiver);
                 String methodName = snippetReflection.asObject(String.class, name.asJavaConstant());
 
                 String target = clazz.getTypeName() + "." + methodName + "(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
@@ -317,7 +319,7 @@ public class ReflectionPlugins {
             Class<?>[] paramTypes = SubstrateGraphBuilderPlugins.extractClassArray(annotationSubstitutions, snippetReflection, parameterTypes, true);
 
             if (paramTypes != null) {
-                Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+                Class<?> clazz = getReceiverClass(b, receiver);
 
                 String target = clazz.getTypeName() + ".<init>(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
                 try {
@@ -349,6 +351,18 @@ public class ReflectionPlugins {
             }
         }
         return false;
+    }
+
+    /**
+     * Get the Class object corresponding to the receiver of the reflective call. If the class is
+     * substituted we want the original class, and not the substitution. The reflective call to
+     * getMethod()/getConstructor()/getField() will yield the original member, which will be
+     * intrinsified, and subsequent phases are responsible for getting the right substitution
+     * method/constructor/field.
+     */
+    private static Class<?> getReceiverClass(GraphBuilderContext b, Receiver receiver) {
+        ResolvedJavaType javaType = b.getConstantReflection().asJavaType(receiver.get().asJavaConstant());
+        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), javaType);
     }
 
     /**
