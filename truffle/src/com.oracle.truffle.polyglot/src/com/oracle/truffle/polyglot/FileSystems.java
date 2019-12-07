@@ -663,7 +663,21 @@ final class FileSystems {
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            return delegate.newDirectoryStream(resolveRelative(dir), filter);
+            Path cwd = userDir;
+            Path resolvedPath;
+            boolean relativize;
+            if (!dir.isAbsolute() && cwd != null) {
+                resolvedPath = cwd.resolve(dir);
+                relativize = true;
+            } else {
+                resolvedPath = dir;
+                relativize = false;
+            }
+            DirectoryStream<Path> result = delegate.newDirectoryStream(resolvedPath, filter);
+            if (relativize) {
+                result = new RelativizeDirectoryStream(cwd, result);
+            }
+            return result;
         }
 
         @Override
@@ -737,6 +751,48 @@ final class FileSystems {
 
         private Path resolveRelative(Path path) {
             return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
+        }
+
+        private static final class RelativizeDirectoryStream implements DirectoryStream<Path> {
+
+            private final Path folder;
+            private final DirectoryStream<? extends Path> delegateDirectoryStream;
+
+            RelativizeDirectoryStream(Path folder, DirectoryStream<? extends Path> delegateDirectoryStream) {
+                this.folder = folder;
+                this.delegateDirectoryStream = delegateDirectoryStream;
+            }
+
+            @Override
+            public Iterator<Path> iterator() {
+                return new RelativizeIterator(folder, delegateDirectoryStream.iterator());
+            }
+
+            @Override
+            public void close() throws IOException {
+                delegateDirectoryStream.close();
+            }
+
+            private static final class RelativizeIterator implements Iterator<Path> {
+
+                private final Path folder;
+                private final Iterator<? extends Path> delegateIterator;
+
+                RelativizeIterator(Path folder, Iterator<? extends Path> delegateIterator) {
+                    this.folder = folder;
+                    this.delegateIterator = delegateIterator;
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return delegateIterator.hasNext();
+                }
+
+                @Override
+                public Path next() {
+                    return folder.relativize(delegateIterator.next());
+                }
+            }
         }
     }
 

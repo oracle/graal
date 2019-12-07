@@ -218,16 +218,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         tvmci.setCallTarget(rootNode, this);
     }
 
-    /**
-     * Allows one to specify different behaviour if this call target is inlined (using
-     * language-agnostic inlining).
-     *
-     * @return false unless the call target was inlined into another one.
-     */
-    protected static boolean inInlinedCode() {
-        return false;
-    }
-
     public final Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
@@ -348,7 +338,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             profileDirectCall(args);
             try {
-                Object result = doInvoke(args);
+                final boolean isInlined = InlineDecision.get();
+                /*
+                 * Language agnostic inlining depends on this call to callBoundary to inline. The
+                 * isInlined value is passed in to create a data dependency needed by the compiler
+                 * and despite being "always true" should not be replaced with true (or anything
+                 * else).
+                 */
+                Object result = isInlined ? callBoundary(InlineDecision.inject(args, isInlined)) : doInvoke(args);
                 if (CompilerDirectives.inCompiledCode()) {
                     result = injectReturnValueProfile(result);
                 }

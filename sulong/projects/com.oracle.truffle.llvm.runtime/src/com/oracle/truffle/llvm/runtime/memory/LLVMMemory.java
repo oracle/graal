@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.memory;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
@@ -235,10 +236,6 @@ public abstract class LLVMMemory implements LLVMCapability {
 
     public abstract void fullFence();
 
-    public abstract boolean isCommonHandleMemory(long addr);
-
-    public abstract boolean isDerefHandleMemory(long addr);
-
     public abstract static class HandleContainer {
 
         public abstract LLVMNativePointer allocate(Object value);
@@ -251,7 +248,7 @@ public abstract class LLVMMemory implements LLVMCapability {
 
     }
 
-    public abstract HandleContainer createHandleContainer(boolean deref);
+    public abstract HandleContainer createHandleContainer(boolean deref, Assumption noHandleAssumption);
 
     @ValueType
     public static final class CMPXCHGI8 {

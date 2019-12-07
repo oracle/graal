@@ -72,6 +72,9 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.IndexVectorBroadcastNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen.ResultVectorBroadcastNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -114,35 +117,35 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(FunctionType type) {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(null, type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(null, type);
             }
 
             @Override
             public void visit(PrimitiveType type) {
                 switch (type.getPrimitiveKind()) {
                     case I1:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(false, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(false, type);
                         break;
                     case I8:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray((byte) 0, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray((byte) 0, type);
                         break;
                     case I16:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray((short) 0, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray((short) 0, type);
                         break;
                     case I32:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(0, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0, type);
                         break;
                     case I64:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(0L, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0L, type);
                         break;
                     case FLOAT:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(0.0f, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0.0f, type);
                         break;
                     case DOUBLE:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(0.0d, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0.0d, type);
                         break;
                     case X86_FP80:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(null, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(null, type);
                         break;
                     default:
                         unsupportedType(type);
@@ -152,7 +155,7 @@ public final class LLVMSymbolReadResolver {
             @Override
             public void visit(MetaType metaType) {
                 if (metaType == MetaType.DEBUG) {
-                    resolvedNode = nodeFactory.createSimpleConstantNoArray(null, metaType);
+                    resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(null, metaType);
                 } else {
                     unsupportedType(metaType);
                 }
@@ -160,7 +163,7 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(PointerType type) {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(null, type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(null, type);
             }
 
             @Override
@@ -194,7 +197,7 @@ public final class LLVMSymbolReadResolver {
 
             @Override
             public void visit(VariableBitWidthType type) {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(BigInteger.ZERO, type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(BigInteger.ZERO, type);
             }
 
             @Override
@@ -219,7 +222,7 @@ public final class LLVMSymbolReadResolver {
             // metadata already during parsing and does not require such a value at runtime. We
             // resolve this type to a constant value here to avoid having to identify all functions,
             // like dbg.label, that receive metadata but are in practice noops at runtime.
-            resolvedNode = nodeFactory.createSimpleConstantNoArray(0, PrimitiveType.I32);
+            resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(0, PrimitiveType.I32);
         }
 
         @Override
@@ -256,9 +259,9 @@ public final class LLVMSymbolReadResolver {
         public void visit(BigIntegerConstant constant) {
             final Type type = constant.getType();
             if (type.getBitSize() <= Long.SIZE) {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(constant.getValue().longValueExact(), type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue().longValueExact(), type);
             } else {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(constant.getValue(), type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(constant.getValue(), type);
             }
         }
 
@@ -267,7 +270,7 @@ public final class LLVMSymbolReadResolver {
             final LLVMExpressionNode lhs = resolve(operation.getLHS());
             final LLVMExpressionNode rhs = resolve(operation.getRHS());
 
-            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(nodeFactory, lhs, rhs, operation.getOperator(), operation.getType());
+            resolvedNode = LLVMBitcodeTypeHelper.createArithmeticInstruction(lhs, rhs, operation.getOperator(), operation.getType(), nodeFactory);
         }
 
         @Override
@@ -280,7 +283,7 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(CastConstant constant) {
             final LLVMExpressionNode fromNode = resolve(constant.getValue());
-            resolvedNode = LLVMBitcodeTypeHelper.createCast(nodeFactory, fromNode, constant.getType(), constant.getValue().getType(), constant.getOperator());
+            resolvedNode = LLVMBitcodeTypeHelper.createCast(fromNode, constant.getType(), constant.getValue().getType(), constant.getOperator(), nodeFactory);
         }
 
         @Override
@@ -288,25 +291,25 @@ public final class LLVMSymbolReadResolver {
             final LLVMExpressionNode lhs = resolve(compare.getLHS());
             final LLVMExpressionNode rhs = resolve(compare.getRHS());
 
-            resolvedNode = nodeFactory.createComparison(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
+            resolvedNode = CommonNodeFactory.createComparison(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
         }
 
         @Override
         public void visit(DoubleConstant constant) {
             final double dVal = constant.getValue();
-            resolvedNode = nodeFactory.createSimpleConstantNoArray(dVal, constant.getType());
+            resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(dVal, constant.getType());
         }
 
         @Override
         public void visit(FloatConstant constant) {
             final float fVal = constant.getValue();
-            resolvedNode = nodeFactory.createSimpleConstantNoArray(fVal, constant.getType());
+            resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(fVal, constant.getType());
         }
 
         @Override
         public void visit(X86FP80Constant constant) {
             final byte[] xVal = constant.getValue();
-            resolvedNode = nodeFactory.createSimpleConstantNoArray(xVal, constant.getType());
+            resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(xVal, constant.getType());
         }
 
         @Override
@@ -326,25 +329,25 @@ public final class LLVMSymbolReadResolver {
             if (type instanceof PrimitiveType) {
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I1:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(lVal != 0, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(lVal != 0, type);
                         break;
                     case I8:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray((byte) lVal, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray((byte) lVal, type);
                         break;
                     case I16:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray((short) lVal, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray((short) lVal, type);
                         break;
                     case I32:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray((int) lVal, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray((int) lVal, type);
                         break;
                     case I64:
-                        resolvedNode = nodeFactory.createSimpleConstantNoArray(lVal, type);
+                        resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(lVal, type);
                         break;
                     default:
                         throw new LLVMParserException("Unsupported IntegerConstant: " + type);
                 }
             } else if (type instanceof VariableBitWidthType) {
-                resolvedNode = nodeFactory.createSimpleConstantNoArray(lVal, type);
+                resolvedNode = CommonNodeFactory.createSimpleConstantNoArray(lVal, type);
             } else {
                 throw new LLVMParserException("Unsupported IntegerConstant: " + type);
             }
@@ -480,6 +483,69 @@ public final class LLVMSymbolReadResolver {
     }
 
     /**
+     * The rules for whether to build a scalar-getelementptr or vector-getelementptr node:
+     *
+     * S = scalar node
+     *
+     * V = vector node
+     *
+     * BC = broadcast node
+     *
+     * GEP = scalar getelementptr node
+     *
+     * VGEP = vector getelementptr node
+     *
+     * The BasePointer (BP) could either be a scalar, vector or GEP/VGEP node coming from the
+     * previous indexing dimension. The Index can only either be a scalar or a vector.
+     *
+     * Pointers, arrays and structures are considered scalars.
+     *
+     * (BP, Idx) --> Next OP(PTR, IDX)
+     *
+     * -------------------------------
+     *
+     * 0: (S, S) --> GEP(S, S)
+     *
+     * 1: (S, V) --> VGEP(BC(S), V)
+     *
+     * 2: (V, S) --> VGEP(V, BC(S))
+     *
+     * 3: (V, V) --> VGEP(V, V)
+     *
+     * 4: (GEP, S) --> GEP(GEP, S)
+     *
+     * 5: (GEP, V) --> VGEP(BC(GEP), V)
+     *
+     * 6: (VGEP, S) --> VGEP(VGEP, BC(S))
+     *
+     * 7: (VGEP, V) --> VGEP(VGEP, V)
+     */
+    private LLVMExpressionNode createElementPointer(long indexedTypeLength, Type currentType, LLVMExpressionNode currentAddress, LLVMExpressionNode indexNode, Type indexType,
+                    final boolean wasVectorized) {
+        if (wasVectorized) {
+            // Cases 2, 3, 6, 7
+            if (indexType instanceof VectorType) {
+                // Cases 3, 7
+                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
+            } else {
+                // Cases 2, 6
+                int length = ((VectorType) currentType).getNumberOfElements();
+                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, currentAddress, IndexVectorBroadcastNodeGen.create(length, indexNode));
+            }
+        } else {
+            // Cases 0, 1, 4, 5
+            if (indexType instanceof VectorType) {
+                // Cases 1, 5
+                int length = ((VectorType) indexType).getNumberOfElements();
+                return nodeFactory.createVectorizedTypedElementPointer(indexedTypeLength, currentType, ResultVectorBroadcastNodeGen.create(length, currentAddress), indexNode);
+            } else {
+                // Cases 0, 4
+                return nodeFactory.createTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
+            }
+        }
+    }
+
+    /**
      * Turns a base value and a list of indices into a list of "get element pointer" operations, and
      * allows callers to intercept the resolution of values to nodes (used for frame slot
      * optimization in LLVMBitcodeInstructionVisitor).
@@ -497,7 +563,13 @@ public final class LLVMSymbolReadResolver {
         LLVMExpressionNode currentAddress = resolver.resolve(base, -1, null, indices);
         Type currentType = base.getType();
 
-        for (int i = 0, indicesSize = indices.length; i < indicesSize; i++) {
+        boolean wasVectorized = currentType instanceof VectorType;
+        if (wasVectorized) {
+            VectorType vectorType = (VectorType) currentType;
+            currentType = vectorType.getElementType();
+        }
+
+        for (int i = 0; i < indices.length; i++) {
             SymbolImpl indexSymbol = indices[i];
             Type indexType = indexSymbol.getType();
 
@@ -511,7 +583,8 @@ public final class LLVMSymbolReadResolver {
                 AggregateType aggregate = (AggregateType) currentType;
                 long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
                 currentType = aggregate.getElementType(1);
-                currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNodes[i], indexedTypeLength, currentType);
+                currentAddress = createElementPointer(indexedTypeLength, currentType, currentAddress, indexNodes[i], indexType, wasVectorized);
+                wasVectorized = currentAddress instanceof LLVMVectorizedGetElementPtrNodeGen;
             } else {
                 // the index is a constant integer
                 AggregateType aggregate = (AggregateType) currentType;
@@ -520,7 +593,7 @@ public final class LLVMSymbolReadResolver {
 
                 // creating a pointer inserts type information, this needs to happen for the address
                 // computed by getelementptr even if it is the same as the basepointer
-                if (addressOffset != 0 || i == indicesSize - 1) {
+                if (addressOffset != 0 || i == indices.length - 1) {
                     LLVMExpressionNode indexNode;
                     if (indexType == PrimitiveType.I32) {
                         indexNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
@@ -529,7 +602,8 @@ public final class LLVMSymbolReadResolver {
                     } else {
                         throw new AssertionError(indexType);
                     }
-                    currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNode, addressOffset, currentType);
+                    currentAddress = createElementPointer(addressOffset, currentType, currentAddress, indexNode, indexType, wasVectorized);
+                    wasVectorized = currentAddress instanceof LLVMVectorizedGetElementPtrNodeGen;
                 }
             }
         }

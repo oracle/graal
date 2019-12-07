@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
@@ -65,14 +66,14 @@ public final class DefaultLoader extends Loader {
 
     @Override
     public void loadDefaults(LLVMContext context, Path internalLibraryPath) {
-        new Runner(context, this).loadDefaults(internalLibraryPath);
+        new Runner(context, this, context.getLanguage().getRawRunnerID()).loadDefaults(internalLibraryPath);
     }
 
     @Override
-    public CallTarget load(LLVMContext context, Source source) {
+    public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
-            return new Runner(context, this).parse(source);
+            return new Runner(context, this, id).parse(source);
         }
     }
 }

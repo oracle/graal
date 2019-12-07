@@ -28,9 +28,11 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
@@ -441,4 +443,162 @@ public class InstallerCommandlineTest extends CommandTestBase {
         assertFalse(Handler.isVisited(testCatalogURL));
     }
 
+    /**
+     * Checks that -c will cause the catalog to be downloaded.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testEnableCatalogFetchesRemote() throws Exception {
+        setupReleaseCatalog();
+        args.add("-c");
+        args.add("list");
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(releaseURL, u);
+        storage.graalInfo.put("component_catalog", releaseURL);
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        assertTrue(Handler.isVisited(releaseURL));
+    }
+
+    /**
+     * When -C local-file is passed, gu must not touch its builtin (release file) catalogs URLs.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testDirectoryCatalogDisablesRelease() throws Exception {
+        setupReleaseCatalog();
+        Path dir = dataFile("repo/19.3.0.0");
+        args.add("-C");
+        args.add(dir.toAbsolutePath().toString());
+        args.add("avail");
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(releaseURL, u);
+        storage.graalInfo.put("component_catalog", releaseURL);
+
+        Set<String> componentShorts = new HashSet<>();
+        class FB extends FeedbackAdapter {
+
+            @Override
+            public String l10n(String key, Object... params) {
+                if ("LIST_ComponentShortList".equals(key)) {
+                    return "%1$s";
+                }
+                return super.l10n(key, params);
+            }
+
+            @Override
+            public boolean verbatimOut(String msg, boolean beVerbose) {
+                componentShorts.add(msg);
+                return super.verbatimOut(msg, beVerbose);
+            }
+        }
+
+        FB fb = new FB();
+
+        delegateFeedback(fb);
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        assertTrue(componentShorts.contains("graalvm"));
+        assertTrue(componentShorts.contains("R"));
+        assertTrue(componentShorts.contains("ruby"));
+        assertTrue(componentShorts.contains("llvm-toolchain"));
+
+        assertFalse(Handler.isVisited(releaseURL));
+    }
+
+    /**
+     * There's a mix of component versions in the dir; should return just the ones that fit into the
+     * graalvm.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testVersionSpecificComponentsFromDir() throws Exception {
+        setupReleaseCatalog();
+        Path dir = dataFile("persist/data");
+        args.add("-C");
+        args.add(dir.toAbsolutePath().toString());
+        args.add("avail");
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(releaseURL, u);
+        storage.graalInfo.put("component_catalog", releaseURL);
+
+        Set<String> componentShorts = new HashSet<>();
+        class FB extends FeedbackAdapter {
+
+            @Override
+            public String l10n(String key, Object... params) {
+                if ("LIST_ComponentShortList".equals(key)) {
+                    return "%1$s";
+                }
+                return super.l10n(key, params);
+            }
+
+            @Override
+            public boolean verbatimOut(String msg, boolean beVerbose) {
+                componentShorts.add(msg);
+                return super.verbatimOut(msg, beVerbose);
+            }
+        }
+
+        FB fb = new FB();
+
+        delegateFeedback(fb);
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        // note: there's a typo in test data.
+        assertTrue(componentShorts.contains("org.graavm.ruby"));
+        assertTrue(componentShorts.contains("llvm-toolchain"));
+        assertTrue(componentShorts.contains("ruby"));
+
+        assertFalse(Handler.isVisited(releaseURL));
+    }
+
+    /**
+     * Checks that potential missing resources in release catalog are skipped.
+     */
+    @Test
+    public void testSkipMissingResourcesInReleaseCatalog() throws Exception {
+        setupReleaseCatalog();
+        args.add("avail");
+
+        URL u = getClass().getResource("remote/catalog");
+        String urlString = releaseURL + "_2";
+        Handler.bind(urlString, u);
+        // note: the releaseURL is NOT bound, FileNotFoundException will be thrown
+        storage.graalInfo.put("component_catalog", releaseURL + "|" + urlString);
+
+        class FB extends FeedbackAdapter {
+            String warningLine;
+
+            @Override
+            public void error(String key, Throwable t, Object... params) {
+                if ("REMOTE_WarningErrorDownloadCatalogNotFoundSkip".equals(key)) {
+                    warningLine = params[0].toString();
+                }
+            }
+
+        }
+
+        FB fb = new FB();
+
+        delegateFeedback(fb);
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        assertTrue(Handler.isVisited(releaseURL));
+        assertTrue(Handler.isVisited(urlString));
+        assertEquals(releaseURL, fb.warningLine);
+    }
 }

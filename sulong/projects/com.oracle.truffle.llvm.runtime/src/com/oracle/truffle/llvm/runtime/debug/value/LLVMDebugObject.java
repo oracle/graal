@@ -127,7 +127,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
      *
      * @return the value of the referenced variable
      */
-    protected Object getValue() {
+    public Object getValue() {
         if (value == null) {
             return "";
 

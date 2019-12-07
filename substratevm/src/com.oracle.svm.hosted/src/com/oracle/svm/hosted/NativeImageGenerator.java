@@ -51,7 +51,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -156,6 +155,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -174,14 +174,12 @@ import com.oracle.svm.core.graal.phases.MethodSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionCallsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
-import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.MonitorSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
@@ -398,7 +396,10 @@ public class NativeImageGenerator {
                 architecture = new AMD64(features, SubstrateTargetDescription.allAMD64Flags());
             }
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
+                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, false);
+            }
+            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
@@ -411,7 +412,13 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, EnumSet.noneOf(AArch64.Flag.class));
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
-            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == null) {
+                RuntimeOptionValues.singleton().update(RuntimeCodeCache.Options.WriteableCodeCache, true);
+            }
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue() == false) {
+                throw UserError.abort("Code cache has to be writeable on AARCH64");
+            }
+            boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
             return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
@@ -1186,15 +1193,8 @@ public class NativeImageGenerator {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
-            Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
-            if (hosted) {
-                mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
-            }
-
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
-            ArithmeticSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             MonitorSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
             ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);

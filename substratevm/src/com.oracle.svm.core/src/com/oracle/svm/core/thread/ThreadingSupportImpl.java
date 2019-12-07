@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -231,10 +232,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt();
 
+    private static final String enableSupportOption = SubstrateOptionsParser.commandArgument(SupportRecurringCallback, "+");
+
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
-        UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled with option " + SupportRecurringCallback.getName());
         if (callback != null) {
+            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option " + enableSupportOption);
             UserError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {

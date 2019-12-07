@@ -50,7 +50,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
@@ -87,11 +86,7 @@ public interface NodeFactory {
 
     LLVMStatementNode createFence();
 
-    LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right);
-
     LLVMExpressionNode createLiteral(Object value, Type type);
-
-    LLVMExpressionNode createSimpleConstantNoArray(Object constant, Type instructionType);
 
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type);
 
@@ -107,23 +102,11 @@ public interface NodeFactory {
 
     LLVMStatementNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot);
 
-    LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);
-
-    LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, Type targetType);
-
-    LLVMExpressionNode createSignedCast(LLVMExpressionNode fromNode, PrimitiveKind kind);
-
-    LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, Type targetType);
-
-    LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, PrimitiveKind kind);
-
-    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType);
-
-    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, PrimitiveKind kind);
-
     LLVMExpressionNode createExtractValue(Type type, LLVMExpressionNode targetAddress);
 
-    LLVMExpressionNode createTypedElementPointer(LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength, Type targetType);
+    LLVMExpressionNode createTypedElementPointer(long indexedTypeLength, Type targetType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index);
+
+    LLVMExpressionNode createVectorizedTypedElementPointer(long indexedTypeLength, Type targetType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index);
 
     LLVMExpressionNode createSelect(Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
 
@@ -140,6 +123,10 @@ public interface NodeFactory {
     LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMStatementNode phi);
 
     LLVMExpressionNode createArrayLiteral(LLVMExpressionNode[] arrayValues, ArrayType arrayType, GetStackSpaceFactory arrayGetStackSpaceFactory);
+
+    LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType);
+
+    LLVMExpressionNode createArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right);
 
     /*
      * Stack allocations with type

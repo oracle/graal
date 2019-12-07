@@ -40,6 +40,10 @@ public class DirectoryArchiveReader implements ComponentArchiveReader {
         if (!Files.isDirectory(p)) {
             return null;
         }
-        return DirectoryMetaLoader.create(p, feedback);
+        if (Files.isReadable(p.resolve("META-INF/MANIFEST.MF"))) {
+            return DirectoryMetaLoader.create(p, feedback);
+        } else {
+            return null;
+        }
     }
 }
