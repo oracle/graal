@@ -28,13 +28,11 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
 public final class InteropUtils {
@@ -44,23 +42,6 @@ public final class InteropUtils {
 
     private InteropUtils() {
         assert false;
-    }
-
-    public static String getNormalizedSymbolName(Object nodeObject, String symbol) {
-        if (!(nodeObject instanceof TruffleObject)) {
-            return LanguageSpecificHacks.normalizeSymbol(symbol);
-        } else {
-            if (INTEROP.isMemberReadable(nodeObject, DeclarationTag.NAME)) {
-                try {
-                    return INTEROP.readMember(nodeObject, DeclarationTag.NAME).toString();
-                } catch (ThreadDeath td) {
-                    throw td;
-                } catch (Throwable t) {
-                    LOG.log(Level.INFO, nodeObject.toString(), t);
-                }
-            }
-        }
-        return symbol;
     }
 
     public static Integer getNumberOfArguments(Object nodeObject) {

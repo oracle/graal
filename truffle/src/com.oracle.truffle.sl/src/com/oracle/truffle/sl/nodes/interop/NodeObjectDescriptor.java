@@ -54,18 +54,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptor implements TruffleObject {
 
-    static final String NAME = StandardTags.DeclarationTag.NAME;
-    static final String KIND = StandardTags.DeclarationTag.KIND;
-    private static final TruffleObject KEYS_NAME = new NodeObjectDescriptorKeys(false);
-    private static final TruffleObject KEYS_NAME_KIND = new NodeObjectDescriptorKeys(true);
+    private static final TruffleObject KEYS_NAME = new NodeObjectDescriptorKeys();
 
     private final String name;
-    private final String kind;
 
-    public NodeObjectDescriptor(String name, String kind) {
+    public NodeObjectDescriptor(String name) {
         assert name != null;
         this.name = name;
-        this.kind = kind;
     }
 
     @ExportMessage
@@ -77,17 +72,9 @@ public final class NodeObjectDescriptor implements TruffleObject {
     @ExportMessage
     Object readMember(String member) throws UnknownIdentifierException {
         switch (member) {
-            case StandardTags.DeclarationTag.NAME:
             case StandardTags.ReadVariableTag.NAME:
             case StandardTags.WriteVariableTag.NAME:
                 return name;
-            case KIND:
-                if (kind != null) {
-                    return kind;
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.create(member);
-                }
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.create(member);
@@ -95,26 +82,21 @@ public final class NodeObjectDescriptor implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean isMemberReadable(String member) {
         switch (member) {
-            case StandardTags.DeclarationTag.NAME:
             case StandardTags.ReadVariableTag.NAME:
             case StandardTags.WriteVariableTag.NAME:
                 return true;
-            case KIND:
-                return kind != null;
             default:
                 return false;
         }
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        if (kind == null) {
-            return KEYS_NAME;
-        } else {
-            return KEYS_NAME_KIND;
-        }
+        return KEYS_NAME;
     }
 
     static boolean isInstance(TruffleObject object) {

@@ -110,6 +110,6 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
     }
 
     public Object getNodeObject() {
-        return new NodeObjectDescriptor(getSlot().getIdentifier().toString(), null);
+        return new NodeObjectDescriptor(getSlot().getIdentifier().toString());
     }
 }

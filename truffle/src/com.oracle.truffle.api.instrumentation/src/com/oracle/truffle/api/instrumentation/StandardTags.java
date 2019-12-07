@@ -59,7 +59,7 @@ public final class StandardTags {
     }
 
     @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class,
-                    DeclarationTag.class, ReadVariableTag.class, WriteVariableTag.class};
+                    ReadVariableTag.class, WriteVariableTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
@@ -246,96 +246,6 @@ public final class StandardTags {
     }
 
     /**
-     * Marks program locations to be considered as named declarations of the language elements.
-     * Common examples for declarations are:
-     * <ul>
-     * <li>Namespace declaration
-     * <li>Class declaration
-     * <li>Method declaration
-     * <li>Variable declaration
-     * </ul>
-     * Use case descriptions:
-     * <ul>
-     * <li><b>Language Server Protocol:</b> Marks declarations of language elements to support the
-     * <i>hover</i>, <i>symbols</i> and <i>workspaceSymbols</i> requests.</li>
-     *
-     * To determine the name of the declared language element, it is required that a node tagged
-     * with {@link DeclarationTag} also provides a {@link InstrumentableNode#getNodeObject() node
-     * object} that has a <code>name</code> property. Optionally, it can also have a
-     * <code>kind</code> and <code>container</code>. <code>kind</code> is the type of the language
-     * element, for example "variable", "function", "class" or "package". <code>container</code> is
-     * the name of the namespace in which the language element is declared, for example a class name
-     * of a method declaration. Furthermore, nodes tagged with {@link DeclarationTag} have to
-     * provide a {@link Node#getSourceSection() source section}.
-     *
-     * @since 20.0.0
-     */
-    @Tag.Identifier("DECLARATION")
-    public static final class DeclarationTag extends Tag {
-
-        /**
-         * Property of the node object that contains name of the declared element.
-         *
-         * @since 20.0.0
-         */
-        public static final String NAME = "declarationName";
-
-        /**
-         * Property of the node object that contains kind of the declared element. Like
-         * <code>Variable</code>, <code>Function</code>, <code>Module</code>, <code>Class</code>,
-         * <code>Method</code>, etc.
-         *
-         * @since 20.0.0
-         */
-        public static final String KIND = "declarationKind";
-
-        /**
-         * Type of this declaration. The value is a name of other declared element that represents
-         * type of this declared element.
-         *
-         * @since 20.0.0
-         */
-        public static final String TYPE = "declarationType";
-
-        /**
-         * Description of the declared language element.
-         *
-         * @since 20.0.0
-         */
-        public static final String DESCRIPTION = "declarationDescription";
-
-        /**
-         * Whether this declared element is deprecated. The value of this property is
-         * <code>true</code> or <code>false</code>.
-         *
-         * @since 20.0.0
-         */
-        public static final String DEPRECATED = "declarationDeprecated";
-
-        /**
-         * An optional section of the scope where this declared element is valid. An array of 4
-         * integers is expected: &lt;line:column, line:column&gt;, or an empty array for global
-         * scopes. When not defined, a default scope is created from the end of this node's
-         * SourceSection to the end of the instrumentable parent's SourceSection.
-         *
-         * @since 20.0.0
-         */
-        public static final String SCOPE_SECTION = "declarationScopeSection";
-
-        /**
-         * Property of the node object that contains the container name of the declared element.
-         *
-         * @since 20.0.0
-         */
-        public static final String CONTAINER = "declarationContainer";
-
-        private DeclarationTag() {
-            /* No instances */
-        }
-
-    }
-
-    /**
      * Marks program locations to be considered as reads of variables of the languages.
      * <p>
      * Use case descriptions:
@@ -392,24 +302,6 @@ public final class StandardTags {
          * @since 20.0.0
          */
         public static final String NAME = "writeVariableName";
-
-        /**
-         * Type of the variable after write operation. The value is a name of other declared element
-         * that represents type of this variable.
-         *
-         * @since 20.0.0
-         */
-        public static final String TYPE = "writeVariableType";
-
-        /**
-         * An optional section of the scope where the written variable of the given type is valid.
-         * An array of 4 integers is expected: &lt;line:column, line:column&gt;, or an empty array
-         * for global scopes. When not defined, a default scope is created from the end of this
-         * node's SourceSection to the end of the instrumentable parent's SourceSection.
-         *
-         * @since 20.0.0
-         */
-        public static final String SCOPE_SECTION = "writeVariableScopeSection";
 
         private WriteVariableTag() {
             /* No instances */

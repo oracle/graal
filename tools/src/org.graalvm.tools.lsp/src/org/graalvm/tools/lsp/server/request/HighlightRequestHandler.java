@@ -74,13 +74,15 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                 if (scopeRoot != null) {
                     scopeRoot.accept(new NodeVisitor() {
 
+                        @Override
                         public boolean visit(Node node) {
                             if (node instanceof InstrumentableNode) {
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
                                     String name = InteropUtils.getNodeObjectName(instrumentableNode);
-                                    if (name.equals(variableName)) {
+                                    assert name != null: instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
+                                    if (variableName.equals(name)) {
                                         SourceSection sourceSection = node.getSourceSection();
                                         if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
                                             Range range = SourceUtils.sourceSectionToRange(sourceSection);

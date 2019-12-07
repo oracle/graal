@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import static com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag.KIND;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -52,10 +51,9 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private final boolean hasKind;
+    private static final int SIZE = 2;
 
-    NodeObjectDescriptorKeys(boolean hasKind) {
-        this.hasKind = hasKind;
+    NodeObjectDescriptorKeys() {
     }
 
     @ExportMessage
@@ -65,13 +63,15 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < size();
+        return index >= 0 && index < SIZE;
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     long getArraySize() {
-        return size();
+        return SIZE;
     }
 
     @ExportMessage
@@ -82,20 +82,12 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
         }
         switch ((int) index) {
             case 0:
-                return StandardTags.DeclarationTag.NAME;
-            case 1:
                 return StandardTags.ReadVariableTag.NAME;
-            case 2:
+            case 1:
                 return StandardTags.WriteVariableTag.NAME;
-            case 3:
-                return KIND;
             default:
                 throw InvalidArrayIndexException.create(index);
         }
-    }
-
-    private int size() {
-        return hasKind ? 4 : 3;
     }
 
     static boolean isInstance(TruffleObject object) {

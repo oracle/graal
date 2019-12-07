@@ -50,7 +50,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -103,7 +102,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static String getTags(InstrumentableNode nodeAtCaret) {
         List<String> tags = new ArrayList<>();
-        for (Class<Tag> tagClass : new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, DeclarationTag.class, ReadVariableTag.class, WriteVariableTag.class}) {
+        for (Class<Tag> tagClass : new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, ReadVariableTag.class, WriteVariableTag.class}) {
             if (nodeAtCaret.hasTag(tagClass)) {
                 tags.add(Tag.getIdentifier(tagClass));
             }

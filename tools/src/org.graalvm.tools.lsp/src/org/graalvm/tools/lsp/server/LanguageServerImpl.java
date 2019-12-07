@@ -137,16 +137,16 @@ public final class LanguageServerImpl extends LanguageServer {
 
         ServerCapabilities capabilities = ServerCapabilities.create();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
-        capabilities.setDocumentSymbolProvider(true);
-        capabilities.setWorkspaceSymbolProvider(true);
-        capabilities.setDefinitionProvider(true);
+        capabilities.setDocumentSymbolProvider(false);
+        capabilities.setWorkspaceSymbolProvider(false);
+        capabilities.setDefinitionProvider(false);
         capabilities.setDocumentHighlightProvider(true);
         capabilities.setCodeLensProvider(CodeLensOptions.create().setResolveProvider(false));
         capabilities.setCompletionProvider(CompletionOptions.create().setTriggerCharacters(triggerCharacters).setResolveProvider(false));
         capabilities.setCodeActionProvider(true);
         capabilities.setSignatureHelpProvider(SignatureHelpOptions.create().setTriggerCharacters(signatureTriggerChars));
         capabilities.setHoverProvider(true);
-        capabilities.setReferencesProvider(true);
+        capabilities.setReferencesProvider(false);
         capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
         CompletableFuture.runAsync(() -> parseWorkspace(params.getRootUri()));
@@ -198,18 +198,12 @@ public final class LanguageServerImpl extends LanguageServer {
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
-        Future<List<? extends Location>> future = truffleAdapter.definition(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
-                        position.getPosition().getCharacter());
-        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
-        return CompletableFuture.supplyAsync(supplier);
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
     public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
-        Future<List<? extends Location>> future = truffleAdapter.references(URI.create(params.getTextDocument().getUri()), params.getPosition().getLine(),
-                        params.getPosition().getCharacter());
-        Supplier<List<? extends Location>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
-        return CompletableFuture.supplyAsync(supplier);
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
@@ -222,9 +216,7 @@ public final class LanguageServerImpl extends LanguageServer {
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
-        Future<List<? extends SymbolInformation>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
-        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
-        return CompletableFuture.supplyAsync(supplier);
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
@@ -357,9 +349,7 @@ public final class LanguageServerImpl extends LanguageServer {
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> symbol(WorkspaceSymbolParams params) {
-        Future<List<? extends SymbolInformation>> future = truffleAdapter.workspaceSymbol(params.getQuery());
-        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
-        return CompletableFuture.supplyAsync(supplier);
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
