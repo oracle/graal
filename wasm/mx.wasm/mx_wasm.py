@@ -73,7 +73,7 @@ class GraalWasmDefaultTags:
     wasmextratest = "wasmextratest"
 
 
-def _graal_wasm_gate_runner(args, tasks):
+def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
@@ -86,7 +86,7 @@ def _graal_wasm_gate_runner(args, tasks):
             unittest(["WatSuite"])
 
 
-add_gate_runner(_suite, _graal_wasm_gate_runner)
+add_gate_runner(_suite, graal_wasm_gate_runner)
 
 
 #
@@ -296,7 +296,8 @@ class GraalWasmSourceFileTask(mx.ProjectBuildTask):
                 mx.ensure_dir_exists(os.path.join(output_dir, subdir, NATIVE_BENCH_DIR))
                 if filename.endswith(".c"):
                     output_path = os.path.join(output_dir, subdir, NATIVE_BENCH_DIR, mx.exe_suffix(basename))
-                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags
+                    link_flags = ["-lm"]
+                    gcc_cmd_line = [gcc_cmd] + cc_flags + [source_path, "-o", output_path] + include_flags + link_flags
                     if mx.run(gcc_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not build the native binary of " + filename + ".")
                     os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
