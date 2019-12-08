@@ -39,6 +39,13 @@
 ;; SOFTWARE.
 ;;
 (module
+  (type (;0;) (func))
   (import "memory" "memory" (memory (;0;) 4))
   (export "memory" (memory 0))
+  (func $init (type 0)
+    i32.const 0
+    i32.const 12
+    i32.store
+  )
+  (start $init)
 )

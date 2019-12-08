@@ -60,6 +60,6 @@ public final class ImportDescriptor {
             return false;
         }
         final ImportDescriptor that = (ImportDescriptor) object;
-        return that.moduleName.equals(this.memberName) && that.memberName.equals(this.memberName);
+        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName);
     }
 }
