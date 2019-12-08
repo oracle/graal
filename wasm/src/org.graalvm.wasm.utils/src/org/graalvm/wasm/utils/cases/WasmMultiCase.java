@@ -41,23 +41,33 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.WasmInitialization;
 
-public class WasmStringCase extends WasmCase {
-    private final String program;
+public class WasmMultiCase extends WasmCase {
+    private final List<Object> fileContents;
 
-    public WasmStringCase(String name, WasmCaseData data, String program, WasmInitialization initialization, Properties options) {
+    public WasmMultiCase(String name, WasmCaseData data, List<Object> fileContents, WasmInitialization initialization, Properties options) {
         super(name, data, initialization, options);
-        this.program = program;
+        this.fileContents = fileContents;
     }
 
     @Override
     public List<byte[]> createBinaries() throws IOException, InterruptedException {
-        return Collections.singletonList(WasmBinaryTools.compileWat(program));
+        ArrayList<byte[]> binaries = new ArrayList<>();
+        for (Object content : fileContents) {
+            if (content instanceof String) {
+                binaries.add(WasmBinaryTools.compileWat((String) content));
+            } else if (content instanceof byte[]) {
+                binaries.add((byte[]) content);
+            } else {
+                throw new RuntimeException("Unknown content type: " + content.getClass());
+            }
+        }
+        return binaries;
     }
 }

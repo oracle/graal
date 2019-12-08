@@ -47,6 +47,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
@@ -88,7 +89,7 @@ public abstract class WasmCase {
         return options;
     }
 
-    public abstract byte[] createBinary() throws IOException, InterruptedException;
+    public abstract List<byte[]> createBinaries() throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
         return new WasmStringCase(name, data, program, null, new Properties());
@@ -140,15 +141,27 @@ public abstract class WasmCase {
             if (caseName.equals("") || caseName.startsWith("#")) {
                 // Skip empty lines or lines starting with a hash (treat as a comment).
                 continue;
+            } else {
+                collectedCases.add(collectFileCase(type, resource, caseName));
             }
-            collectedCases.add(collectFileCase(type, resource, caseName));
         }
 
         return collectedCases;
     }
 
     public static WasmCase collectFileCase(String type, String resource, String caseName) throws IOException {
-        Object mainContent = WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseName), true);
+        ArrayList<Object> mainContents = new ArrayList<>();
+        if (caseName.contains("/")) {
+            // Collect multi-module test case.
+            final String[] dirFiles = caseName.substring(1).split("/");
+            final String dir = dirFiles[0];
+            final String[] moduleFiles = dirFiles[1].split(";");
+            for (String file : moduleFiles) {
+                mainContents.add(WasmResource.getResourceAsTest(String.format("/%s/%s/%s/%s", type, resource, dir, file), true));
+            }
+        } else {
+            mainContents.add(WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseName), true));
+        }
         String resultContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.result", type, resource, caseName), true);
         String initContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.init", type, resource, caseName), false);
         String optsContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.opts", type, resource, caseName), false);
@@ -183,12 +196,17 @@ public abstract class WasmCase {
                 Assert.fail(String.format("Unknown type in result specification: %s", resultType));
         }
 
-        if (mainContent instanceof String) {
-            return WasmCase.create(caseName, caseData, (String) mainContent, initializer, options);
-        } else if (mainContent instanceof byte[]) {
-            return WasmCase.create(caseName, caseData, (byte[]) mainContent, initializer, options);
-        } else {
-            Assert.fail("Unknown content type: " + mainContent.getClass());
+        if (mainContents.size() == 1) {
+            Object content = mainContents.get(0);
+            if (content instanceof String) {
+                return WasmCase.create(caseName, caseData, (String) content, initializer, options);
+            } else if (content instanceof byte[]) {
+                return WasmCase.create(caseName, caseData, (byte[]) content, initializer, options);
+            } else {
+                Assert.fail("Unknown content type: " + content.getClass());
+            }
+        } else if (mainContents.size() > 1) {
+            return new WasmMultiCase(caseName, caseData, mainContents, initializer, options);
         }
 
         return null;

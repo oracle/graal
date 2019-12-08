@@ -49,6 +49,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -124,12 +125,14 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return prid != null;
     }
 
-    private static Value runInContext(WasmCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+    private static Value runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
         final PrintStream oldOut = System.out;
         resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
-        context.eval(source);
+        for (Source source : sources) {
+            context.eval(source);
+        }
 
         // The sequence of WebAssembly functions to execute.
         // Run custom initialization.
@@ -228,7 +231,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            byte[] binary = testCase.createBinary();
+            List<byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
@@ -244,33 +247,37 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
             Context context;
 
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
-            Source source = sourceBuilder.build();
+            ArrayList<Source> sources = new ArrayList<>();
+            for (byte[] binary : binaries) {
+                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
+                Source source = sourceBuilder.build();
+                sources.add(source);
+            }
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
             context = getInterpretedNoInline(contextBuilder);
-            runInContext(testCase, context, source, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
+            runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
+            runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
+            runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
+            runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
         }

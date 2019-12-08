@@ -46,6 +46,7 @@ import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -102,11 +103,13 @@ public abstract class WasmBenchmarkSuiteBase {
             Context.Builder contextBuilder = Context.newBuilder("wasm");
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
 
-            byte[] binary = benchmarkCase.createBinary();
+            List<byte[]> binaries = benchmarkCase.createBinaries();
             Context context = contextBuilder.build();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
 
-            context.eval(source);
+            for (byte[] binary : binaries) {
+                Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+                context.eval(source);
+            }
 
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
