@@ -46,7 +46,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import java.util.function.Consumer;
 
@@ -56,7 +56,7 @@ import java.util.function.Consumer;
  * because certain language backends emit non-WebAssembly code that is used to initialize parts of
  * the memory.
  */
-public class RunCustomInitialization extends WasmPredefinedRootNode {
+public class RunCustomInitialization extends WasmBuiltinRootNode {
     public RunCustomInitialization(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -68,7 +68,7 @@ public class RunCustomInitialization extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
     }
 

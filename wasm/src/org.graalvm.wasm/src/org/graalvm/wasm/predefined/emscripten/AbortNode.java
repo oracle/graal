@@ -46,9 +46,9 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-public class AbortNode extends WasmPredefinedRootNode {
+public class AbortNode extends WasmBuiltinRootNode {
     public AbortNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -60,7 +60,7 @@ public class AbortNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "abort";
     }
 

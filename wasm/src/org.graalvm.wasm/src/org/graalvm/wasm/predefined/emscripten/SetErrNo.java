@@ -45,11 +45,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class SetErrNo extends WasmPredefinedRootNode {
+public class SetErrNo extends WasmBuiltinRootNode {
     public SetErrNo(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -74,7 +74,7 @@ public class SetErrNo extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "___setErrNo";
     }
 }

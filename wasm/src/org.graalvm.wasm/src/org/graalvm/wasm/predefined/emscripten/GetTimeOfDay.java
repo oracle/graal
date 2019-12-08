@@ -46,11 +46,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class GetTimeOfDay extends WasmPredefinedRootNode {
+public class GetTimeOfDay extends WasmBuiltinRootNode {
     public GetTimeOfDay(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -76,7 +76,7 @@ public class GetTimeOfDay extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "_gettimeofday";
     }
 

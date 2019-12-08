@@ -44,18 +44,18 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
-public abstract class WasmPredefinedRootNode extends WasmRootNode {
+public abstract class WasmBuiltinRootNode extends WasmRootNode {
     protected final WasmModule module;
 
-    public WasmPredefinedRootNode(WasmLanguage language, WasmModule module) {
+    public WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
         super(language, null);
         this.module = module;
     }
 
-    public abstract String predefinedNodeName();
+    public abstract String builtinNodeName();
 
     @Override
     public String getName() {
-        return "wasm-function:" + predefinedNodeName();
+        return "wasm-function:" + builtinNodeName();
     }
 }

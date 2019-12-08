@@ -49,11 +49,11 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class WasiFdWrite extends WasmPredefinedRootNode {
+public class WasiFdWrite extends WasmBuiltinRootNode {
 
     public WasiFdWrite(WasmLanguage language, WasmModule module) {
         super(language, module);
@@ -108,7 +108,7 @@ public class WasiFdWrite extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "___wasi_fd_write";
     }
 }

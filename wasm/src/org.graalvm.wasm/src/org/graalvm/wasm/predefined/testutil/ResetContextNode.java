@@ -46,13 +46,13 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 /**
  * Resets the memory and the globals of the modules in the context to the values specified in the
  * module's binary.
  */
-public class ResetContextNode extends WasmPredefinedRootNode {
+public class ResetContextNode extends WasmBuiltinRootNode {
     public ResetContextNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -65,7 +65,7 @@ public class ResetContextNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 

@@ -45,11 +45,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
+public class EmscriptenGetHeapSize extends WasmBuiltinRootNode {
     public EmscriptenGetHeapSize(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -64,7 +64,7 @@ public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "_emscripten_get_heap_size";
     }
 }

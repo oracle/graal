@@ -49,12 +49,12 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 /**
  * Records the context state (memory and global variables) into a custom object.
  */
-public class SaveContextNode extends WasmPredefinedRootNode {
+public class SaveContextNode extends WasmBuiltinRootNode {
     public SaveContextNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -65,7 +65,7 @@ public class SaveContextNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 

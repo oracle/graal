@@ -46,13 +46,13 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 import java.nio.charset.StandardCharsets;
 
-public class WasiArgsGetNode extends WasmPredefinedRootNode {
+public class WasiArgsGetNode extends WasmBuiltinRootNode {
     WasiArgsGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -86,7 +86,7 @@ public class WasiArgsGetNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "__wasi_args_get";
     }
 }

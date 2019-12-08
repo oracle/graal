@@ -44,11 +44,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmExit;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class WasiProcExitNode extends WasmPredefinedRootNode {
+public class WasiProcExitNode extends WasmBuiltinRootNode {
     WasiProcExitNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -60,7 +60,7 @@ public class WasiProcExitNode extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "__wasi_proc_exit";
     }
 }

@@ -45,11 +45,11 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
+public class EmscriptenMemcpyBig extends WasmBuiltinRootNode {
     public EmscriptenMemcpyBig(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -75,7 +75,7 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "_emscripten_memcpy_big";
     }
 }
