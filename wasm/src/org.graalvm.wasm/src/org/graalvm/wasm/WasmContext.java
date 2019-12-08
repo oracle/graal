@@ -72,7 +72,7 @@ public final class WasmContext {
         this.memories = new Memories();
         this.modules = new HashMap<>();
         this.linker = new Linker(language);
-        initializePredefinedModules();
+        initializeBuiltinModules();
     }
 
     public CallTarget parse(Source source) {
@@ -128,7 +128,7 @@ public final class WasmContext {
         modules.put(module.name(), module);
     }
 
-    private void initializePredefinedModules() {
+    private void initializeBuiltinModules() {
         final String extraModuleValue = WasmOptions.Builtins.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;
@@ -141,7 +141,7 @@ public final class WasmContext {
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmModule module = BuiltinModule.createPredefined(language, this, name, key);
+            final WasmModule module = BuiltinModule.createBuiltinModule(language, this, name, key);
             modules.put(name, module);
         }
     }

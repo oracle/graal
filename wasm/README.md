@@ -200,7 +200,7 @@ You can run the compiled WebAssembly binary as follows:
 graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
 ```
 
-In this example, the flag `--Builtins` specifies builtin modules
+In this example, the flag `--Builtins` specifies built-in modules
 that the Emscripten toolchain assumes.
 
 

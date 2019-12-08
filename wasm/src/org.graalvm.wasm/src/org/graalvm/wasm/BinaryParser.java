@@ -1160,7 +1160,8 @@ public class BinaryParser extends BinaryStreamParser {
     private void readDataSection() {
         final WasmContext context = WasmLanguage.getCurrentContext();
         int numDataSections = readVectorLength();
-        for (int i = 0; i != numDataSections; ++i) {
+        boolean allDataSectionsResolved = true;
+        for (int dataSectionId = 0; dataSectionId != numDataSections; ++dataSectionId) {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid
             // memory index is 0.
@@ -1194,19 +1195,22 @@ public class BinaryParser extends BinaryStreamParser {
             int byteLength = readVectorLength();
             long baseAddress = dataOffset;
             final WasmMemory memory = module.symbolTable().memory();
-            if (memory != null) {
+            if (memory != null && allDataSectionsResolved) {
+                // A data section can be loaded directly into memory only if there are no prior unresolved data sections.
                 memory.validateAddress(null, baseAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
                     memory.store_i32_8(baseAddress + writeOffset, b);
                 }
             } else {
+                // When some data section is not resolved, all the later data sections must be resolved after it.
                 byte[] dataSegment = new byte[byteLength];
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
                     dataSegment[writeOffset] = b;
                 }
-                context.linker().resolveDataSection(module, i, baseAddress, byteLength, dataSegment);
+                context.linker().resolveDataSection(module, dataSectionId, baseAddress, byteLength, dataSegment, allDataSectionsResolved);
+                allDataSectionsResolved = false;
             }
         }
     }

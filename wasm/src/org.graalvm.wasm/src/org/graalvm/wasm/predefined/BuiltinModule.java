@@ -71,7 +71,7 @@ public abstract class BuiltinModule {
         pm.put("memory", new MemoryModule());
     }
 
-    public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+    public static WasmModule createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
             throw new WasmException("Unknown predefined module: " + predefinedModuleName);

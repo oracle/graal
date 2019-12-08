@@ -288,7 +288,7 @@ public class Linker {
         resolutionDag.resolveLater(new ExportMemoryDecl(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
-    void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data) {
+    void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
         Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
             WasmMemory memory = module.symbolTable().memory();
@@ -299,7 +299,9 @@ public class Linker {
                 memory.store_i32_8(baseAddress + writeOffset, b);
             }
         };
-        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), new Decl[]{new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory())}, resolveAction);
+        final ImportMemoryDecl importMemoryDecl = new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory());
+        final Decl[] dependencies = priorDataSectionsResolved ? new Decl[]{importMemoryDecl} : new Decl[]{importMemoryDecl, new DataDecl(module.name(), dataSectionId - 1)};
+        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), dependencies, resolveAction);
     }
 
     static class ResolutionDag {
