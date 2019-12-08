@@ -43,9 +43,9 @@ package org.graalvm.wasm.predefined.testutil;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
-public class TestutilModule extends PredefinedModule {
+public class TestutilModule extends BuiltinModule {
     public static class Names {
         public static final String RESET_CONTEXT = "__testutil_reset_context";
         public static final String SAVE_CONTEXT = "__testutil_save_context";

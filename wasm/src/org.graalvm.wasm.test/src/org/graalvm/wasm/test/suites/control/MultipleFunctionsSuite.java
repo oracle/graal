@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.suites.webassembly;
+package org.graalvm.wasm.test.suites.control;
 
 import java.io.IOException;
 

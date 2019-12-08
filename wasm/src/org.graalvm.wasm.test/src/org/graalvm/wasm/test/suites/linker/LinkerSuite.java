@@ -38,50 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test;
+package org.graalvm.wasm.test.suites.linker;
 
-import org.graalvm.wasm.test.suites.arithmetic.Float32Suite;
-import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
-import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
-import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
-import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
-import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
-import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
-import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
-import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
-import org.graalvm.wasm.test.suites.linker.LinkerSuite;
-import org.graalvm.wasm.test.suites.memory.MemorySuite;
-import org.graalvm.wasm.test.suites.wasi.WasiSdkSuite;
-import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
+import java.io.IOException;
+
+import org.graalvm.wasm.test.WasmSuiteBase;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 
-import org.graalvm.wasm.test.suites.webassembly.EmscriptenSuite;
-import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
+public class LinkerSuite extends WasmSuiteBase {
+    @Override
+    protected String testResource() {
+        return "linker";
+    }
 
-@RunWith(Suite.class)
-@Suite.SuiteClasses({
-                Integer32Suite.class,
-                Integer64Suite.class,
-                Float32Suite.class,
-                Float64Suite.class,
-                SimpleBlockSuite.class,
-                BlockWithLocalsSuite.class,
-                BranchBlockSuite.class,
-                LoopBlockSuite.class,
-                IfThenElseSuite.class,
-                MemorySuite.class,
-                IssueSuite.class,
-                MultipleFunctionsSuite.class,
-                EmscriptenSuite.class,
-                WasiSdkSuite.class,
-                LinkerSuite.class,
-                WasmPolyglotTestSuite.class,
-})
-public class WasmTestSuite {
+    @Override
+    protected String includedExternalModules() {
+        return super.includedExternalModules() + ",memory";
+    }
+
+    @Override
     @Test
-    public void test() {
+    public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

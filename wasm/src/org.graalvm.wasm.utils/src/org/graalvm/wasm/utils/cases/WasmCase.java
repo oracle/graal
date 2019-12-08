@@ -47,7 +47,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
@@ -89,7 +90,7 @@ public abstract class WasmCase {
         return options;
     }
 
-    public abstract List<byte[]> createBinaries() throws IOException, InterruptedException;
+    public abstract Map<String, byte[]> createBinaries() throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
         return new WasmStringCase(name, data, program, null, new Properties());
@@ -136,31 +137,34 @@ public abstract class WasmCase {
 
         // Iterate through the available test of the bundle.
         while (indexReader.ready()) {
-            String caseName = indexReader.readLine().trim();
+            String caseSpec = indexReader.readLine().trim();
 
-            if (caseName.equals("") || caseName.startsWith("#")) {
+            if (caseSpec.equals("") || caseSpec.startsWith("#")) {
                 // Skip empty lines or lines starting with a hash (treat as a comment).
                 continue;
             } else {
-                collectedCases.add(collectFileCase(type, resource, caseName));
+                collectedCases.add(collectFileCase(type, resource, caseSpec));
             }
         }
 
         return collectedCases;
     }
 
-    public static WasmCase collectFileCase(String type, String resource, String caseName) throws IOException {
-        ArrayList<Object> mainContents = new ArrayList<>();
-        if (caseName.contains("/")) {
+    public static WasmCase collectFileCase(String type, String resource, String caseSpec) throws IOException {
+        Map<String, Object> mainContents = new HashMap<>();
+        String caseName;
+        if (caseSpec.contains("/")) {
             // Collect multi-module test case.
-            final String[] dirFiles = caseName.substring(1).split("/");
+            final String[] dirFiles = caseSpec.split("/");
             final String dir = dirFiles[0];
             final String[] moduleFiles = dirFiles[1].split(";");
             for (String file : moduleFiles) {
-                mainContents.add(WasmResource.getResourceAsTest(String.format("/%s/%s/%s/%s", type, resource, dir, file), true));
+                mainContents.put(file, WasmResource.getResourceAsTest(String.format("/%s/%s/%s/%s", type, resource, dir, file), true));
             }
+            caseName = dir;
         } else {
-            mainContents.add(WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseName), true));
+            mainContents.put(caseSpec, WasmResource.getResourceAsTest(String.format("/%s/%s/%s", type, resource, caseSpec), true));
+            caseName = caseSpec;
         }
         String resultContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.result", type, resource, caseName), true);
         String initContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.init", type, resource, caseName), false);
@@ -197,7 +201,7 @@ public abstract class WasmCase {
         }
 
         if (mainContents.size() == 1) {
-            Object content = mainContents.get(0);
+            Object content = mainContents.values().iterator().next();
             if (content instanceof String) {
                 return WasmCase.create(caseName, caseData, (String) content, initializer, options);
             } else if (content instanceof byte[]) {

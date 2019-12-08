@@ -71,8 +71,10 @@ public class ResetContextNode extends WasmPredefinedRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void resetModuleState(boolean zeroMemory) {
-        // TODO: Reset globals and the memory in all modules of the context.
-        WasmModule testModule = contextReference().get().modules().get("test");
-        contextReference().get().linker().resetModuleState(testModule, testModule.data(), zeroMemory);
+        for (WasmModule m : contextReference().get().modules().values()) {
+            if (!m.isBuiltin()) {
+                contextReference().get().linker().resetModuleState(m, m.data(), zeroMemory);
+            }
+        }
     }
 }

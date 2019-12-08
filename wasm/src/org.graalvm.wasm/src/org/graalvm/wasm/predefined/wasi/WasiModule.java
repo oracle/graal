@@ -43,11 +43,11 @@ package org.graalvm.wasm.predefined.wasi;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 import static org.graalvm.wasm.ValueTypes.I32_TYPE;
 
-public class WasiModule extends PredefinedModule {
+public class WasiModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);

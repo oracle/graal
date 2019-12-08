@@ -41,29 +41,31 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.WasmInitialization;
 
 public class WasmMultiCase extends WasmCase {
-    private final List<Object> fileContents;
+    private final Map<String, Object> fileContents;
 
-    public WasmMultiCase(String name, WasmCaseData data, List<Object> fileContents, WasmInitialization initialization, Properties options) {
+    public WasmMultiCase(String name, WasmCaseData data, Map<String, Object> fileContents, WasmInitialization initialization, Properties options) {
         super(name, data, initialization, options);
         this.fileContents = fileContents;
     }
 
     @Override
-    public List<byte[]> createBinaries() throws IOException, InterruptedException {
-        ArrayList<byte[]> binaries = new ArrayList<>();
-        for (Object content : fileContents) {
+    public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
+        HashMap<String, byte[]> binaries = new HashMap<>();
+        for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
+            String name = entry.getKey();
+            Object content = entry.getValue();
             if (content instanceof String) {
-                binaries.add(WasmBinaryTools.compileWat((String) content));
+                binaries.put(name, WasmBinaryTools.compileWat((String) content));
             } else if (content instanceof byte[]) {
-                binaries.add((byte[]) content);
+                binaries.put(name, (byte[]) content);
             } else {
                 throw new RuntimeException("Unknown content type: " + content.getClass());
             }

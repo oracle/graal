@@ -49,7 +49,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 public final class WasmContext {
     private final Env env;
@@ -122,6 +122,9 @@ public final class WasmContext {
     }
 
     void registerModule(WasmModule module) {
+        if (modules.containsKey(module.name())) {
+            throw new RuntimeException("Context already contains a module named '" + module.name() + "'.");
+        }
         modules.put(module.name(), module);
     }
 
@@ -138,7 +141,7 @@ public final class WasmContext {
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmModule module = PredefinedModule.createPredefined(language, this, name, key);
+            final WasmModule module = BuiltinModule.createPredefined(language, this, name, key);
             modules.put(name, module);
         }
     }

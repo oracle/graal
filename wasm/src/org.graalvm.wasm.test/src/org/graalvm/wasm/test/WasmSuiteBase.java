@@ -231,7 +231,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            List<byte[]> binaries = testCase.createBinaries();
+            Map<String, byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
@@ -248,8 +248,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Context context;
 
             ArrayList<Source> sources = new ArrayList<>();
-            for (byte[] binary : binaries) {
-                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
+            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
+                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
                 Source source = sourceBuilder.build();
                 sources.add(source);
             }

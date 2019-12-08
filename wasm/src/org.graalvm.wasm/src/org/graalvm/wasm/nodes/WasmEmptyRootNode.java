@@ -41,23 +41,23 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 
-public class WasmUndefinedFunctionRootNode extends WasmRootNode {
+public class WasmEmptyRootNode extends RootNode {
 
-    public WasmUndefinedFunctionRootNode(WasmLanguage language) {
+    public WasmEmptyRootNode(WasmLanguage language) {
         super(language, null);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object execute(VirtualFrame frame) {
         return WasmVoidResult.getInstance();
     }
 
     @Override
     public String getName() {
-        return "wasm-undefined-function-root-node";
+        return "wasm-empty-root-node";
     }
 }

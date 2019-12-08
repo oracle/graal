@@ -41,7 +41,7 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmInitialization;
@@ -55,7 +55,7 @@ public class WasmBinaryCase extends WasmCase {
     }
 
     @Override
-    public List<byte[]> createBinaries() {
-        return Collections.singletonList(binary);
+    public Map<String, byte[]> createBinaries() {
+        return Collections.singletonMap(name(), binary);
     }
 }

@@ -47,10 +47,10 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.ReferenceTypes;
 
-public class EmscriptenModule extends PredefinedModule {
+public class EmscriptenModule extends BuiltinModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         WasmModule module = new WasmModule(name, null);

@@ -97,9 +97,9 @@ public class BinaryParser extends BinaryStreamParser {
         this.moduleFunctionIndex = 0;
     }
 
-    WasmModule readModule() {
+    WasmModule readModule(WasmContext context) {
         validateMagicNumberAndVersion();
-        readSections();
+        readSections(context);
         return module;
     }
 
@@ -108,7 +108,7 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertIntEqual(read4(), VERSION, "Invalid VERSION number");
     }
 
-    private void readSections() {
+    private void readSections(WasmContext context) {
         while (!isEOF()) {
             byte sectionID = read1();
             int size = readUnsignedInt32();
@@ -136,7 +136,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readGlobalSection();
                     break;
                 case Section.EXPORT:
-                    readExportSection();
+                    readExportSection(context);
                     break;
                 case Section.START:
                     readStartSection();
@@ -1057,7 +1057,7 @@ public class BinaryParser extends BinaryStreamParser {
         module.symbolTable().setStartFunction(startFunctionIndex);
     }
 
-    private void readExportSection() {
+    private void readExportSection(WasmContext context) {
         int numExports = readVectorLength();
         for (int i = 0; i != numExports; ++i) {
             String exportName = readName();
@@ -1077,7 +1077,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case ExportIdentifier.MEMORY: {
                     readMemoryIndex();
-                    // TODO: Store the export information somewhere (e.g. in the symbol table).
+                    module.symbolTable().exportMemory(context, exportName);
                     break;
                 }
                 case ExportIdentifier.GLOBAL: {

@@ -60,11 +60,11 @@ import org.graalvm.wasm.predefined.memory.MemoryModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-public abstract class PredefinedModule {
-    private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();
+public abstract class BuiltinModule {
+    private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
 
     static {
-        final Map<String, PredefinedModule> pm = predefinedModules;
+        final Map<String, BuiltinModule> pm = predefinedModules;
         pm.put("emscripten", new EmscriptenModule());
         pm.put("testutil", new TestutilModule());
         pm.put("wasi", new WasiModule());
@@ -72,11 +72,11 @@ public abstract class PredefinedModule {
     }
 
     public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
-        final PredefinedModule predefinedModule = predefinedModules.get(predefinedModuleName);
-        if (predefinedModule == null) {
+        final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
+        if (builtinModule == null) {
             throw new WasmException("Unknown predefined module: " + predefinedModuleName);
         }
-        return predefinedModule.createModule(language, context, name);
+        return builtinModule.createModule(language, context, name);
     }
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
