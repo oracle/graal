@@ -62,4 +62,9 @@ public final class ImportDescriptor {
         final ImportDescriptor that = (ImportDescriptor) object;
         return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName);
     }
+
+    @Override
+    public String toString() {
+        return String.format("(import %s from %s)", memberName, moduleName);
+    }
 }

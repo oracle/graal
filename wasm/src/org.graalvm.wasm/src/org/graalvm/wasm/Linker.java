@@ -277,13 +277,14 @@ public class Linker {
             }
             setMemory.accept(memory);
         };
-        resolutionDag.resolveLater(new ImportMemoryDecl(module.name(), importDescriptor), new Decl[] { new ExportMemoryDecl(importedModuleName, importedMemoryName) }, resolveAction);
+        resolutionDag.resolveLater(new ImportMemoryDecl(module.name(), importDescriptor), new Decl[]{new ExportMemoryDecl(importedModuleName, importedMemoryName)}, resolveAction);
     }
 
     void resolveMemoryExport(WasmModule module, String exportedMemoryName) {
-        final Runnable resolveAction = () -> {};
+        final Runnable resolveAction = () -> {
+        };
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
-        final Decl[] dependencies = importDescriptor != null ? new Decl[] { new ImportMemoryDecl(module.name(), importDescriptor) } : new Decl[0];
+        final Decl[] dependencies = importDescriptor != null ? new Decl[]{new ImportMemoryDecl(module.name(), importDescriptor)} : new Decl[0];
         resolutionDag.resolveLater(new ExportMemoryDecl(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
@@ -298,7 +299,7 @@ public class Linker {
                 memory.store_i32_8(baseAddress + writeOffset, b);
             }
         };
-        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), new Decl[] { new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory()) }, resolveAction);
+        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), new Decl[]{new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory())}, resolveAction);
     }
 
     static class ResolutionDag {
@@ -316,7 +317,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("import %s from %s into %s", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+                return String.format("(import %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
             }
 
             @Override
@@ -345,7 +346,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("export %s from %s", memoryName, moduleName);
+                return String.format("(export %s from %s)", memoryName, moduleName);
             }
 
             @Override
@@ -374,7 +375,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("data %d in %s", dataSectionId, moduleName);
+                return String.format("(data %d in %s)", dataSectionId, moduleName);
             }
 
             @Override
