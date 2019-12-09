@@ -209,6 +209,10 @@ public final class WasmModule implements TruffleObject {
         return null;
     }
 
+    public boolean isBuiltin() {
+        return data == null;
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class ExportedMembers implements TruffleObject {
         private final SymbolTable symbolTable;

@@ -48,7 +48,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
-import org.graalvm.wasm.predefined.PredefinedModule;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 public final class WasmContext {
     private final Env env;
@@ -71,12 +72,16 @@ public final class WasmContext {
         this.memories = new Memories();
         this.modules = new HashMap<>();
         this.linker = new Linker(language);
-        initializePredefinedModules();
+        initializeBuiltinModules();
     }
 
     public CallTarget parse(Source source) {
         // TODO: Not used -- can we remove this?
         return env.parsePublic(source);
+    }
+
+    public Env environment() {
+        return env;
     }
 
     public WasmLanguage language() {
@@ -117,20 +122,26 @@ public final class WasmContext {
     }
 
     void registerModule(WasmModule module) {
+        if (modules.containsKey(module.name())) {
+            throw new RuntimeException("Context already contains a module named '" + module.name() + "'.");
+        }
         modules.put(module.name(), module);
     }
 
-    private void initializePredefinedModules() {
-        final String extraModuleValue = WasmOptions.PredefinedModules.getValue(env.getOptions());
+    private void initializeBuiltinModules() {
+        final String extraModuleValue = WasmOptions.Builtins.getValue(env.getOptions());
         if (extraModuleValue.equals("")) {
             return;
         }
         final String[] moduleSpecs = extraModuleValue.split(",");
         for (String moduleSpec : moduleSpecs) {
             final String[] parts = moduleSpec.split(":");
+            if (parts.length > 2) {
+                throw new WasmException("Module specification '" + moduleSpec + "' is not valid.");
+            }
             final String name = parts[0];
-            final String key = parts[1];
-            final WasmModule module = PredefinedModule.createPredefined(language, this, name, key);
+            final String key = parts.length == 2 ? parts[1] : parts[0];
+            final WasmModule module = BuiltinModule.createBuiltinModule(language, this, name, key);
             modules.put(name, module);
         }
     }

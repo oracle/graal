@@ -1,0 +1,5 @@
+zero-memory = false
+interpreter-iterations = 1
+sync-noinline-iterations = 1
+sync-inline-iterations = 1
+async-iterations = 0

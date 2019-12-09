@@ -56,23 +56,27 @@ import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
+import org.graalvm.wasm.predefined.memory.MemoryModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-public abstract class PredefinedModule {
-    private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();
+public abstract class BuiltinModule {
+    private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
 
     static {
-        final Map<String, PredefinedModule> pm = predefinedModules;
+        final Map<String, BuiltinModule> pm = predefinedModules;
         pm.put("emscripten", new EmscriptenModule());
         pm.put("testutil", new TestutilModule());
+        pm.put("wasi", new WasiModule());
+        pm.put("memory", new MemoryModule());
     }
 
-    public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
-        final PredefinedModule predefinedModule = predefinedModules.get(predefinedModuleName);
-        if (predefinedModule == null) {
+    public static WasmModule createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+        final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
+        if (builtinModule == null) {
             throw new WasmException("Unknown predefined module: " + predefinedModuleName);
         }
-        return predefinedModule.createModule(language, context, name);
+        return builtinModule.createModule(language, context, name);
     }
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
@@ -104,8 +108,16 @@ public abstract class PredefinedModule {
 
     protected WasmMemory defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize) {
         final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
-        module.symbolTable().exportMemory(memoryName);
+        module.symbolTable().exportMemory(context, memoryName);
         return memory;
+    }
+
+    protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, int maxSize) {
+        module.symbolTable().importMemory(context, importModuleName, memoryName, initSize, maxSize);
+    }
+
+    protected void exportMemory(WasmContext context, WasmModule module, String memoryName) {
+        module.symbolTable().exportMemory(context, memoryName);
     }
 
     protected byte[] types(byte... args) {

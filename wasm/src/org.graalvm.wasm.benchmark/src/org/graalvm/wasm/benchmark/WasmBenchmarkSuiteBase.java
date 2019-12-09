@@ -46,6 +46,7 @@ import static org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase.Defaults.WARMUP_
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -100,18 +101,20 @@ public abstract class WasmBenchmarkSuiteBase {
             Assert.assertNotNull(String.format("Benchmark %s.%s not found", benchmarkResource(), wantedBenchmarkName), benchmarkCase);
 
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.PredefinedModules", "testutil:testutil,env:emscripten");
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
 
-            byte[] binary = benchmarkCase.createBinary();
+            Map<String, byte[]> binaries = benchmarkCase.createBinaries();
             Context context = contextBuilder.build();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
 
-            context.eval(source);
+            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
+                Source source = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey()).build();
+                context.eval(source);
+            }
 
             Value wasmBindings = context.getBindings("wasm");
             benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
             benchmarkRun = wasmBindings.getMember("_benchmarkRun");
-            Assert.assertNotNull(String.format("No benchmarkRun method in %s."), wantedBenchmarkName);
+            Assert.assertNotNull(String.format("No benchmarkRun method in %s.", wantedBenchmarkName), benchmarkRun);
             resetContext = wasmBindings.getMember(TestutilModule.Names.RESET_CONTEXT);
             customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             initialization = benchmarkCase.initialization();

@@ -42,38 +42,39 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 /**
  * Resets the memory and the globals of the modules in the context to the values specified in the
  * module's binary.
  */
-public class ResetContextNode extends WasmPredefinedRootNode {
-    public ResetContextNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class ResetContextNode extends WasmBuiltinRootNode {
+    public ResetContextNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         boolean zeroMemory = (boolean) frame.getArguments()[0];
         resetModuleState(zeroMemory);
         return WasmVoidResult.getInstance();
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 
     @CompilerDirectives.TruffleBoundary
     private void resetModuleState(boolean zeroMemory) {
-        // TODO: Reset globals and the memory in all modules of the context.
-        WasmModule module = contextReference().get().modules().get("test");
-        contextReference().get().linker().resetModuleState(module, module.data(), zeroMemory);
+        for (WasmModule m : contextReference().get().modules().values()) {
+            if (!m.isBuiltin()) {
+                contextReference().get().linker().resetModuleState(m, m.data(), zeroMemory);
+            }
+        }
     }
 }

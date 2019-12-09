@@ -45,27 +45,27 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.Globals;
-import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 /**
  * Records the context state (memory and global variables) into a custom object.
  */
-public class SaveContextNode extends WasmPredefinedRootNode {
-    public SaveContextNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class SaveContextNode extends WasmBuiltinRootNode {
+    public SaveContextNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         return saveModuleState();
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RESET_CONTEXT;
     }
 

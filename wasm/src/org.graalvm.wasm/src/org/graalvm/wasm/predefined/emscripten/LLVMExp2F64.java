@@ -42,20 +42,20 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class LLVMExp2F64 extends WasmPredefinedRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class LLVMExp2F64 extends WasmBuiltinRootNode {
+    public LLVMExp2F64(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 1;
         for (Object arg : args) {
@@ -70,10 +70,11 @@ public class LLVMExp2F64 extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "_llvm_exp2_f64";
     }
 
+    // TODO: Remove the boundary here.
     @CompilerDirectives.TruffleBoundary
     double exp2(double x) {
         return Math.pow(2, x);

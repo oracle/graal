@@ -41,6 +41,8 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.wasm.utils.WasmBinaryTools;
@@ -55,7 +57,7 @@ public class WasmStringCase extends WasmCase {
     }
 
     @Override
-    public byte[] createBinary() throws IOException, InterruptedException {
-        return WasmBinaryTools.compileWat(program);
+    public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
+        return Collections.singletonMap(name(), WasmBinaryTools.compileWat(program));
     }
 }

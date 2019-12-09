@@ -94,14 +94,18 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         try (Context context = contextBuilder.build()) {
             context.eval(Source.newBuilder(getLanguageId(), file).build());
             // Currently, the spec does not commit to a name for the entry points.
-            // We speculate on the possible name.
+            // We speculate on the possible exported name.
             Value entryPoint = context.getBindings(getLanguageId()).getMember("main");
             if (entryPoint == null) {
-                // Emscripten naming convention.
+                // Try the Emscripten naming convention.
                 entryPoint = context.getBindings(getLanguageId()).getMember("_main");
             }
             if (entryPoint == null) {
-                throw abort("No main function found.");
+                // Try the wasi-sdk naming convention.
+                entryPoint = context.getBindings(getLanguageId()).getMember("_start");
+            }
+            if (entryPoint == null) {
+                throw abort("No entry-point function found, cannot start program.");
             }
             return entryPoint.execute().asInt();
         } catch (IOException e) {

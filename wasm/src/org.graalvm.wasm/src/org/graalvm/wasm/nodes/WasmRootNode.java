@@ -88,27 +88,31 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         return false;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    public void tryInitialize(WasmContext context) {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        final WasmContext context = contextReference().get();
         context.linker().tryLink();
+    }
 
-        /*
-         * WebAssembly structure dictates that a function's arguments are provided to the function
-         * as local variables, followed by any additional local variables that the function
-         * declares. A VirtualFrame contains a special array for the arguments, so we need to move
-         * them to the locals.
-         */
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        final WasmContext context = contextReference().get();
+        tryInitialize(context);
+        return executeWithContext(frame, context);
+    }
+
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+
+        // WebAssembly structure dictates that a function's arguments are provided to the function
+        // as local variables, followed by any additional local variables that the function
+        // declares. A VirtualFrame contains a special array for the arguments, so we need to move
+        // them to the locals.
         argumentsToLocals(frame);
 
-        /*
-         * WebAssembly rules dictate that a function's locals must be initialized to zero before
-         * function invocation. For more information, check the specification:
-         * https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-         */
+        // WebAssembly rules dictate that a function's locals must be initialized to zero before
+        // function invocation. For more information, check the specification:
+        // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
         trace("%s EXECUTE", this);

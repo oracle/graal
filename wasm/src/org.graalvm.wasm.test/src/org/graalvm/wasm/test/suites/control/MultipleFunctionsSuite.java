@@ -38,25 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package org.graalvm.wasm.test.suites.control;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
+import java.io.IOException;
 
-public class WasmUndefinedFunctionRootNode extends WasmRootNode {
+import org.junit.Test;
 
-    public WasmUndefinedFunctionRootNode(WasmLanguage language) {
-        super(language, null);
+import org.graalvm.wasm.test.WasmSuiteBase;
+
+public class MultipleFunctionsSuite extends WasmSuiteBase {
+    @Override
+    protected String testResource() {
+        return "multiple-functions";
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return WasmVoidResult.getInstance();
-    }
-
-    @Override
-    public String getName() {
-        return "wasm-undefined-function-root-node";
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

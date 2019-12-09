@@ -42,19 +42,37 @@ package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import org.graalvm.wasm.Linker.ResolutionDag.DataDecl;
+import org.graalvm.wasm.Linker.ResolutionDag.Decl;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportMemoryDecl;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportMemoryDecl;
+import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class Linker {
+    private enum LinkState {
+        notLinked,
+        inProgress,
+        linked
+    }
+
     private final WasmLanguage language;
-    private @CompilerDirectives.CompilationFinal boolean linked;
+    private final ResolutionDag resolutionDag;
+    private @CompilerDirectives.CompilationFinal LinkState linkState;
 
     public Linker(WasmLanguage language) {
         this.language = language;
+        this.resolutionDag = new ResolutionDag();
+        this.linkState = LinkState.notLinked;
     }
 
     // TODO: Many of the following methods should work on all the modules in the context, instead of
@@ -68,7 +86,7 @@ public class Linker {
         // compilation, and this check will fold away.
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
-        if (!linked) {
+        if (linkState == LinkState.notLinked) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation();
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -79,16 +97,24 @@ public class Linker {
     private void tryLinkOutsidePartialEvaluation() {
         // Some Truffle configurations allow that the code gets compiled before executing the code.
         // We therefore check the link state again.
-        if (!linked) {
+        if (linkState == LinkState.notLinked) {
+            linkState = LinkState.inProgress;
             Map<String, WasmModule> modules = WasmContext.getCurrent().modules();
             for (WasmModule module : modules.values()) {
                 linkFunctions(module);
-                linkGlobals(module);
-                linkTables(module);
-                linkMemories(module);
                 module.setLinked();
             }
-            linked = true;
+            // TODO: Once topological linking starts handling all the import kinds,
+            // remove the previous loop.
+            linkTopologically();
+            for (WasmModule module : modules.values()) {
+                final WasmFunction start = module.symbolTable().startFunction();
+                if (start != null) {
+                    start.resolveCallTarget().call(new Object[0]);
+                }
+            }
+            resolutionDag.clear();
+            linkState = LinkState.linked;
         }
     }
 
@@ -114,19 +140,11 @@ public class Linker {
         }
     }
 
-    @SuppressWarnings("unused")
-    private void linkGlobals(WasmModule module) {
-        // TODO: Ensure that the globals are resolved.
-    }
-
-    @SuppressWarnings("unused")
-    private void linkTables(WasmModule module) {
-        // TODO: Ensure that tables are resolved.
-    }
-
-    @SuppressWarnings("unused")
-    private void linkMemories(WasmModule module) {
-        // TODO: Ensure that tables are resolved.
+    private void linkTopologically() {
+        final Resolver[] sortedResolutions = resolutionDag.toposort();
+        for (Resolver resolver : sortedResolutions) {
+            resolver.action.run();
+        }
     }
 
     /**
@@ -230,11 +248,15 @@ public class Linker {
         }
     }
 
-    WasmMemory tryResolveMemory(WasmContext context, WasmModule module, String importedModuleName, String importedMemoryName, int initSize, int maxSize) {
-        final WasmModule importedModule = context.modules().get(importedModuleName);
-        if (importedModule == null) {
-            throw new WasmLinkerException("Postponed memory resolution not yet implemented.");
-        } else {
+    void resolveMemoryImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize, Consumer<WasmMemory> setMemory) {
+        String importedModuleName = importDescriptor.moduleName;
+        String importedMemoryName = importDescriptor.memberName;
+        final Runnable resolveAction = () -> {
+            final WasmModule importedModule = context.modules().get(importedModuleName);
+            if (importedModule == null) {
+                throw new WasmLinkerException(String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
+                                importedModuleName, importedMemoryName, module.name()));
+            }
             final String exportedMemoryName = importedModule.symbolTable().exportedMemory();
             if (exportedMemoryName == null) {
                 throw new WasmLinkerException(String.format("The imported module '%s' does not export any memories, so cannot resolve memory '%s' imported in module '%s'.",
@@ -253,7 +275,198 @@ public class Linker {
             if (memory.pageSize() < initSize) {
                 memory.grow(initSize - memory.pageSize());
             }
-            return memory;
+            setMemory.accept(memory);
+        };
+        resolutionDag.resolveLater(new ImportMemoryDecl(module.name(), importDescriptor), new Decl[]{new ExportMemoryDecl(importedModuleName, importedMemoryName)}, resolveAction);
+    }
+
+    void resolveMemoryExport(WasmModule module, String exportedMemoryName) {
+        final Runnable resolveAction = () -> {
+        };
+        final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
+        final Decl[] dependencies = importDescriptor != null ? new Decl[]{new ImportMemoryDecl(module.name(), importDescriptor)} : new Decl[0];
+        resolutionDag.resolveLater(new ExportMemoryDecl(module.name(), exportedMemoryName), dependencies, resolveAction);
+    }
+
+    void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
+        Assert.assertNotNull(module.symbolTable().importedMemory(), String.format("No memory declared or imported in the module '%s'", module.name()));
+        final Runnable resolveAction = () -> {
+            WasmMemory memory = module.symbolTable().memory();
+            Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", module.name()));
+            memory.validateAddress(null, baseAddress, byteLength);
+            for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
+                byte b = data[writeOffset];
+                memory.store_i32_8(baseAddress + writeOffset, b);
+            }
+        };
+        final ImportMemoryDecl importMemoryDecl = new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory());
+        final Decl[] dependencies = priorDataSectionsResolved ? new Decl[]{importMemoryDecl} : new Decl[]{importMemoryDecl, new DataDecl(module.name(), dataSectionId - 1)};
+        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), dependencies, resolveAction);
+    }
+
+    static class ResolutionDag {
+        abstract static class Decl {
+        }
+
+        static class ImportMemoryDecl extends Decl {
+            final String moduleName;
+            final ImportDescriptor importDescriptor;
+
+            ImportMemoryDecl(String moduleName, ImportDescriptor importDescriptor) {
+                this.moduleName = moduleName;
+                this.importDescriptor = importDescriptor;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(import %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ImportMemoryDecl)) {
+                    return false;
+                }
+                final ImportMemoryDecl that = (ImportMemoryDecl) object;
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+            }
+        }
+
+        static class ExportMemoryDecl extends Decl {
+            final String moduleName;
+            final String memoryName;
+
+            ExportMemoryDecl(String moduleName, String memoryName) {
+                this.moduleName = moduleName;
+                this.memoryName = memoryName;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(export %s from %s)", memoryName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ memoryName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ExportMemoryDecl)) {
+                    return false;
+                }
+                final ExportMemoryDecl that = (ExportMemoryDecl) object;
+                return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
+            }
+        }
+
+        static class DataDecl extends Decl {
+            final String moduleName;
+            final int dataSectionId;
+
+            DataDecl(String moduleName, int dataSectionId) {
+                this.moduleName = moduleName;
+                this.dataSectionId = dataSectionId;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(data %d in %s)", dataSectionId, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ dataSectionId;
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof DataDecl)) {
+                    return false;
+                }
+                final DataDecl that = (DataDecl) object;
+                return this.dataSectionId == that.dataSectionId && this.moduleName.equals(that.moduleName);
+            }
+        }
+
+        static class Resolver {
+            final Decl element;
+            final Decl[] dependencies;
+            final Runnable action;
+
+            Resolver(Decl element, Decl[] dependencies, Runnable action) {
+                this.element = element;
+                this.dependencies = dependencies;
+                this.action = action;
+            }
+
+            @Override
+            public String toString() {
+                return "Resolver(" + element + ")";
+            }
+        }
+
+        private final Map<Decl, Resolver> resolutions;
+
+        ResolutionDag() {
+            this.resolutions = new HashMap<>();
+        }
+
+        void resolveLater(Decl element, Decl[] dependencies, Runnable action) {
+            resolutions.put(element, new Resolver(element, dependencies, action));
+        }
+
+        void clear() {
+            resolutions.clear();
+        }
+
+        private static String renderCycle(List<Decl> stack) {
+            StringBuilder result = new StringBuilder();
+            String arrow = "";
+            for (Decl decl : stack) {
+                result.append(arrow).append(decl.toString());
+                arrow = " -> ";
+            }
+            return result.toString();
+        }
+
+        private void toposort(Decl decl, Map<Decl, Boolean> marks, ArrayList<Resolver> sorted, List<Decl> stack) {
+            final Resolver resolver = resolutions.get(decl);
+            if (resolver != null) {
+                final Boolean mark = marks.get(decl);
+                if (Boolean.TRUE.equals(mark)) {
+                    // This node was already sorted.
+                    return;
+                }
+                if (Boolean.FALSE.equals(mark)) {
+                    // The graph is cyclic.
+                    throw new WasmLinkerException(String.format("Detected a cycle in the import dependencies: %s",
+                                    renderCycle(stack)));
+                }
+                marks.put(decl, Boolean.FALSE);
+                stack.add(decl);
+                for (Decl dependency : resolver.dependencies) {
+                    toposort(dependency, marks, sorted, stack);
+                }
+                marks.put(decl, Boolean.TRUE);
+                stack.remove(stack.size() - 1);
+                sorted.add(resolver);
+            }
+        }
+
+        Resolver[] toposort() {
+            Map<Decl, Boolean> marks = new HashMap<>();
+            ArrayList<Resolver> sorted = new ArrayList<>();
+            for (Decl decl : resolutions.keySet()) {
+                toposort(decl, marks, sorted, new ArrayList<>());
+            }
+            return sorted.toArray(new Resolver[sorted.size()]);
         }
     }
 }
