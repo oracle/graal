@@ -2545,7 +2545,7 @@ def graalvm_vm_name(graalvm_dist, jdk):
     :rtype str:
     """
     out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
-    match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit )Server VM', out.split('\n')[-1])
+    match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit Server VM )', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
     return vm_name + graalvm_vendor_version(graalvm_dist)
 
