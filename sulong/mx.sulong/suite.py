@@ -438,6 +438,7 @@ suite = {
         "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
         "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
         "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/llvm-link",
+        "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
         "LIBSULONG" : "<lib:sulong>",
         "LIBSULONGXX" : "<lib:sulong++>",
         "OS" : "<os>",

@@ -45,7 +45,7 @@ CXX_BC_FILES=${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
 
 OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-simplify -reassociate -licm -gvn
 
-LD_FLAGS+=$(EXTRA_LD_FLAGS)
+LD_FLAGS+=$(EXTRA_LDFLAGS)
 
 CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode -fPIC $(EXTRA_CFLAGS)
 CXXFLAGS+=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE $(EXTRA_CXXFLAGS)
@@ -56,10 +56,12 @@ $(shell mkdir -p deps bin >/dev/null)
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
-LD_FLAGS+=-Wl,-sectcreate,__LLVM,__bundle,$<
+ORIGIN_TOKEN='@loader_path'
+LD_FLAGS+=-Wl,-sectcreate,__LLVM,__bundle,$< -Wl,-undefined,suppress -Wl,-flat_namespace -Wl,-install_name,@rpath/$(notdir $@)
 else
 CLANG_PREFIX=
-LD_FLAGS+=-rpath '$$ORIGIN' -flto=full -Wl,-mllvm,-lto-embed-bitcode=all
+ORIGIN_TOKEN='$$ORIGIN'
+LD_FLAGS+=-fuse-ld=lld -flto=full -Wl,-mllvm,-lto-embed-bitcode=all
 endif
 
 bin/libsulong.bc: ${C_BC_FILES}
@@ -69,10 +71,10 @@ bin/libsulong++.bc: ${CXX_BC_FILES}
 	$(QUIETLY) $(LLVM_LINK) -o $@ $+
 
 bin/$(LIBSULONG): bin/libsulong.bc
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -fuse-ld=lld $(LD_FLAGS) $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) $(LD_FLAGS) $+
 
 bin/$(LIBSULONGXX): bin/libsulong++.bc
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -fuse-ld=lld -stdlib=libc++ -lc++abi $(LD_FLAGS) $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) -stdlib=libc++ -lc++abi -L$(LLVM_TOOLCHAIN_LIB) $(LD_FLAGS) $+
 
 bin/%.bc: bin/%.noopt.bc
 	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}
