@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.aarch64;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -50,7 +51,26 @@ import jdk.vm.ci.aarch64.AArch64;
 class AArch64UContextRegisterDumperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UContextRegisterDumper.class, new AArch64UContextRegisterDumper());
+        UContextRegisterDumper regdumper;
+        if (SubstrateOptions.CompilerBackend.getValue().equals("llvm")) {
+            regdumper = new UContextRegisterDumper() {
+                public void dumpRegisters(Log log, ucontext_t uContext) {
+                    log.newline().string("No support for UContextRegisterDumper with CompilerBackend llvm").newline();
+                }
+
+                public PointerBase getHeapBase(ucontext_t uContext) {
+                    return null;
+                }
+
+                public PointerBase getThreadPointer(ucontext_t uContext) {
+                    return null;
+                }
+            };
+
+        } else {
+            regdumper = new AArch64UContextRegisterDumper();
+        }
+        ImageSingletons.add(UContextRegisterDumper.class, regdumper);
     }
 }
 
