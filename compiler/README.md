@@ -70,9 +70,9 @@ mx build
 mx vm
 ```
 
-By default, the GraalVM compiler is only used for hosted compilation (i.e., the VM still uses C2 for compilation).
-To make the VM use the GraalVM compiler as the top tier JIT compiler, add the `-XX:+UseJVMCICompiler` option to the command line.
-To disable use of the GraalVM compiler altogether, use `-XX:-EnableJVMCI`.
+When running `mx vm`, the GraalVM compiler is used as the top tier JIT compiler by default. To revert to using C2 instead,
+add the `-XX:-UseJVMCICompiler` option to the command line.
+To disable use of the GraalVM compiler altogether (i.e. for hosted compilations as well), use `-XX:-EnableJVMCI`.
 
 ### Windows Specifics
 

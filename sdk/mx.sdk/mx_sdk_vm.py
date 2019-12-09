@@ -561,7 +561,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 
         if jdk_enables_jvmci_by_default(jdk):
             # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
-            jlink.append('-J-XX:-EnableJVMCI')
+            jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
         if root_module_names is not None:
             missing = frozenset(root_module_names) - all_module_names
             if missing:
