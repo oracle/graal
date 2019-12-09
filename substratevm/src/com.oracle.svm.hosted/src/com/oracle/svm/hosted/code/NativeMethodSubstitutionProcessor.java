@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.svm.core.c.function.InternalCFunction;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -72,7 +73,7 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
                     return method;
                 }
             }
-            assert annotation.annotationType() != CFunction.class : "CFunction must have been handled by another SubstitutionProcessor";
+            assert annotation.annotationType() != CFunction.class && annotation.annotationType() != InternalCFunction.class : "CFunction must have been handled by another SubstitutionProcessor";
         }
         boolean isHandledByPlugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method) != null;
         if (isHandledByPlugin) {

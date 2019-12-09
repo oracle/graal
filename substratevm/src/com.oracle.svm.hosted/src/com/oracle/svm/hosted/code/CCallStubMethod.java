@@ -62,11 +62,11 @@ import jdk.vm.ci.meta.Signature;
 public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     private static final JavaKind cEnumKind = JavaKind.Int;
 
-    protected final boolean needsTransition;
+    protected final int newThreadStatus;
 
-    CCallStubMethod(ResolvedJavaMethod original, boolean needsTransition) {
+    CCallStubMethod(ResolvedJavaMethod original, int newThreadStatus) {
         super(original);
-        this.needsTransition = needsTransition;
+        this.newThreadStatus = newThreadStatus;
     }
 
     protected abstract String getCorrespondingAnnotationName();
@@ -82,7 +82,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit,
                         method.getSignature().getReturnType(null), method.toParameterTypes(), arguments);
         state.clearLocals();
-        ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
+        ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, newThreadStatus, deoptimizationTarget);
         returnValue = adaptReturnValue(method, providers, nativeLibraries, kit, returnValue);
         kit.createReturn(returnValue, signature.getReturnKind());
 

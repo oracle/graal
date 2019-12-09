@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.c.function.InternalCFunction;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -41,14 +43,27 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
-        if (method.isNative() && method.isAnnotationPresent(CFunction.class)) {
+        if (method.isNative() && (method.isAnnotationPresent(CFunction.class) || method.isAnnotationPresent(InternalCFunction.class))) {
             wrapper = callWrappers.computeIfAbsent(method, m -> {
                 CGlobalDataInfo linkage = CFunctionLinkages.singleton().addOrLookupMethod(m);
-                boolean needsTransition = (method.getAnnotation(CFunction.class).transition() != Transition.NO_TRANSITION);
-                return new CFunctionCallStubMethod(m, linkage, needsTransition);
+                return new CFunctionCallStubMethod(m, linkage, getNewThreadStatus(method));
             });
         }
         return wrapper;
+    }
+
+    private static int getNewThreadStatus(ResolvedJavaMethod method) {
+        CFunction cFunctionAnnotation = method.getAnnotation(CFunction.class);
+        if (cFunctionAnnotation != null) {
+            return StatusSupport.getNewThreadStatus(cFunctionAnnotation.transition());
+        }
+
+        InternalCFunction internalCFunctionAnnotation = method.getAnnotation(InternalCFunction.class);
+        if (internalCFunctionAnnotation != null) {
+            return StatusSupport.getNewThreadStatus(internalCFunctionAnnotation.transition());
+        }
+
+        throw VMError.shouldNotReachHere("Method is neither annotated with " + CFunction.class.getSimpleName() + " nor with " + InternalCFunction.class.getSimpleName());
     }
 
     @Override
