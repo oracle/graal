@@ -1196,14 +1196,16 @@ public class BinaryParser extends BinaryStreamParser {
             long baseAddress = dataOffset;
             final WasmMemory memory = module.symbolTable().memory();
             if (memory != null && allDataSectionsResolved) {
-                // A data section can be loaded directly into memory only if there are no prior unresolved data sections.
+                // A data section can be loaded directly into memory only if there are no prior
+                // unresolved data sections.
                 memory.validateAddress(null, baseAddress, byteLength);
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();
                     memory.store_i32_8(baseAddress + writeOffset, b);
                 }
             } else {
-                // When some data section is not resolved, all the later data sections must be resolved after it.
+                // When some data section is not resolved, all the later data sections must be
+                // resolved after it.
                 byte[] dataSegment = new byte[byteLength];
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     byte b = read1();

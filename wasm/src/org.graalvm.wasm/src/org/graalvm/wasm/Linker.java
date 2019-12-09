@@ -54,8 +54,8 @@ import org.graalvm.wasm.memory.WasmMemory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import java.util.function.Consumer;
 
 public class Linker {
@@ -341,7 +341,7 @@ public class Linker {
             final String moduleName;
             final String memoryName;
 
-            public ExportMemoryDecl(String moduleName, String memoryName) {
+            ExportMemoryDecl(String moduleName, String memoryName) {
                 this.moduleName = moduleName;
                 this.memoryName = memoryName;
             }
@@ -426,7 +426,7 @@ public class Linker {
             resolutions.clear();
         }
 
-        private static String renderCycle(Stack<Decl> stack) {
+        private static String renderCycle(List<Decl> stack) {
             StringBuilder result = new StringBuilder();
             String arrow = "";
             for (Decl decl : stack) {
@@ -436,7 +436,7 @@ public class Linker {
             return result.toString();
         }
 
-        private void toposort(Decl decl, Map<Decl, Boolean> marks, ArrayList<Resolver> sorted, Stack<Decl> stack) {
+        private void toposort(Decl decl, Map<Decl, Boolean> marks, ArrayList<Resolver> sorted, List<Decl> stack) {
             final Resolver resolver = resolutions.get(decl);
             if (resolver != null) {
                 final Boolean mark = marks.get(decl);
@@ -450,12 +450,12 @@ public class Linker {
                                     renderCycle(stack)));
                 }
                 marks.put(decl, Boolean.FALSE);
-                stack.push(decl);
+                stack.add(decl);
                 for (Decl dependency : resolver.dependencies) {
                     toposort(dependency, marks, sorted, stack);
                 }
                 marks.put(decl, Boolean.TRUE);
-                stack.pop();
+                stack.remove(stack.size() - 1);
                 sorted.add(resolver);
             }
         }
@@ -464,7 +464,7 @@ public class Linker {
             Map<Decl, Boolean> marks = new HashMap<>();
             ArrayList<Resolver> sorted = new ArrayList<>();
             for (Decl decl : resolutions.keySet()) {
-                toposort(decl, marks, sorted, new Stack<>());
+                toposort(decl, marks, sorted, new ArrayList<>());
             }
             return sorted.toArray(new Resolver[sorted.size()]);
         }
