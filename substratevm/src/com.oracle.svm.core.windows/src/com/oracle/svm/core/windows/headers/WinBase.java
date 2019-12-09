@@ -48,6 +48,7 @@ import org.graalvm.word.UnsignedWord;
 public class WinBase {
 
     public static final int MAX_PATH = 260;
+    public static final int UNLEN = 256;
 
     /**
      * Windows opaque Handle type
@@ -395,4 +396,10 @@ public class WinBase {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentDirectoryA(long nBufferLength, CCharPointer lpBuffer);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetUserNameW(CCharPointer lpBuffer, CIntPointer lpBufferLength);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetUserProfileDirectoryW(HANDLE token, CCharPointer lpBuffer, CIntPointer lpBufferLength);
 }
