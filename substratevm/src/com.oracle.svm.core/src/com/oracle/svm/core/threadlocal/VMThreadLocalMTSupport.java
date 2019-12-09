@@ -27,8 +27,11 @@ package com.oracle.svm.core.threadlocal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 
 public class VMThreadLocalMTSupport {
     @UnknownPrimitiveField public int vmThreadSize = -1;
@@ -37,5 +40,19 @@ public class VMThreadLocalMTSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMThreadLocalMTSupport() {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public NonmovableArray<Byte> getThreadLocalsReferenceMap() {
+        assert vmThreadReferenceMapEncoding != null;
+        return NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getThreadLocalsReferenceMapIndex() {
+        long result = vmThreadReferenceMapIndex;
+        assert result >= 0;
+        assert (int) result == result;
+        return (int) result;
     }
 }

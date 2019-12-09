@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.meta.SharedField;
 
@@ -58,12 +59,14 @@ public final class StaticFieldsSupport {
         support.staticPrimitiveFields = staticPrimitiveFields;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Object[] getStaticObjectFields() {
         Object[] result = ImageSingletons.lookup(StaticFieldsSupport.class).staticObjectFields;
         assert result != null;
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static byte[] getStaticPrimitiveFields() {
         byte[] result = ImageSingletons.lookup(StaticFieldsSupport.class).staticPrimitiveFields;
         assert result != null;
