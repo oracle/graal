@@ -27,9 +27,11 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
@@ -263,16 +265,109 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
     }
 
+    public static final boolean DEBUG_TTY = false;
+
     @Test
     public void unrollUntilReturnNestedLoopsContinueOuter06() {
         FrameDescriptor fd = new FrameDescriptor();
-        final int loopIterations = 2;
+        final int loopIterations = UnrollingTestNode.ExecutingUnrollUntilReturnTest.specialIterationNumber;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter06(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+
+        int addNodeconstant = 37;
+
+        UnrollingTestNode.ExecutingUnrollUntilReturnTest.clearSpecialEffect();
+        int resBefore = t.new FullUnrollUntilReturnNestedLoopsContinueOuter06().execute(new FrameWithoutBoxing(fd, null)) + addNodeconstant;
+
+        int effectBefore1 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect1;
+        int effectBefore2 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect2;
+        int effectBefore3 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect3;
+        int effectBefore4 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect4;
+        int effectBefore5 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect5;
+        int effectBefore6 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect6;
+        int effectBefore7 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect7;
+        int effectBefore8 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect8;
+        int effectBefore9 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect9;
+        int effectBefore10 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect10;
+        int effectBefore11 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect11;
+        int effectBefore12 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect12;
+
+        if (DEBUG_TTY) {
+            TTY.printf("before1 %d\n", effectBefore1);
+            TTY.printf("before2 %d\n", effectBefore2);
+            TTY.printf("before3 %d\n", effectBefore3);
+            TTY.printf("before4 %d\n", effectBefore4);
+            TTY.printf("before5 %d\n", effectBefore5);
+            TTY.printf("before6 %d\n", effectBefore6);
+            TTY.printf("before7 %d\n", effectBefore7);
+            TTY.printf("before8 %d\n", effectBefore8);
+            TTY.printf("before9 %d\n", effectBefore9);
+            TTY.printf("before10 %d\n", effectBefore10);
+            TTY.printf("before11 %d\n", effectBefore11);
+            TTY.printf("before12 %d\n", effectBefore12);
+        }
+        Assert.assertEquals(1, UnrollingTestNode.ExecutingUnrollUntilReturnTest.interpretedInvocationCounts);
+        Assert.assertEquals(0, UnrollingTestNode.ExecutingUnrollUntilReturnTest.compiledInvocationCounts);
+
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter06(), new ConstantTestNode(addNodeconstant));
+        OptimizedCallTarget compilable = compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
-        Assert.assertEquals(UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER, 30, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER));
-        Assert.assertEquals(UnrollingTestNode.CONTINUE_LOOP_MARKER, 68, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.CONTINUE_LOOP_MARKER));
+
+        UnrollingTestNode.ExecutingUnrollUntilReturnTest.compiledInvocationCounts = 0;
+
+        int interpretedCountBefore = UnrollingTestNode.ExecutingUnrollUntilReturnTest.interpretedInvocationCounts;
+
+        UnrollingTestNode.ExecutingUnrollUntilReturnTest.clearSpecialEffect();
+
+        int resAfter = (int) compilable.call();
+
+        Assert.assertEquals(1, UnrollingTestNode.ExecutingUnrollUntilReturnTest.compiledInvocationCounts);
+        Assert.assertEquals(interpretedCountBefore, UnrollingTestNode.ExecutingUnrollUntilReturnTest.interpretedInvocationCounts);
+
+        int effectAfter1 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect1;
+        int effectAfter2 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect2;
+        int effectAfter3 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect3;
+        int effectAfter4 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect4;
+        int effectAfter5 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect5;
+        int effectAfter6 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect6;
+        int effectAfter7 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect7;
+        int effectAfter8 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect8;
+        int effectAfter9 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect9;
+        int effectAfter10 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect10;
+        int effectAfter11 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect11;
+        int effectAfter12 = UnrollingTestNode.ExecutingUnrollUntilReturnTest.SpecialSideEffect12;
+
+        if (DEBUG_TTY) {
+            TTY.printf("after1 %d\n", effectAfter1);
+            TTY.printf("after2 %d\n", effectAfter2);
+            TTY.printf("after3 %d\n", effectAfter3);
+            TTY.printf("after4 %d\n", effectAfter4);
+            TTY.printf("after5 %d\n", effectAfter5);
+            TTY.printf("after6 %d\n", effectAfter6);
+            TTY.printf("after7 %d\n", effectAfter7);
+            TTY.printf("after8 %d\n", effectAfter8);
+            TTY.printf("after9 %d\n", effectAfter9);
+            TTY.printf("after10 %d\n", effectAfter10);
+            TTY.printf("after11 %d\n", effectAfter11);
+            TTY.printf("after12 %d\n", effectAfter12);
+        }
+
+        Assert.assertEquals(effectBefore1, effectAfter1);
+        Assert.assertEquals(effectBefore2, effectAfter2);
+        Assert.assertEquals(effectBefore3, effectAfter3);
+        Assert.assertEquals(effectBefore4, effectAfter4);
+        Assert.assertEquals(effectBefore5, effectAfter5);
+        Assert.assertEquals(effectBefore6, effectAfter6);
+        Assert.assertEquals(effectBefore7, effectAfter7);
+        Assert.assertEquals(effectBefore8, effectAfter8);
+        Assert.assertEquals(effectBefore9, effectAfter9);
+        Assert.assertEquals(effectBefore10, effectAfter10);
+        Assert.assertEquals(effectBefore11, effectAfter11);
+        Assert.assertEquals(effectBefore12, effectAfter12);
+
+        Assert.assertEquals(resBefore, resAfter);
+
+        Assert.assertEquals(UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER, 1554, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.OUTER_LOOP_INSIDE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.CONTINUE_LOOP_MARKER, 4356, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.CONTINUE_LOOP_MARKER));
         Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
     }
 

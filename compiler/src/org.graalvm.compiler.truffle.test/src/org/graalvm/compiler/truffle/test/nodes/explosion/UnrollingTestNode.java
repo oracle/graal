@@ -31,6 +31,8 @@ import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -366,12 +368,80 @@ public class UnrollingTestNode {
         }
     }
 
+    public static class ExecutingUnrollUntilReturnTest {
+        public static volatile int ExecutedSideEffect1;
+        public static volatile int ExecutedSideEffect2;
+        public static volatile int ExecutedSideEffect3;
+        public static volatile int ExecutedSideEffect4;
+        public static volatile int ExecutedSideEffect5;
+        public static volatile int ExecutedSideEffect6;
+
+        public static volatile int SpecialSideEffect1;
+        public static volatile int SpecialSideEffect2;
+        public static volatile int SpecialSideEffect3;
+        public static volatile int SpecialSideEffect4;
+        public static volatile int SpecialSideEffect5;
+        public static volatile int SpecialSideEffect6;
+        public static volatile int SpecialSideEffect7;
+        public static volatile int SpecialSideEffect8;
+        public static volatile int SpecialSideEffect9;
+        public static volatile int SpecialSideEffect10;
+        public static volatile int SpecialSideEffect11;
+        public static volatile int SpecialSideEffect12;
+
+        public static int specialIterationNumber = 6;
+
+        @TruffleBoundary
+        public static int result() {
+            return ExecutedSideEffect1 + ExecutedSideEffect2 + ExecutedSideEffect3 + ExecutedSideEffect4 + ExecutedSideEffect5 + ExecutedSideEffect6 + SpecialSideEffect1 + SpecialSideEffect2 +
+                            SpecialSideEffect3 + SpecialSideEffect4 + SpecialSideEffect5 + SpecialSideEffect6 + SpecialSideEffect7 + SpecialSideEffect8 + SpecialSideEffect9 + SpecialSideEffect10 +
+                            SpecialSideEffect11 + SpecialSideEffect12;
+        }
+
+        public static void clearSpecialEffect() {
+
+            /*
+             * Special Unit test:
+             *
+             * In order to not only track how many times a certain loop exit marker is duplicated we
+             * also test the exact times a branch is executed at runtime. Therefore, we compare the
+             * number of times a field has been written in an interpreted execution of a method and
+             * a partial evaluated compiled execution of the method.
+             *
+             * We reset the test fields in between.
+             */
+
+            ExecutedSideEffect1 = specialIterationNumber - 3;
+            ExecutedSideEffect2 = specialIterationNumber - 2;
+            ExecutedSideEffect3 = specialIterationNumber - 1;
+            ExecutedSideEffect4 = specialIterationNumber - 1;
+            ExecutedSideEffect5 = specialIterationNumber - 2;
+            ExecutedSideEffect6 = specialIterationNumber - 3;
+
+            SpecialSideEffect1 = 0;
+            SpecialSideEffect2 = 0;
+            SpecialSideEffect3 = 0;
+            SpecialSideEffect4 = 0;
+            SpecialSideEffect5 = 0;
+            SpecialSideEffect6 = 0;
+            SpecialSideEffect7 = 0;
+            SpecialSideEffect8 = 0;
+            SpecialSideEffect9 = 0;
+            SpecialSideEffect10 = 0;
+            SpecialSideEffect11 = 0;
+            SpecialSideEffect12 = 0;
+        }
+
+        public static int compiledInvocationCounts;
+        public static int interpretedInvocationCounts;
+
+    }
+
     public class FullUnrollUntilReturnNestedLoopsContinueOuter06 extends AbstractTestNode {
 
         @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
         @Override
         public int execute(VirtualFrame frame) {
-
             l1: for (int i1 = 0; i1 < count; i1++) {
                 GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                 CompilerAsserts.partialEvaluationConstant(i1);
@@ -384,66 +454,77 @@ public class UnrollingTestNode {
                         for (int i4 = 0; i4 < count; i4++) {
                             GraalDirectives.blackhole(OUTER_LOOP_INSIDE_LOOP_MARKER);
                             CompilerAsserts.partialEvaluationConstant(4);
-                            if (i4 == SideEffect1) {
+                            if (i4 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect1) {
                                 GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                                 CompilerAsserts.partialEvaluationConstant(i4);
-                                int x = i3 * i1 + 2 * i2 * i4;
+                                int x = i3 + i1 + 2 + i2 + i4;
                                 CompilerAsserts.partialEvaluationConstant(x);
-                                SideEffect = x;
-                                SideEffect1 = x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect1 += x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect2 += x;
+                                ExecutingUnrollUntilReturnTest.ExecutedSideEffect1 = 1024;
                                 continue l1;
                             }
-                            if (i4 == SideEffect2) {
+                            if (i4 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect2) {
                                 GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                                 CompilerAsserts.partialEvaluationConstant(i4);
-                                int x = i3 * i1 + 2 * i2 * i4;
+                                int x = i3 + i1 + 2 + i2 + i4;
                                 CompilerAsserts.partialEvaluationConstant(x);
-                                SideEffect = x;
-                                SideEffect1 = x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect3 += x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect4 += x;
+                                ExecutingUnrollUntilReturnTest.ExecutedSideEffect2 = 1024;
                                 continue l2;
                             }
-                            if (i4 == SideEffect3) {
+                            if (i4 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect3) {
                                 GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                                 CompilerAsserts.partialEvaluationConstant(i4);
-                                int x = i3 * i1 + 2 * i2 * i4;
+                                int x = i3 + i1 + 2 + i2 + i4;
                                 CompilerAsserts.partialEvaluationConstant(x);
-                                SideEffect = x;
-                                SideEffect1 = x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect5 += x;
+                                ExecutingUnrollUntilReturnTest.SpecialSideEffect6 += x;
+                                ExecutingUnrollUntilReturnTest.ExecutedSideEffect3 = 1024;
                                 continue l3;
                             }
                         }
-                        if (i3 == SideEffect) {
+                        if (i3 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect4) {
                             GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                             CompilerAsserts.partialEvaluationConstant(i3);
-                            int x = i3 * i1 + 2 * i2;
+                            int x = i3 + i1 + 2 + i2;
                             CompilerAsserts.partialEvaluationConstant(x);
-                            SideEffect = x;
-                            SideEffect1 = x;
+                            ExecutingUnrollUntilReturnTest.SpecialSideEffect7 += x;
+                            ExecutingUnrollUntilReturnTest.SpecialSideEffect8 += x;
+                            ExecutingUnrollUntilReturnTest.ExecutedSideEffect4 = 1024;
                             continue l1;
                         }
-                        if (i3 == SideEffect) {
+                        if (i3 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect5) {
                             GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                             CompilerAsserts.partialEvaluationConstant(i3);
-                            int x = i3 * i1 + 2 * i2;
+                            int x = i3 + i1 + 2 + i2;
                             CompilerAsserts.partialEvaluationConstant(x);
-                            SideEffect = x;
-                            SideEffect1 = x;
+                            ExecutingUnrollUntilReturnTest.SpecialSideEffect9 += x;
+                            ExecutingUnrollUntilReturnTest.SpecialSideEffect10 += x;
+                            ExecutingUnrollUntilReturnTest.ExecutedSideEffect5 = 1024;
                             continue l2;
                         }
                     }
-                    if (i2 == SideEffect) {
+                    if (i2 == ExecutingUnrollUntilReturnTest.ExecutedSideEffect6) {
                         GraalDirectives.blackhole(CONTINUE_LOOP_MARKER);
                         CompilerAsserts.partialEvaluationConstant(i2);
-                        int x = i2 * i1 + 2 * i2;
+                        int x = i2 + i1 + 2 + i2;
                         CompilerAsserts.partialEvaluationConstant(x);
-                        SideEffect = x;
-                        SideEffect1 = x;
+                        ExecutingUnrollUntilReturnTest.SpecialSideEffect11 += x;
+                        ExecutingUnrollUntilReturnTest.SpecialSideEffect12 += x;
+                        ExecutingUnrollUntilReturnTest.ExecutedSideEffect6 = 1024;
                         continue l1;
                     }
                 }
             }
             GraalDirectives.blackhole(AFTER_LOOP_MARKER);
-            return count;
+            if (!CompilerDirectives.inCompiledCode()) {
+                ExecutingUnrollUntilReturnTest.interpretedInvocationCounts++;
+            } else {
+                ExecutingUnrollUntilReturnTest.compiledInvocationCounts++;
+            }
+            return ExecutingUnrollUntilReturnTest.result();
         }
     }
 
