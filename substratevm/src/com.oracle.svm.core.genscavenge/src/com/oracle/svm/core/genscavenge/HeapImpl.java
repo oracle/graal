@@ -148,13 +148,6 @@ public class HeapImpl extends Heap {
         return getHeapImpl().imageHeapInfo;
     }
 
-    @Uninterruptible(reason = "Thread state not yet set up.")
-    @Override
-    public boolean initialize() {
-        // nothing to do - all relevant data was already initialized at image build time
-        return true;
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean isInImageHeap(Object object) {
@@ -192,11 +185,12 @@ public class HeapImpl extends Heap {
 
     /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void tearDown() {
+    @Uninterruptible(reason = "Tear-down in progress.")
+    public final boolean tearDown() {
         youngGeneration.tearDown();
         oldGeneration.tearDown();
         HeapChunkProvider.get().tearDown();
+        return true;
     }
 
     /** State: Who handles object headers? */
@@ -633,6 +627,7 @@ public class HeapImpl extends Heap {
         // nothing to do
     }
 
+    @Uninterruptible(reason = "Called during startup.")
     @Override
     public void attachThread(IsolateThread isolateThread) {
         // nothing to do
@@ -861,7 +856,7 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 }
 
-@TargetClass(java.lang.Runtime.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = TrueIfUseCardRememberedSetHeap.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

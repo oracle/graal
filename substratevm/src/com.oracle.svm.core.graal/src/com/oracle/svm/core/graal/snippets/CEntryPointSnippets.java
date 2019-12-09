@@ -84,7 +84,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -160,7 +159,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    @Uninterruptible(reason = "Called by an uninterruptible method.")
+    @Uninterruptible(reason = "Called by an uninterruptible method.", mayBeInlined = true)
     public static void setHeapBase(PointerBase heapBase) {
         writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
@@ -259,10 +258,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget
     private static int initializeIsolate() {
-        if (!Heap.getHeap().initialize()) {
-            return CEntryPointErrors.UNSPECIFIED;
-        }
-
         boolean firstIsolate = false;
 
         final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
@@ -283,11 +278,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
-
         if (firstIsolate) { // let other isolates (if any) initialize now
             state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
             unsafe.putIntVolatile(null, initStateAddr, state);
         }
+
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
@@ -338,6 +333,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (thread.isNull()) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
                 StackOverflowCheck.singleton().initialize(thread);
+                writeCurrentVMThread(thread);
                 int error = VMThreads.singleton().attachThread(thread);
                 if (error != CEntryPointErrors.NO_ERROR) {
                     VMThreads.singleton().freeIsolateThread(thread);
@@ -345,8 +341,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
                 // Store thread and isolate in thread-local variables.
                 VMThreads.IsolateTL.set(thread, isolate);
+            } else {
+                writeCurrentVMThread(thread);
             }
-            writeCurrentVMThread(thread);
         } else {
             StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
         }
