@@ -161,10 +161,38 @@ public class GraphDecoder {
 
     }
 
+    /**
+     * Marker to distinguish the reasons for the creation of a loop scope during partial evaluation.
+     */
     public enum LoopScopeTrigger {
+        /**
+         * Start loop scope: creation triggered manually at the beginning of partial evaluation.
+         */
         START,
+
+        /**
+         * Loop scope created for the next iteration of a loop if unrolling is enabled in the loop
+         * explosion mode. See {@link LoopExplosionKind#unrollLoops()} for details. Loop unrolling
+         * will merge loop end nodes for each iteration of the original loop.
+         */
         LOOP_BEGIN_UNROLLING,
+
+        /**
+         * Loop scope created for the next iteration of a loop along a particular loop end node if
+         * {@link LoopExplosionKind#duplicateLoopEnds()} is enabled and loops are exploded. This
+         * means for every loop end we duplicate the next loop iteration of the original loop.
+         */
         LOOP_END_DUPLICATION,
+
+        /**
+         * Loop scope created for a loop exit node if {@link LoopExplosionKind#duplicateLoopExits()}
+         * is enabled, i.e., code after a loop exit is duplicated per loop exit node.
+         *
+         * Special case nested loops: For compilation units with nested loops where inner loops
+         * continue loops at a level n -1 the partial evaluation algorithm will merge outer loops to
+         * avoid loop explosion along loop end nodes (which would be the same as
+         * {@link #LOOP_END_DUPLICATION}.
+         */
         LOOP_EXIT_DUPLICATION
     }
 
@@ -175,12 +203,28 @@ public class GraphDecoder {
         public final int loopDepth;
         public final int loopIteration;
 
-        // TODO Java doc
+        /**
+         * Creation trigger of this particular loop scope, i.e., the reason it was created.
+         */
         final LoopScopeTrigger trigger;
+        /**
+         * Upcoming, not yet processed, loop iterations created in the context of code duplication
+         * along loop exits. Only used when {@link MethodScope#loopExplosion} has
+         * {@link LoopExplosionKind#duplicateLoopExits()} enabled.
+         */
         public Deque<LoopScope> nextIterationFromLoopExitDuplication;
+        /**
+         * Same as {@link #nextIterationFromLoopExitDuplication} except that upcoming iterations
+         * have been created because the duplication of loop ends
+         * {@link LoopExplosionKind#duplicateLoopEnds()} is enabled.
+         */
         public Deque<LoopScope> nextIterationFromLoopEndDuplication;
+        /**
+         * Same as {@link #nextIterationFromLoopExitDuplication} except that upcoming iterations
+         * have been created because the unrolling of a loop with constant iteration count
+         * {@link LoopExplosionKind#unrollLoops()} is enabled.
+         */
         public Deque<LoopScope> nextIterationsFromUnrolling;
-
         /**
          * Information about already processed loop iterations for state merging during loop
          * explosion. Only used when {@link MethodScope#loopExplosion} is
@@ -244,24 +288,27 @@ public class GraphDecoder {
             return loopDepth + "," + loopIteration + (loopBeginOrderId == -1 ? "" : "#" + loopBeginOrderId) + " triggered by " + trigger;
         }
 
-        public int numberOfNextIterationsFromUnrolling() {
-            return nextIterationsFromUnrolling != null ? nextIterationsFromUnrolling.size() : 0;
-        }
-
-        public int numberOfNextIterationsFromLoopEndDuplication() {
-            return nextIterationFromLoopEndDuplication != null ? nextIterationFromLoopEndDuplication.size() : 0;
-        }
-
-        public int numberOfNextIterationsFromLoopExitDuplication() {
-            return nextIterationFromLoopExitDuplication != null ? nextIterationFromLoopExitDuplication.size() : 0;
-        }
-
+        /**
+         * Determines if and iterations generated when decoding this loop have yet to be processed.
+         *
+         * @return {@code true} if there are iterations to be decoded, {@code false} else
+         */
         public boolean hasIterationsToProccess() {
             return nextIterationFromLoopEndDuplication != null && !nextIterationFromLoopEndDuplication.isEmpty() ||
                             nextIterationFromLoopExitDuplication != null && !nextIterationFromLoopExitDuplication.isEmpty() ||
                             nextIterationsFromUnrolling != null && !nextIterationsFromUnrolling.isEmpty();
         }
 
+        /**
+         * Return the next iteration yet to be processed that has been created in the context of
+         * decoding this loop scope.
+         *
+         * @param remove determines if the query of the next iteration should remove it from the
+         *            list of iterations to be processed
+         * @return the next {@link LoopScope} to be processed that has been created in the context
+         *         of decoding this loop scope. Note that the order is not necessarily reflecting
+         *         the number of loop iterations.
+         */
         public LoopScope getNextIterationToProcess(boolean remove) {
             if (nextIterationFromLoopEndDuplication != null && !nextIterationFromLoopEndDuplication.isEmpty()) {
                 return remove ? nextIterationFromLoopEndDuplication.removeFirst() : nextIterationFromLoopEndDuplication.peekFirst();
@@ -512,7 +559,7 @@ public class GraphDecoder {
         }
     }
 
-    public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = false;
+    public static final boolean DUMP_DURING_FIXED_NODE_PROCESSING = true;
 
     protected LoopScope processNextNode(MethodScope methodScope, LoopScope loopScope) {
         int nodeOrderId = loopScope.nodesToProcess.nextSetBit(0);
@@ -533,9 +580,13 @@ public class GraphDecoder {
             }
         }
         if ((node instanceof MergeNode ||
-                        (node instanceof LoopBeginNode && (methodScope.loopExplosion.useExplosion() &&
+                        (node instanceof LoopBeginNode && (methodScope.loopExplosion.unrollLoops() &&
                                         !methodScope.loopExplosion.mergeLoops()))) &&
                         ((AbstractMergeNode) node).forwardEndCount() == 1) {
+            /*
+             * In case node is a loop begin and we are unrolling loops we remove the loop begin
+             * since the loop will be gone after PE.
+             */
             AbstractMergeNode merge = (AbstractMergeNode) node;
             EndNode singleEnd = merge.forwardEndAt(0);
 
@@ -657,19 +708,39 @@ public class GraphDecoder {
                 }
 
             } else if (methodScope.loopExplosion.useExplosion() && node instanceof LoopEndNode) {
-                int loopEndDuplicationsBefore = loopScope.numberOfNextIterationsFromLoopEndDuplication();
-                node = handleLoopExplosionEnd(methodScope, loopScope, (LoopEndNode) node);
-                Deque<LoopScope> phiScope = loopScope.numberOfNextIterationsFromLoopEndDuplication() > loopEndDuplicationsBefore ? //
-                                loopScope.nextIterationFromLoopEndDuplication
-                                : loopScope.nextIterationsFromUnrolling;
+                EndNode replacementNode = graph.add(new EndNode());
+                node.replaceAtPredecessor(replacementNode);
+                node.safeDelete();
+                node = replacementNode;
+                LoopScopeTrigger trigger = handleLoopExplosionEnd(methodScope, loopScope);
+                Deque<LoopScope> phiScope = loopScope.nextIterationsFromUnrolling;
+                if (trigger == LoopScopeTrigger.LOOP_END_DUPLICATION) {
+                    phiScope = loopScope.nextIterationFromLoopEndDuplication;
+                }
                 phiNodeScope = phiScope.getLast();
             }
             AbstractMergeNode merge = (AbstractMergeNode) lookupNode(phiNodeScope, mergeOrderId);
             if (merge == null) {
                 merge = (AbstractMergeNode) makeStubNode(methodScope, phiNodeScope, mergeOrderId);
                 if (merge instanceof LoopBeginNode) {
+                    /*
+                     * In contrast to the LoopScopeTrigger.START created at the beginning of every
+                     * PE, we see a real loop here and create the first real loop scope associated
+                     * with a loop.
+                     *
+                     * Creation of a loop scope if we reach a loop begin node. We process a loop
+                     * begin node (always before encountering a loop end associated with the loop
+                     * begin) and simply create a normal loop scope. This does not imply an advanced
+                     * unrolling strategy (however it can later if we see duplicate over loop end or
+                     * exits). Therefore, we still use the start marker here, we could also use the
+                     * unrolling marker.
+                     *
+                     * If we unroll loops we will later remove the loop begin node and replace it
+                     * with its forward end (since we do not need to create a loop begin node if we
+                     * unroll the entire loop and it has a constant trip count).
+                     */
                     assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
-                    resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.LOOP_BEGIN_UNROLLING,
+                    resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.START,
                                     methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
                                     methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
                                     methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null,
@@ -856,24 +927,32 @@ public class GraphDecoder {
         throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method");
     }
 
-    protected FixedNode handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope, LoopEndNode loopEnd) {
-        EndNode replacementNode = graph.add(new EndNode());
-        loopEnd.replaceAtPredecessor(replacementNode);
-        loopEnd.safeDelete();
-        assert methodScope.loopExplosion.useExplosion();
+    protected LoopScopeTrigger handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope) {
+        /*
+         * This method is only called if we reach a loop end and we use some kind of loop explosion,
+         * i.e., we unroll loops or explode along loop ends.
+         */
         LoopScopeTrigger trigger = null;
         Deque<LoopScope> nextIterations = null;
         if (methodScope.loopExplosion.duplicateLoopEnds()) {
+            /*
+             * Loop explosion along loop ends: We see a loop end, however we do not merge all loop
+             * ends at a common merge node but rather duplicate the rest of the loop for every loop
+             * end.
+             */
             trigger = LoopScopeTrigger.LOOP_END_DUPLICATION;
             nextIterations = loopScope.nextIterationFromLoopEndDuplication;
         } else if (loopScope.nextIterationsFromUnrolling.isEmpty()) {
+            /*
+             * Regular loop unrolling, i.e., we reach a loop end node of a loop that should be
+             * unrolled: We create a new successor scope.
+             */
             trigger = LoopScopeTrigger.LOOP_BEGIN_UNROLLING;
             nextIterations = loopScope.nextIterationsFromUnrolling;
         }
         if (trigger != null) {
             int nextIterationNumber = nextIterations.isEmpty() ? loopScope.loopIteration + 1 : nextIterations.getLast().loopIteration + 1;
-            LoopScope nextIterationScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId,
-                            LoopScopeTrigger.LOOP_BEGIN_UNROLLING,
+            LoopScope nextIterationScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId, trigger,
                             Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
                             Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
                             loopScope.nextIterationFromLoopExitDuplication,
@@ -885,7 +964,7 @@ public class GraphDecoder {
             registerNode(nextIterationScope, loopScope.loopBeginOrderId, null, true, true);
             makeStubNode(methodScope, nextIterationScope, loopScope.loopBeginOrderId);
         }
-        return replacementNode;
+        return trigger;
     }
 
     /**
