@@ -171,6 +171,32 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void unrollSimple() {
+        FrameDescriptor fd = new FrameDescriptor();
+        final int loopIterations = 5;
+        UnrollingTestNode t = new UnrollingTestNode(loopIterations);
+        AbstractTestNode result = new AddTestNode(t.new UnrollOnlyExample(), new ConstantTestNode(37));
+        compileHelper("Test", new RootTestNode(fd, "simpleUnroll", result), new Object[]{});
+        StructuredGraph peResult = lastCompiledGraph;
+
+        Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, loopIterations, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
+    }
+
+    @Test
+    public void explodeSimple() {
+        FrameDescriptor fd = new FrameDescriptor();
+        final int loopIterations = 5;
+        UnrollingTestNode t = new UnrollingTestNode(loopIterations);
+        AbstractTestNode result = new AddTestNode(t.new ExplodeAlongLoopEndExample(), new ConstantTestNode(37));
+        compileHelper("Test", new RootTestNode(fd, "simpleUnroll", result), new Object[]{});
+        StructuredGraph peResult = lastCompiledGraph;
+
+        Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 31, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 1, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
+    }
+
+    @Test
     public void unrollUntilReturnConsecutiveLoops() {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 5;

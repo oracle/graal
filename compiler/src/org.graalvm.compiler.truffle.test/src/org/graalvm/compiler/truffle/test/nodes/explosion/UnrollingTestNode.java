@@ -73,6 +73,39 @@ public class UnrollingTestNode {
         return count;
     }
 
+    public class UnrollOnlyExample extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
+        @Override
+        public int execute(VirtualFrame frame) {
+            for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
+    public class ExplodeAlongLoopEndExample extends AbstractTestNode {
+
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE)
+        @Override
+        public int execute(VirtualFrame frame) {
+            for (int i = 0; i < count; i++) {
+                GraalDirectives.blackhole(INSIDE_LOOP_MARKER);
+                SideEffect = i;
+                if (i == SideEffect2) {
+                    // exit the loop
+                    GraalDirectives.blackhole(OUTSIDE_LOOP_MARKER);
+                    GraalDirectives.blackhole(i);
+                    continue;
+                }
+            }
+            GraalDirectives.blackhole(AFTER_LOOP_MARKER);
+            return count;
+        }
+    }
+
     public class FullUnrollUntilReturnExample extends AbstractTestNode {
 
         @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN)
