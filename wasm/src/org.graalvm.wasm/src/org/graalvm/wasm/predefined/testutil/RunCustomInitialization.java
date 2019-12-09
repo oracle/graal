@@ -45,7 +45,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
 
 import java.util.function.Consumer;
@@ -57,7 +56,7 @@ import java.util.function.Consumer;
  * the memory.
  */
 public class RunCustomInitialization extends RootNode {
-    public RunCustomInitialization(WasmLanguage language, WasmModule module) {
+    public RunCustomInitialization(WasmLanguage language) {
         super(language, null);
     }
 

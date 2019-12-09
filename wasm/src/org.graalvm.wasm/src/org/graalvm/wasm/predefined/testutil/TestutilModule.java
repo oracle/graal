@@ -61,7 +61,7 @@ public class TestutilModule extends BuiltinModule {
         defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, module));
         defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, module));
         defineFunction(module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, module));
-        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language, module));
+        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language));
         return module;
     }
 }
