@@ -121,9 +121,10 @@ public class StampTool {
     }
 
     public static Stamp stampForTrailingZeros(IntegerStamp valueStamp) {
-        long mask = CodeUtil.mask(valueStamp.getBits());
-        int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
-        int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
+        int bits = valueStamp.getBits();
+        long mask = CodeUtil.mask(bits);
+        int min = Math.min(Long.numberOfTrailingZeros(valueStamp.upMask() & mask), bits);
+        int max = Math.min(Long.numberOfTrailingZeros(valueStamp.downMask() & mask), bits);
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
