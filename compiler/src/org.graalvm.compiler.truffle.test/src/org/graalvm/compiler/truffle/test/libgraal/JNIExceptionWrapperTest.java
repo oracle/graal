@@ -26,11 +26,16 @@ package org.graalvm.compiler.truffle.test.libgraal;
 
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.graalvm.compiler.core.CompilationWrapper;
+import org.graalvm.compiler.core.GraalCompilerOptions;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -38,7 +43,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
@@ -48,8 +52,32 @@ import org.junit.Test;
 public class JNIExceptionWrapperTest {
 
     @Test
-    @SuppressWarnings({"unused", "try"})
     public void testMergedStackTrace() throws Exception {
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        if (isSilent()) {
+            testMergedStackTraceImpl();
+        } else {
+            SubprocessUtil.Subprocess proc = SubprocessUtil.java(makeSilent(vmArgs), "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
+            int exitCode = proc.exitCode;
+            if (exitCode != 0) {
+                fail(String.format("non-zero exit code %d for command:%n%s", exitCode, proc));
+            }
+        }
+    }
+
+    private static boolean isSilent() {
+        Object value = System.getProperty(String.format("graal.%s", GraalCompilerOptions.CompilationFailureAction.getName()));
+        return CompilationWrapper.ExceptionAction.Silent.toString().equals(value);
+    }
+
+    private static List<String> makeSilent(List<? extends String> vmArgs) {
+        List<String> newVmArgs = new ArrayList<>();
+        newVmArgs.addAll(vmArgs.stream().filter((vmArg) -> !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList()));
+        newVmArgs.add(1, String.format("-Dgraal.%s=%s", GraalCompilerOptions.CompilationFailureAction.getName(), CompilationWrapper.ExceptionAction.Silent.toString()));
+        return newVmArgs;
+    }
+
+    private static void testMergedStackTraceImpl() throws Exception {
         try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString()).option("engine.CompilationExceptionsAreFatal",
                         Boolean.FALSE.toString()).build()) {
             ctx.enter();
@@ -58,13 +86,10 @@ public class JNIExceptionWrapperTest {
                 OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
                 TruffleCompiler compiler = runtime.getTruffleCompiler();
                 try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-                    try (TruffleCompilerOptions.TruffleOptionsOverrideScope compilerOptionsScope = TruffleCompilerOptions.overrideOptions(
-                                    Collections.singletonMap("CompilationFailureAction", CompilationWrapper.ExceptionAction.Silent))) {
-                        try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
-                            TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
-                            TestListener listener = new TestListener();
-                            compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
-                        }
+                    try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
+                        TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
+                        TestListener listener = new TestListener();
+                        compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
                     }
                 } catch (Throwable t) {
                     String message = t.getMessage();

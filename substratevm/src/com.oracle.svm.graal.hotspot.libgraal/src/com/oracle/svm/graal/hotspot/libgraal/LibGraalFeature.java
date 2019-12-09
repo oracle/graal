@@ -49,6 +49,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -464,6 +466,35 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         visitedElements.clear();
+        verifyReachableTruffleClasses(access);
+    }
+
+    /**
+     * Verifies that the Truffle compiler does not bring Truffle API types into an image. The
+     * Truffle compiler depends on {@code org.graalvm.compiler.truffle.options} which depends on the
+     * Truffle APIs to be able to use the {@code @com.oracle.truffle.api.Option} annotation. We need
+     * to use the points to analysis to verify that the Truffle API types are not reachable.
+     */
+    private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
+        AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
+        SortedSet<String> disallowedTypes = new TreeSet<>();
+        for (AnalysisType type : universe.getTypes()) {
+            String className = type.toClassName();
+            if (!isAllowedType(className)) {
+                disallowedTypes.add(className);
+            }
+        }
+        if (!disallowedTypes.isEmpty()) {
+            throw UserError.abort("Following non allowed Truffle types are reachable on heap: " + String.join(", ", disallowedTypes));
+        }
+    }
+
+    private static boolean isAllowedType(String className) {
+        if (className.startsWith("com.oracle.truffle.") && !className.startsWith("com.oracle.truffle.api.nodes.")) {
+            return className.equals("com.oracle.truffle.api.TruffleRuntimeAccess") ||
+                            className.equals("com.oracle.truffle.api.dsl.GeneratedBy");
+        }
+        return true;
     }
 
     static class MethodAnnotationSupport {
