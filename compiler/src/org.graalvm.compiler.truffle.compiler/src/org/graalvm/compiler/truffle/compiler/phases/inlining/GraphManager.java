@@ -45,6 +45,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.options.OptionValues;
 
 final class GraphManager {
 
@@ -60,7 +61,7 @@ final class GraphManager {
         this.callNodeProvider = callNodeProvider;
     }
 
-    Entry get(CompilableTruffleAST truffleAST) {
+    Entry get(CompilableTruffleAST truffleAST, OptionValues polyglotCompilerOptionValues) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             Cancellable cancellable = rootIR.getCancellable();
@@ -70,7 +71,7 @@ final class GraphManager {
             CompilationIdentifier id = rootIR.compilationId();
             final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
             StructuredGraph graph = partialEvaluator.createGraphForInlining(debug, truffleAST, callNodeProvider, plugin, allowAssumptions, id, log, cancellable,
-                            graphCacheForInlining);
+                            graphCacheForInlining, polyglotCompilerOptionValues);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
             entry = new GraphManager.Entry(graph, truffleCallNodeToInvoke);
             irCache.put(truffleAST, entry);
@@ -78,9 +79,9 @@ final class GraphManager {
         return entry;
     }
 
-    EconomicMap<TruffleCallNode, Invoke> peRoot(CompilableTruffleAST truffleAST) {
+    EconomicMap<TruffleCallNode, Invoke> peRoot(CompilableTruffleAST truffleAST, OptionValues polyglotCompilerOptionValues) {
         final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
-        partialEvaluator.parseRootGraphForInlining(truffleAST, rootIR, callNodeProvider, plugin, graphCacheForInlining);
+        partialEvaluator.parseRootGraphForInlining(truffleAST, rootIR, callNodeProvider, plugin, graphCacheForInlining, polyglotCompilerOptionValues);
         return plugin.getTruffleCallNodeToInvoke();
     }
 

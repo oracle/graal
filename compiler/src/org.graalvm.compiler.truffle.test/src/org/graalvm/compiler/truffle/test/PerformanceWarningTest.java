@@ -32,11 +32,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -48,6 +46,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 
 public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
@@ -61,6 +62,23 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
     @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
+
+    private Context context;
+
+    @Before
+    public void setUp() {
+        context = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", Boolean.TRUE.toString()).option(
+                        "engine.PerformanceWarningsAreFatal", Boolean.TRUE.toString()).build();
+        context.enter();
+    }
+
+    @After
+    public void tearDown() {
+        if (context != null) {
+            context.leave();
+            context.close();
+        }
+    }
 
     @Test
     public void testVirtualCall() {
@@ -110,28 +128,24 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("try")
     private static void testHelper(TruffleCompilerImpl compiler, RootNode rootNode, boolean expectException, String... outputStrings) {
 
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-
         // Compile and capture output to TTY.
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
         boolean seenException = false;
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
-            try (PolyglotCompilerOptionsScope scope = PolyglotCompilerOptionsScope.overrideOptions(PolyglotCompilerOptions.TracePerformanceWarnings, Boolean.TRUE,
-                            PolyglotCompilerOptions.PerformanceWarningsAreFatal, Boolean.TRUE, PolyglotCompilerOptions.PerformanceWarningsAreFatal, Boolean.TRUE)) {
-                DebugContext debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
-                try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
-                    final OptimizedCallTarget compilable = target;
-                    CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
-                    TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-                    compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
-                    assertTrue(compilable.isValid());
-                }
-            } catch (AssertionError e) {
-                seenException = true;
-                if (!expectException) {
-                    throw new AssertionError("Unexpected exception caught." + (outContent.size() > 0 ? '\n' + outContent.toString() : ""), e);
-                }
+            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+            DebugContext debug = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
+                final OptimizedCallTarget compilable = target;
+                CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
+                TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+                compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null, compilable.getOptionValues());
+                assertTrue(compilable.isValid());
+            }
+        } catch (AssertionError e) {
+            seenException = true;
+            if (!expectException) {
+                throw new AssertionError("Unexpected exception caught." + (outContent.size() > 0 ? '\n' + outContent.toString() : ""), e);
             }
         }
         if (expectException && !seenException) {

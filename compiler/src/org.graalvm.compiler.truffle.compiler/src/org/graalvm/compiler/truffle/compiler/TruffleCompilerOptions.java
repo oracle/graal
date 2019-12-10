@@ -55,6 +55,10 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.OptionValuesImpl;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
@@ -163,24 +167,15 @@ public final class TruffleCompilerOptions {
     }
 
     /**
-     * Uses {@link org.graalvm.options.OptionValues} from the {@link PolyglotCompilerOptionsScope}
-     * to get the {@code --engine} option value. If the engine option is unset falls back to
-     * {@code -Dgraal} option.
-     */
-    public static <T> T getPolyglotOptionValue(org.graalvm.options.OptionKey<T> optionKey) {
-        return getPolyglotOptionValue(PolyglotCompilerOptionsScope.getOptionValues(), optionKey);
-    }
-
-    /**
      * Determines whether an exception during a Truffle compilation should result in calling
      * {@link System#exit(int)}.
      */
-    public static boolean areTruffleCompilationExceptionsFatal() {
+    public static boolean areTruffleCompilationExceptionsFatal(org.graalvm.options.OptionValues polyglotCompilerOptionValues) {
         /*
          * This is duplicated in TruffleRuntimeOptions#areTruffleCompilationExceptionsFatal.
          */
-        boolean compilationExceptionsAreFatal = getPolyglotOptionValue(CompilationExceptionsAreFatal);
-        boolean performanceWarningsAreFatal = getPolyglotOptionValue(PerformanceWarningsAreFatal);
+        boolean compilationExceptionsAreFatal = getPolyglotOptionValue(polyglotCompilerOptionValues, CompilationExceptionsAreFatal);
+        boolean performanceWarningsAreFatal = getPolyglotOptionValue(polyglotCompilerOptionValues, PerformanceWarningsAreFatal);
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 
@@ -262,6 +257,23 @@ public final class TruffleCompilerOptions {
      */
     public static <T> T getValue(OptionKey<T> key) {
         return key.getValue(getOptions());
+    }
+
+    public static org.graalvm.options.OptionValues getOptionsForCompiler(Map<String, Object> options) {
+        EconomicMap<org.graalvm.options.OptionKey<?>, Object> parsedOptions = EconomicMap.create(Equivalence.IDENTITY);
+        OptionDescriptors descriptors = PolyglotCompilerOptions.getDescriptors();
+        for (Map.Entry<String, Object> e : options.entrySet()) {
+            final OptionDescriptor descriptor = descriptors.get(e.getKey());
+            final org.graalvm.options.OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
+            if (k != null) {
+                Object value = e.getValue();
+                if (value.getClass() == String.class) {
+                    value = descriptor.getKey().getType().convert((String) e.getValue());
+                }
+                parsedOptions.put(k, value);
+            }
+        }
+        return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
     // Support for mapping PolyglotCompilerOptions to legacy TruffleCompilerOptions.

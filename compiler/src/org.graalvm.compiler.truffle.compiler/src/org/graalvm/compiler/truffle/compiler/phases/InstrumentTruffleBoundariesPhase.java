@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -64,8 +65,8 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        super(snippetReflection, instrumentation);
+    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, OptionValues polyglotCompilerOptionValues) {
+        super(snippetReflection, instrumentation, polyglotCompilerOptionValues);
     }
 
     @Override

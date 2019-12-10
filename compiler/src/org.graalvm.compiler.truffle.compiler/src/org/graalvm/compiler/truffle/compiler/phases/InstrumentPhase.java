@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,8 +91,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     protected final MethodFilter[] methodFilter;
     protected final SnippetReflectionProvider snippetReflection;
 
-    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
-        String filterValue = instrumentationFilter();
+    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, OptionValues polyglotCompilerOptionValues) {
+        String filterValue = instrumentationFilter(polyglotCompilerOptionValues);
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
@@ -105,8 +106,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         return instrumentation;
     }
 
-    protected String instrumentationFilter() {
-        return getPolyglotOptionValue(PolyglotCompilerOptions.InstrumentFilter);
+    protected String instrumentationFilter(OptionValues polyglotCompilerOptionValues) {
+        return getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.InstrumentFilter);
     }
 
     protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,

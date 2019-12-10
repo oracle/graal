@@ -51,8 +51,6 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -602,6 +600,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                         /* 42: */Bytecode.CONST,
                         /* 43: */42,
                         /* 44: */Bytecode.RETURN};
+<<<<<<< HEAD
         long[] times = new long[5];
         String[] topPhases = new String[times.length];
         for (int i = 0; i < times.length; i++) {

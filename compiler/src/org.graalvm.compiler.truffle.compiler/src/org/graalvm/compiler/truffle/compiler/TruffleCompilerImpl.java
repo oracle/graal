@@ -91,6 +91,7 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.debug.TraceCompilationFailureListener;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CompilationRequest;
@@ -216,18 +217,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     @SuppressWarnings("try")
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        try (PolyglotCompilerOptionsScope optionsScope = PolyglotCompilerOptionsScope.open(options)) {
-            final DebugContext debugContext;
-            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-            if (compilation == null) {
-                debugContext = DebugContext.create(debugContextOptionValues, DebugHandlersFactory.LOADER);
-            } else {
-                TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
-                CompilableTruffleAST compilable = ident.getCompilable();
-                debugContext = createDebugContext(debugContextOptionValues, ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
-            }
-            return new TruffleDebugContextImpl(debugContext);
+        final DebugContext debugContext;
+        if (compilation == null) {
+            debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+        } else {
+            TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
+            CompilableTruffleAST compilable = ident.getCompilable();
+            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
         }
+        return new TruffleDebugContextImpl(debugContext);
     }
 
     private static TruffleCompilationIdentifier asTruffleCompilationIdentifier(TruffleCompilation compilation) {
@@ -248,34 +246,32 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
 
-        try (PolyglotCompilerOptionsScope optionsScope = PolyglotCompilerOptionsScope.open(optionsMap)) {
-            TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
-            CompilableTruffleAST compilable = compilationId.getCompilable();
+        org.graalvm.options.OptionValues polyglotCompilerOptionValues = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
+        TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
+        CompilableTruffleAST compilable = compilationId.getCompilable();
 
-            boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
-            if (usingCallersDebug) {
-                final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
+        boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
+        if (usingCallersDebug) {
+            final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
 
-                try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
-                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, callerDebug);
-                } catch (Throwable e) {
-                    notifyCompilableOfFailure(compilable, e);
-                }
-            } else {
-                final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-                try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
-                                DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug);
-                } catch (Throwable e) {
-                    notifyCompilableOfFailure(compilable, e);
-                }
+            try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
+                actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, callerDebug, polyglotCompilerOptionValues);
+            } catch (Throwable e) {
+                notifyCompilableOfFailure(compilable, e);
             }
-
+        } else {
+            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
+            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                            DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
+                actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug, polyglotCompilerOptionValues);
+            } catch (Throwable e) {
+                notifyCompilableOfFailure(compilable, e);
+            }
         }
     }
 
     private void actuallyCompile(TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener inListener, TruffleCompilationIdentifier compilationId,
-                    CompilableTruffleAST compilable, DebugContext graalDebug) {
+                    CompilableTruffleAST compilable, DebugContext graalDebug, org.graalvm.options.OptionValues polyglotCompilerOptionValues) {
         final TruffleCompilerListener listener;
         if (inListener == null) {
             listener = null;
@@ -289,7 +285,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         task == null ? null : new CancellableTruffleCompilationTask(task),
                         inliningPlan,
                         compilationId,
-                        listener);
+                        listener,
+                        polyglotCompilerOptionValues);
         truffleCompilationWrapper.run(graalDebug);
     }
 
@@ -427,6 +424,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      *            {@linkplain CancellationBailoutException abort} early if the thread owning the
      *            task requests it
      * @param listener
+     * @param polyglotCompilerOptionValues the values of {@link PolyglotCompilerOptions}.
      */
     @SuppressWarnings("try")
     public void compileAST(DebugContext debug,
@@ -434,7 +432,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleInliningPlan inliningPlan,
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
-                    TruffleCompilerListener listener) {
+                    TruffleCompilerListener listener,
+                    org.graalvm.options.OptionValues polyglotCompilerOptionValues) {
         final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
 
@@ -447,7 +446,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
+                graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task, polyglotCompilerOptionValues);
             }
 
             // Check if the task has been cancelled
@@ -584,6 +583,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         private final CancellableTruffleCompilationTask task;
         private final TruffleCompilerListener listener;
         private final CompilationIdentifier compilationId;
+        private final org.graalvm.options.OptionValues polyglotCompilerOptionValues;
 
         private TruffleCompilationWrapper(DiagnosticsOutputDirectory outputDirectory,
                         Map<ExceptionAction, Integer> problemsHandledPerAction,
@@ -591,13 +591,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         CancellableTruffleCompilationTask task,
                         TruffleInliningPlan inliningPlan,
                         CompilationIdentifier compilationId,
-                        TruffleCompilerListener listener) {
+                        TruffleCompilerListener listener,
+                        org.graalvm.options.OptionValues polyglotCompilerOptionValues) {
             super(outputDirectory, problemsHandledPerAction);
             this.compilable = optimizedCallTarget;
             this.inliningPlan = inliningPlan;
             this.task = task;
             this.listener = listener;
             this.compilationId = compilationId;
+            this.polyglotCompilerOptionValues = polyglotCompilerOptionValues;
         }
 
         @Override
@@ -609,7 +611,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         protected ExceptionAction lookupAction(OptionValues options, Throwable cause) {
             // Respect current action if it has been explicitly set.
             if (!(cause instanceof BailoutException) || ((BailoutException) cause).isPermanent()) {
-                if (TruffleCompilerOptions.areTruffleCompilationExceptionsFatal()) {
+                if (TruffleCompilerOptions.areTruffleCompilationExceptionsFatal(polyglotCompilerOptionValues)) {
                     // Get more info for Truffle compilation exceptions
                     // that will cause the VM to exit.
                     return Diagnose;
@@ -636,7 +638,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected Void performCompilation(DebugContext debug) {
-            compileAST(debug, compilable, inliningPlan, compilationId, task, listener);
+            compileAST(debug, compilable, inliningPlan, compilationId, task, listener, polyglotCompilerOptionValues);
             return null;
         }
     }

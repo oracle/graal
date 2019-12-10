@@ -34,21 +34,25 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 public final class CallTree extends Graph {
 
     private final InliningPolicy policy;
     private final GraphManager graphManager;
     private final CallNode root;
+    private final OptionValues polyglotCompilerOptionValues;
     int expanded = 1;
     int inlined = 1;
 
-    CallTree(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
+    CallTree(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy,
+                    OptionValues polyglotCompilerOptionValues) {
         super(ir.getOptions(), ir.getDebug());
         this.policy = policy;
         this.graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(this, truffleAST, ir);
+        this.root = CallNode.makeRoot(this, truffleAST, ir, polyglotCompilerOptionValues);
+        this.polyglotCompilerOptionValues = polyglotCompilerOptionValues;
     }
 
     InliningPolicy getPolicy() {
@@ -72,8 +76,8 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = getPolyglotOptionValue(PolyglotCompilerOptions.TraceInliningDetails);
-        if (getPolyglotOptionValue(PolyglotCompilerOptions.TraceInlining) || details) {
+        final Boolean details = getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.TraceInliningDetails);
+        if (getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
             traceRecursive(runtime, root, details, 0);

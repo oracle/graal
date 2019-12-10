@@ -41,16 +41,12 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -62,22 +58,9 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     private final PhaseSuite<HighTierContext> suite;
-    private PolyglotCompilerOptionsScope polyglotOptionsScope;
 
     public PartialEvaluationTest() {
         this.suite = truffleCompiler.createGraphBuilderSuite();
-    }
-
-    @Before
-    public void setupPolyglotOptionsScope() {
-        polyglotOptionsScope = PolyglotCompilerOptionsScope.open(TruffleRuntimeOptions.getOptionsForCompiler(null));
-    }
-
-    @After
-    public void cleanPolyglotOptionsScope() {
-        if (polyglotOptionsScope != null) {
-            polyglotOptionsScope.close();
-        }
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
@@ -186,7 +169,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
+            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null, compilable.getOptionValues());
         } catch (Throwable e) {
             throw debug.handle(e);
         }

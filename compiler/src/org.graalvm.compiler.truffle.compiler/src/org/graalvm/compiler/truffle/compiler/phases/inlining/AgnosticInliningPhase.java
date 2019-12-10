@@ -37,8 +37,8 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.PolyglotCompilerOptionsScope;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
@@ -47,11 +47,13 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     private final PartialEvaluator partialEvaluator;
     private final CallNodeProvider callNodeProvider;
     private final CompilableTruffleAST compilableTruffleAST;
+    private final OptionValues polyglotCompilerOptionValues;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST compilableTruffleAST) {
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST compilableTruffleAST, OptionValues polyglotCompilerOptionValues) {
         this.partialEvaluator = partialEvaluator;
         this.callNodeProvider = callNodeProvider;
         this.compilableTruffleAST = compilableTruffleAST;
+        this.polyglotCompilerOptionValues = polyglotCompilerOptionValues;
     }
 
     private static InliningPolicyProvider chosenProvider(List<? extends InliningPolicyProvider> providers, String name) {
@@ -63,7 +65,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         throw new IllegalStateException("No inlining policy provider with provided name: " + name);
     }
 
-    private static InliningPolicyProvider getInliningPolicyProvider() {
+    private InliningPolicyProvider getInliningPolicyProvider() {
         List<InliningPolicyProvider> providers = policyProviders;
         if (providers == null) {
             final Iterable<InliningPolicyProvider> services = GraalServices.load(InliningPolicyProvider.class);
@@ -75,17 +77,17 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
             policyProviders = providers;
         }
 
-        final String policy = getPolyglotOptionValue(PolyglotCompilerOptions.InliningPolicy);
+        final String policy = getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.InliningPolicy);
         return policy.equals("") ? providers.get(0) : chosenProvider(providers, policy);
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders coreProviders) {
-        if (!getPolyglotOptionValue(PolyglotCompilerOptions.Inlining)) {
+        if (!getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.Inlining)) {
             return;
         }
-        final InliningPolicy policy = getInliningPolicyProvider().get(coreProviders, PolyglotCompilerOptionsScope.getOptionValues());
-        final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
+        final InliningPolicy policy = getInliningPolicyProvider().get(coreProviders, polyglotCompilerOptionValues);
+        final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy, polyglotCompilerOptionValues);
         tree.dumpBasic("Before Inline", "");
         policy.run(tree);
         tree.dumpBasic("After Inline", "");
