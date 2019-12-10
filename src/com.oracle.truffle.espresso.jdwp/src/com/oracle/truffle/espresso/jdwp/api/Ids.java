@@ -104,10 +104,9 @@ public final class Ids<T> {
      */
     private synchronized long generateUniqueId(T object) {
         long id = uniqueID++;
-        assert objects.length == id - 1;
+        assert objects.length == id;
 
         WeakReference<T>[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
-        System.arraycopy(objects, 1, expandedArray, 1, objects.length - 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
         JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
