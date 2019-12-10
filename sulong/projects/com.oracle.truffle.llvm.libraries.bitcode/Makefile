@@ -61,7 +61,7 @@ LD_FLAGS+=-Wl,-sectcreate,__LLVM,__bundle,$< -Wl,-undefined,suppress -Wl,-flat_n
 else
 CLANG_PREFIX=
 ORIGIN_TOKEN='$$ORIGIN'
-LD_FLAGS+=-fuse-ld=lld -flto=full -Wl,-mllvm,-lto-embed-bitcode=all
+LD_FLAGS+=-fuse-ld=lld -flto=full -Wl,-mllvm,-lto-embed-bitcode=all -Wl,--lto-O0
 endif
 
 bin/libsulong.bc: ${C_BC_FILES}
