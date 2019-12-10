@@ -116,6 +116,8 @@ The log can be visualised with a script:
 % python thermometer-plot.py thermometer.jsonl
 ```
 
+![Example graph](thermometer-graph.svg)
+
 ## Advanced usage
 
 * `--thermometer.SamplingPeriod=10` sets the sampling period in ms
