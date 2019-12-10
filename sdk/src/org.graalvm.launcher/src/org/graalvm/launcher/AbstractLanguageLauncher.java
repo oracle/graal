@@ -51,7 +51,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 
-public abstract class AbstractLanguageLauncher extends Launcher {
+public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     /**
      * This starts the launcher. it should be called from the main method:
@@ -99,9 +99,9 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
         }
 
-        parsePolyglotOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
+        parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
 
-        if (runPolyglotAction()) {
+        if (runLauncherAction()) {
             return;
         }
 
@@ -168,6 +168,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     @Override
     protected void printVersion() {
         printVersion(getTempEngine());
+        super.printVersion();
     }
 
     protected void printVersion(Engine engine) {
