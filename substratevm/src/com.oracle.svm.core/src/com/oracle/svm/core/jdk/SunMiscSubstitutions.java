@@ -38,6 +38,8 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -63,7 +65,7 @@ final class Target_Unsafe_Core {
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private long allocateMemory(long bytes) {
-        if (bytes < 0L || (Unsafe.ADDRESS_SIZE == 4 && bytes > Integer.MAX_VALUE)) {
+        if (bytes < 0L || (addressSize() == 4 && bytes > Integer.MAX_VALUE)) {
             throw new IllegalArgumentException();
         }
         Pointer result = UnmanagedMemory.malloc(WordFactory.unsigned(bytes));
@@ -84,7 +86,7 @@ final class Target_Unsafe_Core {
     private long reallocateMemory(long address, long bytes) {
         if (bytes == 0) {
             return 0L;
-        } else if (bytes < 0L || (Unsafe.ADDRESS_SIZE == 4 && bytes > Integer.MAX_VALUE)) {
+        } else if (bytes < 0L || (addressSize() == 4 && bytes > Integer.MAX_VALUE)) {
             throw new IllegalArgumentException();
         }
         Pointer result;
@@ -167,14 +169,13 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes), bvalue);
     }
 
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private int addressSize() {
         /*
-         * No substitution necessary for JDK 11 or later because there the method is already
-         * implemented exactly like this.
+         * JDK 14 now injects Unsafe contants via the Hotspot VM, so we just determine the size of
+         * pointers ourself.
          */
-        return Unsafe.ADDRESS_SIZE;
+        return SizeOf.get(WordPointer.class);
     }
 
     @Substitute
@@ -311,7 +312,7 @@ final class Target_Unsafe_Core {
     private native int arrayIndexScale0(Class<?> arrayClass);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native int addressSize0();
 
     @Delete
@@ -327,11 +328,11 @@ final class Target_Unsafe_Core {
     private native int getLoadAverage0(double[] loadavg, int nelems);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native boolean unalignedAccess0();
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native boolean isBigEndian0();
 }
 
