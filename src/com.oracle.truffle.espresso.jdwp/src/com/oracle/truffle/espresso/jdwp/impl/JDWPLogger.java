@@ -28,7 +28,7 @@ public final class JDWPLogger {
 
     private static final TruffleLogger logger = TruffleLogger.getLogger(JDWPInstrument.ID);
 
-    public static LogLevel LEVEL;
+    private static LogLevel LEVEL;
 
     public enum LogLevel {
         ALL,
