@@ -728,11 +728,13 @@ def gen_fallbacks():
                         # Windows dumpbin /SYMBOLS output
                         # 030 00000000 UNDEF  notype ()    External     | JVM_GetArrayLength
                         found_undef = line_tokens[2] == 'UNDEF'
+                    elif mx.is_darwin():
+                        # Darwin nm
+                        #                  U _JVM_InitStackTraceElement
+                        found_undef = line_tokens[0].upper() == 'U'
                     else:
                         # Linux objdump objdump --wide --syms
                         # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
-                        # Darwin objdump -t
-                        # 0000000000000000         *UND*  JVM_InitStackTraceElement
                         found_undef = line_tokens[1] = '*UND*'
                     if found_undef:
                         symbol_candiate = line_tokens[-1]
@@ -748,7 +750,7 @@ def gen_fallbacks():
         if mx.is_windows():
             symbol_dump_command = 'dumpbin /SYMBOLS'
         elif mx.is_darwin():
-            symbol_dump_command = 'objdump -t'
+            symbol_dump_command = 'nm'
         elif mx.is_linux():
             symbol_dump_command = 'objdump --wide --syms'
         else:
