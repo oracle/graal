@@ -204,6 +204,6 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public String getNameAsString() {
-        return componentType.getNameAsString();
+        return "[" + componentType.getNameAsString();
     }
 }
