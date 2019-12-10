@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
+import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -1251,7 +1252,20 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-
+        r.register0("sideEffect", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new SideEffectNode());
+                return true;
+            }
+        });
+        r.register1("sideEffect", int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
+                b.addPush(JavaKind.Int, new SideEffectNode(a));
+                return true;
+            }
+        });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {

@@ -889,6 +889,11 @@ public class HotSpotReplacementsUtil {
         return getFieldOffset(metaAccessProvider.lookupJavaType(Reference.class), "referent");
     }
 
+    @Fold
+    public static ResolvedJavaType referenceType(@InjectedParameter MetaAccessProvider metaAccessProvider) {
+        return metaAccessProvider.lookupJavaType(Reference.class);
+    }
+
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {
         @Override
         public ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool) {

@@ -521,7 +521,7 @@ suite = {
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "SULONG_LIBS",
+        "SULONG_HOME",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -971,40 +971,6 @@ suite = {
       "license" : "BSD-new",
     },
 
-    # legacy - to be removed
-    "SULONG_LIBS" : {
-      "native" : True,
-      "relpath" : False,
-      "platformDependent" : True,
-      "overlaps" : [
-        "SULONG_HOME"
-      ],
-      "layout" : {
-        "./" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-          ],
-        "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-          "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
-        ],
-        "./include/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-        ],
-      },
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
-        "com.oracle.truffle.llvm.libraries.native",
-        "com.oracle.truffle.llvm.libraries.mock",
-      ],
-      "license" : "BSD-new",
-    },
-
     "SULONG_HOME" : {
       "native" : True,
       "relpath" : False,
@@ -1096,6 +1062,7 @@ suite = {
       ],
       "javaProperties" : {
         "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>",
+        "sulongtest.llTestSuitePath" : "<path:SULONG_LL_TEST_SUITES>",
         "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
       },
       "license" : "BSD-new",
@@ -1131,8 +1098,6 @@ suite = {
       "platformDependent" : True,
       "layout" : {
         "./" : [
-          "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
@@ -1145,6 +1110,20 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
+      "defaultBuild" : False,
+    },
+    "SULONG_LL_TEST_SUITES" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
         ],
       },
       "license" : "BSD-new",

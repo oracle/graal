@@ -109,6 +109,9 @@ public class ExecutionState {
     }
 
     public int getStackState(int level) {
+        if (stackStates.size() < level + 1) {
+            Assert.fail("Branch to level " + level + " larger than the nesting " + stackStates.size());
+        }
         return stackStates.get(stackStates.size() - 1 - level);
     }
 

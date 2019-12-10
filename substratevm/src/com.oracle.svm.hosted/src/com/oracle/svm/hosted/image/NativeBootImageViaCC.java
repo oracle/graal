@@ -259,6 +259,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("ws2_32.lib");
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
+            cmd.add("userenv.lib");
 
             return cmd;
         }
@@ -284,6 +285,12 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
+
+        /*
+         * Libraries defined via @CLibrary annotations are added at the end of the list of libraries
+         * so that the written object file AND the static JDK libraries can depend on them.
+         */
+        nativeLibs.processAnnotated();
 
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {

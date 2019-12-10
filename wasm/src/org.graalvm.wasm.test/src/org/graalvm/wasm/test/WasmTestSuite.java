@@ -49,8 +49,10 @@ import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
 import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
+import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
-import org.graalvm.wasm.test.suites.webassembly.MultipleFunctionsSuite;
+import org.graalvm.wasm.test.suites.wasi.WasiSdkSuite;
+import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -73,6 +75,8 @@ import org.graalvm.wasm.test.suites.webassembly.IssueSuite;
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
                 EmscriptenSuite.class,
+                WasiSdkSuite.class,
+                LinkerSuite.class,
                 WasmPolyglotTestSuite.class,
 })
 public class WasmTestSuite {

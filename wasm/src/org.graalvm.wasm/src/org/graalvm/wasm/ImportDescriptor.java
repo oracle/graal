@@ -48,4 +48,23 @@ public final class ImportDescriptor {
         this.moduleName = moduleName;
         this.memberName = memberName;
     }
+
+    @Override
+    public int hashCode() {
+        return moduleName.hashCode() ^ memberName.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof ImportDescriptor)) {
+            return false;
+        }
+        final ImportDescriptor that = (ImportDescriptor) object;
+        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("(import %s from %s)", memberName, moduleName);
+    }
 }

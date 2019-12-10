@@ -42,12 +42,10 @@ package org.graalvm.wasm.predefined.testutil;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
 
 import java.util.function.Consumer;
 
@@ -57,9 +55,9 @@ import java.util.function.Consumer;
  * because certain language backends emit non-WebAssembly code that is used to initialize parts of
  * the memory.
  */
-public class RunCustomInitialization extends WasmPredefinedRootNode {
-    public RunCustomInitialization(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class RunCustomInitialization extends RootNode {
+    public RunCustomInitialization(WasmLanguage language) {
+        super(language, null);
     }
 
     @Override
@@ -69,7 +67,7 @@ public class RunCustomInitialization extends WasmPredefinedRootNode {
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String getName() {
         return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
     }
 

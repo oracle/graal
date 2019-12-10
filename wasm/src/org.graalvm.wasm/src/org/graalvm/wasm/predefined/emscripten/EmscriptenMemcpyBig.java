@@ -41,20 +41,21 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
-    public EmscriptenMemcpyBig(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class EmscriptenMemcpyBig extends WasmBuiltinRootNode {
+    public EmscriptenMemcpyBig(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 3;
         for (Object arg : args) {
@@ -67,13 +68,14 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
 
         trace("EmscriptenMemcpyBig EXECUTE");
 
-        memory.copy(src, dest, num);
+        WasmMemory memory = module.symbolTable().memory();
+        memory.copy(this, src, dest, num);
 
         return 0;
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "_emscripten_memcpy_big";
     }
 }

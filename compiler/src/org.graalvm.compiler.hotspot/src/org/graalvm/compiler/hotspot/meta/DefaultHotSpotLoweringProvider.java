@@ -74,9 +74,9 @@ import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
-import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.replacements.HotSpotSerialWriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HubGetClassNode;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -86,8 +86,11 @@ import org.graalvm.compiler.hotspot.replacements.LoadExceptionObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.MonitorSnippets;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
+import org.graalvm.compiler.hotspot.replacements.ObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
+import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
+import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
@@ -108,6 +111,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -121,14 +125,12 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
-import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
 import org.graalvm.compiler.nodes.extended.OSRLockNode;
 import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
 import org.graalvm.compiler.nodes.extended.OSRStartNode;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
 import org.graalvm.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
@@ -189,8 +191,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected final HotSpotGraalRuntimeProvider runtime;
     protected final HotSpotRegistersProvider registers;
     protected final HotSpotConstantReflectionProvider constantReflection;
-    private final long referentFieldOffset;
-    private final ResolvedJavaType referenceType;
 
     protected InstanceOfSnippets.Templates instanceofSnippets;
     protected NewObjectSnippets.Templates newObjectSnippets;
@@ -205,7 +205,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected HashCodeSnippets.Templates hashCodeSnippets;
     protected ResolveConstantSnippets.Templates resolveConstantSnippets;
     protected ProfileSnippets.Templates profileSnippets;
-
+    protected ObjectSnippets.Templates objectSnippets;
+    protected UnsafeSnippets.Templates unsafeSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
 
@@ -215,8 +216,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         this.runtime = runtime;
         this.registers = registers;
         this.constantReflection = constantReflection;
-        this.referenceType = metaAccess.lookupJavaType(Reference.class);
-        this.referentFieldOffset = HotSpotReplacementsUtil.getFieldOffset(referenceType, "referent");
+
     }
 
     @Override
@@ -238,6 +238,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
+        objectSnippets = new ObjectSnippets.Templates(options, factories, providers, target);
+        unsafeSnippets = new UnsafeSnippets.Templates(options, factories, providers, target);
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
@@ -413,10 +415,19 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 profileSnippets.lower((ProfileNode) n, tool);
             } else if (n instanceof KlassBeingInitializedCheckNode) {
                 newObjectSnippets.lower((KlassBeingInitializedCheckNode) n, registers, tool);
+            } else if (n instanceof FastNotifyNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    objectSnippets.lower(n, tool);
+                }
+            } else if (n instanceof UnsafeCopyMemoryNode) {
+                if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                    unsafeSnippets.lower((UnsafeCopyMemoryNode) n, tool);
+                }
             } else {
                 super.lower(n, tool);
             }
         }
+
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
@@ -563,20 +574,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
          */
         AddressNode address = createOffsetAddress(graph, arrayHub, runtime.getVMConfig().arrayClassElementOffset);
         return graph.unique(new FloatingReadNode(address, OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION, null, KlassPointerStamp.klassNonNull(), AbstractBeginNode.prevBegin(anchor)));
-    }
-
-    @Override
-    protected void lowerUnsafeLoadNode(RawLoadNode load, LoweringTool tool) {
-        StructuredGraph graph = load.graph();
-        if (!(load instanceof GuardedUnsafeLoadNode) && requiresReadBarrier(load)) {
-            if (!graph.getGuardsStage().allowsFloatingGuards()) {
-                unsafeLoadSnippets.lower(load, tool);
-            } else {
-                // defer the lowering until later
-            }
-            return;
-        }
-        super.lowerUnsafeLoadNode(load, tool);
     }
 
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
@@ -727,22 +724,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(foreignCalls, descriptor, node.stamp(NodeView.DEFAULT), node.getArguments()));
         foreignCallNode.setStateAfter(node.stateAfter());
         graph.replaceFixedWithFixed(node, foreignCallNode);
-    }
-
-    private boolean requiresReadBarrier(RawLoadNode load) {
-        if (runtime.getVMConfig().useG1GC && load.object().getStackKind() == JavaKind.Object &&
-                        load.accessKind() == JavaKind.Object && !StampTool.isPointerAlwaysNull(load.object())) {
-            if (load.offset().isJavaConstant() && referentFieldOffset != load.offset().asJavaConstant().asLong()) {
-                // Reading at a constant offset which is different than the referent field.
-                return false;
-            }
-            ResolvedJavaType type = StampTool.typeOrNull(load.object());
-            if (type == null || type.isAssignableFrom(referenceType) || referenceType.isAssignableFrom(type)) {
-                // The object is a subtype or supertype of Reference
-                return true;
-            }
-        }
-        return false;
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, HotSpotResolvedJavaMethod method, ResolvedJavaType receiverType) {

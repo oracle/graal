@@ -38,24 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.suites.webassembly;
+package org.graalvm.wasm.exception;
 
-import java.io.IOException;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-import org.junit.Test;
+/**
+ * Thrown when a WebAssembly program encounters an exit call.
+ */
+public class WasmExit extends ThreadDeath implements TruffleException {
 
-import org.graalvm.wasm.test.WasmSuiteBase;
+    private static final long serialVersionUID = 1787712823539392187L;
+    private final Node location;
+    private final int exitCode;
 
-public class MultipleFunctionsSuite extends WasmSuiteBase {
-    @Override
-    protected String testResource() {
-        return "multiple-functions";
+    public WasmExit(Node location, int exitCode) {
+        this.location = location;
+        this.exitCode = exitCode;
     }
 
     @Override
-    @Test
-    public void test() throws IOException {
-        // This is here just to make mx aware of the test suite class.
-        super.test();
+    public String getMessage() {
+        return "Program exited with status code " + exitCode + ".";
+    }
+
+    @Override
+    public Node getLocation() {
+        return location;
+    }
+
+    @Override
+    public boolean isExit() {
+        return true;
+    }
+
+    @Override
+    public int getExitStatus() {
+        return exitCode;
     }
 }

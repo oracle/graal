@@ -330,6 +330,28 @@ suite = {
             ],
             "workingSets": "SVM",
         },
+
+        "com.oracle.svm.hosted.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "requires" : ["java.instrument"],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+            },
+            "javaCompliance": "11+",
+            "checkstyle" : "com.oracle.svm.hosted",
+            "multiReleaseJarVersion": "11",
+            "overlayTarget": "com.oracle.svm.hosted",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.hosted.jdk14": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -352,7 +374,6 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",
@@ -844,8 +865,8 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.svm.core",
-                "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle",
+                "com.oracle.svm.hosted",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",

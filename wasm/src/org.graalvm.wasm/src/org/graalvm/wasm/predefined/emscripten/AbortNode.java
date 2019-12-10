@@ -42,25 +42,25 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmTrap;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-public class AbortNode extends WasmPredefinedRootNode {
-    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class AbortNode extends WasmBuiltinRootNode {
+    public AbortNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final int code = frame.getArguments().length > 0 ? (int) frame.getArguments()[0] : 0;
         throw fail(code);
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "abort";
     }
 

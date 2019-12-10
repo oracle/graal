@@ -78,7 +78,7 @@ public final class TargetOffset {
     public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
     public static final TargetOffset ZERO = new TargetOffset(0);
 
-    private static final int CACHE_SIZE = 34;
+    private static final int CACHE_SIZE = 256;
     @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE;
 
     static {

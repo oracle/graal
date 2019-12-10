@@ -30,11 +30,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,6 +63,23 @@ final class Target_jdk_internal_loader_URLClassPath {
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
     private HashMap<String, ?> lmap;
 
+    /*
+     * We are defensive and also handle private native methods by marking them as deleted. If they
+     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
+     * linking error.
+     */
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static native URL[] getLookupCacheURLs(ClassLoader loader);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static native int[] getLookupCacheForClassLoader(ClassLoader loader, String name);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static native boolean knownToNotExist0(ClassLoader loader, String className);
 }
 
 @TargetClass(URLClassLoader.class)
@@ -121,6 +140,27 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_ClassLoader {
+
+    /**
+     * This field can be safely deleted, but that would require substituting the entire constructor
+     * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by
+     * this class loader. The only purpose of this table is to keep the classes from being GC'ed
+     * until the loader is GC'ed". This field is only accessed by ClassLoader.addClass() which is "
+     * invoked by the VM to record every loaded class with this loader".
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private Vector<Class<?>> classes;
+
+    /**
+     * Reset ClassLoader.packages; accessing packages via ClassLoader is currently not supported and
+     * the SystemClassLoader may capture some hosted packages.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
+    @TargetElement(name = "packages", onlyWith = JDK8OrEarlier.class)//
+    private HashMap<String, Package> packagesJDK8;
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @TargetElement(name = "packages", onlyWith = JDK11OrLater.class)//
+    private ConcurrentHashMap<String, Package> packagesJDK11;
 
     @Alias //
     private static ClassLoader scl;
@@ -256,6 +296,119 @@ final class Target_java_lang_ClassLoader {
     public Target_java_lang_Module getUnnamedModule() {
         return DynamicHub.singleModuleReference.get();
     }
+
+    /*
+     * The assertion status of classes is fixed at image build time because it is baked into the AOT
+     * compiled code. All methods that modify the assertion status are substituted to throw an
+     * error.
+     *
+     * Note that the assertion status can be queried at run time, see the relevant method in
+     * DynamicHub.
+     */
+
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private void setDefaultAssertionStatus(boolean enabled) {
+        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private void setPackageAssertionStatus(String packageName, boolean enabled) {
+        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private void setClassAssertionStatus(String className, boolean enabled) {
+        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private void clearAssertionStatus() {
+        throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
+    }
+
+    /*
+     * We are defensive and also handle private native methods by marking them as deleted. If they
+     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
+     * linking error.
+     */
+
+    @Delete
+    private static native void registerNatives();
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ProtectionDomain pd);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native Class<?> defineClass1(String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native Class<?> defineClass2(String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native void resolveClass0(Class<?> c);
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
+
+    @Delete
+    private native Class<?> findBootstrapClass(String name);
+
+    @Delete
+    private static native String findBuiltinLib(String name);
+
+    @Delete
+    private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
+}
+
+@TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary")
+final class Target_java_lang_ClassLoader_NativeLibrary {
+
+    /*
+     * We are defensive and also handle private native methods by marking them as deleted. If they
+     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
+     * linking error.
+     */
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native void load(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native long find(String name);
+
+    @Delete
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private native void unload(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private native boolean load0(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private native long findEntry(String name);
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    private static native void unload(String name, boolean isBuiltin, long handle);
+}
+
+@TargetClass(className = "java.lang.AssertionStatusDirectives") //
+final class Target_java_lang_AssertionStatusDirectives {
 }
 
 @TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //

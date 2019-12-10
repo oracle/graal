@@ -44,7 +44,7 @@ jlong as_long(LARGE_INTEGER x) {
     return jlong_from(x.HighPart, x.LowPart);
 }
 
-JNIEXPORT void initialize() {
+JNIEXPORT void JNICALL initialize() {
   LARGE_INTEGER count;
   SYSTEM_INFO si;
   GetSystemInfo(&si);
@@ -55,34 +55,7 @@ JNIEXPORT void initialize() {
   }
 }
 
-/* Only called in java.lang.Runtime native methods. */
-JNIEXPORT void JVM_FreeMemory() {
-    printf("JVM_FreeMemory called:  Unimplemented\n");
-}
-
-JNIEXPORT jlong JVM_TotalMemory() {
-    printf("JVM_TotalMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT jlong JVM_MaxMemory() {
-    printf("JVM_MaxMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT void JVM_GC() {
-    printf("JVM_GC called:  Unimplemented\n");
-}
-
-JNIEXPORT void JVM_TraceInstructions(int on) {
-    printf("JVM_TraceInstructions called:  Unimplemented\n");
-}
-
-JNIEXPORT void JVM_TraceMethodCalls(int on) {
-    printf("JVM_TraceMethods called:  Unimplemented\n");
-}
-
-JNIEXPORT int JVM_ActiveProcessorCount() {
+JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
     DWORD_PTR lpProcessAffinityMask = 0;
     DWORD_PTR lpSystemAffinityMask = 0;
     if (_processor_count <= sizeof(UINT_PTR) * BitsPerByte &&
@@ -101,7 +74,7 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
 
 HANDLE interrupt_event = NULL;
 
-JNIEXPORT HANDLE JVM_GetThreadInterruptEvent() {
+JNIEXPORT HANDLE JNICALL JVM_GetThreadInterruptEvent() {
     if (interrupt_event != NULL) {
         return interrupt_event;
     }
@@ -110,7 +83,7 @@ JNIEXPORT HANDLE JVM_GetThreadInterruptEvent() {
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() {
+JNIEXPORT int JNICALL JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
@@ -127,7 +100,7 @@ static jlong getCurrentTimeMillis() {
     return (a - _time_offset) / 10000;
 }
 
-JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_java_lang_System_nanoTime(void *env, void * ignored) {
     LARGE_INTEGER current_count;
     double current, freq;
     jlong time;
@@ -143,26 +116,26 @@ JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
     return time;
 }
 
-JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_NanoTime(void *env, void * ignored) {
     return Java_java_lang_System_nanoTime(env, ignored);
 }
 
-JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
     return getCurrentTimeMillis();
 }
 
-JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
-JNIEXPORT void JVM_BeforeHalt() {
+JNIEXPORT void JNICALL JVM_BeforeHalt() {
 }
 
-JNIEXPORT void JVM_Halt(int retcode) {
+JNIEXPORT void JNICALL JVM_Halt(int retcode) {
     _exit(retcode);
 }
 
-JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
+JNIEXPORT int JNICALL JVM_GetLastErrorString(char *buf, int len) {
     DWORD errval;
 
     if ((errval = GetLastError()) != 0) {
@@ -198,6 +171,24 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
   return 0;
 }
 
+JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
+    jclass errorClass;
+    jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
+    if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
+        jmethodID run = (*env)->GetMethodID(env, actionClass, "run", "()Ljava/lang/Object;");
+        if (run != NULL && !(*env)->ExceptionCheck(env)) {
+            return (*env)->CallObjectMethod(env, action, run);
+        }
+    }
+    errorClass = (*env)->FindClass(env, "java/lang/InternalError");
+    if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
+        (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
+    } else {
+        (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
+    }
+    return NULL;
+}
+
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
@@ -216,59 +207,7 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
-    jclass errorClass;
-    jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
-    if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
-        jmethodID run = (*env)->GetMethodID(env, actionClass, "run", "()Ljava/lang/Object;");
-        if (run != NULL && !(*env)->ExceptionCheck(env)) {
-            return (*env)->CallObjectMethod(env, action, run);
-        }
-    }
-    errorClass = (*env)->FindClass(env, "java/lang/InternalError");
-    if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
-        (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
-    } else {
-        (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
-    }
-    return NULL;
-}
-
-JNIEXPORT jobject JNICALL
-JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
-    fprintf(stderr, "JVM_GetInheritedAccessControlContext called:  Unimplemented\n");
-    return NULL;
-}
-
-JNIEXPORT jobject JNICALL
-JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
-    fprintf(stderr, "JVM_GetStackAccessControlContext called:  Unimplemented\n");
-    return NULL;
-}
-
 #ifdef JNI_VERSION_9
-JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
-    fprintf(stderr, "JVM_AddModuleExports called\n");
-}
-
-JNIEXPORT void JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
-    fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
-}
-
-JNIEXPORT void JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
-    fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
-}
-
-JNIEXPORT void JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
-    fprintf(stderr, "JVM_AddReadsModule called\n");
-}
-
-JNIEXPORT void JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
-                 jstring location, const char* const* packages, jsize num_packages) {
-    fprintf(stderr, "JVM_DefineModule called\n");
-}
-
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;

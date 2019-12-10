@@ -42,6 +42,7 @@ package org.graalvm.wasm.memory;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.WasmTracing;
 import sun.misc.Unsafe;
@@ -68,18 +69,18 @@ public class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void validateAddress(long address, long offset) {
+    public void validateAddress(Node node, long address, long offset) {
         WasmTracing.trace("validating memory address: 0x%016X (%d)", address, address);
         if (address < 0 || address + offset >= this.byteSize()) {
-            throw new WasmTrap(null, "Accessed memory address out-of-bounds: " + address);
+            throw new WasmTrap(node, "Accessed memory address out-of-bounds: " + address);
         }
     }
 
     @Override
-    public void copy(long src, long dst, long n) {
+    public void copy(Node node, long src, long dst, long n) {
         WasmTracing.trace("memcopy from = %d, to = %d, n = %d", src, dst, n);
-        validateAddress(src, n);
-        validateAddress(dst, n);
+        validateAddress(node, src, n);
+        validateAddress(node, dst, n);
         unsafe.copyMemory(startAddress + src, startAddress + dst, n);
     }
 

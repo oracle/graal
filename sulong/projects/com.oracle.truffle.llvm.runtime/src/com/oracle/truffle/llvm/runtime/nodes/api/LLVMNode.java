@@ -108,7 +108,11 @@ public abstract class LLVMNode extends Node {
     }
 
     public final DataLayout getDataLayout() {
-        Node datalayoutNode = this;
+        return findDataLayout(this);
+    }
+
+    public static DataLayout findDataLayout(Node node) {
+        Node datalayoutNode = node;
         while (!(datalayoutNode instanceof LLVMHasDatalayoutNode)) {
             if (datalayoutNode.getParent() != null) {
                 assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";

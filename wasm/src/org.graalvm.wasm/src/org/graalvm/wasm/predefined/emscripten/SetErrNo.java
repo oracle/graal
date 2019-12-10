@@ -41,20 +41,21 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmPredefinedRootNode;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
-public class SetErrNo extends WasmPredefinedRootNode {
-    public SetErrNo(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry, memory);
+public class SetErrNo extends WasmBuiltinRootNode {
+    public SetErrNo(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
         assert args.length == 1;
         for (Object arg : args) {
@@ -66,13 +67,14 @@ public class SetErrNo extends WasmPredefinedRootNode {
         trace("SetErrNo EXECUTE");
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
+        WasmMemory memory = module.symbolTable().memory();
         memory.store_i32(3120, value);
 
         return value;
     }
 
     @Override
-    public String predefinedNodeName() {
+    public String builtinNodeName() {
         return "___setErrNo";
     }
 }

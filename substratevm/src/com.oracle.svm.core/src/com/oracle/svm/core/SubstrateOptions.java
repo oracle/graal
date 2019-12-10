@@ -207,6 +207,9 @@ public class SubstrateOptions {
     @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
 
+    @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
+
     /*
      * Object and array allocation options.
      */

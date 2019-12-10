@@ -36,6 +36,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -270,6 +271,8 @@ public abstract class VMThreads {
     public void detachThread(IsolateThread current) {
         assert current.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
 
+        cleanupBeforeDetach(current);
+
         /*
          * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
          * functions that are not marked as @Uninterruptible during the detach process. We hold the
@@ -306,6 +309,12 @@ public abstract class VMThreads {
         }
 
         cleanupExitedOsThread(threadToCleanup);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Still safe at this point.")
+    private static void cleanupBeforeDetach(IsolateThread thread) {
+        JavaThreads.cleanupBeforeDetach(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -386,6 +395,7 @@ public abstract class VMThreads {
             for (IsolateThread thread : threads) {
                 VMError.guarantee(!JavaThreads.wasStartedByCurrentIsolate(thread), "DetachThreads must not be called for threads that detach themselves automatically.");
                 assert !thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach current thread with this method";
+                cleanupBeforeDetach(thread);
                 detachThreadInSafeContext(thread);
             }
         });

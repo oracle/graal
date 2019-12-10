@@ -198,6 +198,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMInsertValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ProtectReadOnlyGlobalsBlockNode;
@@ -731,8 +732,13 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createTypedElementPointer(LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength, Type targetType) {
-        return LLVMGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength, targetType);
+    public LLVMExpressionNode createTypedElementPointer(long indexedTypeLength, Type targetType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index) {
+        return LLVMGetElementPtrNodeGen.create(indexedTypeLength, targetType, aggregateAddress, index);
+    }
+
+    @Override
+    public LLVMExpressionNode createVectorizedTypedElementPointer(long indexedTypeLength, Type targetType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index) {
+        return LLVMVectorizedGetElementPtrNodeGen.create(indexedTypeLength, targetType, aggregateAddress, index);
     }
 
     @Override
@@ -1523,12 +1529,12 @@ public class BasicNodeFactory implements NodeFactory {
                 case X86_FP80:
                     return LLVMFP80ArithmeticNodeGen.create(op, left, right);
                 default:
-                    throw new AssertionError(type);
+                    throw new AssertionError("Unknown primitive type: " + type);
             }
         } else if (type instanceof VariableBitWidthType) {
             return LLVMIVarBitArithmeticNodeGen.create(op, left, right);
         } else {
-            throw new AssertionError(type);
+            throw new AssertionError("Unknown type: " + type);
         }
     }
 

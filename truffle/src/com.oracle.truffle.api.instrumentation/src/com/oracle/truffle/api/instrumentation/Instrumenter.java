@@ -76,9 +76,7 @@ public abstract class Instrumenter {
      * <p>
      * By default no
      * {@link ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
-     * input value events} are delivered to the listener. To deliver inputs events use
-     * {@link #attachExecutionEventListener(SourceSectionFilter, SourceSectionFilter, ExecutionEventListener)}
-     * instead.
+     * input value events} are delivered to the listener.
      *
      * @param eventFilter filters the events that are reported to the given
      *            {@link ExecutionEventListener listener}
@@ -141,7 +139,13 @@ public abstract class Instrumenter {
      * @see ExecutionEventListener#onInputValue(EventContext,
      *      com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
      * @since 0.33
+     * @deprecated inputFilters do not work for execution event listeners Use
+     *             {@link #attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter, ExecutionEventNodeFactory)}
+     *             or use
+     *             {@link #attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)}
+     *             instead.
      */
+    @Deprecated
     public abstract <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter eventFilter, SourceSectionFilter inputFilter, T listener);
 
     /**

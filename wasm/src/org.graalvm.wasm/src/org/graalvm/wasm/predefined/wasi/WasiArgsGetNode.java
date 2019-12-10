@@ -38,33 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined;
+package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.nodes.WasmRootNode;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
-public abstract class WasmPredefinedRootNode extends WasmRootNode {
-    protected final TruffleLogger logger = TruffleLogger.getLogger("wasm");
-    protected final WasmMemory memory;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-    public WasmPredefinedRootNode(WasmLanguage language, WasmCodeEntry codeEntry, WasmMemory memory) {
-        super(language, codeEntry);
-        this.memory = memory;
+import java.nio.charset.StandardCharsets;
+
+public class WasiArgsGetNode extends WasmBuiltinRootNode {
+    WasiArgsGetNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return 0;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        final WasmMemory memory = module.symbolTable().memory();
+        final int argvAddress = (int) frame.getArguments()[0];
+        final int argvBuffAddress = (int) frame.getArguments()[1];
+
+        final String[] arguments = contextReference().get().environment().getApplicationArguments();
+        int argvPointer = argvAddress;
+        int argvBuffPointer = argvBuffAddress;
+        for (String argument : arguments) {
+            memory.store_i32(argvPointer, argvBuffPointer);
+            argvPointer += 4;
+            if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
+                throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+            }
+            for (int i = 0; i < argument.length(); i++) {
+                final char character = argument.charAt(i);
+                final byte charByte = (byte) character;
+                memory.store_i32_8(argvBuffPointer, charByte);
+                argvBuffPointer++;
+            }
+            memory.store_i32_8(argvBuffPointer, (byte) 0);
+            argvBuffPointer++;
+        }
+
+        return WasmVoidResult.getInstance();
     }
 
-    public abstract String predefinedNodeName();
-
     @Override
-    public String getName() {
-        return "wasm-function:" + predefinedNodeName();
+    public String builtinNodeName() {
+        return "__wasi_args_get";
     }
 }

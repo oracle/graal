@@ -49,6 +49,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -124,12 +125,14 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return prid != null;
     }
 
-    private static Value runInContext(WasmCase testCase, Context context, Source source, int iterations, String phaseIcon, String phaseLabel) {
+    private static Value runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
         boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
 
         final PrintStream oldOut = System.out;
         resetStatus(oldOut, PHASE_PARSE_ICON, "parsing");
-        context.eval(source);
+        for (Source source : sources) {
+            context.eval(source);
+        }
 
         // The sequence of WebAssembly functions to execute.
         // Run custom initialization.
@@ -147,45 +150,49 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         ByteArrayOutputStream capturedStdout;
         Object firstIterationContextState = null;
 
-        for (int i = 0; i != iterations; ++i) {
-            try {
-                capturedStdout = new ByteArrayOutputStream();
-                System.setOut(new PrintStream(capturedStdout));
+        try {
+            for (int i = 0; i != iterations; ++i) {
+                try {
+                    capturedStdout = new ByteArrayOutputStream();
+                    System.setOut(new PrintStream(capturedStdout));
 
-                // Run custom initialization.
-                if (testCase.initialization() != null) {
-                    customInitialize.execute(testCase.initialization());
-                }
-
-                // Execute benchmark.
-                result = mainFunction.execute();
-
-                // Save context state, and check that it's consistent with the previous one.
-                if (iterationNeedsStateCheck(i)) {
-                    Object contextState = saveContext.execute();
-                    if (firstIterationContextState == null) {
-                        firstIterationContextState = contextState;
-                    } else {
-                        compareContexts.execute(firstIterationContextState, contextState);
+                    // Run custom initialization.
+                    if (testCase.initialization() != null) {
+                        customInitialize.execute(testCase.initialization());
                     }
+
+                    // Execute benchmark.
+                    result = mainFunction.execute();
+
+                    // Save context state, and check that it's consistent with the previous one.
+                    if (iterationNeedsStateCheck(i)) {
+                        Object contextState = saveContext.execute();
+                        if (firstIterationContextState == null) {
+                            firstIterationContextState = contextState;
+                        } else {
+                            compareContexts.execute(firstIterationContextState, contextState);
+                        }
+                    }
+
+                    // Reset context state.
+                    boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
+                    resetContext.execute(zeroMemory);
+
+                    validateResult(testCase.data().resultValidator(), result, capturedStdout);
+                } catch (PolyglotException e) {
+                    // We cannot label the tests with polyglot errors, because they might
+                    // semantically be return values of the test.
+                    validateThrown(testCase.data().expectedErrorMessage(), e);
+                } catch (Throwable t) {
+                    final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
+                    e.setStackTrace(new StackTraceElement[0]);
+                    throw e;
+                } finally {
+                    System.setOut(oldOut);
                 }
-
-                // Reset context state.
-                boolean zeroMemory = iterationNeedsStateCheck(i + 1) || requiresZeroMemory;
-                resetContext.execute(zeroMemory);
-
-                validateResult(testCase.data().resultValidator(), result, capturedStdout);
-            } catch (PolyglotException e) {
-                // We cannot label the tests with polyglot errors, because they might be return
-                // values.
-                throw e;
-            } catch (Throwable t) {
-                final RuntimeException e = new RuntimeException("Error during test phase '" + phaseLabel + "'", t);
-                e.setStackTrace(new StackTraceElement[0]);
-                throw e;
-            } finally {
-                System.setOut(oldOut);
             }
+        } finally {
+            context.close(true);
         }
 
         return result;
@@ -224,47 +231,55 @@ public abstract class WasmSuiteBase extends WasmTestBase {
 
     private WasmTestStatus runTestCase(WasmCase testCase) {
         try {
-            byte[] binary = testCase.createBinary();
+            Map<String, byte[]> binaries = testCase.createBinaries();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "test");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
             contextBuilder.allowExperimentalOptions(true);
-            contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
-            Source source = sourceBuilder.build();
+            contextBuilder.option("wasm.Builtins", includedExternalModules());
+            String commandLineArgs = testCase.options().getProperty("command-line-args");
+            if (commandLineArgs != null) {
+                contextBuilder.arguments("wasm", commandLineArgs.split(" "));
+            }
+
             Context context;
+
+            ArrayList<Source> sources = new ArrayList<>();
+            for (Map.Entry<String, byte[]> entry : binaries.entrySet()) {
+                Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
+                Source source = sourceBuilder.build();
+                sources.add(source);
+            }
 
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
             context = getInterpretedNoInline(contextBuilder);
-            runInContext(testCase, context, source, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
+            runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
 
             // Run in synchronous compiled mode, with inlining turned off.
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
             context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, source, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
+            runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
 
             // Run in synchronous compiled mode, with inlining turned on.
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
             context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, source, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
+            runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
 
             // Run with normal, asynchronous compilation.
             // Run 1000 + 1 times - the last time run with a surrogate stream, to collect output.
             int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
             context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, source, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
+            runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
-        } catch (PolyglotException e) {
-            validateThrown(testCase.data().expectedErrorMessage(), e);
         }
         return WasmTestStatus.OK;
     }

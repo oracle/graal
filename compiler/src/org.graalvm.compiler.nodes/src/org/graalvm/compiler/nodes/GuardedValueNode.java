@@ -59,6 +59,13 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
         this.object = object;
     }
 
+    public static ValueNode create(ValueNode object, GuardingNode guard) {
+        if (guard == null) {
+            return object;
+        }
+        return new GuardedValueNode(object, guard);
+    }
+
     public ValueNode object() {
         return object;
     }
@@ -85,7 +92,7 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getGuard() == null) {
+        if (guard == null) {
             if (stamp(NodeView.DEFAULT).equals(object().stamp(NodeView.DEFAULT))) {
                 return object();
             } else {
