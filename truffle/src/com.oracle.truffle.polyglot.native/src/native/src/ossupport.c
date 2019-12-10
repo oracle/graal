@@ -7,7 +7,10 @@
 
 JNIEXPORT jint JNICALL Java_com_oracle_truffle_polyglot_OSSupport_getNativeThreadPriority
   (JNIEnv *env, jclass c) {
-    pid_t tid = syscall(__NR_gettid);
-    int prio = getpriority(PRIO_PROCESS, tid);
+    int prio = 0;
+    #ifdef __linux__
+      pid_t tid = syscall(__NR_gettid);
+      prio = getpriority(PRIO_PROCESS, tid);
+    #endif
   	return prio;
   }
