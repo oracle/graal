@@ -79,6 +79,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     @Input protected NodeInputList<ValueNode> arguments;
     protected ResolvedJavaMethod targetMethod;
+    protected ResolvedJavaType referencedType;
     protected InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
@@ -117,8 +118,8 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
         // nop
     }
 
-    public void setTargetMethod(ResolvedJavaMethod method) {
-        targetMethod = method;
+    public void setTargetMethod(ResolvedJavaMethod targetMethod) {
+        this.targetMethod = targetMethod;
     }
 
     /**
@@ -128,6 +129,14 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
      */
     public ResolvedJavaMethod targetMethod() {
         return targetMethod;
+    }
+
+    public void setReferencedType(ResolvedJavaType referencedType) {
+        this.referencedType = referencedType;
+    }
+
+    public ResolvedJavaType referencedType() {
+        return referencedType;
     }
 
     public InvokeKind invokeKind() {
