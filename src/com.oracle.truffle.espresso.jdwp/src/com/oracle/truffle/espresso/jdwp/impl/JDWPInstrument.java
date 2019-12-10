@@ -103,17 +103,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         try {
             if (controller.shouldWaitForAttach()) {
                 doConnect();
-                // take all initial commands from the debugger before resuming to main thread
-             /*   synchronized (suspendStartupLock) {
-                    suspendStartupLock.acquire();
-                    try {
-                        while (suspendStartupLock.isLocked()) {
-                            suspendStartupLock.wait();
-                        }
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException("JDWP connection interrupted");
-                    }
-                }*/
             } else {
                 // don't suspend until debugger attaches, so fire up deamon thread
                 Thread handshakeThread = new Thread(this, "jdwp-handshake-thread");

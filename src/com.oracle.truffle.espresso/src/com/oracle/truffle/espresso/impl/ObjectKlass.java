@@ -272,7 +272,8 @@ public final class ObjectKlass extends Klass {
                             try {
                                 prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
                             } catch (Exception e) {
-                                // happens when running tests, because we don't always create a guest thread
+                                // happens when running tests, because we don't always create a
+                                // guest thread
                                 prepareThread = getContext().getMainThread();
                             }
                             getContext().getJDWPListener().classPrepared(this, prepareThread);
