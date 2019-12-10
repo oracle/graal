@@ -57,7 +57,7 @@ public class ThermometerState {
             if (iterationsPerSecond >= 1e5) {
                 reportedIterationsPerSecond = iterationsPerSecond / 1e6;
                 suffix = "M";
-            } else if (iterationsPerSecond >= 1e2) {
+            } else if (iterationsPerSecond >= 1e3) {
                 reportedIterationsPerSecond = iterationsPerSecond / 1e3;
                 suffix = "K";
             } else {
@@ -65,10 +65,10 @@ public class ThermometerState {
                 suffix = " ";
             }
 
-            ipsComponent = String.format("   %6.3f %s i/s", reportedIterationsPerSecond, suffix);
+            ipsComponent = String.format("  %7.3f %s i/s", reportedIterationsPerSecond, suffix);
         }
 
-        return String.format("%6.2fs  %s  %3.0f°%s   %5.2f MB  %2d ▶ %2d ▶ %2d  ( %2d, %2d )  %2d ▼",
+        return String.format("%6.2fs  %s  %3.0f°%s   %5.2f MB  %3d ▶ %2d ▶ %3d  ( %2d, %2d )  %2d ▼",
                 elapsedTime / 1e9,
                 indicator(reference),
                 sampleReading * 100,
