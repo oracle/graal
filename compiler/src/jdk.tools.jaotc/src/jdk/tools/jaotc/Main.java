@@ -51,6 +51,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import org.graalvm.compiler.hotspot.HotSpotHostBackend;
 import org.graalvm.compiler.hotspot.meta.HotSpotInvokeDynamicPlugin;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -223,7 +224,16 @@ public final class Main {
                 System.gc();
             }
 
-            int gc = runtime.getGarbageCollector().ordinal() + 1;
+            HotSpotGC graalGC = runtime.getGarbageCollector();
+            // Prior to JDK 14, the Graal HotSpotGC enum order matched the JDK CollectedHeap enum
+            // order, so using the ordinal value worked fine. In JDK 14, CMS was removed on the
+            // JDK side, so we need a symbolic lookup of the JDK value.
+            int def = graalGC.ordinal() + 1;
+            // The GC names are spelled the same in both enums, so no clever remapping is needed
+            // here.
+            String name = "CollectedHeap::" + graalGC.name();
+            int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def);
+
             BinaryContainer binaryContainer = new BinaryContainer(graalOptions, graalHotSpotVMConfig, graphBuilderConfig, gc, JVM_VERSION);
             DataBuilder dataBuilder = new DataBuilder(this, backend, classes, binaryContainer);
 

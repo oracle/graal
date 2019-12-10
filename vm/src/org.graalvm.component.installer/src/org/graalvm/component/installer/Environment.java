@@ -36,6 +36,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.function.Supplier;
@@ -43,7 +44,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
-public final class Environment implements Feedback, CommandInput {
+public class Environment implements Feedback, CommandInput {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
 
@@ -445,10 +446,6 @@ public final class Environment implements Feedback, CommandInput {
         return options.get(optName);
     }
 
-    public boolean hasOption(String optName) {
-        return optValue(optName) != null;
-    }
-
     public char acceptCharacter() {
         try {
             int input = in.read();
@@ -516,12 +513,15 @@ public final class Environment implements Feedback, CommandInput {
         this.fileOperations = fileOperations;
     }
 
-    public void close() {
+    public void close() throws IOException {
         if (out != null) {
             out.flush();
         }
         if (err != null) {
             err.flush();
+        }
+        if (fileOperations != null) {
+            fileOperations.flush();
         }
     }
 
@@ -533,4 +533,27 @@ public final class Environment implements Feedback, CommandInput {
     public void resetParameters() {
         parameterPos = 0;
     }
+
+    @Override
+    public String getParameter(String key, boolean cmdLine) {
+        if (cmdLine) {
+            return System.getProperty(key);
+        } else {
+            return System.getenv(key.toUpperCase(Locale.ENGLISH));
+        }
+    }
+
+    @Override
+    public Map<String, String> parameters(boolean cmdLine) {
+        if (cmdLine) {
+            Map<String, String> res = new HashMap<>();
+            for (String s : System.getProperties().stringPropertyNames()) {
+                res.put(s, System.getProperty(s));
+            }
+            return res;
+        } else {
+            return System.getenv();
+        }
+    }
+
 }

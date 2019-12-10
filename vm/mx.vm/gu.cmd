@@ -27,6 +27,7 @@
 :: ----------------------------------------------------------------------------------------------------
 @echo off
 setlocal enableDelayedExpansion
+
 set location=%~dp0
 set root_dir=%location%..\..\..
 set relcp=%location%..\*.jar
@@ -39,11 +40,15 @@ for %%i in ("%relcp%") do (
 )
 
 set unique=%temp%\%~nx0
-set GU_POST_DELETE_LIST=%unique%.delete
-set GU_POST_COPY_CONTENTS=%unique%.copy
+set gu_post_delete_list=%unique%.delete
+set gu_post_copy_contents=%unique%.copy
 
-DEL /f /q %GU_POST_DELETE_LIST% >NUL
-DEL /f /q %GU_POST_COPY_CONTENTS% >NUL
+if exist %gu_post_delete_list% (
+  del /f /q %gu_post_delete_list% >nul
+)
+if exist %gu_post_copy_contents% (
+  del /f /q %gu_post_copy_contents% >nul
+)
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
@@ -51,17 +56,17 @@ if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 if errorlevel 11 (
   echo Retrying operations on locked files...
-  for /f "delims=|" %%F in (%GU_POST_DELETE_LIST%) DO (
-    DEL /F /S /Q "%%F" >NUL
-    IF EXIST "%%F\" (
-      RD /S /Q "%%F" >NUL
+  for /f "delims=|" %%f in (%gu_post_delete_list%) do (
+    del /f /s /q "%%f" >nul
+    if exist "%%f\" (
+      rd /s /q "%%f" >nul
     )
   )
 
-  for /f "delims=| tokens=1,2" %%F in (%GU_POST_COPY_CONTENTS%) DO (
-    COPY /Y /B "%%G\*.*" "%%F" >NUL
-    DEL /F /S /Q "%%G" >NUL
-    RD /S /Q "%%G" >NUL
+  for /f "delims=| tokens=1,2" %%f in (%gu_post_copy_contents%) do (
+    copy /y /b "%%g\*.*" "%%f" >nul
+    del /f /s /q "%%g" >nul
+    rd /s /q "%%g" >nul
   )
 )
 :end

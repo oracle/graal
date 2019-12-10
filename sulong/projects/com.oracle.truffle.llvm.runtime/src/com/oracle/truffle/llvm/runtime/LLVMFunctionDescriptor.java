@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -74,7 +75,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
-    private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
+    private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
+    static {
+        assert LLVMNativeMemory.isCommonHandleMemory(SULONG_FUNCTION_POINTER_TAG);
+        assert !LLVMNativeMemory.isDerefHandleMemory(SULONG_FUNCTION_POINTER_TAG);
+    }
 
     private final FunctionType type;
     private final LLVMContext context;
@@ -272,14 +277,22 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             // we already did the initial function resolution after parsing but further native
             // libraries could have been loaded in the meantime
             LLVMContext context = descriptor.getContext();
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            assert !intrinsicProvider.isIntrinsified(descriptor.getName());
-            if (nfiContextExtension != null) {
-                NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
-                if (nativeFunction != null) {
-                    descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+            synchronized (context) {
+                // synchronize on the context: only one thread is allowed to resolve symbols
+                if (descriptor.getFunction() != this) {
+                    // another thread was faster, nothing to do
                     return;
+                }
+
+                NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+                assert !intrinsicProvider.isIntrinsified(descriptor.getName());
+                if (nfiContextExtension != null) {
+                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
+                    if (nativeFunction != null) {
+                        descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+                        return;
+                    }
                 }
             }
             throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));

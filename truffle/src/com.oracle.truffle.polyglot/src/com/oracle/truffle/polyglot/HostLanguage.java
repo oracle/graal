@@ -63,7 +63,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -127,8 +126,8 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             try {
                 ClassLoader classLoader = getClassloader();
                 Class<?> foundClass = classLoader.loadClass(className);
-                Object currentModule = TruffleJDKServices.getUnnamedModule(classLoader);
-                if (TruffleJDKServices.verifyModuleVisibility(currentModule, foundClass)) {
+                Object currentModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+                if (EngineAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
                     return foundClass;
                 } else {
                     throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));

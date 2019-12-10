@@ -24,20 +24,28 @@
  */
 package com.oracle.svm.core.posix;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
-import com.oracle.svm.core.posix.headers.Times;
-import com.oracle.svm.core.posix.headers.Unistd;
 import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.TimeUnit;
-import org.graalvm.nativeimage.hosted.Feature;
+
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
-class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean {
+import com.oracle.svm.core.CErrorNumber;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Resource;
+import com.oracle.svm.core.posix.headers.Times;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
+import com.oracle.svm.core.posix.headers.linux.LinuxStat;
+import com.oracle.svm.core.util.VMError;
+import com.sun.management.UnixOperatingSystemMXBean;
+
+class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean implements UnixOperatingSystemMXBean {
 
     /**
      * Returns the CPU time used by the process on which the SVM process is running in nanoseconds.
@@ -60,9 +68,45 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
         return (time.tms_utime() + time.tms_stime()) * nsPerTick;
     }
 
+    @Override
+    public long getMaxFileDescriptorCount() {
+        Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
+        if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) < 0) {
+            throwUnchecked(PosixUtils.newIOExceptionWithLastError("getrlimit failed"));
+        }
+        return rlp.rlim_cur().rawValue();
+    }
+
+    @Override
+    public long getOpenFileDescriptorCount() {
+        int maxFileDescriptor = Unistd.getdtablesize();
+        long count = 0;
+        for (int i = 0; i <= maxFileDescriptor; i++) {
+            if (fstat(i) == 0 || CErrorNumber.getCErrorNumber() != Errno.EBADF()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int fstat(int fd) {
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class)) {
+            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
+            return LinuxStat.fstat64(fd, stat);
+        } else if (Platform.includedIn(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)) {
+            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            return DarwinStat.fstat(fd, stat);
+        } else {
+            throw VMError.shouldNotReachHere("Unsupported platform");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void throwUnchecked(Throwable exception) throws T {
+        throw (T) exception;
+    }
 }
 
-@Platforms({InternalPlatform.LINUX_JNI_AND_SUBSTITUTIONS.class, InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class})
 @AutomaticFeature
 class PosixSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override

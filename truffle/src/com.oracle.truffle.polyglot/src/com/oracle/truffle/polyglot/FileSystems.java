@@ -86,6 +86,7 @@ final class FileSystems {
      */
     static final FileSystem INVALID_FILESYSTEM = new InvalidFileSystem();
     private static final AtomicReference<FileSystemProvider> DEFAULT_FILE_SYSTEM_PROVIDER = new AtomicReference<>();
+    private static final String TMP_FILE = System.getProperty("java.io.tmpdir");
 
     private FileSystems() {
         throw new IllegalStateException("No instance allowed");
@@ -662,7 +663,21 @@ final class FileSystems {
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            return delegate.newDirectoryStream(resolveRelative(dir), filter);
+            Path cwd = userDir;
+            Path resolvedPath;
+            boolean relativize;
+            if (!dir.isAbsolute() && cwd != null) {
+                resolvedPath = cwd.resolve(dir);
+                relativize = true;
+            } else {
+                resolvedPath = dir;
+                relativize = false;
+            }
+            DirectoryStream<Path> result = delegate.newDirectoryStream(resolvedPath, filter);
+            if (relativize) {
+                result = new RelativizeDirectoryStream(cwd, result);
+            }
+            return result;
         }
 
         @Override
@@ -725,11 +740,10 @@ final class FileSystems {
         public Path getTempDirectory() {
             Path result = tmpDir;
             if (result == null) {
-                String propValue = System.getProperty("java.io.tmpdir");
-                if (propValue == null) {
+                if (TMP_FILE == null) {
                     throw new IllegalStateException("The java.io.tmpdir is not set.");
                 }
-                result = parsePath(propValue);
+                result = parsePath(TMP_FILE);
                 tmpDir = result;
             }
             return result;
@@ -737,6 +751,48 @@ final class FileSystems {
 
         private Path resolveRelative(Path path) {
             return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
+        }
+
+        private static final class RelativizeDirectoryStream implements DirectoryStream<Path> {
+
+            private final Path folder;
+            private final DirectoryStream<? extends Path> delegateDirectoryStream;
+
+            RelativizeDirectoryStream(Path folder, DirectoryStream<? extends Path> delegateDirectoryStream) {
+                this.folder = folder;
+                this.delegateDirectoryStream = delegateDirectoryStream;
+            }
+
+            @Override
+            public Iterator<Path> iterator() {
+                return new RelativizeIterator(folder, delegateDirectoryStream.iterator());
+            }
+
+            @Override
+            public void close() throws IOException {
+                delegateDirectoryStream.close();
+            }
+
+            private static final class RelativizeIterator implements Iterator<Path> {
+
+                private final Path folder;
+                private final Iterator<? extends Path> delegateIterator;
+
+                RelativizeIterator(Path folder, Iterator<? extends Path> delegateIterator) {
+                    this.folder = folder;
+                    this.delegateIterator = delegateIterator;
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return delegateIterator.hasNext();
+                }
+
+                @Override
+                public Path next() {
+                    return folder.relativize(delegateIterator.next());
+                }
+            }
         }
     }
 

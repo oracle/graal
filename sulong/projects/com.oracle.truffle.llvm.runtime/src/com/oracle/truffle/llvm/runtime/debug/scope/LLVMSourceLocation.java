@@ -60,10 +60,12 @@ public abstract class LLVMSourceLocation {
     private static final int DEFAULT_SCOPE_CAPACITY = 2;
 
     private static final SourceSection UNAVAILABLE_SECTION;
+    private static final LLVMSourceLocation UNAVAILABLE_LOCATION;
 
     static {
         final Source source = Source.newBuilder("llvm", "Source unavailable!", "<unavailable>").mimeType("text/plain").build();
         UNAVAILABLE_SECTION = source.createUnavailableSection();
+        UNAVAILABLE_LOCATION = new DefaultScope(null, Kind.UNKNOWN, "<unavailable>", UNAVAILABLE_SECTION);
     }
 
     private static final List<LLVMSourceSymbol> NO_SYMBOLS = Collections.emptyList();
@@ -402,5 +404,9 @@ public abstract class LLVMSourceLocation {
 
     public static LLVMSourceLocation createUnknown(SourceSection sourceSection) {
         return new LineScope(null, Kind.UNKNOWN, "<unknown>", sourceSection != null ? sourceSection : UNAVAILABLE_SECTION);
+    }
+
+    public static LLVMSourceLocation orDefault(LLVMSourceLocation location) {
+        return location != null ? location : UNAVAILABLE_LOCATION;
     }
 }

@@ -31,9 +31,6 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
@@ -46,6 +43,7 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -58,6 +56,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -84,7 +85,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
         super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context),
-                        new LLVMKindTool(context), debugLevel);
+                        new LLVMKindTool(context), debugLevel, LLVMFeature.useExplicitSelects());
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
 
@@ -120,9 +121,11 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     private boolean canModifySpecialRegisters(ResolvedJavaMethod method) {
-        return (method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
+        CEntryPointOptions entryPointOptions = GuardedAnnotationAccess.getAnnotation(method, CEntryPointOptions.class);
+        return (entryPointOptions != null) && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
+                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointNativeFunctions.class)) ||
-                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class)));
+                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class));
     }
 
     @Override
@@ -165,7 +168,6 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     @Override
     public void emitDeadEnd() {
-        emitPrintf("Dead end");
         builder.buildUnreachable();
     }
 
@@ -254,8 +256,17 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private LLVMValueRef getSpecialRegisterArgument(int index, ResolvedJavaMethod targetMethod) {
         LLVMValueRef specialRegisterArg;
         if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
-            assert (isEntryPoint || canModifySpecialRegisters);
-            specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
+            if (isEntryPoint || canModifySpecialRegisters) {
+                specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
+            } else {
+                /*
+                 * This means that an entry point method is called directly from Java code. We only
+                 * accept this in the case of a method that doesn't do anything Java-related, and
+                 * therefore doesn't need the actual value of its special registers.
+                 */
+                assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
+                specialRegisterArg = builder.constantNull(builder.rawPointerType());
+            }
         } else if (isEntryPoint || canModifySpecialRegisters) {
             specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(index), builder.longType());
         } else {

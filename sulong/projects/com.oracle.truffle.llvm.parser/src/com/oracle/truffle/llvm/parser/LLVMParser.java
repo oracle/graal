@@ -125,7 +125,7 @@ public final class LLVMParser {
     private void defineGlobal(GlobalVariable global, List<String> importedSymbols) {
         assert !global.isExternal();
         // handle the file scope
-        LLVMGlobal descriptor = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+        LLVMGlobal descriptor = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getID());
         descriptor.define(global.getType(), library);
         runtime.getFileScope().register(descriptor);
 
@@ -227,13 +227,13 @@ public final class LLVMParser {
 
             model.getSourceGlobals().forEach((symbol, irValue) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(context, node, irValue instanceof GlobalVariable);
                 sourceContext.registerStatic(symbol, value);
             });
 
             model.getSourceStaticMembers().forEach(((type, symbol) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(node, symbol instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(context, node, symbol instanceof GlobalVariable);
                 type.setValue(value);
             }));
         }

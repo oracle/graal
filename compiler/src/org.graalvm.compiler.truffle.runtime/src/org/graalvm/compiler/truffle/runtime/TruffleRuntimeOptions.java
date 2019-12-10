@@ -117,12 +117,14 @@ public final class TruffleRuntimeOptions {
         TruffleRuntimeOptionsOverrideScope(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
             outer = Lazy.overrideScope.get();
             options = new OptionValuesImpl(outer == null ? getInitialOptions() : outer.options, overrides);
+            GraalTVMCI.resetEngineData();
             Lazy.overrideScope.set(this);
         }
 
         @Override
         public void close() {
             Lazy.overrideScope.set(outer);
+            GraalTVMCI.resetEngineData();
         }
     }
 

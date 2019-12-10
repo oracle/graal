@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,154 +24,14 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
-import org.graalvm.nativeimage.c.struct.CField;
-import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.word.PointerBase;
 
 @CLibrary(value = "libchelper", requireStatic = true)
 public class LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native CCharPointerPointer getEnviron();
 
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native void determineCPUFeatures(CPUFeatures features);
-
-    @CStruct
-    @CContext(LibCHelperDirectives.class)
-    public interface CPUFeatures extends PointerBase {
-
-        @AllowNarrowingCast
-        @CField
-        boolean fCX8();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fCMOV();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fFXSR();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fHT();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fMMX();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAMD3DNOWPREFETCH();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSE();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSE2();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSE3();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSSE3();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSE4A();
-
-        @AllowNarrowingCast
-        @CField()
-        boolean fSSE41();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fSSE42();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fPOPCNT();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fLZCNT();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fTSC();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fTSCINV();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX2();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAES();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fERMS();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fCLMUL();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fBMI1();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fBMI2();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fRTM();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fADX();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512F();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512DQ();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512PF();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512ER();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512CD();
-
-        @AllowNarrowingCast
-        @CField
-        boolean fAVX512BW();
-    }
 }

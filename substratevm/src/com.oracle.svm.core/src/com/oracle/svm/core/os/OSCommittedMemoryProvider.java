@@ -29,6 +29,8 @@ import static org.graalvm.word.WordFactory.zero;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -43,9 +45,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -59,7 +59,11 @@ class OSCommittedMemoryProviderFeature implements Feature {
     }
 }
 
-public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
+public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public OSCommittedMemoryProvider() {
+    }
+
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
@@ -67,12 +71,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
             return CEntryPointErrors.NO_ERROR;
         }
-        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
-    }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void tearDownVirtualMemoryConsumers() {
-        Heap.getHeap().tearDown();
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
     }
 
     @Override
@@ -82,11 +82,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
-        CommittedMemoryProvider.tearDownUnmanagedMemoryConsumers();
-        tearDownVirtualMemoryConsumers();
-
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return ImageHeapProvider.get().tearDown(heapBase);
+        return ImageHeapProvider.get().freeImageHeap(heapBase);
     }
 
     /**
@@ -96,7 +93,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
      */
     @Override
     public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        final int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
+        final int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE | (executable ? VirtualMemoryProvider.Access.EXECUTE : 0);
 
         if (alignment.equal(UNALIGNED)) {
             Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, access);

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -33,9 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-import com.oracle.svm.core.code.CodeInfoTable;
 
 /**
  * A provider of ranges of committed memory, which is virtual memory that is backed by physical
@@ -121,9 +121,20 @@ public interface CommittedMemoryProvider {
     default void afterGarbageCollection(boolean completeCollection) {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void tearDownUnmanagedMemoryConsumers() {
-        CodeInfoTable.tearDown();
-        NonmovableArrays.tearDown();
+    enum Access {
+        READ,
+        WRITE,
+        EXECUTE
     }
+
+    /**
+     * Change access permissions for a block of committed memory that was allocated with
+     * {@link #allocate}.
+     *
+     * @param start The start of the memory block
+     * @param nbytes Length of the memory block
+     * @param access protection setting
+     * @return true on success, false otherwise
+     */
+    boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

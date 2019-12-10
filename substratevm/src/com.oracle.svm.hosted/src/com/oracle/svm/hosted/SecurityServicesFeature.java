@@ -46,13 +46,13 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.jdk.JNIRegistrationUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.jca.Providers;
@@ -125,6 +125,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
+
+        /*
+         * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
+         * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword
+         * properties from the build machine. Re-runing its initialization at run time is required
+         * to use the run time provided values.
+         */
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"),
+                        "for reading properties at run time");
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
@@ -234,8 +243,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
             nativeLibraries.addLibrary("sunec", true);
-            /* Library sunec depends on stdc++ */
-            nativeLibraries.addLibrary("stdc++", false);
+            if (isPosix()) {
+                /* Library sunec depends on stdc++ */
+                nativeLibraries.addLibrary("stdc++", false);
+            }
         }
     }
 
@@ -269,11 +280,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             try {
                 /*
                  * Access the Provider.knownEngines map and extract the EngineDescription
-                 * corresponding to the serviceType. From the EngineDescription object extract the
-                 * value of the constructorParameterClassName field then, if the class name is not
-                 * null, get the corresponding Class<?> object and return it.
+                 * corresponding to the serviceType. Note that the map holds EngineDescription(s) of
+                 * only those service types that are shipped in the JDK. From the EngineDescription
+                 * object extract the value of the constructorParameterClassName field then, if the
+                 * class name is not null, get the corresponding Class<?> object and return it.
                  */
                 /* EngineDescription */Object engineDescription = knownEngines.get(serviceType);
+                /*
+                 * This isn't an engine known to the Provider (which actually means that it isn't
+                 * one that's shipped in the JDK), so we don't have the predetermined knowledge of
+                 * the constructor param class.
+                 */
+                if (engineDescription == null) {
+                    return null;
+                }
                 String constrParamClassName = (String) consParamClassNameField.get(engineDescription);
                 if (constrParamClassName != null) {
                     return access.findClassByName(constrParamClassName);

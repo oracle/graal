@@ -89,14 +89,19 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.concurrent.CountDownLatch;
 
 public class ContextPreInitializationTest {
 
@@ -119,11 +124,13 @@ public class ContextPreInitializationTest {
     @After
     public void tearDown() throws Exception {
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = false;
-        ContextPreInitializationTestSecondLanguage.callDependentLanguage = false;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = false;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInPatch = false;
         ContextPreInitializationTestSecondLanguage.lookupService = false;
         ContextPreInitializationTestFirstLanguage.patchException = false;
         ContextPreInitializationTestFirstLanguage.onPreInitAction = null;
         ContextPreInitializationTestFirstLanguage.onPatchAction = null;
+        ContextPreInitializationFirstInstrument.actions = null;
         BaseLanguage.parseStdOutOutput.clear();
         BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
@@ -589,7 +596,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testDependentLanguagePreInitializationSuccessfulPatch() throws Exception {
         setPatchable(SECOND, FIRST, INTERNAL);
-        ContextPreInitializationTestSecondLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
         doContextPreinitialize(SECOND);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -669,7 +676,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testDependentLanguagePreInitializationFailedPatch() throws Exception {
         setPatchable(SECOND);
-        ContextPreInitializationTestSecondLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
         doContextPreinitialize(SECOND);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -1186,6 +1193,35 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx2.disposeThreadCount);
     }
 
+    @Test
+    public void testInstrumentsEvents() throws Exception {
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onLanguageContextInitialized", (e) -> {
+            if (FIRST.equals(e.language.getId())) {
+                final CountDownLatch signal = new CountDownLatch(1);
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        InstrumentInfo instrument = e.env.getInstruments().get(ContextPreInitializationSecondInstrument.ID);
+                        e.env.lookup(instrument, Service.class);
+                        signal.countDown();
+                    }
+                }).start();
+                try {
+                    signal.await();
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+            }
+        });
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInPatch = true;
+        setPatchable(FIRST, SECOND);
+        doContextPreinitialize(SECOND);
+        try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").build()) {
+            Value res = ctx.eval(Source.create(SECOND, "test"));
+            assertEquals("test", res.asString());
+        }
+    }
+
     private static void delete(Path file) throws IOException {
         if (Files.isDirectory(file)) {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(file)) {
@@ -1513,7 +1549,8 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = SECOND, name = SECOND, version = "1.0", dependentLanguages = FIRST)
     public static final class ContextPreInitializationTestSecondLanguage extends BaseLanguage {
-        private static boolean callDependentLanguage;
+        private static boolean callDependentLanguageInCreate;
+        private static boolean callDependentLanguageInPatch;
         private static boolean lookupService;
 
         @Override
@@ -1523,7 +1560,7 @@ public class ContextPreInitializationTest {
                 expectService(context.environment(),
                                 context.environment().isPreInitialization() ? Service.Kind.IMAGE_BUILD_TIME : Service.Kind.IMAGE_EXECUTION_TIME);
             }
-            if (callDependentLanguage) {
+            if (callDependentLanguageInCreate) {
                 useLanguage(context, FIRST);
             }
         }
@@ -1533,7 +1570,11 @@ public class ContextPreInitializationTest {
             if (lookupService) {
                 expectService(newEnv, Service.Kind.IMAGE_EXECUTION_TIME);
             }
-            return super.patchContext(context, newEnv);
+            boolean res = super.patchContext(context, newEnv);
+            if (res && callDependentLanguageInPatch) {
+                useLanguage(context, FIRST);
+            }
+            return res;
         }
 
         private static void expectService(Env env, Service.Kind expectedServiceKind) {
@@ -1611,5 +1652,124 @@ public class ContextPreInitializationTest {
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
             return firstOptions.equals(newOptions);
         }
+    }
+
+    public abstract static class BaseInstrument extends TruffleInstrument implements ContextsListener {
+
+        private Env environment;
+        private EventBinding<BaseInstrument> contextsListenerBinding;
+
+        @Override
+        protected void onCreate(Env env) {
+            if (getActions() != null) {
+                environment = env;
+                contextsListenerBinding = env.getInstrumenter().attachContextsListener(this, true);
+            }
+        }
+
+        @Override
+        protected void onDispose(Env env) {
+            if (contextsListenerBinding != null) {
+                contextsListenerBinding.dispose();
+                contextsListenerBinding = null;
+                environment = null;
+            }
+        }
+
+        @Override
+        public void onContextCreated(TruffleContext context) {
+            performAction(context, null);
+        }
+
+        @Override
+        public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+            performAction(context, language);
+        }
+
+        @Override
+        public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+            performAction(context, language);
+        }
+
+        @Override
+        public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+            performAction(context, language);
+        }
+
+        @Override
+        public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+            performAction(context, language);
+        }
+
+        @Override
+        public void onContextClosed(TruffleContext context) {
+            performAction(context, null);
+        }
+
+        private void performAction(TruffleContext context, LanguageInfo language) {
+            StackTraceElement element = Thread.currentThread().getStackTrace()[2];
+            Consumer<Event> action = getActions().get(element.getMethodName());
+            if (action != null) {
+                action.accept(new Event(environment, context, language));
+            }
+        }
+
+        protected abstract Map<String, Consumer<Event>> getActions();
+
+        static final class Event {
+            final TruffleInstrument.Env env;
+            final TruffleContext ctx;
+            final LanguageInfo language;
+
+            Event(TruffleInstrument.Env env, TruffleContext ctx, LanguageInfo info) {
+                this.env = env;
+                this.ctx = ctx;
+                this.language = info;
+            }
+        }
+    }
+
+    @TruffleInstrument.Registration(id = ContextPreInitializationFirstInstrument.ID, name = ContextPreInitializationFirstInstrument.ID)
+    public static final class ContextPreInitializationFirstInstrument extends BaseInstrument {
+
+        static final String ID = "ContextPreInitializationFirstInstrument";
+
+        static volatile Map<String, Consumer<Event>> actions;
+
+        @Option(name = "", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Activates instrument") //
+        static final OptionKey<Boolean> Enabled = new OptionKey<>(false);
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new ContextPreInitializationFirstInstrumentOptionDescriptors();
+        }
+
+        @Override
+        protected Map<String, Consumer<Event>> getActions() {
+            return actions;
+        }
+    }
+
+    @TruffleInstrument.Registration(id = ContextPreInitializationSecondInstrument.ID, name = ContextPreInitializationSecondInstrument.ID, services = Service.class)
+    public static final class ContextPreInitializationSecondInstrument extends BaseInstrument {
+
+        static final String ID = "ContextPreInitializationSecondInstrument";
+
+        @Override
+        protected Map<String, Consumer<Event>> getActions() {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        protected void onCreate(Env env) {
+            super.onCreate(env);
+            env.registerService(new Service() {
+                @Override
+                public Service.Kind getKind() {
+                    return Service.Kind.IMAGE_EXECUTION_TIME;
+                }
+            });
+        }
+
     }
 }

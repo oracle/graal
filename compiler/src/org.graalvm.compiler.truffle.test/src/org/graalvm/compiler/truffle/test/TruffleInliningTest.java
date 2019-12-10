@@ -36,11 +36,11 @@ import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -217,7 +217,7 @@ public abstract class TruffleInliningTest {
                     if (target == null) {
                         throw new IllegalStateException("Call to undefined target: " + instruction.target);
                     }
-                    OptimizedDirectCallNode callNode = new OptimizedDirectCallNode(target);
+                    OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) GraalTruffleRuntime.getRuntime().createDirectCallNode(target);
                     callSites.add(callNode);
                     for (int i = 0; i < instruction.count; i++) {
                         callNode.call(0);
@@ -246,7 +246,8 @@ public abstract class TruffleInliningTest {
     }
 
     void assertNotInlined(TruffleInlining decisions, String name) {
-        Assert.assertTrue(name + " was inlined!", countInlines(decisions, name) == 0);
+        int inlines = countInlines(decisions, name);
+        Assert.assertTrue(name + " was inlined " + inlines + " times!", inlines == 0);
     }
 
     void traverseDecisions(List<TruffleInliningDecision> decisions, Consumer<TruffleInliningDecision> f) {

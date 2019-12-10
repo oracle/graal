@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,7 +105,13 @@ final class Target_java_nio_DirectByteBuffer {
     Target_jdk_internal_ref_Cleaner cleaner;
 
     @Alias
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
+    }
+
+    @Alias
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
     }
 }
 
@@ -113,7 +119,13 @@ final class Target_java_nio_DirectByteBuffer {
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBufferR {
     @Alias
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
+    }
+
+    @Alias
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
     }
 }
 

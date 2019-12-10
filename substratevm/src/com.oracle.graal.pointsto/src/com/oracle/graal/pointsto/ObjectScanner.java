@@ -370,19 +370,23 @@ public abstract class ObjectScanner {
                         ".\nThis error happens when objects from previous image compilations are reached in the current compilation. " +
                         "To prevent this issue reset all static state from the bootclasspath and application classpath that points to the application objects. " +
                         "For reference, see com.oracle.svm.truffle.TruffleFeature.cleanup().";
-        AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
+        try {
+            AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        if (type.isInstanceClass()) {
-            /* Scan constant's instance fields. */
-            for (AnalysisField field : type.getInstanceFields(true)) {
-                if (field.getJavaKind() == JavaKind.Object && field.isAccessed()) {
-                    assert !Modifier.isStatic(field.getModifiers());
-                    scanField(field, entry.constant, entry);
+            if (type.isInstanceClass()) {
+                /* Scan constant's instance fields. */
+                for (AnalysisField field : type.getInstanceFields(true)) {
+                    if (field.getJavaKind() == JavaKind.Object && field.isAccessed()) {
+                        assert !Modifier.isStatic(field.getModifiers());
+                        scanField(field, entry.constant, entry);
+                    }
                 }
+            } else if (type.isArray() && bb.getProviders().getWordTypes().asKind(type.getComponentType()) == JavaKind.Object) {
+                /* Scan the array elements. */
+                scanArray(entry.constant, entry);
             }
-        } else if (type.isArray() && bb.getProviders().getWordTypes().asKind(type.getComponentType()) == JavaKind.Object) {
-            /* Scan the array elements. */
-            scanArray(entry.constant, entry);
+        } catch (UnsupportedFeatureException ex) {
+            unsupportedFeature("", ex.getMessage(), entry.reason, entry.previous);
         }
     }
 

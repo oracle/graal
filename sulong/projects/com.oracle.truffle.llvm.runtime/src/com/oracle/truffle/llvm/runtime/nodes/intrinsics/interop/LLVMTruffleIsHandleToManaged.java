@@ -29,46 +29,39 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
 
-    @CompilationFinal private LLVMMemory memory;
-
     @Specialization
-    protected boolean doLongCase(long a,
+    protected boolean doLongCase(long address,
+                    @CachedLanguage LLVMLanguage language,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        return doPointerCase(LLVMNativePointer.create(a), context);
-    }
-
-    @Specialization
-    protected boolean doPointerCase(LLVMNativePointer a,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (canBeHandle(a)) {
-            return context.get().isHandle(a);
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+            return context.get().getDerefHandleContainer().isHandle(address);
+        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
+            return context.get().getHandleContainer().isHandle(address);
         }
         return false;
     }
 
-    private boolean canBeHandle(LLVMNativePointer a) {
-        if (memory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            memory = getLLVMMemory();
-        }
-        return memory.isHandleMemory(a.asNative());
+    @Specialization
+    protected boolean doPointerCase(LLVMNativePointer a,
+                    @CachedLanguage LLVMLanguage language,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
+        return doLongCase(a.asNative(), language, context);
     }
 
     @Fallback

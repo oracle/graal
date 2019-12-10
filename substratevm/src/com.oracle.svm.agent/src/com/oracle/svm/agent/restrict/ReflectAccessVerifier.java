@@ -100,6 +100,13 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return verifyGetMethod0(env, clazz, name, () -> signature, result, clazz);
     }
 
+    public boolean verifyNewArray(JNIEnvironment env, JNIObjectHandle arrayClass, JNIObjectHandle callerClass) {
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return typeAccessChecker.getType(arrayClass) != null;
+    }
+
     public boolean verifyGetEnclosingMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, JNIObjectHandle result, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;

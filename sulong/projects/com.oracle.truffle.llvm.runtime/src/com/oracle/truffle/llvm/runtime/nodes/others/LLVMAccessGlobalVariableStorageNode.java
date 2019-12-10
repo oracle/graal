@@ -29,11 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
+public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
     protected final LLVMGlobal descriptor;
 
@@ -41,12 +47,24 @@ public final class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNod
         this.descriptor = descriptor;
     }
 
+    @Override
+    public String toString() {
+        return getShortString("descriptor");
+    }
+
     public LLVMGlobal getDescriptor() {
         return descriptor;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return descriptor.getTarget();
+    public abstract boolean execute();
+
+    @SuppressWarnings("unused")
+    @Specialization
+    Object doAccess(
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        CompilerAsserts.partialEvaluationConstant(descriptor);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
+        int index = descriptor.getIndex();
+        return globals[index].get();
     }
 }

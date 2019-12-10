@@ -458,4 +458,8 @@ public abstract class LIRInstruction {
     public int hashCode() {
         return id;
     }
+
+    public boolean needsClearUpperVectorRegisters() {
+        return false;
+    }
 }

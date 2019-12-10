@@ -35,14 +35,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
@@ -60,15 +58,12 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     @Child private LLVMStoreNode i32RegSaveAreaStore;
     @Child private LLVMStoreNode fp80bitRegSaveAreaStore;
     @Child private LLVMStoreNode pointerRegSaveAreaStore;
-    @Child private LLVMIncrementPointerNode pointerArithmeticRegSaveArea;
 
     @Child private LLVMStoreNode i64OverflowArgAreaStore;
     @Child private LLVMStoreNode i32OverflowArgAreaStore;
     @Child private LLVMStoreNode fp80bitOverflowArgAreaStore;
     @Child private LLVMStoreNode pointerOverflowArgAreaStore;
-    @Child private LLVMIncrementPointerNode pointerArithmeticOverflowArea;
 
-    @Child private LLVMIncrementPointerNode pointerArithmeticStructInit;
     @Child private LLVMStoreNode gpOffsetStore;
     @Child private LLVMStoreNode fpOffsetStore;
     @Child private LLVMStoreNode overflowArgAreaStore;
@@ -84,15 +79,12 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         this.i32RegSaveAreaStore = LLVMI32StoreNodeGen.create(null, null);
         this.fp80bitRegSaveAreaStore = LLVM80BitFloatStoreNodeGen.create(null, null);
         this.pointerRegSaveAreaStore = LLVMPointerStoreNodeGen.create(null, null);
-        this.pointerArithmeticRegSaveArea = LLVMIncrementPointerNodeGen.create();
 
         this.i64OverflowArgAreaStore = LLVMI64StoreNodeGen.create(null, null);
         this.i32OverflowArgAreaStore = LLVMI32StoreNodeGen.create(null, null);
         this.fp80bitOverflowArgAreaStore = LLVM80BitFloatStoreNodeGen.create(null, null);
         this.pointerOverflowArgAreaStore = LLVMPointerStoreNodeGen.create(null, null);
-        this.pointerArithmeticOverflowArea = LLVMIncrementPointerNodeGen.create();
 
-        this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
         this.gpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
         this.fpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
         this.overflowArgAreaStore = LLVMPointerStoreNodeGen.create(null, null);
@@ -102,22 +94,22 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     private void setGPOffset(LLVMPointer address, int value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.GP_OFFSET);
+        Object p = address.increment(X86_64BitVarArgs.GP_OFFSET);
         gpOffsetStore.executeWithTarget(p, value);
     }
 
     private void setFPOffset(LLVMPointer address, int value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.FP_OFFSET);
+        Object p = address.increment(X86_64BitVarArgs.FP_OFFSET);
         fpOffsetStore.executeWithTarget(p, value);
     }
 
     private void setOverflowArgArea(LLVMPointer address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
+        Object p = address.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA);
         overflowArgAreaStore.executeWithTarget(p, value);
     }
 
     private void setRegSaveArea(LLVMPointer address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.REG_SAVE_AREA);
+        Object p = address.increment(X86_64BitVarArgs.REG_SAVE_AREA);
         regSaveAreaStore.executeWithTarget(p, value);
     }
 
@@ -253,14 +245,14 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
                 final VarArgArea area = getVarArgArea(object);
 
                 if (area == VarArgArea.GP_AREA && gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                    storeArgument(regSaveArea, gpOffset, memmove, pointerArithmeticRegSaveArea, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                    storeArgument(regSaveArea, gpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
                     gpOffset += X86_64BitVarArgs.GP_STEP;
                 } else if (area == VarArgArea.FP_AREA && fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                    storeArgument(regSaveArea, fpOffset, memmove, pointerArithmeticRegSaveArea, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+                    storeArgument(regSaveArea, fpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
                     fpOffset += X86_64BitVarArgs.FP_STEP;
                 } else {
                     assert overflowArgAreaSize >= overflowOffset;
-                    overflowOffset += storeArgument(overflowArgArea, overflowOffset, memmove, pointerArithmeticOverflowArea, i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+                    overflowOffset += storeArgument(overflowArgArea, overflowOffset, memmove, i64OverflowArgAreaStore, i32OverflowArgAreaStore,
                                     fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
                 }
             }
@@ -269,27 +261,27 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         return null;
     }
 
-    private static int storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeI64Node,
+    private static int storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMStoreNode storeI64Node,
                     LLVMStoreNode storeI32Node, LLVMStoreNode storeFP80Node, LLVMStoreNode storePointerNode, Object object) {
         if (object instanceof Number) {
-            return doPrimitiveWrite(ptr, offset, pointerArithmetic, storeI64Node, object);
+            return doPrimitiveWrite(ptr, offset, storeI64Node, object);
         } else if (object instanceof LLVMVarArgCompoundValue) {
             LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) object;
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
+            Object currentPtr = ptr.increment(offset);
             memmove.executeWithTarget(currentPtr, obj.getAddr(), obj.getSize());
             return obj.getSize();
         } else if (LLVMPointer.isInstance(object)) {
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
+            Object currentPtr = ptr.increment(offset);
             storePointerNode.executeWithTarget(currentPtr, object);
             return X86_64BitVarArgs.STACK_STEP;
         } else if (object instanceof LLVM80BitFloat) {
-            Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
+            Object currentPtr = ptr.increment(offset);
             storeFP80Node.executeWithTarget(currentPtr, object);
             return 16;
         } else if (object instanceof LLVMFloatVector) {
             final LLVMFloatVector floatVec = (LLVMFloatVector) object;
             for (int i = 0; i < floatVec.getLength(); i++) {
-                Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset + i * Float.BYTES);
+                Object currentPtr = ptr.increment(offset + i * Float.BYTES);
                 storeI32Node.executeWithTarget(currentPtr, Float.floatToIntBits(floatVec.getValue(i)));
             }
             return floatVec.getLength() * Float.BYTES;
@@ -299,8 +291,8 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         }
     }
 
-    private static int doPrimitiveWrite(LLVMPointer ptr, long offset, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeNode, Object arg) throws AssertionError {
-        Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
+    private static int doPrimitiveWrite(LLVMPointer ptr, long offset, LLVMStoreNode storeNode, Object arg) throws AssertionError {
+        Object currentPtr = ptr.increment(offset);
         long value;
         if (arg instanceof Boolean) {
             value = ((boolean) arg) ? 1L : 0L;

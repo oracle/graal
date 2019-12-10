@@ -106,6 +106,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
+import java.util.concurrent.atomic.AtomicReference;
 
 final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -154,7 +155,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
     private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
-    private PolyglotContextImpl preInitializedContext;
+    private final AtomicReference<PolyglotContextImpl> preInitializedContext = new AtomicReference<>();
 
     PolyglotLanguage hostLanguage;
     final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
@@ -391,6 +392,10 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
 
+        if (this.runtimeData != null) {
+            EngineAccessor.ACCESSOR.reloadEngineOptions(this.runtimeData, this.engineOptionValues);
+        }
+
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
         }
@@ -597,7 +602,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
 
         if (foundLanguage != null) {
-            return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
+            return (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(foundLanguage);
         }
 
         if (failIfNotFound) {
@@ -751,7 +756,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    synchronized void addContext(PolyglotContextImpl context) {
+    private void addContext(PolyglotContextImpl context) {
+        assert Thread.holdsLock(this);
+        assert context.creatorApi == null;
+        assert context.currentApi == null;
+
+        Context api = impl.getAPIAccess().newContext(context);
+        context.creatorApi = api;
+        context.currentApi = impl.getAPIAccess().newContext(context);
+
         if (limits != null) {
             limits.validate(context.config.limits);
         }
@@ -1031,19 +1044,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return engineOptions;
     }
 
-    @Override
-    public String getVersion() {
-        String version = System.getProperty("org.graalvm.version");
-        if (version == null) {
-            version = System.getProperty("graalvm.version");
-        }
-        if (version == null) {
-            return "Development Build";
-        } else {
-            return version;
-        }
-    }
-
     OptionDescriptors getAllOptions() {
         checkState();
         if (allOptions == null) {
@@ -1068,7 +1068,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), true, true, contextClassLoader, true, true, null, logHandler);
         synchronized (engine) {
             try {
-                engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
+                engine.preInitializedContext.set(PolyglotContextImpl.preInitialize(engine));
             } finally {
                 // Reset language homes from native-image compilatio time, will be recomputed in
                 // image execution time
@@ -1293,20 +1293,22 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     @Override
     @SuppressWarnings({"all"})
-    public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+    public Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl) {
-        checkState();
-        if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
-            throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
-                            "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
+        PolyglotContextImpl context;
+        synchronized (this) {
+            checkState();
+            if (boundEngine && !contexts.isEmpty()) {
+                throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
+                                "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
+            }
+
+            initializeHostAccess(hostAccess);
         }
-
-        initializeHostAccess(hostAccess);
-
         EconomicSet<String> allowedLanguages = EconomicSet.create();
         if (onlyLanguages.length == 0) {
             allowedLanguages.addAll(getLanguages().keySet());
@@ -1369,24 +1371,35 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                         environmentAccess, environment, zone, polyglotLimits);
-
-        PolyglotContextImpl context = loadPreinitializedContext(config, hostAccess);
+        context = loadPreinitializedContext(config, hostAccess);
+        boolean replayEvents = false;
         if (context == null) {
-            context = new PolyglotContextImpl(this, config);
+            synchronized (this) {
+                checkState();
+                context = new PolyglotContextImpl(this, config);
+                addContext(context);
+            }
+        } else if (context.engine == this) {
+            replayEvents = true;
         }
-        Context api = impl.getAPIAccess().newContext(context);
-        context.creatorApi = api;
-        context.currentApi = impl.getAPIAccess().newContext(context);
 
-        // the engine might be a different one after preinitialization.
-        PolyglotEngineImpl engine = context.getEngine();
-        engine.addContext(context);
-        return api;
+        if (replayEvents && EngineAccessor.INSTRUMENT.hasContextBindings(this)) {
+            // replace events for preinitialized contexts
+            // events must be replayed without engine lock.
+            final Object prev = enter(context);
+            try {
+                context.replayInstrumentationEvents();
+            } catch (Throwable e) {
+                throw PolyglotImpl.wrapGuestException(this, e);
+            } finally {
+                leave(prev, context);
+            }
+        }
+        return context.creatorApi;
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config, HostAccess hostAccess) {
-        PolyglotContextImpl context = preInitializedContext;
-        preInitializedContext = null;
+        PolyglotContextImpl context = preInitializedContext.getAndSet(null);
         if (context != null) {
             FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
             preInitFs.onLoadPreinitializedContext(config.fileSystem);
@@ -1402,7 +1415,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             try {
                 patchResult = context.patch(config);
             } finally {
-                if (!patchResult) {
+                if (patchResult) {
+                    synchronized (this) {
+                        addContext(context);
+                    }
+                } else {
                     context.closeImpl(false, false, false);
                     PolyglotContextImpl.disposeStaticContext(null);
                     config.fileSystem = oldFileSystem;
@@ -1414,6 +1431,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                         engine.currentApi = getAPIAccess().newEngine(engine);
                         engine.initializeHostAccess(hostAccess);
                         context = new PolyglotContextImpl(engine, config);
+                        engine.addContext(context);
                     }
                 }
             }

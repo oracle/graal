@@ -55,9 +55,11 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
@@ -107,7 +109,8 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
-import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
+import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
@@ -209,9 +212,12 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
-    private static void removeIsInlinedNodes(StructuredGraph graph) {
-        for (IsInlinedNode isInlinedNode : graph.getNodes(IsInlinedNode.TYPE)) {
-            isInlinedNode.notInlined();
+    private static void removeInlineTokenNodes(StructuredGraph graph) {
+        for (InlineDecisionNode node : graph.getNodes(InlineDecisionNode.TYPE)) {
+            node.notInlined();
+        }
+        for (InlineDecisionInjectNode node : graph.getNodes(InlineDecisionInjectNode.TYPE)) {
+            node.resolve();
         }
     }
 
@@ -294,7 +300,6 @@ public abstract class PartialEvaluator {
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining) {
         // This is only called by agnostic inlining. Legacy inlining does not use this method.
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
-        assert (SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining.getValue(graph.getOptions()));
 
         doGraphPE(compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
     }
@@ -307,7 +312,6 @@ public abstract class PartialEvaluator {
         ResolvedJavaMethod rootMethod = inlineRootForCallTargetAgnostic(compilable);
         final StructuredGraph graph = createGraphForPE(debug, name, rootMethod, allowAssumptions, compilationId, log, cancellable);
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<>(), OptimisticOptimizations.NONE);
-        assert (SharedTruffleCompilerOptions.TruffleLanguageAgnosticInlining.getValue(graph.getOptions()));
 
         doGraphPE(compilable, graph, tierContext, (TruffleInliningPlan) callNodeProvider, callNodePlugin, graphCacheForInlining);
 
@@ -539,6 +543,8 @@ public abstract class PartialEvaluator {
                     return LoopExplosionKind.FULL_UNROLL;
                 case MERGE_EXPLODE:
                     return LoopExplosionKind.MERGE_EXPLODE;
+                case FULL_UNROLL_UNTIL_RETURN:
+                    return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
                 default:
                     throw new IllegalStateException("Unsupported TruffleCompilerRuntime.LoopExplosionKind: " + String.valueOf(explosionKind));
             }
@@ -623,11 +629,15 @@ public abstract class PartialEvaluator {
         return decodingInvocationPlugins;
     }
 
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation").doc("Time spent in partial evaluation.");
+
     @SuppressWarnings({"try", "unused"})
     private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext,
                     PerformanceInformationHandler handler) {
         DebugContext debug = graph.getDebug();
-        agnosticInliningOrGraphPE(compilable, inliningDecision, graph, baseContext, tierContext);
+        try (DebugCloseable a = PartialEvaluationTimer.start(debug)) {
+            agnosticInliningOrGraphPE(compilable, inliningDecision, graph, baseContext, tierContext);
+        }
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
 
         graph.maybeCompress();
@@ -676,7 +686,7 @@ public abstract class PartialEvaluator {
                             TruffleMaximumInlineNodeCount.getValue(graph.getOptions()));
             doGraphPE(compilable, graph, tierContext, inliningDecision, plugin, EconomicMap.create());
         }
-        removeIsInlinedNodes(graph);
+        removeInlineTokenNodes(graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {

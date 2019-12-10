@@ -43,14 +43,15 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -64,6 +65,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -90,6 +92,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
@@ -111,7 +114,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckGlobalVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMCheckGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteGlobalVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -138,11 +145,13 @@ final class Runner {
     private final LLVMContext context;
     private final DefaultLoader loader;
     private final LLVMLanguage language;
+    private final AtomicInteger id;
 
-    Runner(LLVMContext context, DefaultLoader loader) {
+    Runner(LLVMContext context, DefaultLoader loader, AtomicInteger id) {
         this.context = context;
         this.loader = loader;
         this.language = context.getLanguage();
+        this.id = id;
     }
 
     /**
@@ -359,15 +368,22 @@ final class Runner {
 
         @Child LLVMAllocateNode allocRoSection;
         @Child LLVMAllocateNode allocRwSection;
+        @Child LLVMCheckGlobalVariableStorageNode checkGlobals;
+        @Child LLVMWriteGlobalVariableStorageNode writeGlobals;
 
         @Children final AllocGlobalNode[] allocGlobals;
 
-        final LLVMScope fileScope;
+        private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
+        private final int id;
+        private final int globalLength;
 
         InitializeSymbolsNode(LLVMParserResult res, NodeFactory nodeFactory) {
             DataLayout dataLayout = res.getDataLayout();
             this.nodeFactory = nodeFactory;
+            this.fileScope = res.getRuntime().getFileScope();
+            this.checkGlobals = LLVMCheckGlobalVariableStorageNodeGen.create();
+            this.id = res.getRuntime().getID();
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -390,16 +406,20 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
-            this.fileScope = res.getRuntime().getFileScope();
+            this.globalLength = allocGlobals.length + res.getExternalGlobals().size();
+            this.writeGlobals = LLVMWriteGlobalVariableStorageNodeGen.create();
         }
 
         public boolean shouldInitialize(LLVMContext ctx) {
             return !ctx.isScopeLoaded(fileScope);
         }
 
+        @SuppressWarnings("unchecked")
         public LLVMPointer execute(LLVMContext ctx) {
             LLVMPointer roBase = allocOrNull(allocRoSection);
             LLVMPointer rwBase = allocOrNull(allocRwSection);
+            // Allocating the size of the global as determined from the module.
+            ctx.registerGlobalTable(id, new AssumedValue[globalLength]);
 
             allocGlobals(ctx, roBase, rwBase);
             if (allocRoSection != null) {
@@ -417,13 +437,14 @@ final class Runner {
 
         @ExplodeLoop
         private void allocGlobals(LLVMContext ctx, LLVMPointer roBase, LLVMPointer rwBase) {
-            for (AllocGlobalNode allocGlobal : allocGlobals) {
+            for (int i = 0; i < allocGlobals.length; i++) {
+                AllocGlobalNode allocGlobal = allocGlobals[i];
                 LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
-                if (!descriptor.isInitialized()) {
+                if (!checkGlobals.execute(descriptor)) {
                     // because of our symbol overriding support, it can happen that the global was
                     // already bound before to a different target location
                     LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
-                    descriptor.setTarget(ref);
+                    writeGlobals.execute(ref, descriptor);
                     ctx.registerGlobalReverseMap(descriptor, ref);
                 }
             }
@@ -433,19 +454,21 @@ final class Runner {
         private void bindUnresolvedSymbols(LLVMContext ctx) {
             NFIContextExtension nfiContextExtension = ctx.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            for (LLVMSymbol symbol : fileScope.values()) {
-                if (!symbol.isDefined()) {
-                    if (symbol instanceof LLVMGlobal) {
-                        LLVMGlobal global = (LLVMGlobal) symbol;
-                        bindGlobal(ctx, global, nfiContextExtension);
-                    } else if (symbol instanceof LLVMFunctionDescriptor) {
-                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider, nodeFactory);
-                    } else if (symbol instanceof LLVMAlias) {
-                        // nothing to do
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
+            synchronized (ctx) {
+                for (LLVMSymbol symbol : fileScope.values()) {
+                    if (!symbol.isDefined()) {
+                        if (symbol instanceof LLVMGlobal) {
+                            LLVMGlobal global = (LLVMGlobal) symbol;
+                            bindGlobal(ctx, global, nfiContextExtension);
+                        } else if (symbol instanceof LLVMFunctionDescriptor) {
+                            LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
+                            bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider, nodeFactory);
+                        } else if (symbol instanceof LLVMAlias) {
+                            // nothing to do
+                        } else {
+                            CompilerDirectives.transferToInterpreter();
+                            throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
+                        }
                     }
                 }
             }
@@ -649,6 +672,20 @@ final class Runner {
         }
     }
 
+    public void loadDefaults(Path internalLibraryPath) {
+        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+        ExternalLibrary polyglotMock = new ExternalLibrary(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()), false, true);
+        ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
+        LLVMParserResult polyglotMockResult = parse(parserResults, dependencyQueue, polyglotMock);
+        // We use the global scope here to avoid trying to intrinsify functions in the file scope.
+        // However, this is based on the assumption that polyglot-mock is the first loaded library!
+        for (LLVMSymbol symbol : polyglotMockResult.getRuntime().getGlobalScope().values()) {
+            if (symbol.isFunction()) {
+                symbol.asFunction().define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
+            }
+        }
+    }
+
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
         if (lib.hasFile() && !lib.getFile().isRegularFile() || lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
@@ -668,12 +705,25 @@ final class Runner {
         return parse(parserResults, dependencyQueue, source, lib, source.getBytes());
     }
 
+    private LLVMParserResult parseBinary(List<LLVMParserResult> parserResults, BinaryParserResult binaryParserResult, Source source, ExternalLibrary library) {
+        ModelModule module = new ModelModule();
+        LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
+        TargetDataLayout layout = module.getTargetDataLayout();
+        DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
+        NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
+        // This needs to be removed once the nodefactory is taken out of the language.
+        LLVMScope fileScope = new LLVMScope();
+        LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory, id.getAndIncrement());
+        LLVMParser parser = new LLVMParser(source, runtime);
+        LLVMParserResult parserResult = parser.parse(module, targetDataLayout);
+        parserResults.add(parserResult);
+        return parserResult;
+    }
+
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
                     ExternalLibrary library, ByteSequence bytes) {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
-            ModelModule module = new ModelModule();
-            LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
             library.setIsNative(false);
             context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
@@ -684,16 +734,7 @@ final class Runner {
                     dependencyQueue.addLast(dependency);
                 }
             }
-            TargetDataLayout layout = module.getTargetDataLayout();
-            DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
-            NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(context, targetDataLayout);
-            // This needs to be removed once the nodefactory is taken out of the language.
-            LLVMScope fileScope = new LLVMScope();
-            LLVMParserRuntime runtime = new LLVMParserRuntime(context, library, fileScope, nodeFactory);
-            LLVMParser parser = new LLVMParser(source, runtime);
-            LLVMParserResult parserResult = parser.parse(module, targetDataLayout);
-            parserResults.add(parserResult);
-            return parserResult;
+            return parseBinary(parserResults, binaryParserResult, source, library);
         } else if (!library.isNative()) {
             throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF or Mach-O object file with an embedded bitcode section.");
         } else {
@@ -728,8 +769,7 @@ final class Runner {
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
                 LLVMSymbol globalSymbol = globalScope.get(global.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-                    globalScope.register(globalSymbol);
+                    globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getID());
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
                     throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
@@ -744,11 +784,14 @@ final class Runner {
     }
 
     private static void bindGlobal(LLVMContext ctx, LLVMGlobal global, NFIContextExtension nfiContextExtension) {
+        CompilerAsserts.neverPartOfCompilation();
         if (nfiContextExtension != null) {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                global.setTarget(LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
+                AssumedValue<LLVMPointer>[] globals = ctx.findGlobalTable(global.getID());
+                int index = global.getIndex();
+                globals[index] = new AssumedValue<>("LLVMGlobal." + global.getName() + "(unresolved/external)", LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
 
@@ -838,9 +881,15 @@ final class Runner {
     private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
         EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
         for (String imported : parserResult.getImportedSymbols()) {
-            ExternalLibrary lib = globalScope.get(imported).getLibrary();
-            if (lib != null) {
-                importedLibs.add(lib);
+
+            LLVMSymbol symbol = globalScope.get(imported);
+
+            if (symbol != null) {
+                ExternalLibrary lib = symbol.getLibrary();
+
+                if (lib != null) {
+                    importedLibs.add(lib);
+                }
             }
         }
         return importedLibs;
@@ -994,11 +1043,11 @@ final class Runner {
         for (int i = 0; i < elemCount; i++) {
             final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
             final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
-            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
+            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(elementSize, elementType, globalVarAddress, iNode);
             final LLVMExpressionNode loadedStruct = CommonNodeFactory.createLoad(elementType, structPointer);
 
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
-            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
+            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
             final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             CommonNodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
@@ -1083,16 +1132,18 @@ final class Runner {
     }
 
     private void overrideSulongLibraryFunctionsWithIntrinsics(List<LLVMParserResult> sulongLibraries) {
-        LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
-        for (LLVMParserResult parserResult : sulongLibraries) {
-            for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
-                if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
-                    /*
-                     * If `symbol` is an alias, `symbol.asFunction()` will follow the alias to the
-                     * real function. We intrinsify that function instead.
-                     */
-                    LLVMFunctionDescriptor function = symbol.asFunction();
-                    function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
+        synchronized (context) {
+            LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
+            for (LLVMParserResult parserResult : sulongLibraries) {
+                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                    if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
+                        /*
+                         * If `symbol` is an alias, `symbol.asFunction()` will follow the alias to
+                         * the real function. We intrinsify that function instead.
+                         */
+                        LLVMFunctionDescriptor function = symbol.asFunction();
+                        function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
+                    }
                 }
             }
         }

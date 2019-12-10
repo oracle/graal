@@ -24,17 +24,20 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.hosted.code.CompileQueue;
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
+import com.oracle.svm.hosted.code.CompileQueue;
+
 public abstract class NativeImageCodeCacheFactory {
 
-    public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
-        return newCodeCache(compileQueue, heap, ImageSingletons.lookup(Platform.class));
+    public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Path tempDir) {
+        return newCodeCache(compileQueue, heap, ImageSingletons.lookup(Platform.class), tempDir);
     }
 
-    public abstract NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform target);
+    public abstract NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform target, Path tempDir);
 
     public static NativeImageCodeCacheFactory get() {
         return ImageSingletons.lookup(NativeImageCodeCacheFactory.class);

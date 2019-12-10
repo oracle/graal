@@ -45,14 +45,12 @@ public class Resource {
 
     @CStruct(addStructKeyword = true)
     public interface rlimit extends PointerBase {
-        /** The current (soft) limit. */
         @CField
         UnsignedWord rlim_cur();
 
         @CField
         void set_rlim_cur(UnsignedWord value);
 
-        /** The hard limit. */
         @CField
         UnsignedWord rlim_max();
 
@@ -65,11 +63,4 @@ public class Resource {
 
     @CFunction
     public static native int setrlimit(int resource, rlimit rlimits);
-
-    @CFunction
-    public static native int getpriority(int which, /* unsigned */ int who);
-
-    @CFunction
-    public static native int setpriority(int which, /* unsigned */ int who, int prio);
-
 }

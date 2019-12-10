@@ -57,6 +57,10 @@ public final class CompilerAsserts {
      * for exceptional code paths or rare code paths that should never be included in a compilation
      * unit. See {@link CompilerDirectives#transferToInterpreter()} for the corresponding compiler
      * directive.
+     * <p>
+     * {@link CompilerDirectives#bailout(String)} should be used if failing compilation is desired,
+     * e.g., for testing. {@code neverPartOfCompilation()} must not be reachable for runtime
+     * compilation, see the TruffleCheckNeverPartOfCompilation option.
      *
      * @since 0.8 or earlier
      */
@@ -68,6 +72,10 @@ public final class CompilerAsserts {
      * for exceptional code paths or rare code paths that should never be included in a compilation
      * unit. See {@link CompilerDirectives#transferToInterpreter()} for the corresponding compiler
      * directive.
+     * <p>
+     * {@link CompilerDirectives#bailout(String)} should be used if failing compilation is desired,
+     * e.g., for testing. {@code neverPartOfCompilation()} must not be reachable for runtime
+     * compilation, see the TruffleCheckNeverPartOfCompilation option.
      *
      * @param message text associated with the bailout exception
      * @since 0.8 or earlier

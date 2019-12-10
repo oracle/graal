@@ -207,6 +207,9 @@ public class SubstrateOptions {
     @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
 
+    @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
+
     /*
      * Object and array allocation options.
      */
@@ -268,6 +271,9 @@ public class SubstrateOptions {
 
     @Option(help = "Perform trivial method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
+
+    @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
+    public static final HostedOptionKey<String[]> NeverInline = new HostedOptionKey<>(null);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -345,4 +351,5 @@ public class SubstrateOptions {
     public static int codeAlignment() {
         return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
+
 }

@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
 
@@ -59,8 +60,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             }
         }
         if (isWindows()) {
-            rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl",
-                            "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
+            rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                rerunClassInit(a, "java.net.PlainSocketImpl");
+            } else {
+                rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl");
+            }
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
@@ -76,6 +81,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
          * the actual network implementation. Therefore, we register them unconditionally.
          */
         registerForThrowNew(a, "java.net.SocketException", "java.net.ConnectException", "java.net.BindException", "java.net.UnknownHostException",
+                        "java.net.ProtocolException", "java.net.NoRouteToHostException",
                         "java.net.SocketTimeoutException", "java.net.PortUnreachableException", "sun.net.ConnectionResetException");
 
         /* Reuse same lambda for registerInitInetAddressIDs to ensure it only gets called once */
@@ -98,8 +104,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net.PlainDatagramSocketImpl", "init"));
         }
         if (isWindows()) {
+            String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
             a.registerReachabilityHandler(registerInitInetAddressIDs,
-                            method(a, "java.net.DualStackPlainSocketImpl", "initIDs"),
+                            method(a, "java.net." + plainSocketImpl, "initIDs"),
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
         }
 
@@ -129,9 +136,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
             a.registerReachabilityHandler(registerNetworkInterfaceInit,
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
-
+            String plainSocketImpl = JavaVersionUtil.JAVA_SPEC >= 11 ? "PlainSocketImpl" : "DualStackPlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
-                            method(a, "java.net.DualStackPlainSocketImpl", "initIDs"));
+                            method(a, "java.net." + plainSocketImpl, "initIDs"));
         }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {

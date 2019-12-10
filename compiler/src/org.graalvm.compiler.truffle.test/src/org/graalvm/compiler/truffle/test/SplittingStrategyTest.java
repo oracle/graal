@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -237,14 +238,23 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     class CallsInnerNode extends SplittableRootNode {
 
-        CallsInnerNode(RootCallTarget toCall) {
-            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
-        }
+        private final RootCallTarget toCall;
+        @Child private OptimizedDirectCallNode callNode;
 
-        @Child private OptimizedDirectCallNode callNode = null;
+        CallsInnerNode(RootCallTarget toCall) {
+            this.toCall = toCall;
+        }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            /*
+             * We lazily initialize the direct call node as this is the case typically for inline
+             * caches in languages.
+             */
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callNode = insert((OptimizedDirectCallNode) runtime.createDirectCallNode(toCall));
+            }
             return callNode.call(frame.getArguments());
         }
     }

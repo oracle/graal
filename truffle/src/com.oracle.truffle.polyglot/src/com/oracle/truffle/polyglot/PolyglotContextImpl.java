@@ -95,6 +95,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         @CompilationFinal private volatile PolyglotContextImpl singleContext;
 
         /** Copy constructor that keeps the previous state. */
+
         SingleContextState() {
             this(singleContextState.singleContext);
             // called by TruffleFeature
@@ -259,7 +260,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         this.contextImpls = new Object[engine.contextLength];
         this.contexts = createContextArray();
-
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
@@ -1232,14 +1232,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     return false;
                 }
             }
-            replayInstrumentationEvents();
         } finally {
             engine.leave(prev, this);
         }
         return true;
     }
 
-    private void replayInstrumentationEvents() {
+    void replayInstrumentationEvents() {
         notifyContextCreated();
         for (PolyglotLanguageContext lc : contexts) {
             LanguageInfo language = lc.language.info;

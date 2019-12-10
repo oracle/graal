@@ -46,8 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -65,9 +63,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -77,6 +77,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -115,24 +116,10 @@ public final class LLVMContext {
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
     private ConcurrentHashMap<String, Integer> nativeCallStatistics;        // effectively final
-                                                                            // after initialization
+    // after initialization
 
-    private static final class Handle {
-
-        private int refcnt;
-        private final LLVMNativePointer pointer;
-        private final Object managed;
-
-        private Handle(LLVMNativePointer pointer, Object managed) {
-            this.refcnt = 0;
-            this.pointer = pointer;
-            this.managed = managed;
-        }
-    }
-
-    private final Object handlesLock;
-    private final EconomicMap<Object, Handle> handleFromManaged;
-    private final EconomicMap<LLVMNativePointer, Handle> handleFromPointer;
+    private final HandleContainer handleContainer;
+    private final HandleContainer derefHandleContainer;
 
     private final LLVMSourceContext sourceContext;
 
@@ -145,6 +132,9 @@ public final class LLVMContext {
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
+
+    // private for storing the globals of each bcode file;
+    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] globalStorage;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -181,6 +171,7 @@ public final class LLVMContext {
         }
     }
 
+    @SuppressWarnings("unchecked")
     LLVMContext(LLVMLanguage language, Env env, Toolchain toolchain) {
         this.language = language;
         this.libsulongDatalayout = null;
@@ -193,9 +184,9 @@ public final class LLVMContext {
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
-        this.handleFromManaged = EconomicMap.create();
-        this.handleFromPointer = EconomicMap.create();
-        this.handlesLock = new Object();
+        LLVMMemory memory = language.getCapability(LLVMMemory.class);
+        this.handleContainer = memory.createHandleContainer(false, language.getNoCommonHandleAssumption());
+        this.derefHandleContainer = memory.createHandleContainer(true, language.getNoDerefHandleAssumption());
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
@@ -213,6 +204,8 @@ public final class LLVMContext {
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
         pThreadContext = new LLVMPThreadContext(this);
+
+        globalStorage = new AssumedValue[10][];
     }
 
     boolean patchContext(Env newEnv) {
@@ -288,6 +281,8 @@ public final class LLVMContext {
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());
         }
+        Loader loader = getLanguage().getCapability(Loader.class);
+        loader.loadDefaults(this, internalLibraryPath);
         if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
             LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(LLVMPrintToolchainPath.NAME, new FunctionType(VoidType.INSTANCE, new Type[0], false),
                             new LLVMFunctionDescriptor.UnresolvedFunction(), null);
@@ -613,6 +608,26 @@ public final class LLVMContext {
         return globalScope;
     }
 
+    public AssumedValue<LLVMPointer>[] findGlobalTable(int id) {
+        return globalStorage[id];
+    }
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    public void registerGlobalTable(int index, AssumedValue<LLVMPointer>[] target) {
+        synchronized (this) {
+            if (index < globalStorage.length) {
+                globalStorage[index] = target;
+            } else {
+                int newLength = (index + 1) + ((index + 1) / 2);
+                AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
+                System.arraycopy(globalStorage, 0, temp, 0, globalStorage.length);
+                globalStorage = temp;
+                globalStorage[index] = target;
+            }
+        }
+    }
+
     @TruffleBoundary
     public Object getThreadLocalStorage() {
         Object value = tls.get(Thread.currentThread());
@@ -654,64 +669,12 @@ public final class LLVMContext {
         return sigErr;
     }
 
-    @TruffleBoundary
-    public boolean isHandle(LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            return handleFromPointer.containsKey(address);
-        }
+    public HandleContainer getHandleContainer() {
+        return handleContainer;
     }
 
-    @TruffleBoundary
-    public Object getManagedObjectForHandle(LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            final Handle handle = handleFromPointer.get(address);
-
-            if (handle == null) {
-                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
-            }
-
-            return handle.managed;
-        }
-    }
-
-    @TruffleBoundary
-    public void releaseHandle(LLVMMemory memory, LLVMNativePointer address) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromPointer.get(address);
-            if (handle == null) {
-                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
-            }
-
-            if (--handle.refcnt == 0) {
-                handleFromPointer.removeKey(address);
-                handleFromManaged.removeKey(handle.managed);
-                memory.free(address);
-            }
-        }
-    }
-
-    public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, Object object) {
-        return getHandle(memory, object, false).copy();
-    }
-
-    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, Object object) {
-        return getHandle(memory, object, true).copy();
-    }
-
-    @TruffleBoundary
-    private LLVMNativePointer getHandle(LLVMMemory memory, Object object, boolean autoDeref) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromManaged.get(object);
-            if (handle == null) {
-                LLVMNativePointer allocatedMemory = LLVMNativePointer.create(memory.allocateHandle(autoDeref));
-                handle = new Handle(allocatedMemory, object);
-                handleFromManaged.put(object, handle);
-                handleFromPointer.put(allocatedMemory, handle);
-            }
-
-            handle.refcnt++;
-            return handle.pointer;
-        }
+    public HandleContainer getDerefHandleContainer() {
+        return derefHandleContainer;
     }
 
     @TruffleBoundary

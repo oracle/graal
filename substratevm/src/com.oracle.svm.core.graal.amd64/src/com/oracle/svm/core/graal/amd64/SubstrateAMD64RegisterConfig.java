@@ -78,6 +78,9 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
+    public static final Register THREAD_REGISTER_CANDIDATE = r15;
+
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray javaGeneralParameterRegs;
@@ -106,8 +109,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
+            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);
@@ -123,8 +126,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
+            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);

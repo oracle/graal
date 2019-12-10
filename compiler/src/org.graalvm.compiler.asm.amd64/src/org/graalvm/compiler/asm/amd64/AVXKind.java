@@ -111,6 +111,17 @@ public final class AVXKind {
         return getAVXKind(kind.getScalar(), newSize);
     }
 
+    public static AMD64Kind getMaskKind(AMD64Kind kind) {
+        switch (kind.getScalar()) {
+            case SINGLE:
+                return getAVXKind(AMD64Kind.DWORD, kind.getVectorLength());
+            case DOUBLE:
+                return getAVXKind(AMD64Kind.QWORD, kind.getVectorLength());
+            default:
+                return kind;
+        }
+    }
+
     public static AMD64Kind getAVXKind(AMD64Kind base, AVXSize size) {
         for (AMD64Kind ret : AMD64Kind.values()) {
             if (ret.getScalar() == base && ret.getSizeInBytes() == size.getBytes()) {

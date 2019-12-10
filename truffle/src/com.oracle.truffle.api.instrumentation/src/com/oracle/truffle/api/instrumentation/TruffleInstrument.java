@@ -196,7 +196,7 @@ public abstract class TruffleInstrument {
     @SuppressWarnings("static-method")
     public static final class Env {
 
-        private final Object vmObject; // PolyglotInstrument
+        private final Object polyglotInstrument;
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
@@ -205,16 +205,16 @@ public abstract class TruffleInstrument {
         InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object vm, OutputStream out, OutputStream err, InputStream in, MessageTransport messageInterceptor) {
-            this.vmObject = vm;
+        Env(Object polyglotInstrument, OutputStream out, OutputStream err, InputStream in, MessageTransport messageInterceptor) {
+            this.polyglotInstrument = polyglotInstrument;
             this.in = in;
             this.err = err;
             this.out = out;
             this.messageTransport = messageInterceptor != null ? new MessageTransportProxy(messageInterceptor) : null;
         }
 
-        Object getVMObject() {
-            return vmObject;
+        Object getPolyglotInstrument() {
+            return polyglotInstrument;
         }
 
         /**
@@ -345,8 +345,8 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
-            Object vm = InstrumentAccessor.langAccess().getVMObject(instrument);
-            if (vm == this.vmObject) {
+            Object vm = InstrumentAccessor.langAccess().getPolyglotInstrument(instrument);
+            if (vm == this.polyglotInstrument) {
                 throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
             }
             return InstrumentAccessor.engineAccess().lookup(instrument, type);
@@ -359,7 +359,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, LanguageInfo> getLanguages() {
-            return InstrumentAccessor.engineAccess().getInternalLanguages(vmObject);
+            return InstrumentAccessor.engineAccess().getInternalLanguages(polyglotInstrument);
         }
 
         /**
@@ -369,7 +369,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, InstrumentInfo> getInstruments() {
-            return InstrumentAccessor.engineAccess().getInstruments(vmObject);
+            return InstrumentAccessor.engineAccess().getInstruments(polyglotInstrument);
         }
 
         Object[] onCreate(TruffleInstrument instrument) {
@@ -408,7 +408,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
+            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
             return InstrumentAccessor.langAccess().parse(env, source, null, argumentNames);
         }
 
@@ -429,7 +429,7 @@ public abstract class TruffleInstrument {
             if (node == null) {
                 throw new IllegalArgumentException("Node must not be null.");
             }
-            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
+            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(source.getLanguage(), source.getMimeType());
             // Assert that the languages match:
             assert InstrumentAccessor.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
             ExecutableNode fragment = InstrumentAccessor.langAccess().parseInline(env, source, node, frame);
@@ -597,7 +597,7 @@ public abstract class TruffleInstrument {
                             value instanceof String) {
                 return null;
             }
-            return InstrumentAccessor.engineAccess().getObjectLanguage(value, vmObject);
+            return InstrumentAccessor.engineAccess().getObjectLanguage(value);
         }
 
         /**
@@ -607,7 +607,7 @@ public abstract class TruffleInstrument {
          * @since 0.30
          */
         public Map<String, ? extends Object> getExportedSymbols() {
-            return InstrumentAccessor.engineAccess().getExportedSymbols(vmObject);
+            return InstrumentAccessor.engineAccess().getExportedSymbols();
         }
 
         /**
@@ -688,7 +688,7 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleLogger getLogger(String loggerName) {
-            return InstrumentAccessor.engineAccess().getLogger(vmObject, loggerName);
+            return InstrumentAccessor.engineAccess().getLogger(polyglotInstrument, loggerName);
         }
 
         /**

@@ -31,13 +31,18 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
 
+    @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
     @CompilationFinal private LLVMMemory llvmMemory;
+
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
@@ -49,7 +54,15 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
     }
 
     protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
-        return getLLVMMemoryCached().isDerefHandleMemory(addr.asNative());
+        if (languageRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            languageRef = lookupLanguageReference(LLVMLanguage.class);
+        }
+        // checking the bit is cheaper than getting the assumption in interpreted mode
+        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
+            return false;
+        }
+        return LLVMNativeMemory.isDerefHandleMemory(addr.asNative());
     }
 
     protected final LLVMMemory getLLVMMemoryCached() {

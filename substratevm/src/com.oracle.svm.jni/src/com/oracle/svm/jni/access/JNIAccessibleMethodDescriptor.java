@@ -33,7 +33,9 @@ import java.lang.reflect.Method;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaMethod;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Method descriptor that is used for lookups of JNI-accessible methods.
@@ -104,13 +106,13 @@ public final class JNIAccessibleMethodDescriptor {
         return false;
     }
 
-    boolean matchesIgnoreReturnType(Method method) {
+    boolean matchesIgnoreReturnType(ResolvedJavaMethod method) {
         if (!name.equals(method.getName())) {
             return false;
         }
         int position = 1; // skip '('
-        for (Class<?> parameterType : method.getParameterTypes()) {
-            String paramInternal = MetaUtil.toInternalName(parameterType.getName());
+        for (JavaType parameterType : method.getSignature().toParameterTypes(null)) {
+            String paramInternal = parameterType.getName();
             if (!signature.startsWith(paramInternal, position)) {
                 return false;
             }

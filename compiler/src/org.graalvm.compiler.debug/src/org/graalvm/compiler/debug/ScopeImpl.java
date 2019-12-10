@@ -306,7 +306,11 @@ public final class ScopeImpl implements DebugContext.Scope {
                 assert owner.lastClosedScope instanceof DisabledScope : owner.lastClosedScope;
             }
         } catch (Throwable t) {
-            t.initCause(e);
+            if (t != e && t.getCause() == null) {
+                // This mitigates the chance of `e` being swallowed/lost in
+                // the case there's an error in the above handling of `e`.
+                t.initCause(e);
+            }
             throw t;
         }
 

@@ -194,10 +194,10 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (target == null) {
                     return CONTINUE_LOOP_STATUS;
                 }
-                if (target.isValid()) {
-                    return callOSR(target, frame);
-                }
                 if (!target.isCompiling()) {
+                    if (target.isValid()) {
+                        return callOSR(target, frame);
+                    }
                     invalidateOSRTarget(this, "OSR compilation failed or cancelled");
                     return CONTINUE_LOOP_STATUS;
                 }

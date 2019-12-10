@@ -36,8 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.MonitorSupport;
-import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -53,7 +51,10 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -89,6 +90,13 @@ public abstract class JavaThreads {
      * which is implicitly running when the isolate is created.
      */
     static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(1);
+
+    /**
+     * Tracks the number of threads that have been started, but are not yet executing Java code. For
+     * a small window of time, threads are still accounted for in this count while they are already
+     * attached. We use this counter to avoid missing threads during tear-down.
+     */
+    private final AtomicInteger unattachedStartedThreads = new AtomicInteger(0);
 
     /** For Thread.nextThreadID(). */
     final AtomicLong threadSeqNumber = new AtomicLong();
@@ -126,6 +134,11 @@ public abstract class JavaThreads {
         systemGroup = mainGroup.getParent();
         VMError.guarantee(systemGroup.getParent() == null && systemGroup.getName().equals("system"), "Wrong ThreadGroup for system");
 
+        /*
+         * The mainThread's contextClassLoader is set to the current thread's contextClassLoader
+         * which is a NativeImageClassLoader. The ClassLoaderFeature object replacer will unwrap the
+         * original AppClassLoader from the NativeImageClassLoader.
+         */
         mainThread = new Thread(mainGroup, "main");
         mainThread.setDaemon(false);
 
@@ -176,6 +189,23 @@ public abstract class JavaThreads {
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
+    }
+
+    /** Before detaching a thread, run any Java cleanup code. */
+    static void cleanupBeforeDetach(IsolateThread thread) {
+        if (thread.equal(CurrentIsolate.getCurrentThread())) {
+            Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
+            javaThread.exit();
+        } else {
+            /*
+             * We cannot call Thread.exit() for another thread: it may use synchronization, which is
+             * not permitted since we must be at a safepoint here, and any TerminatingThreadLocal
+             * instances access the current thread's thread-local values, so we would end up
+             * cleaning up the wrong thread's resources. Of course, not calling Thread.exit() means
+             * that there will be leaks. Since the Java thread code is not designed for detaching
+             * other threads, we shouldn't support this in the first place.
+             */
+        }
     }
 
     /**
@@ -256,6 +286,7 @@ public abstract class JavaThreads {
      */
     public static boolean ensureJavaThread(String name, ThreadGroup group, boolean asDaemon) {
         if (currentThread.get() == null) {
+            Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             assignJavaThread(JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon)), true);
             return true;
         }
@@ -322,7 +353,7 @@ public abstract class JavaThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
         assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
 
-        Heap.getHeap().disableAllocation(vmThread);
+        Heap.getHeap().detachThread(vmThread);
 
         // Detach ParkEvents for this thread, if any.
         final Thread thread = currentThread.get(vmThread);
@@ -337,7 +368,14 @@ public abstract class JavaThreads {
     /** Have each thread, except this one, tear itself down. */
     private static boolean tearDownJavaThreads() {
         final Log trace = Log.noopLog().string("[JavaThreads.tearDownIsolateThreads:").newline().flush();
-        /* Prevent new threads from starting. */
+
+        /*
+         * Set tear-down flag for new Java threads that have already been started on an OS level,
+         * but are not attached yet. Threads will check this flag and self-interrupt in Java code.
+         *
+         * We still allow native threads to attach (via JNI, for example) and delay the tear-down
+         * that way. If this causes problems, applications need to handle this in their code.
+         */
         VMThreads.setTearingDown();
 
         /* Fetch all running application threads and interrupt them. */
@@ -373,12 +411,12 @@ public abstract class JavaThreads {
         long loopNanos = startNanos;
         final AtomicBoolean printLaggards = new AtomicBoolean(false);
         final Log counterLog = ((warningNanos == 0) ? trace : Log.log());
-        final CountApplicationThreadsOperation operation = new CountApplicationThreadsOperation(counterLog, printLaggards);
+        final CheckReadyForTearDownOperation operation = new CheckReadyForTearDownOperation(counterLog, printLaggards);
 
         for (; /* return */;) {
             final long previousLoopNanos = loopNanos;
             operation.enqueue();
-            if (operation.getCount() == 1) {
+            if (operation.isReadyForTearDown()) {
                 trace.string("  returns true]").newline();
                 return true;
             }
@@ -453,6 +491,11 @@ public abstract class JavaThreads {
         }
     }
 
+    void startThread(Thread thread, long stackSize) {
+        unattachedStartedThreads.incrementAndGet();
+        doStartThread(thread, stackSize);
+    }
+
     /**
      * Start a new OS thread. The implementation must call {@link #prepareStartData} after
      * preparations and before starting the thread. The new OS thread must call
@@ -463,20 +506,26 @@ public abstract class JavaThreads {
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
-
+        Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
         assignJavaThread(thread, false);
-
-        /*
-         * Destroy the handle only after setting currentThread, since the lock used by destroy
-         * requires the current thread.
-         */
         ObjectHandles.getGlobal().destroy(threadHandle);
+
+        singleton().unattachedStartedThreads.decrementAndGet();
 
         singleton().beforeThreadRun(thread);
         ManagementSupport.noteThreadStart(thread);
 
         try {
+            if (VMThreads.isTearingDown()) {
+                /*
+                 * As a newly started thread, we might not have been interrupted like the Java
+                 * threads that existed when initiating the tear-down, so we self-interrupt.
+                 */
+                Thread.currentThread().interrupt();
+            }
+
             thread.run();
+
         } catch (Throwable ex) {
             dispatchUncaughtException(thread, ex);
         } finally {
@@ -742,34 +791,35 @@ public abstract class JavaThreads {
     }
 
     /**
-     * A VMOperation to count how many threads are still on the VMThreads list. This must be done in
-     * a VM operation because only there we are allowed to allocate Java memory while holding the
-     * {@link VMThreads#THREAD_MUTEX}.
+     * Determines if the VM is ready for tear down, which is when only the current application
+     * thread is attached and no threads have been started which have yet to attach. This must be
+     * done in a VM operation because only there we are allowed to allocate Java memory while
+     * holding the {@link VMThreads#THREAD_MUTEX}.
      */
-    private static class CountApplicationThreadsOperation extends JavaVMOperation {
+    private static class CheckReadyForTearDownOperation extends JavaVMOperation {
         private final Log trace;
         private final AtomicBoolean printLaggards;
-        private int count;
+        private boolean readyForTearDown;
 
-        CountApplicationThreadsOperation(Log trace, AtomicBoolean printLaggards) {
-            super("VMThreadCounterOperation", SystemEffect.NONE);
+        CheckReadyForTearDownOperation(Log trace, AtomicBoolean printLaggards) {
+            super("CheckReadyForTearDown", SystemEffect.NONE);
             this.trace = trace;
             this.printLaggards = printLaggards;
-            this.count = 0;
         }
 
-        int getCount() {
-            return count;
+        boolean isReadyForTearDown() {
+            return readyForTearDown;
         }
 
         @Override
         @SuppressWarnings("try")
         public void operate() {
-            count = 0;
+            int attachedCount = 0;
+            int unattachedStartedCount;
             try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
                 for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
-                        count++;
+                        attachedCount++;
                         if (printLaggards.get() && trace.isEnabled() && isolateThread != queuingThread) {
                             trace.string("  laggard isolateThread: ").hex(isolateThread);
                             final Thread thread = JavaThreads.fromVMThread(isolateThread);
@@ -785,7 +835,18 @@ public abstract class JavaThreads {
                         }
                     }
                 }
+
+                /*
+                 * Note: our counter for unattached started threads is not guarded by the threads
+                 * mutex and its count could change or have changed within this block. Still, it is
+                 * important that we hold the threads mutex when querying the counter value: a
+                 * thread might start another thread and exit immediately after. By holding the
+                 * threads lock, we prevent the exiting thread from detaching, and/or the starting
+                 * thread from attaching, so we will never consider being ready for tear-down.
+                 */
+                unattachedStartedCount = singleton().unattachedStartedThreads.get();
             }
+            readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
         }
     }
 }

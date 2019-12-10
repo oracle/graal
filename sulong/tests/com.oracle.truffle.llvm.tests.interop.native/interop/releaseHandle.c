@@ -57,7 +57,10 @@ int main() {
 
   truffle_release_handle(handle1);
 
-  if (!truffle_is_handle_to_managed(handle1)) {
+  // normal and deref handles are different spaces, so
+  // releasing the last "normal" handle will invalidate
+  // will invalidate it even if a deref one exists
+  if (truffle_is_handle_to_managed(handle1)) {
     return 6;
   }
 

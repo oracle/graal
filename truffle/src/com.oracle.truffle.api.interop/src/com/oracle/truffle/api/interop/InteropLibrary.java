@@ -53,6 +53,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
@@ -943,9 +944,10 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Transforms a {@link TruffleObject receiver} to a value that represents a raw native pointer.
-     * After the transformation, the provided receiver returns true for {@link #isPointer(Object)}
-     * and can be unwrapped using the {@link #asPointer(Object)} message.
+     * Attempts to transform a {@link TruffleObject receiver} to a value that represents a raw
+     * native pointer. After a successful transformation, the provided receiver returns true for
+     * {@link #isPointer(Object)} and can be unwrapped using the {@link #asPointer(Object)} message.
+     * If transformation cannot be done {@link #isPointer(Object)} will keep returning false.
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)
@@ -1022,9 +1024,10 @@ public abstract class InteropLibrary extends Library {
      * <li>If {@link #isDate(Object)} and {@link #isTime(Object)} returns <code>false</code>, then
      * it represents just timezone information.
      * </ul>
-     * Objects with only time or only date information must not have timezone information attached,
-     * as aware date or time information always consist of both date and time. If this rule is
-     * violated then an {@link AssertionError} is thrown if assertions are enabled.
+     * Objects with only date information must not have timezone information attached and objects
+     * with only time information must have either none, or {@link ZoneRules#isFixedOffset() fixed
+     * zone} only. If this rule is violated then an {@link AssertionError} is thrown if assertions
+     * are enabled.
      * <p>
      * If this method is implemented then also {@link #asTimeZone(Object)} must be implemented.
      *
@@ -1914,7 +1917,7 @@ public abstract class InteropLibrary extends Library {
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !hasDate : violationInvariant(receiver);
-                assert !delegate.isTimeZone(receiver) || !delegate.isTime(receiver) : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || !delegate.isTime(receiver) || hasFixedTimeZone(receiver) : violationInvariant(receiver);
                 throw e;
             }
         }
@@ -1926,7 +1929,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 LocalTime result = delegate.asTime(receiver);
                 assert hasTime : violationInvariant(receiver);
-                assert !delegate.isTimeZone(receiver) || delegate.isDate(receiver) : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || delegate.isDate(receiver) || hasFixedTimeZone(receiver) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
                 return result;
             } catch (InteropException e) {
@@ -1944,13 +1947,22 @@ public abstract class InteropLibrary extends Library {
             try {
                 ZoneId result = delegate.asTimeZone(receiver);
                 assert hasTimeZone : violationInvariant(receiver);
-                assert (delegate.isDate(receiver) && delegate.isTime(receiver)) || (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
+                assert ((delegate.isDate(receiver) || result.getRules().isFixedOffset()) && delegate.isTime(receiver)) ||
+                                (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
                 assert !hasTimeZone : violationInvariant(receiver);
                 throw e;
+            }
+        }
+
+        private boolean hasFixedTimeZone(Object receiver) {
+            try {
+                return delegate.asTimeZone(receiver).getRules().isFixedOffset();
+            } catch (InteropException e) {
+                throw new AssertionError(violationInvariant(receiver));
             }
         }
 
@@ -1993,7 +2005,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isDate(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isDate(receiver);
-            assert !delegate.isTimeZone(receiver) || (delegate.isTime(receiver) && result) || (!delegate.isTime(receiver) && !result) : violationInvariant(receiver);
+            assert !delegate.isTimeZone(receiver) || (delegate.isTime(receiver) && result) || ((!delegate.isTime(receiver) || hasFixedTimeZone(receiver)) && !result) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
             return result;
         }
@@ -2002,7 +2014,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isTime(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isTime(receiver);
-            assert !delegate.isTimeZone(receiver) || (delegate.isDate(receiver) && result) || (!delegate.isDate(receiver) && !result) : violationInvariant(receiver);
+            assert !delegate.isTimeZone(receiver) || ((delegate.isDate(receiver) || hasFixedTimeZone(receiver)) && result) || (!delegate.isDate(receiver) && !result) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
             return result;
         }
@@ -2011,7 +2023,8 @@ public abstract class InteropLibrary extends Library {
         public boolean isTimeZone(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isTimeZone(receiver);
-            assert !result || (delegate.isDate(receiver) && delegate.isTime(receiver)) || (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
+            assert !result || ((delegate.isDate(receiver) || hasFixedTimeZone(receiver)) && delegate.isTime(receiver)) ||
+                            (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
             return result;
         }

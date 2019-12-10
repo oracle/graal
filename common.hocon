@@ -6,13 +6,13 @@ overlay = 66a6d5b786a13ffa8d683174192c466d4c94ea5f
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u221-jvmci-19.3-b03", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u222-jvmci-19.3-b03", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.3-b03-fastdebug", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u231-jvmci-19.3-b05", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u232-jvmci-19.3-b05", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u231-jvmci-19.3-b05-fastdebug", platformspecific: true}
   oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
   openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
-  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.5+9-jvmci-19.3-b03", platformspecific: true}
-  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.5+1-jvmci-19.3-b03", platformspecific: true}
+  labsjdk-ce-11:   {name : labsjdk,   version : "ce-11.0.5+10-jvmci-19.3-b05", platformspecific: true}
+  labsjdk-ee-11:   {name : labsjdk,   version : "ee-11.0.5+10-jvmci-19.3-b05", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
@@ -29,9 +29,10 @@ download-hsdis : {
   ]
 }
 
-oraclejdk8 :        { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
-oraclejdk8Only :    { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
-oraclejdk8Debug :   { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8 :          { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8Only :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
+oraclejdk8Debug :     { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk-ee-11} ]} }}
+oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
@@ -47,6 +48,7 @@ common : ${mx} {
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
   packages : {
+    "pip:logilab-common ": "==1.4.4"
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
     "pip:ninja_syntax" : "==1.7.2"
@@ -200,6 +202,16 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
   packages : {
     msvc : "==10.0"
   }
+  timelimit: "45:00"
+}
+
+windows-devkit-jdk11: {
+  packages : {
+    "devkit:VS2017-15.5.5+1" : "==0"
+  }
+}
+
+svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
   timelimit: "45:00"
 }
 

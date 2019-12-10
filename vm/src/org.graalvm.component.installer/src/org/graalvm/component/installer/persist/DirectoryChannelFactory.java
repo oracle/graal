@@ -56,6 +56,10 @@ public class DirectoryChannelFactory implements SoftwareChannel.Factory {
             }
             DirectoryCatalogProvider dp = new DirectoryCatalogProvider(p, out2);
             dp.setVerifyJars(input.optValue(Commands.OPTION_NO_VERIFY_JARS) == null);
+            // do not report errors for directory sources implied by commandline arguments.
+            if (Boolean.FALSE.toString().equals(source.getParameter("reportErrors"))) { // NOI18N
+                dp.setReportErrors(false);
+            }
             return dp;
         } catch (URISyntaxException ex) {
             out2.error("ERR_DirectoryURLInvalid", ex, u, ex.getMessage());

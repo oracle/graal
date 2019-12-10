@@ -26,8 +26,11 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
@@ -213,5 +216,13 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
         return new String[]{relocatableFileName};
+    }
+
+    @Override
+    public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
+        return StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false)
+                        .filter(ObjectFile.Symbol::isGlobal)
+                        .filter(ObjectFile.Symbol::isDefined)
+                        .collect(Collectors.toList());
     }
 }

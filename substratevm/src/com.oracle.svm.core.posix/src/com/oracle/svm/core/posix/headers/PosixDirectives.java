@@ -36,70 +36,35 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PosixDirectives implements CContext.Directives {
     private static final String[] commonLibs = new String[]{
-                    "<stdlib.h>",
-                    "<dirent.h>",
                     "<dlfcn.h>",
                     "<fcntl.h>",
-                    "<grp.h>",
-                    "<ifaddrs.h>",
-                    "<langinfo.h>",
                     "<limits.h>",
                     "<locale.h>",
-                    "<net/ethernet.h>",
-                    "<net/if.h>",
-                    "<netdb.h>",
-                    "<netinet/in.h>",
-                    "<netinet/ip.h>",
-                    "<netinet/tcp.h>",
                     "<pthread.h>",
                     "<pwd.h>",
-                    "<sched.h>",
-                    "<semaphore.h>",
                     "<signal.h>",
-                    "<stdio.h>",
-                    "<spawn.h>",
                     "<sys/errno.h>",
-                    "<sys/file.h>",
-                    "<sys/ioctl.h>",
                     "<sys/mman.h>",
-                    "<sys/param.h>",
-                    "<sys/poll.h>",
                     "<sys/resource.h>",
-                    "<sys/select.h>",
-                    "<sys/socket.h>",
                     "<sys/stat.h>",
-                    "<sys/statvfs.h>",
-                    "<sys/sysctl.h>",
                     "<sys/time.h>",
                     "<sys/times.h>",
-                    "<sys/types.h>",
-                    "<sys/uio.h>",
                     "<sys/utsname.h>",
-                    "<sys/wait.h>",
-                    "<termios.h>",
                     "<time.h>",
                     "<unistd.h>",
-                    "<zlib.h>"
     };
 
     private static final String[] darwinLibs = new String[]{
                     "<CoreFoundation/CoreFoundation.h>",
-                    "<sys/event.h>",
                     "<mach/mach.h>",
-                    "<sys/ucontext.h>",
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
-                    "<netinet6/in6_var.h>",
-                    "<net/if_dl.h>",
+                    "<sys/sysctl.h>",
                     "<sys/syslimits.h>",
     };
 
     private static final String[] linuxLibs = new String[]{
-                    "<arpa/inet.h>",
-                    "<sys/epoll.h>",
-                    "<sys/sendfile.h>",
                     "<mntent.h>",
-                    "<link.h>",
     };
 
     @Override

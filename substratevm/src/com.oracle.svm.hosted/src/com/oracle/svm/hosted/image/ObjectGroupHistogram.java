@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,8 @@ package com.oracle.svm.hosted.image;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -51,7 +49,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ObjectGroupHistogram {
     private final NativeImageHeap heap;
-    private final Set<ObjectInfo> objects;
     private final Map<ObjectInfo, String> groups;
     private final Map<String, HeapHistogram> groupHistograms;
 
@@ -63,15 +60,6 @@ public final class ObjectGroupHistogram {
         this.heap = heap;
         this.groups = new HashMap<>();
         this.groupHistograms = new LinkedHashMap<>();
-
-        /*
-         * heap.objects has some ObjectInfo values registered for multiple keys. We therefore make
-         * our own map without duplicates.
-         */
-        objects = new HashSet<>(heap.objects.size());
-        for (ObjectInfo info : heap.objects.values()) {
-            objects.add(info);
-        }
     }
 
     public interface ObjectFilter {
@@ -126,13 +114,13 @@ public final class ObjectGroupHistogram {
         try {
             Field field = Class.forName("com.oracle.svm.graal.SubstrateRuntimeProvider").getDeclaredField("graphObjects");
             Object object = SubstrateObjectConstant.asObject(heap.getMetaAccess().lookupJavaField(field).readValue(null));
-            processObject(heap.objects.get(object), "CompressedGraphObjects", true, null, ObjectGroupHistogram::filterObjectConstantField);
+            processObject(heap.getObjectInfo(object), "CompressedGraphObjects", true, null, ObjectGroupHistogram::filterObjectConstantField);
         } catch (Throwable ex) {
             /* Ignore. When we build an image without Graal support, the class is not present. */
         }
 
         HeapHistogram totalHistogram = new HeapHistogram();
-        for (ObjectInfo info : objects) {
+        for (ObjectInfo info : heap.getObjects()) {
             totalHistogram.add(info, info.getSize());
             addToGroup(info, "Other");
         }
@@ -165,7 +153,7 @@ public final class ObjectGroupHistogram {
     }
 
     public void processType(Class<?> clazz, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
-        for (ObjectInfo info : objects) {
+        for (ObjectInfo info : heap.getObjects()) {
             if (clazz.isInstance(info.getObject())) {
                 processObject(info, group, addObject, 1, objectFilter, fieldFilter);
             }
@@ -174,7 +162,7 @@ public final class ObjectGroupHistogram {
 
     public void processObject(Object object, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         if (object != null) {
-            processObject(heap.objects.get(object), group, addObject, 1, objectFilter, fieldFilter);
+            processObject(heap.getObjectInfo(object), group, addObject, 1, objectFilter, fieldFilter);
         }
     }
 
@@ -195,7 +183,7 @@ public final class ObjectGroupHistogram {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
                         Object fieldValue = SubstrateObjectConstant.asObject(field.readStorageValue(con));
                         if (fieldValue != null) {
-                            processObject(heap.objects.get(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                            processObject(heap.getObjectInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                         }
                     }
                 }
@@ -203,7 +191,7 @@ public final class ObjectGroupHistogram {
         } else if (info.getObject() instanceof Object[]) {
             for (Object element : (Object[]) info.getObject()) {
                 if (element != null) {
-                    processObject(heap.objects.get(element), group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                    processObject(heap.getObjectInfo(element), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                 }
             }
         }

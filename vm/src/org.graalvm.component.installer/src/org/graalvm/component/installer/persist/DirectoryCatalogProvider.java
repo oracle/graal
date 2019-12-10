@@ -37,7 +37,9 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import org.graalvm.component.installer.ComponentArchiveReader;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentStorage;
@@ -58,6 +60,7 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
     private final Path directory;
     private final Feedback feedback;
     private boolean verifyJars = true;
+    private boolean reportErrors = true;
 
     /**
      * Map componentID -> ComponentInfo. Lazy populated from {@link #initComponents()}.
@@ -66,7 +69,15 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
 
     public DirectoryCatalogProvider(Path directory, Feedback feedback) {
         this.directory = directory;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(DirectoryCatalogProvider.class);
+    }
+
+    public boolean isReportErrors() {
+        return reportErrors;
+    }
+
+    public void setReportErrors(boolean reportErrors) {
+        this.reportErrors = reportErrors;
     }
 
     public void setVerifyJars(boolean verifyJars) {
@@ -114,8 +125,14 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
                     if (info != null) {
                         dirContents.computeIfAbsent(info.getId(), (id) -> new HashSet<>()).add(info);
                     }
-                } catch (IOException ex) {
-                    // report error on the file, continue
+                } catch (MetadataException ex) {
+                    if (reportErrors) {
+                        feedback.error("ERR_DirectoryComponentMetadata", ex, p.toString(), ex.getLocalizedMessage());
+                    }
+                } catch (IOException | FailedOperationException ex) {
+                    if (reportErrors) {
+                        feedback.error("ERR_DirectoryComponentError", ex, p.toString(), ex.getLocalizedMessage());
+                    }
                 }
             }));
         } catch (IOException ex) {
@@ -135,10 +152,21 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
         } else {
             fileStart = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
         }
-        for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
-            MetadataLoader ldr = provider.createLoader(localFile, fileStart, feedback, verifyJars);
+        MetadataLoader ldr = null;
+        try {
+            for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
+                ldr = provider.createLoader(localFile, fileStart, feedback, verifyJars);
+                if (ldr != null) {
+                    ComponentInfo info = ldr.getComponentInfo();
+                    info.setRemoteURL(localFile.toUri().toURL());
+                    info.setOrigin(feedback.l10n("DIR_LocalFile"));
+                    return info;
+                }
+            }
+        } finally {
+            // ignore, may be not a component...
             if (ldr != null) {
-                return ldr.getComponentInfo();
+                ldr.close();
             }
         }
         return null;

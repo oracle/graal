@@ -61,7 +61,7 @@ abstract class GuestToHostRootNode extends RootNode {
         super(null);
         this.boundaryName = targetType.getName() + "." + methodName;
         // this avoids a memory leak with the root node if it is shared globally
-        EngineAccessor.NODES.makeSharableRoot(this);
+        EngineAccessor.NODES.clearPolyglotEngine(this);
     }
 
     @Override

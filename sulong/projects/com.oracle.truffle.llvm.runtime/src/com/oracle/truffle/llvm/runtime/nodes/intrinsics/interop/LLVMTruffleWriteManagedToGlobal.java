@@ -33,13 +33,15 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceGlobalVariableStorageNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMReplaceGlobalVariableStorageNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -54,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
+    @Child LLVMReplaceGlobalVariableStorageNode globalReplace = LLVMReplaceGlobalVariableStorageNodeGen.create();
 
     @TruffleBoundary
     @Specialization
@@ -63,8 +66,8 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
         if (global == null) {
             throw new LLVMPolyglotException(this, "First argument to truffle_assign_managed must be a pointer to a global.");
         }
-        Object newValue = attachType.execute(value, global.getInteropType());
-        global.setTarget(newValue);
+        Object newValue = attachType.execute(value, global.getInteropType(ctx));
+        globalReplace.execute(LLVMPointer.cast(newValue), global);
         return newValue;
     }
 }

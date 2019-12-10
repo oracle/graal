@@ -1,15 +1,16 @@
 suite = {
-    "mxversion": "5.231.0",
+    "mxversion": "5.247.3",
     "name": "substratevm",
     "version" : "20.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
-    "developer" : {
-        "name" : "SubstrateVM developers",
-        "email" : "graal-dev@openjdk.java.net",
-        "organization" : "Graal",
-        "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    "groupId" : "org.graalvm.nativeimage",
+    "developer": {
+        "name": "GraalVM Development",
+        "email": "graalvm-dev@oss.oracle.com",
+        "organization": "Oracle Corporation",
+        "organizationUrl": "http://www.graalvm.org/",
     },
     "scm" : {
         "url" : "https://github.com/oracle/graal",
@@ -141,26 +142,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.posix.jdk11": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core.jdk11",
-                "com.oracle.svm.core.posix"
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.perf",
-                    "jdk.internal.misc"
-                ],
-            },
-            "javaCompliance": "11+",
-            "overlayTarget" : "com.oracle.svm.core.posix",
-            "multiReleaseJarVersion": "11",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -247,7 +228,8 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -258,6 +240,43 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+        },
+
+        "com.oracle.svm.core.posixsubst": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.posix",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.core.posixsubst.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.jdk11",
+                "com.oracle.svm.core.posixsubst"
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.perf",
+                    "jdk.internal.misc"
+                ],
+            },
+            "javaCompliance": "11+",
+            "overlayTarget" : "com.oracle.svm.core.posixsubst",
+            "multiReleaseJarVersion": "11",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
         },
 
         "com.oracle.svm.core.windows": {
@@ -312,6 +331,49 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.hosted.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "requires" : ["java.instrument"],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+            },
+            "javaCompliance": "11+",
+            "checkstyle" : "com.oracle.svm.hosted",
+            "multiReleaseJarVersion": "11",
+            "overlayTarget": "com.oracle.svm.hosted",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+        "com.oracle.svm.hosted.jdk14": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "requiresConcealed" : {
+                "java.base" :
+                    ["jdk.internal.loader"],
+                "jdk.internal.vm.ci" :
+                    ["jdk.vm.ci.meta"],
+            },
+            "javaCompliance": "14+",
+            "multiReleaseJarVersion": "14",
+            "overlayTarget" : "com.oracle.svm.hosted",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",
@@ -393,6 +455,7 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "deliverable" : "jvm",
+            "use_jdk_headers" : True,
             "os_arch" : {
                 "windows": {
                     "amd64" : {
@@ -803,6 +866,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
                 "com.oracle.svm.truffle",
+                "com.oracle.svm.hosted",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",
@@ -994,8 +1058,21 @@ suite = {
             "native" : True,
             "platformDependent" : True,
             "description" : "Native Image support distribution for the GraalVM",
-            "layout" : {
-                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+            "os_arch" : {
+                "windows": {
+                    "<others>" : {
+                        "layout" : {
+                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "layout" : {
+                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+                        },
+                    },
+                },
             },
         },
 

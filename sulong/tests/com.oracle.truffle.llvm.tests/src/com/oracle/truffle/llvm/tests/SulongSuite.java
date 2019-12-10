@@ -47,7 +47,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuiteHarness {
+public class SulongSuite extends BaseSuiteHarness {
 
     public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
     @Parameter(value = 0) public Path path;
@@ -56,6 +56,10 @@ public final class SulongSuite extends BaseSuiteHarness {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
+        return getData(suitesPath);
+    }
+
+    protected static Collection<Object[]> getData(Path suitesPath) {
         try (Stream<Path> files = Files.walk(suitesPath)) {
             Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
             return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());

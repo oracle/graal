@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
@@ -41,10 +42,10 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
-        if (LLVMInfo.SYSNAME.toLowerCase().equals("linux") && LLVMInfo.MACHINE.toLowerCase().equals("x86_64")) {
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new LinuxAMD64PlatformCapability(loadCxxLibraries);
         }
-        if (LLVMInfo.SYSNAME.toLowerCase().equals("mac os x") && LLVMInfo.MACHINE.toLowerCase().equals("x86_64")) {
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new DarwinAMD64PlatformCapability(loadCxxLibraries);
         }
         return new UnknownBasicPlatformCapability(loadCxxLibraries);
@@ -59,6 +60,11 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
         super(cls);
         this.loadCxxLibraries = loadCxxLibraries;
+    }
+
+    @Override
+    public String getPolyglotMockLibrary() {
+        return "libpolyglot-mock." + NFIContextExtension.getNativeLibrarySuffix();
     }
 
     @Override

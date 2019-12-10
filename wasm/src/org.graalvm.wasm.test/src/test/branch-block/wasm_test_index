@@ -1,0 +1,17 @@
+br_if-return
+simple_br_before_add
+simple_br_before_add_twice
+simple_br_in_loop
+simple_br_if_false
+simple_br_if_true
+simple_br_if_top_level
+simple_br_if_in_loop
+simple_br_table_in_loop
+simple_branch_table-0
+simple_branch_table-1
+simple_branch_table-2
+simple_branch_table-default
+simple_return-0
+simple_return-1
+simple_return-2
+simple_skip_one_level

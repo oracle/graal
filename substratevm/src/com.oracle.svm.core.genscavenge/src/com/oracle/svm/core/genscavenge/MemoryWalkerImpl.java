@@ -68,7 +68,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
             ThreadLocalAllocation.disableThreadLocalAllocation();
             boolean continueVisiting = true;
             if (continueVisiting) {
-                continueVisiting = HeapImpl.getHeapImpl().walkHeap(memoryWalkerVisitor);
+                continueVisiting = HeapImpl.getHeapImpl().walkMemory(memoryWalkerVisitor);
             }
             if (continueVisiting) {
                 continueVisiting = CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor);

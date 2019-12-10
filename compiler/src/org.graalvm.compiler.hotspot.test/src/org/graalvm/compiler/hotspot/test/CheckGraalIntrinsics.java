@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesDecryptName;
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesEncryptName;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -161,11 +158,15 @@ public class CheckGraalIntrinsics extends GraalTest {
     private static Collection<String> add(Collection<String> c, String... elements) {
         String[] sorted = elements.clone();
         Arrays.sort(sorted);
-        for (int i = 0; i < elements.length; i++) {
-            if (!elements[i].equals(sorted[i])) {
-                // Let's keep the list sorted for easier visual inspection
-                fail("Element %d is out of order, \"%s\"", i, elements[i]);
+        if (!Arrays.equals(elements, sorted)) {
+            int width = 2 + Arrays.asList(elements).stream().map(String::length).reduce(0, Integer::max);
+            Formatter fmt = new Formatter();
+            fmt.format("%-" + width + "s | sorted%n", "original");
+            fmt.format("%s%n", new String(new char[width * 2 + 2]).replace('\0', '='));
+            for (int i = 0; i < elements.length; i++) {
+                fmt.format("%-" + width + "s | %s%n", elements[i], sorted[i]);
             }
+            fail("Elements not sorted alphabetically:%n%s", fmt);
         }
         c.addAll(Arrays.asList(elements));
         return c;
@@ -368,10 +369,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
             }
-            if (!(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
-                add(ignore,
-                                "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
-            }
             if (!config.useFMAIntrinsics) {
                 add(ignore,
                                 "java/lang/Math.fma(DDD)D",
@@ -516,9 +513,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
-        boolean implNames = HotSpotGraphBuilderPlugins.cbcUsesImplNames(config);
-        String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
-        String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+        String cbcEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
+        String cbcDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
+        String aesEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
+        String aesDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
 
         // AES intrinsics
         if (!config.useAESIntrinsics) {
@@ -549,28 +547,21 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!config.useSquareToLenIntrinsic()) {
             add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
         }
-
+        // DigestBase intrinsics
+        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
+                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
+            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+        }
         // SHA intrinsics
+        String shaCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress0", "implCompress");
         if (!config.useSHA1Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA." + shaCompressName + "([BI)V");
         }
         if (!config.useSHA256Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA2.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA2." + shaCompressName + "([BI)V");
         }
         if (!config.useSHA512Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA5.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA5." + shaCompressName + "([BI)V");
         }
     }
 

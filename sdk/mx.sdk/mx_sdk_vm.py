@@ -112,20 +112,20 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_bash_launcher=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
-        :param str custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
+        :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
-        self.custom_bash_launcher = custom_bash_launcher
+        self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
 
         self.relative_home_paths = {}
@@ -436,7 +436,7 @@ def jdk_enables_jvmci_by_default(jdk):
     return getattr(jdk, '.enables_jvmci_by_default')
 
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -454,6 +454,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                         "error" - raise an error
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
+    :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     """
     assert callable(with_source)
 
@@ -555,11 +556,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                 dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
+        jlink_exe = jdk.javac.replace('javac', 'jlink')
         jlink = [jdk.javac.replace('javac', 'jlink')]
 
         if jdk_enables_jvmci_by_default(jdk):
             # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
-            jlink.append('-J-XX:-EnableJVMCI')
+            jlink += ['-J-XX:-EnableJVMCI', '-J-XX:-UseJVMCICompiler']
         if root_module_names is not None:
             missing = frozenset(root_module_names) - all_module_names
             if missing:
@@ -579,6 +581,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         jlink.append('-J-Dlink.debug=true')
         jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+        # https://bugs.openjdk.java.net/browse/JDK-8232080
+        output = mx.OutputCapture()
+        mx.run([jlink_exe, '--list-plugins'], out=output)
+        if '--add-options=' in output.data:
+            assert '--vendor-version=' in output.data
+            jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions')
+            if vendor_info is not None:
+                for name, value in vendor_info.items():
+                    jlink.append('--' + name + '=' + value)
 
         # TODO: investigate the options below used by OpenJDK to see if they should be used:
         # --release-info: this allow extra properties to be written to the <jdk>/release file

@@ -57,7 +57,10 @@ public final class CatalogContents implements ComponentCatalog {
     private final Version graalVersion;
     private final ComponentRegistry installed;
     private final Verifier verifier;
+    private final Verifier capVerifier;
     private final DownloadInterceptor downloadInterceptor;
+
+    private boolean remoteEnabled = true;
 
     /**
      * Allows update to a newer distribution, not just patches. This will cause components from
@@ -74,6 +77,7 @@ public final class CatalogContents implements ComponentCatalog {
         this.storage = storage;
         this.env = env.withBundle(Feedback.class);
         this.verifier = new Verifier(env, inst, this);
+        this.capVerifier = new Verifier(env, inst, this);
         this.graalVersion = version;
         this.installed = inst;
 
@@ -81,6 +85,13 @@ public final class CatalogContents implements ComponentCatalog {
         verifier.setSilent(true);
         verifier.setCollectErrors(true);
         verifier.setVersionMatch(graalVersion.match(Version.Match.Type.SATISFIES));
+
+        // just verify required capabilities:
+        capVerifier.ignoreExisting(true);
+        capVerifier.setSilent(true);
+        capVerifier.setCollectErrors(true);
+        // ignore graal version, compare just the required capabilities.
+        capVerifier.setVersionMatch(Version.NO_VERSION.match(Version.Match.Type.GREATER));
 
         if (storage instanceof DownloadInterceptor) {
             this.downloadInterceptor = (DownloadInterceptor) storage;
@@ -104,6 +115,15 @@ public final class CatalogContents implements ComponentCatalog {
             Version civ = v.installVersion();
             return giv.equals(civ);
         }
+    }
+
+    public void setRemoteEnabled(boolean remoteEnabled) {
+        this.remoteEnabled = remoteEnabled;
+    }
+
+    @Override
+    public boolean isRemoteEnabled() {
+        return remoteEnabled;
     }
 
     private ComponentInfo compatibleComponent(List<ComponentInfo> cis, Version.Match versionSelect, boolean fallback) {
@@ -193,6 +213,10 @@ public final class CatalogContents implements ComponentCatalog {
                 return id;
             }
             String shortId = id.substring(l + 1);
+            // special case: if the component is local, do not go to catalogs.
+            if (info.getRemoteURL() == null) {
+                return shortId;
+            }
             try {
                 Collection<ComponentInfo> regs = doLoadComponents(shortId, false, false);
                 if (regs == null) {
@@ -228,17 +252,23 @@ public final class CatalogContents implements ComponentCatalog {
         String candidate = null;
         String lcid = id.toLowerCase(Locale.ENGLISH);
         String end = "." + lcid; // NOI18N
-        for (String s : getComponentIDs()) {
+        Collection<String> ids = getComponentIDs();
+        String ambiguous = null;
+        for (String s : ids) {
             String lcs = s.toLowerCase(Locale.ENGLISH);
             if (lcs.equals(lcid)) {
                 return s;
             }
             if (lcs.endsWith(end)) {
                 if (candidate != null) {
-                    throw env.failure("COMPONENT_AmbiguousIdFound", null, candidate, s);
+                    ambiguous = s;
+                } else {
+                    candidate = s;
                 }
-                candidate = s;
             }
+        }
+        if (ambiguous != null) {
+            throw env.failure("COMPONENT_AmbiguousIdFound", null, candidate, ambiguous);
         }
         return candidate;
     }
@@ -278,6 +308,15 @@ public final class CatalogContents implements ComponentCatalog {
                     return null;
                 }
                 List<ComponentInfo> versions = new ArrayList<>(infos);
+                for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
+                    ComponentInfo ci = it.next();
+                    // skip components that require capabilities that we do not have.
+                    // Catalogs contain just "right" components, but in case someone will
+                    // mess up the content, or directory-based mess catalog, the filter is handy.
+                    if (capVerifier.validateRequirements(ci).hasErrors()) {
+                        it.remove();
+                    }
+                }
                 Collections.sort(versions, ComponentInfo.versionComparator());
                 if (filelist) {
                     for (ComponentInfo ci : infos) {

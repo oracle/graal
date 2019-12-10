@@ -24,18 +24,13 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.bytedeco.javacpp.LLVM.LLVMTypeOf;
+import static com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 import java.util.Collections;
 import java.util.List;
 
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.Pointer;
-import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -44,6 +39,12 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -59,6 +60,8 @@ public class LLVMUtils {
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     public static final String ALWAYS_INLINE = "alwaysinline";
     public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String ATOMIC_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_object_xchg";
+    public static final String LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_object_from_untracked_pointer";
     public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
     public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
@@ -270,11 +273,6 @@ public class LLVMUtils {
         public LLVMValueRef get() {
             return value;
         }
-
-        @Override
-        public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
-        }
     }
 
     static class LLVMConstant extends ConstantValue implements LLVMValueWrapper {
@@ -288,11 +286,6 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             return value;
-        }
-
-        @Override
-        public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 
@@ -316,11 +309,6 @@ public class LLVMUtils {
 
         public LLVMVariable address() {
             return address;
-        }
-
-        @Override
-        public String toString() {
-            return LLVM.LLVMPrintValueToString(value).getString();
         }
     }
 

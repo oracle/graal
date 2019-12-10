@@ -231,6 +231,12 @@ public final class ComponentInfo {
         int hash = 5;
         hash = 37 * hash + Objects.hashCode(this.id);
         hash = 37 * hash + Objects.hashCode(this.version);
+        if (remoteURL != null) {
+            hash = 37 * hash + Objects.hashCode(this.remoteURL);
+        }
+        if (origin != null) {
+            hash = 37 * hash + Objects.hashCode(this.origin);
+        }
         return hash;
     }
 
@@ -250,6 +256,12 @@ public final class ComponentInfo {
             return false;
         }
         if (!Objects.equals(this.version, other.version)) {
+            return false;
+        }
+        if (!Objects.equals(this.remoteURL, other.remoteURL)) {
+            return false;
+        }
+        if (!Objects.equals(this.origin, other.origin)) {
             return false;
         }
         return true;

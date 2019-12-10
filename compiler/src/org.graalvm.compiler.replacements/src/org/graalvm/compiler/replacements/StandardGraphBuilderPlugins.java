@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
+import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -155,20 +156,22 @@ import sun.misc.Unsafe;
 public class StandardGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements,
-                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks) {
+                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks, boolean arrayEqualsSubstitution) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
-        registerStringPlugins(plugins, replacements, snippetReflection);
+        registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
-        registerArraysPlugins(plugins, replacements);
+        if (arrayEqualsSubstitution) {
+            registerArraysPlugins(plugins, replacements);
+        }
         registerArrayPlugins(plugins, replacements);
         registerUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks);
         registerEdgesPlugins(metaAccess, plugins);
@@ -196,7 +199,7 @@ public class StandardGraphBuilderPlugins {
         STRING_CODER_FIELD = coder;
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection) {
+    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean arrayEqualsSubstitution) {
         final Registration r = new Registration(plugins, String.class, replacements);
         r.register1("hashCode", Receiver.class, new InvocationPlugin() {
             @Override
@@ -227,7 +230,9 @@ public class StandardGraphBuilderPlugins {
         });
 
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            if (arrayEqualsSubstitution) {
+                r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            }
 
             r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
 
@@ -242,7 +247,9 @@ public class StandardGraphBuilderPlugins {
                 }
             });
         } else {
-            r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            if (arrayEqualsSubstitution) {
+                r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            }
             Registration utf16sub = new Registration(plugins, StringUTF16Substitutions.class, replacements);
             utf16sub.register2("getCharDirect", byte[].class, int.class, new InvocationPlugin() {
                 @Override
@@ -1107,11 +1114,20 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset) {
+            // Opaque mode does not directly impose any ordering constraints with respect to other
+            // variables beyond Plain mode.
+            if (accessKind == AccessKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+                // OFF_HEAP_LOCATION accesses are not floatable => no membars needed for opaque.
+                return apply(b, targetMethod, unsafe, offset);
+            }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (accessKind.emitBarriers) {
                 b.add(new MembarNode(accessKind.preReadBarriers));
             }
+            // Raw accesses can be turned into floatable field accesses, the membars preserve the
+            // access mode. In the case of opaque access, and only for opaque, the location of the
+            // wrapping membars can be refined to the field location.
             createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
             if (accessKind.emitBarriers) {
                 b.add(new MembarNode(accessKind.postReadBarriers));
@@ -1144,12 +1160,21 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
+            // Opaque mode does not directly impose any ordering constraints with respect to other
+            // variables beyond Plain mode.
+            if (accessKind == AccessKind.OPAQUE && StampTool.isPointerAlwaysNull(object)) {
+                // OFF_HEAP_LOCATION accesses are not floatable => no membars needed for opaque.
+                return apply(b, targetMethod, unsafe, offset, value);
+            }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (accessKind.emitBarriers) {
                 b.add(new MembarNode(accessKind.preWriteBarriers));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
+            // Raw accesses can be turned into floatable field accesses, the membars preserve the
+            // access mode. In the case of opaque access, and only for opaque, the location of the
+            // wrapping membars can be refined to the field location.
             createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
             if (accessKind.emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
@@ -1227,7 +1252,20 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-
+        r.register0("sideEffect", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new SideEffectNode());
+                return true;
+            }
+        });
+        r.register1("sideEffect", int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
+                b.addPush(JavaKind.Int, new SideEffectNode(a));
+                return true;
+            }
+        });
         r.register2("injectBranchProbability", double.class, boolean.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {

@@ -53,7 +53,7 @@ public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
     }
 
     private LLVMDebugValue getProvider() {
-        return builder != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
+        return builder != null && value != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
     }
 
     @Override

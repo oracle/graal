@@ -45,7 +45,7 @@ import java.util.List;
 /**
  * JDK version independent interface to JDK services used by Truffle.
  */
-public final class TruffleJDKServices {
+final class TruffleJDKServices {
 
     private TruffleJDKServices() {
     }
@@ -61,7 +61,7 @@ public final class TruffleJDKServices {
      * @param moduleName the name of the module containing the client. This will be {@code null} if
      *            the client is not deployed as a module.
      */
-    public static void exportTo(ClassLoader loader, String moduleName) {
+    static void exportTo(ClassLoader loader, String moduleName) {
         throw shouldNotReachHere();
     }
 
@@ -70,7 +70,7 @@ public final class TruffleJDKServices {
      *
      * @param client class in a module that requires access to Truffle
      */
-    public static void exportTo(Class<?> client) {
+    static void exportTo(Class<?> client) {
         throw shouldNotReachHere();
     }
 
@@ -79,7 +79,7 @@ public final class TruffleJDKServices {
      *
      * @param serviceClass defines service class
      */
-    public static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
+    static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
         throw shouldNotReachHere();
     }
 
@@ -88,7 +88,7 @@ public final class TruffleJDKServices {
      *
      * @param service a class describing a service about to be loaded by Truffle
      */
-    public static <S> void addUses(Class<S> service) {
+    static <S> void addUses(Class<S> service) {
         throw shouldNotReachHere();
     }
 
@@ -97,7 +97,7 @@ public final class TruffleJDKServices {
      *
      * @param classLoader the class loader to return the unnamed module for.
      */
-    public static Object getUnnamedModule(ClassLoader classLoader) {
+    static Object getUnnamedModule(ClassLoader classLoader) {
         throw shouldNotReachHere();
     }
 
@@ -107,8 +107,16 @@ public final class TruffleJDKServices {
      * @param lookupModule the module to use for lookups.
      * @param memberClass the class or the declaring class of the member to check.
      */
-    public static boolean verifyModuleVisibility(Object lookupModule, Class<?> memberClass) {
+    static boolean verifyModuleVisibility(Object lookupModule, Class<?> memberClass) {
         throw shouldNotReachHere();
     }
 
+    /**
+     * Returns <code>true</code> if the class is not part of the truffle framework.
+     *
+     * @param clazz the class to check.
+     */
+    static boolean isNonTruffleClass(Class<?> clazz) {
+        throw shouldNotReachHere();
+    }
 }

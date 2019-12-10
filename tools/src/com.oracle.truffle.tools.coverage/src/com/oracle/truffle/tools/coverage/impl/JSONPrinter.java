@@ -58,6 +58,7 @@ final class JSONPrinter {
 
     private static JSONObject sourceJSON(SourceCoverage coverage) {
         final JSONObject sourceJson = new JSONObject();
+        sourceJson.put("name", coverage.getSource().getName());
         sourceJson.put("path", coverage.getSource().getPath());
         sourceJson.put("roots", rootsJson(coverage.getRoots()));
         return sourceJson;

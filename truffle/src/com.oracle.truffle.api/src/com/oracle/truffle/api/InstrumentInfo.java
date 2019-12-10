@@ -47,13 +47,13 @@ package com.oracle.truffle.api;
  */
 public final class InstrumentInfo {
 
-    private final Object vmObject;
+    private final Object polyglotInstrument;
     private final String id;
     private final String name;
     private final String version;
 
     InstrumentInfo(Object vmObject, String id, String name, String version) {
-        this.vmObject = vmObject;
+        this.polyglotInstrument = vmObject;
         this.id = id;
         this.name = name;
         this.version = version;
@@ -89,8 +89,8 @@ public final class InstrumentInfo {
         return version;
     }
 
-    Object getVmObject() {
-        return vmObject;
+    Object getPolyglotInstrument() {
+        return polyglotInstrument;
     }
 
     /**

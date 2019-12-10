@@ -29,12 +29,14 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 
 /**
@@ -49,6 +51,9 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
         rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
         rerunClassInit(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
+        /* Ensure that the interrupt signal handler is initialized at runtime. */
+        rerunClassInit(a, "sun.nio.ch.NativeThread");
+
         if (isPosix()) {
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux()) {
@@ -72,10 +77,13 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
 
         /* Use the same lambda for registration to ensure it is called only once. */
         Consumer<DuringAnalysisAccess> registerServerSocketChannelImplInitIDs = JNIRegistrationJavaNio::registerServerSocketChannelImplInitIDs;
-        a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.ServerSocketChannelImpl", "initIDs"));
-        if (isPosix()) {
-            a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl", "initIDs"));
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.ServerSocketChannelImpl", "initIDs"));
+            if (isPosix()) {
+                a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl", "initIDs"));
+            }
         }
+
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerDatagramChannelImplInitIDs, method(a, "sun.nio.ch.DatagramChannelImpl", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileChannelImplInitIDs, method(a, "sun.nio.ch.FileChannelImpl", "initIDs"));
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
@@ -165,14 +173,19 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation", "fileSystemName", "volumeName", "volumeSerialNumber", "flags"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "freeBytesAvailable", "totalNumberOfBytes", "totalNumberOfFreeBytes"));
+        if (JavaVersionUtil.JAVA_SPEC >= 10) {
+            JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
+        }
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$Account"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$Account", "domain", "name", "use"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation", "aceCount"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus", "error", "bytesTransferred", "completionKey"));
-        JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult"));
-        JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult", "bytesTransferred", "context"));
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult"));
+            JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult", "bytesTransferred", "context"));
+        }
     }
 
     private static void registerIocpInitIDs(DuringAnalysisAccess a) {

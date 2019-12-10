@@ -24,25 +24,26 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -50,7 +51,6 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 class DarwinImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -67,29 +67,35 @@ class DarwinImageHeapProviderFeature implements Feature {
 public class DarwinImageHeapProvider implements ImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        Word imageHeapBegin = Isolates.IMAGE_HEAP_BEGIN.get();
-        Word imageHeapSize = Isolates.IMAGE_HEAP_END.get().subtract(imageHeapBegin);
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
+        int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
+        Word imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(imageHeapBegin);
 
         int task = DarwinVirtualMemory.mach_task_self();
 
         Pointer heap;
-        if (begin.isNonNull()) {
-            if (reservedSize.belowThan(imageHeapSize)) {
-                return CEntryPointErrors.UNSPECIFIED;
-            }
-            // Virtual memory must be committed for vm_copy() below
-            heap = VirtualMemoryProvider.get().commit(begin, imageHeapSize, Access.READ | Access.WRITE);
-        } else {
+        Pointer allocatedMemory = WordFactory.nullPointer();
+        if (reservedAddressSpace.isNull()) {
+            assert imageHeapOffsetInAddressSpace == 0;
             WordPointer targetPointer = StackValue.get(WordPointer.class);
-            if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSize, true) != 0) {
+            if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSizeInFile, true) != 0) {
                 return CEntryPointErrors.MAP_HEAP_FAILED;
             }
-            heap = targetPointer.read();
+            heap = allocatedMemory = targetPointer.read();
+        } else {
+            Word requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
+            if (reservedSize.belowThan(requiredReservedSize)) {
+                return CEntryPointErrors.MAP_HEAP_FAILED;
+            }
+            // Virtual memory must be committed for vm_copy() below
+            PointerBase mappedImageHeapBegin = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
+            heap = VirtualMemoryProvider.get().commit(mappedImageHeapBegin, imageHeapSizeInFile, Access.READ | Access.WRITE);
         }
 
         // Mach vm_copy performs a copy-on-write virtual memory copy
-        if (DarwinVirtualMemory.vm_copy(task, imageHeapBegin, imageHeapSize, heap) != 0) {
+        if (DarwinVirtualMemory.vm_copy(task, imageHeapBegin, imageHeapSizeInFile, heap) != 0) {
+            freeImageHeap(allocatedMemory);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
@@ -97,38 +103,36 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
             if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
+                freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
         UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(imageHeapBegin), pageSize);
-        if (writableEndPageOffset.belowThan(imageHeapSize)) {
+        if (writableEndPageOffset.belowThan(imageHeapSizeInFile)) {
             Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
-            Word afterWritableSize = imageHeapSize.subtract(writableEndPageOffset);
+            Word afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
             if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
+                freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
 
-        basePointer.write(heap);
+        basePointer.write(heap.subtract(imageHeapOffsetInAddressSpace));
         if (endPointer.isNonNull()) {
-            endPointer.write(roundUp(heap.add(imageHeapSize), pageSize));
+            endPointer.write(roundUp(heap.add(imageHeapSizeInFile), pageSize));
         }
         return CEntryPointErrors.NO_ERROR;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
-        return true; // only done when caller also provided the virtual memory for the image heap
-    }
-
-    @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
-    public int tearDown(PointerBase heapBase) {
-        // Only called when we allocated ourselves with vm_allocate()
-        UnsignedWord size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
-        if (DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), heapBase, size) != 0) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
+    public int freeImageHeap(PointerBase imageHeap) {
+        if (imageHeap.isNonNull()) {
+            assert Heap.getHeap().getImageHeapOffsetInAddressSpace() == 0;
+            UnsignedWord imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_BEGIN.get());
+            if (DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), imageHeap, imageHeapSizeInFile) != 0) {
+                return CEntryPointErrors.MAP_HEAP_FAILED;
+            }
         }
         return CEntryPointErrors.NO_ERROR;
     }

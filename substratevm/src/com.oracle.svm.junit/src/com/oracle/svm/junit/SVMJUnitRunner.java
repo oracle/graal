@@ -24,23 +24,29 @@
  */
 package com.oracle.svm.junit;
 
-import com.oracle.mxtool.junit.MxJUnitRequest;
-import com.oracle.mxtool.junit.MxJUnitWrapper;
-import com.oracle.mxtool.junit.MxJUnitWrapper.MxJUnitConfig;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import junit.runner.Version;
+import java.util.List;
+
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.junit.internal.JUnitSystem;
 import org.junit.internal.RealSystem;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
+import org.junit.runner.notification.Failure;
+
+import com.oracle.mxtool.junit.MxJUnitRequest;
+import com.oracle.mxtool.junit.MxJUnitWrapper;
+import com.oracle.mxtool.junit.MxJUnitWrapper.MxJUnitConfig;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.VMError;
+
+import junit.runner.Version;
 
 public class SVMJUnitRunner {
 
@@ -50,6 +56,7 @@ public class SVMJUnitRunner {
     }
 
     private final MxJUnitRequest request;
+    private final String missingClassesStr;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SVMJUnitRunner(FeatureAccess access) {
@@ -75,6 +82,32 @@ public class SVMJUnitRunner {
         }
 
         request = builder.build();
+
+        missingClassesStr = getMissingClasses();
+        if (missingClassesStr != null) {
+            String testFileOption = SubstrateOptionsParser.commandArgument(Options.TestFile, Options.TestFile.getValue());
+            StringBuilder msg = new StringBuilder("Warning: The test configuration file specified via ").append(testFileOption)
+                            .append(" contains missing classes. Test execution will fail at run time. ")
+                            .append("Missing classes in configuration file: ").append(missingClassesStr);
+            // Checkstyle: stop
+            System.out.println(msg);
+            // Checkstyle: resume
+        }
+    }
+
+    /* Get a comma separated list of missing classes as reported by the request object. */
+    private String getMissingClasses() {
+        List<Failure> missingClasses = request.getMissingClasses();
+        if (missingClasses.size() > 0) {
+            StringBuilder missingClassesBuilder = new StringBuilder();
+            String delim = "";
+            for (Failure missingClass : missingClasses) {
+                missingClassesBuilder.append(delim).append(missingClass.getDescription().getDisplayName());
+                delim = ", ";
+            }
+            return missingClassesBuilder.toString();
+        }
+        return null;
     }
 
     private void run(String[] args) {
@@ -129,7 +162,22 @@ public class SVMJUnitRunner {
         }
 
         Result result = MxJUnitWrapper.runRequest(junitCore, system, config, request);
-        System.exit(result.wasSuccessful() ? 0 : 1);
+
+        if (result.wasSuccessful()) {
+            system.out().println("Test run PASSED. Exiting with status 0.");
+            System.exit(0);
+        } else {
+            StringBuilder msg = new StringBuilder("Test run FAILED!");
+            if (missingClassesStr != null) {
+                msg.append(System.lineSeparator());
+                msg.append("Missing classes in configuration file: ").append(missingClassesStr);
+                msg.append(System.lineSeparator());
+            }
+            msg.append("Exiting with status 1.");
+            system.out().println(msg);
+            System.exit(1);
+        }
+
     }
 
     public static void main(String[] args) {

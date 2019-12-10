@@ -124,7 +124,7 @@ and dumps the most frequent ones when the execution of your program is over:
 var map = new Map();
 
 function dumpHistogram() {
-    print("=== Histogram ===");
+    print("==== Histogram ====");
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -135,7 +135,7 @@ function dumpHistogram() {
         }
         if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
-    print("=================");
+    print("===================");
 }
 
 agent.on('enter', function(ev) {
@@ -326,7 +326,7 @@ Ruby and create `source-tracing.rb` file:
 puts "Ruby: Initializing T-Trace script"
 
 agent.on('source', ->(ev) {
-    name = Truffle::Interop.read(ev, 'name')
+    name = ev[:name]
     puts "Ruby: observed loading of #{name}" 
 })
 
@@ -417,7 +417,47 @@ feature, it may check version of the exposed API:
 print(`Agent version is ${agent.version}`);
 ```
 
-and act accordingly to the obtained version.
+and act accordingly to the obtained version. The documentation of the `agent`
+object properties and functions is available as part of its
+[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html).
+
+### Delaying **T-Trace** Initialization in **node.js**
+
+**T-Trace** can be used in any GraalVM enabled environment including GraalVM's
+`node` implementation. However, when in `node`, one doesn't want to write 
+plain simple **T-Trace** scripts - one wants to use full power of `node` 
+ecosystem including its modules. Here is a sample `agent-require.js` script that does it:
+
+```js
+let initializeAgent = function (require) {
+    let http = require("http");
+    print(`${typeof http.createServer} http.createServer is available to the agent`);
+}
+
+let waitForRequire = function (event) {
+  if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
+    agent.off('source', waitForRequire);
+    initializeAgent(process.mainModule.require);
+  }
+};
+
+agent.on('source', waitForRequire, { roots: true });
+```
+
+The script solves an important problem: **T-Trace** agents are
+initialized as soon as possible and at that moment the `require` function isn't
+yet ready. As such the agent first attaches a listener on loaded scripts and when 
+the main user script is being loaded, it obtains its `process.mainModule.require` 
+function. Then it removes the probes using `agent.off` and invokes the actual 
+`initializeAgent` function to perform the real initialization while having 
+access to all the node modules. The script can be used as
+
+```js
+$ node --experimental-options --js.print --agentscript=agent-require.js yourScript.js
+```
+
+This initialization sequence is known to work on GraalVM's node `v12.10.0`
+launched with a main `yourScript.js` parameter.
 
 <!--
 

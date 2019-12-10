@@ -688,6 +688,11 @@ public class NativeImage {
         addImageBuilderJavaArgs(oXms + getXmsValue());
         addImageBuilderJavaArgs(oXmx + getXmxValue(1));
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
+        /* Prevent JVM that runs the image builder to steal focus */
+        if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
+            /* Conditional because of https://bugs.openjdk.java.net/browse/JDK-8159956 */
+            addImageBuilderJavaArgs("-Djava.awt.headless=true");
+        }
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -1009,6 +1014,8 @@ public class NativeImage {
         }
 
         imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
+        imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
+        // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
 
@@ -1228,7 +1235,7 @@ public class NativeImage {
             if (config.getBuildArgs().contains("--verbose")) {
                 e.printStackTrace();
             }
-            System.exit(1);
+            System.exit(e.exitCode);
         }
         System.exit(0);
     }
@@ -1253,9 +1260,10 @@ public class NativeImage {
                 build(FallbackBuildConfiguration.create(nativeImage), nativeImageProvider);
                 showWarning("Image '" + nativeImage.imageName +
                                 "' is a fallback image that requires a JDK for execution " +
-                                "(use --" + SubstrateOptions.OptionNameNoFallback + " to suppress fallback image generation).");
+                                "(use --" + SubstrateOptions.OptionNameNoFallback +
+                                " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
             } else if (buildStatus != 0) {
-                throw showError("Image build request failed with exit status " + buildStatus);
+                throw showError("Image build request failed with exit status " + buildStatus, null, buildStatus);
             }
         }
     }
@@ -1467,12 +1475,20 @@ public class NativeImage {
 
     @SuppressWarnings("serial")
     public static final class NativeImageError extends Error {
+
+        final int exitCode;
+
         private NativeImageError(String message) {
-            super(message);
+            this(message, null);
         }
 
         private NativeImageError(String message, Throwable cause) {
+            this(message, cause, 1);
+        }
+
+        public NativeImageError(String message, Throwable cause, int exitCode) {
             super(message, cause);
+            this.exitCode = exitCode;
         }
     }
 
@@ -1482,6 +1498,10 @@ public class NativeImage {
 
     public static Error showError(String message, Throwable cause) {
         throw new NativeImageError(message, cause);
+    }
+
+    public static Error showError(String message, Throwable cause, int exitCode) {
+        throw new NativeImageError(message, cause, exitCode);
     }
 
     private static void show(Consumer<String> printFunc, String message) {

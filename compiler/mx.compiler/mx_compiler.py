@@ -54,7 +54,7 @@ from mx_unittest import unittest
 from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
-from mx_sdk_vm import jdk_enables_jvmci_by_default, jlink_new_jdk
+from mx_sdk_vm import jlink_new_jdk
 
 import mx_jaotc
 
@@ -143,13 +143,13 @@ class SafeDirectoryUpdater(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:
-            shutil.rmtree(self.workspace)
+            mx.rmtree(self.workspace)
             raise
 
         # Try delete the target directory if it existed prior to creating
         # self.workspace and has not been modified in between.
         if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
-            old_target = join(self.workspace, 'to_deleted_' + basename(self.target))
+            old_target = join(self.workspace, 'to_delete_' + basename(self.target))
             try:
                 os.rename(self.target, old_target)
             except:
@@ -166,7 +166,7 @@ class SafeDirectoryUpdater(object):
                 # Silently assume another process won the race to create self.target
                 pass
 
-        shutil.rmtree(self.workspace)
+        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """
@@ -805,6 +805,10 @@ def _unittest_config_participant(config):
         # access JVMCI loaded classes.
         vmArgs.append('-XX:-UseJVMCIClassLoader')
 
+    # Always run unit tests without UseJVMCICompiler unless explicitly requested
+    if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
+        vmArgs.append('-XX:-UseJVMCICompiler')
+
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -917,7 +921,7 @@ class StdoutUnstripping:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.mapFiles:
+        if self.mapFiles and self.capture:
             try:
                 with tempfile.NamedTemporaryFile(mode='w') as inputFile:
                     data = self.capture.data
@@ -1149,8 +1153,9 @@ def makegraaljdk_cli(args):
     if args.bootstrap:
         map_file = join(dst_jdk_dir, 'proguard.map')
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
-            select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
-            mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+            # Just use a set of flags that will work on all JVMCI enabled VMs without trying
+            # to remove flags that are unnecessary for a specific VM.
+            mx.run([dst_jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler', '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
     if args.archive:
         mx.log('Archiving {}'.format(args.archive))
         create_archive(dst_jdk_dir, args.archive, basename(args.dest) + '/')
@@ -1193,18 +1198,34 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     # may have changed and we want to pick up these changes.
     source_jdk_timestamps_file = dst_jdk_dir + '.source_jdk_timestamps'
     timestamps = []
+    nl = os.linesep
     for root, _, filenames in os.walk(jdk.home):
         for name in filenames:
             ts = mx.TimeStampFile(join(root, name))
             timestamps.append(str(ts))
-    jdk_timestamps = os.linesep.join(timestamps)
+    timestamps = sorted(timestamps)
+    jdk_timestamps = jdk.home + nl + nl.join(timestamps)
+    jdk_timestamps_outdated = False
     if exists(source_jdk_timestamps_file):
         with open(source_jdk_timestamps_file) as fp:
             old_jdk_timestamps = fp.read()
         if old_jdk_timestamps != jdk_timestamps:
-            update_reason = 'source JDK was updated'
-    with open(source_jdk_timestamps_file, 'w') as fp:
-        fp.write(jdk_timestamps)
+            jdk_timestamps_outdated = True
+            old_jdk_home = old_jdk_timestamps.split(nl, 1)[0]
+            if old_jdk_home == jdk.home:
+                import difflib
+                old_timestamps = old_jdk_timestamps.split(nl)
+                diff = difflib.unified_diff(timestamps, old_timestamps, 'new_timestamps.txt', 'old_timestamps.txt')
+                update_reason = 'source JDK was updated as shown by following time stamps diff:{}{}'.format(nl, nl.join(diff))
+            else:
+                update_reason = 'source JDK was changed from {} to {}'.format(old_jdk_home, jdk.home)
+    else:
+        jdk_timestamps_outdated = True
+
+    if jdk_timestamps_outdated:
+        with mx.SafeFileCreation(source_jdk_timestamps_file) as sfc:
+            with open(sfc.tmpPath, 'w') as fp:
+                fp.write(jdk_timestamps)
 
     jvmci_release_file = mx.TimeStampFile(join(dst_jdk_dir, 'release.jvmci'))
     if update_reason is None:
@@ -1218,13 +1239,18 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     if update_reason is None:
         return dst_jdk_dir, False
 
-    mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
-
     with SafeDirectoryUpdater(dst_jdk_dir) as sdu:
         tmp_dst_jdk_dir = sdu.directory
+        mx.log('Updating/creating {} from {} using intermediate directory {} since {}'.format(dst_jdk_dir, src_jdk.home, tmp_dst_jdk_dir, update_reason))
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
+
+        vm_name = 'Server VM Graal'
+        for d in _graal_config().jvmci_dists:
+            s = ':' + d.suite.name + '_' + d.suite.version()
+            if s not in vm_name:
+                vm_name = vm_name + s
 
         if isJDK8:
             jre_dir = join(tmp_dst_jdk_dir, 'jre')
@@ -1253,7 +1279,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         else:
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names)
+            vendor_info = {'vendor-version' : vm_name}
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1284,12 +1311,10 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         mx.ensure_dir_exists(libjvm_dir)
         jvmlib = join(libjvm_dir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
 
-        vm_name = 'Graal'
         with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
             for d in _graal_config().jvmci_dists:
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
-                vm_name = vm_name + ':' + s.name + '_' + s.version()
             for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
                 print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
@@ -1298,7 +1323,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
         line = None
-        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\((?:[a-zA-Z]+ )?build.*')
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ |[a-zA-Z]+ )?\((?:[a-zA-Z]+ )?build.*')
         for line in out.lines:
             m = pattern.match(line)
             if m:

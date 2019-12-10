@@ -911,7 +911,7 @@ public final class Source {
 
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
-         * an {@link IOException} if an error loading the source occured.
+         * an {@link IOException} if an error loading the source occurred.
          *
          * @return the source object
          * @since 19.0

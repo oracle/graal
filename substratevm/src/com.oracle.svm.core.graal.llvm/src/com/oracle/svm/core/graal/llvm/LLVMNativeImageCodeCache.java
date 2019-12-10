@@ -24,22 +24,18 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMOptions.KeepLLVMBitcodeFiles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,13 +45,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import org.bytedeco.javacpp.LLVM.LLVMObjectFileRef;
-import org.bytedeco.javacpp.LLVM.LLVMSectionIteratorRef;
-import org.bytedeco.javacpp.LLVM.LLVMSymbolIteratorRef;
-import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
@@ -87,6 +76,13 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMObjectFileRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMSectionIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMSymbolIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
@@ -104,12 +100,14 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private int batchSize;
     private Map<String, Integer> textSymbolOffsets = new HashMap<>();
     private Map<Integer, String> offsetToSymbolMap = new TreeMap<>();
+    private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
 
-    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
+    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
 
         try {
-            basePath = Files.createTempDirectory("native-image-llvm");
+            basePath = tempDir.resolve("llvm");
+            Files.createDirectory(basePath);
             if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 stackMapDump = new FileWriter(LLVMOptions.DumpLLVMStackMap.getValue());
             } else {
@@ -370,7 +368,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     int offset = reference.getDataInfo().getOffset();
 
                     String symbolName = (String) dataPatch.note;
-                    if (objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
+                    if (reference.getDataInfo().getData().symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
                         objectFile.createDefinedSymbol(symbolName, dataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {
@@ -466,20 +464,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
 
-            /*
-             * The x86 backend of LLVM has a bug which prevents the use of bitcode-level
-             * optimizations. This bug will be fixed in the LLVM 9.0.0 release.
-             */
-            if (!Platform.includedIn(Platform.AMD64.class)) {
+            if (LLVMOptions.BitcodeOptimizations.getValue()) {
                 cmd.add("-disable-inlining");
                 cmd.add("-O2");
+            } else {
+                /*
+                 * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
+                 * are not supported for statepoints.
+                 */
+                cmd.add("-mem2reg");
             }
-
-            /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
-             * not supported for statepoints.
-             */
-            cmd.add("-mem2reg");
             cmd.add("-rewrite-statepoints-for-gc");
             cmd.add("-always-inline");
 
@@ -509,6 +503,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
             cmd.add("-relocation-model=pic");
+            cmd.add("--trap-unreachable");
             cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
             cmd.addAll(TargetSpecific.get().getLLCAdditionalOptions());
             cmd.add("-O2");
@@ -564,7 +559,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void nativeLink(DebugContext debug, String outputPath, List<String> inputPaths) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("ld");
+            cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
             cmd.add("-r");
             cmd.add("-o");
             cmd.add(outputPath);
@@ -619,7 +614,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
             protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
-                objectFile.createUndefinedSymbol(name, 0, true);
+                ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, 0, true);
+                if (global) {
+                    globalSymbols.add(symbol);
+                }
             }
         };
     }
@@ -628,25 +626,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String bitcodeFileName = getLinkedPath().toString();
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-        Path movedBitcodeFile;
-        try {
-            Path bitcodeFile = Paths.get(bitcodeFileName);
-            Path parent = Paths.get(relocatableFileName).getParent();
-            assert parent != null;
-            movedBitcodeFile = parent.resolve(bitcodeFile.getFileName());
-            Files.copy(bitcodeFile, movedBitcodeFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new GraalError("Error copying " + bitcodeFileName + ": " + e);
-        }
-        if (!KeepLLVMBitcodeFiles.getValue()) {
-            File[] files = basePath.toFile().listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    file.delete();
-                }
-            }
-            basePath.toFile().delete();
-        }
-        return new String[]{relocatableFileName, movedBitcodeFile.toString()};
+        return new String[]{relocatableFileName, bitcodeFileName};
+    }
+
+    @Override
+    public List<ObjectFile.Symbol> getGlobalSymbols(ObjectFile objectFile) {
+        return globalSymbols;
     }
 }

@@ -155,7 +155,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    static int getFieldOffset(ResolvedJavaType type, String fieldName) {
+    public static int getFieldOffset(ResolvedJavaType type, String fieldName) {
         for (ResolvedJavaField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
                 return field.getOffset();
@@ -308,11 +308,13 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int osThreadOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.osThreadOffset != Integer.MAX_VALUE;
         return config.osThreadOffset;
     }
 
     @Fold
     public static int osThreadInterruptedOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.osThreadInterruptedOffset != Integer.MAX_VALUE;
         return config.osThreadInterruptedOffset;
     }
 
@@ -885,6 +887,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static long referentOffset(@InjectedParameter MetaAccessProvider metaAccessProvider) {
         return getFieldOffset(metaAccessProvider.lookupJavaType(Reference.class), "referent");
+    }
+
+    @Fold
+    public static ResolvedJavaType referenceType(@InjectedParameter MetaAccessProvider metaAccessProvider) {
+        return metaAccessProvider.lookupJavaType(Reference.class);
     }
 
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {

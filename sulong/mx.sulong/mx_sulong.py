@@ -52,6 +52,7 @@ import mx_testsuites
 
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
+from mx_testsuites import GeneratedTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
@@ -110,6 +111,7 @@ clangFormatCheckPaths = [
     join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
     join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
     join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.debugexpr.native"),
     join(_testDir, "interoptests"),
     join(_testDir, "inlineassemblytests"),
     join(_testDir, "other")
@@ -183,11 +185,13 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
     _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_unittest('SulongLL', 'SULONG_LL_TEST_SUITES', tasks, args, testClasses='SulongLLSuite', tags=['sulongLL', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('DebugExpr', tasks, args, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses='com.oracle.truffle.llvm.tests.other', tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongMisc', 'sulongCoverage'])
     _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
@@ -261,7 +265,7 @@ def build_llvm_org(args=None):
     defaultBuildArgs = ['-p']
     if not args.no_warning_as_error:
         defaultBuildArgs += ['--warning-as-error']
-    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
 
 
 def clangformatcheck(args=None):
@@ -657,7 +661,7 @@ def findGCCProgram(gccProgram, optional=False):
         return installedProgram
 
 def findBundledLLVMProgram(llvm_program):
-    llvm_dist = 'SULONG_LLVM_ORG'
+    llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
@@ -967,19 +971,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=_suite,
-    name='LLVM.org toolchain',
-    short_name='llp',
-    installable=True,
-    installable_id='llvm-toolchain',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
-    dependencies=[],
-    support_distributions=['sulong:SULONG_LLVM_ORG']
-))
-
 
 COPYRIGHT_HEADER_BSD = """\
 /*
@@ -1020,10 +1011,26 @@ def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
+def create_debugexpr_parser(args=None, out=None):
+    """create the debug expression parser using antlr"""
+    mx.suite("truffle").extensions.create_parser(grammar_project="com.oracle.truffle.llvm.runtime",
+                                                 grammar_package="com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr",
+                                                 grammar_name="DebugExpression",
+                                                 copyright_template=COPYRIGHT_HEADER_BSD, args=args, out=out)
+
+def create_parsers(args=None, out=None):
+    create_asm_parser(args, out)
+    create_debugexpr_parser(args, out)
+
+def llirtestgen(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
+
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
+    'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression parser using antlr'],
+    'create-parsers' : [create_parsers, 'create the debug expression and the inline assembly parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
     'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],

@@ -18,8 +18,8 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-19.3-b03"
-    - JDK8_UPDATE_VERSION="222"
+    - JVMCI_VERSION="jvmci-19.3-b05"
+    - JDK8_UPDATE_VERSION="232"
     - JDK8_UPDATE_VERSION_SUFFIX=""
 
 matrix:
@@ -46,6 +46,12 @@ matrix:
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
 # GR-16977
 #  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
@@ -88,10 +94,19 @@ install:
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi
+  - |
+      if [ "${JDK}" == "jdk11" ]
+      then
+        # Set the JAVA_HOME to openjdk11 if it is not set
+        if [ "${JAVA_HOME}" == "" ]
+        then
+          export JAVA_HOME=$(realpath $(dirname $(which java | xargs realpath))/../)
+        fi
+      fi
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*

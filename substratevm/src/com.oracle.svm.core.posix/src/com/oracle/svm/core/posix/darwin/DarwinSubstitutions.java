@@ -28,11 +28,9 @@ import static com.oracle.svm.core.posix.headers.Time.gettimeofday;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.mach_absolute_time;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.mach_timebase_info;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -43,9 +41,8 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime.MachTimebaseInfo;
 
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @TargetClass(java.lang.System.class)
-final class Target_java_lang_System {
+final class Target_java_lang_System_Darwin {
 
     @Substitute
     @Uninterruptible(reason = "Does basic math after a few simple system calls")
@@ -85,8 +82,7 @@ final class Target_java_lang_System {
     }
 }
 
-/** Additional static-like fields for {@link Target_java_lang_System}. */
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
+/** Additional static-like fields for {@link Target_java_lang_System_Darwin}. */
 final class Util_java_lang_System {
     boolean timeBaseValid = false;
     boolean fastTime = false;
@@ -97,7 +93,6 @@ final class Util_java_lang_System {
     }
 }
 
-@Platforms(InternalPlatform.DARWIN_JNI_AND_SUBSTITUTIONS.class)
 @AutomaticFeature
 class DarwinSubsitutionsFeature implements Feature {
 

@@ -69,7 +69,6 @@ import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -765,8 +764,9 @@ public class GCImpl implements GC {
         try (Timer bbirt = blackenBootImageRootsTimer.open()) {
             try (GreyToBlackObjRefVisitor.Counters gtborv = greyToBlackObjRefVisitor.openCounters()) {
                 /* Walk through the native image heap roots. */
-                Pointer cur = Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject);
-                final Pointer last = Word.objectToUntrackedPointer(NativeImageInfo.lastWritableReferenceObject);
+                ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+                Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
+                final Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
                 while (cur.belowOrEqual(last)) {
                     Object obj = cur.toObject();
                     if (obj != null) {

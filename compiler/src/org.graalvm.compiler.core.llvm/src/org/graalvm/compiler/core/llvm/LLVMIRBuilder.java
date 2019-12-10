@@ -38,21 +38,22 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
-import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
-import org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
-import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
-import org.bytedeco.javacpp.LLVM.LLVMModuleRef;
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
-import org.bytedeco.javacpp.PointerPointer;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.GraalError;
+
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMModuleRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import com.oracle.svm.shadowed.org.bytedeco.javacpp.PointerPointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -66,6 +67,8 @@ public class LLVMIRBuilder {
 
     private String functionName;
     private LLVMValueRef gcRegisterFunction;
+    private LLVMValueRef atomicObjectXchgFunction;
+    private LLVMValueRef loadObjectFromUntrackedPointerFunction;
 
     public LLVMIRBuilder(String functionName, LLVMContextRef context) {
         this.context = context;
@@ -74,6 +77,12 @@ public class LLVMIRBuilder {
         this.module = LLVM.LLVMModuleCreateWithNameInContext(functionName, context);
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
 
+        createGCRegisterFunction();
+        createAtomicObjectXchgFunction();
+        createLoadObjectFromUntrackedPointerFunction();
+    }
+
+    private void createGCRegisterFunction() {
         /*
          * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
          * the statepoint emission pass, which tracks live references in the function, doesn't
@@ -90,6 +99,36 @@ public class LLVMIRBuilder {
         LLVMValueRef arg = getParam(gcRegisterFunction, 0);
         LLVMValueRef ref = buildAddrSpaceCast(arg, objectType());
         buildRet(ref);
+    }
+
+    private void createAtomicObjectXchgFunction() {
+        atomicObjectXchgFunction = addFunction(LLVMUtils.ATOMIC_OBJECT_XCHG_FUNCTION_NAME, functionType(objectType(), objectType(), objectType()));
+        LLVM.LLVMSetLinkage(atomicObjectXchgFunction, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(atomicObjectXchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(atomicObjectXchgFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", atomicObjectXchgFunction);
+        positionAtEnd(block);
+        LLVMValueRef address = getParam(atomicObjectXchgFunction, 0);
+        LLVMValueRef value = getParam(atomicObjectXchgFunction, 1);
+        LLVMValueRef castedValue = buildPtrToInt(value, longType());
+        LLVMValueRef ret = buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpXchg, address, castedValue);
+        ret = buildIntToPtr(ret, objectType());
+        buildRet(ret);
+    }
+
+    private void createLoadObjectFromUntrackedPointerFunction() {
+        loadObjectFromUntrackedPointerFunction = addFunction(LLVMUtils.LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
+        LLVM.LLVMSetLinkage(loadObjectFromUntrackedPointerFunction, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(loadObjectFromUntrackedPointerFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(loadObjectFromUntrackedPointerFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+        LLVMBasicBlockRef block = appendBasicBlock("main", loadObjectFromUntrackedPointerFunction);
+        positionAtEnd(block);
+        LLVMValueRef address = getParam(loadObjectFromUntrackedPointerFunction, 0);
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(objectType(), false));
+        LLVMValueRef loadedValue = buildLoad(castedAddress);
+        buildRet(loadedValue);
     }
 
     public LLVMModuleRef getModule() {
@@ -132,6 +171,7 @@ public class LLVMIRBuilder {
         setLinkage(function, LLVM.LLVMExternalLinkage);
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noinline");
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noredzone");
+        setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "no-realign-stack");
     }
 
     public LLVMValueRef getMainFunction() {
@@ -186,35 +226,40 @@ public class LLVMIRBuilder {
      */
     @SuppressWarnings("unused")
     public LLVMValueRef createJNIWrapper(LLVMValueRef callee, long statepointId, int numArgs, int anchorIPOffset, LLVMBasicBlockRef currentBlock) {
-        LLVM.LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(typeOf(callee));
-        LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
-        LLVMValueRef transitionWrapper = addFunction(LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType), wrapperType);
-        LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
+        LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(typeOf(callee));
+        String wrapperName = LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType);
 
-        LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
-        positionAtEnd(block);
+        LLVMValueRef transitionWrapper = LLVM.LLVMGetNamedFunction(module, wrapperName);
+        if (transitionWrapper == null) {
+            LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
+            transitionWrapper = addFunction(wrapperName, wrapperType);
+            LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
+            setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
-        LLVMValueRef anchor = getParam(transitionWrapper, 0);
-        LLVMValueRef lastIPAddr = buildGEP(anchor, constantInt(anchorIPOffset));
-        LLVMValueRef callIP = buildReturnAddress(constantInt(0));
-        buildStore(callIP, lastIPAddr);
+            LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
+            positionAtEnd(block);
 
-        LLVMValueRef[] args = new LLVMValueRef[numArgs];
-        for (int i = 0; i < numArgs; ++i) {
-            args[i] = getParam(transitionWrapper, i + 2);
+            LLVMValueRef anchor = getParam(transitionWrapper, 0);
+            LLVMValueRef lastIPAddr = buildGEP(anchor, constantInt(anchorIPOffset));
+            LLVMValueRef callIP = buildReturnAddress(constantInt(0));
+            buildStore(callIP, lastIPAddr);
+
+            LLVMValueRef[] args = new LLVMValueRef[numArgs];
+            for (int i = 0; i < numArgs; ++i) {
+                args[i] = getParam(transitionWrapper, i + 2);
+            }
+            LLVMValueRef target = getParam(transitionWrapper, 1);
+            LLVMValueRef ret = buildCall(target, args);
+            setCallSiteAttribute(ret, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+
+            if (isVoidType(getReturnType(calleeType))) {
+                buildRetVoid();
+            } else {
+                buildRet(ret);
+            }
+
+            positionAtEnd(currentBlock);
         }
-        LLVMValueRef target = getParam(transitionWrapper, 1);
-        LLVMValueRef ret = buildCall(target, args);
-        setCallSiteAttribute(ret, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
-
-        if (isVoidType(getReturnType(calleeType))) {
-            buildRetVoid();
-        } else {
-            buildRet(ret);
-        }
-
-        positionAtEnd(currentBlock);
         return transitionWrapper;
     }
 
@@ -1064,18 +1109,11 @@ public class LLVMIRBuilder {
 
     public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
         LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
-        LLVMTypeRef pointedType = type;
-        boolean postRegister = false;
         if (isObject(type) && !isObject(addressType)) {
-            pointedType = rawPointerType();
-            postRegister = true;
+            return buildCall(loadObjectFromUntrackedPointerFunction, address);
         }
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(pointedType, isObject(addressType)));
-        LLVMValueRef loadedValue = buildLoad(castedAddress);
-        if (postRegister) {
-            loadedValue = buildRegisterObject(loadedValue);
-        }
-        return loadedValue;
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(type, isObject(addressType)));
+        return buildLoad(castedAddress);
     }
 
     LLVMValueRef buildLoad(LLVMValueRef address) {
@@ -1136,22 +1174,15 @@ public class LLVMIRBuilder {
         LLVMTypeRef newType = LLVM.LLVMTypeOf(newValue);
         assert compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
 
-        boolean isObject = isObject(expectedType);
-        LLVMTypeRef operationType = isObject ? rawPointerType() : expectedType;
-        LLVMValueRef castedAddress = isObject && isTracked(typeOf(address)) ? buildAddrSpaceCast(address, pointerType(operationType, false))
-                        : buildBitcast(address, pointerType(operationType, isTracked(typeOf(address))));
-        LLVMValueRef castedExpectedValue = isObject ? buildAddrSpaceCast(expectedValue, operationType) : expectedValue;
-        LLVMValueRef castedNewValue = isObject ? buildAddrSpaceCast(newValue, operationType) : newValue;
-
-        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, castedAddress, castedExpectedValue, castedNewValue, LLVM.LLVMAtomicOrderingMonotonic, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
-        LLVMValueRef result = buildExtractValue(cas, resultIndex);
-        if (isObject && resultIndex == LLVM_CMPXCHG_VALUE) {
-            result = buildRegisterObject(result);
-        }
-        return result;
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(expectedType, isTracked(typeOf(address))));
+        LLVMValueRef cas = LLVM.LLVMBuildAtomicCmpXchg(builder, castedAddress, expectedValue, newValue, LLVM.LLVMAtomicOrderingMonotonic, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
+        return buildExtractValue(cas, resultIndex);
     }
 
     LLVMValueRef buildAtomicXchg(LLVMValueRef address, LLVMValueRef value) {
+        if (isObject(typeOf(value))) {
+            return buildCall(atomicObjectXchgFunction, address, value);
+        }
         return buildAtomicRMW(LLVM.LLVMAtomicRMWBinOpXchg, address, value);
     }
 
@@ -1161,19 +1192,8 @@ public class LLVMIRBuilder {
 
     private LLVMValueRef buildAtomicRMW(int operation, LLVMValueRef address, LLVMValueRef value) {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
-        boolean pointerOp = isObject(valueType);
-
-        LLVMTypeRef operationType = (pointerOp) ? longType() : valueType;
-        LLVMValueRef castedValue = (pointerOp) ? buildPtrToInt(value, operationType) : value;
-        LLVMValueRef castedAddress = buildBitcast(address, pointerType(operationType, isObject(typeOf(address))));
-        LLVMValueRef atomicRMW = LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, castedValue, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
-
-        if (pointerOp) {
-            atomicRMW = buildIntToPtr(atomicRMW, rawPointerType());
-            atomicRMW = buildRegisterObject(atomicRMW);
-        }
-
-        return atomicRMW;
+        LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObject(typeOf(address))));
+        return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
     }
 
     /* Inline assembly */

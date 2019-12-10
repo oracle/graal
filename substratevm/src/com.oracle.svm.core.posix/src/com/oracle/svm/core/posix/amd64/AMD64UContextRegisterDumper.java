@@ -24,20 +24,27 @@
  */
 package com.oracle.svm.core.posix.amd64;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.DeprecatedPlatform;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.UContextRegisterDumper;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.amd64.AMD64;
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION_AMD64.class, Platform.LINUX_AMD64.class})
 @AutomaticFeature
@@ -79,5 +86,31 @@ class AMD64UContextRegisterDumper implements UContextRegisterDumper {
         log.indent(false);
 
         SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(ipValue));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
+    public PointerBase getHeapBase(ucontext_t uContext) {
+        GregsPointer gregs = uContext.uc_mcontext_gregs();
+        return WordFactory.pointer(gregs.read(getHeapBaseRegister().getCValue()));
+    }
+
+    @Fold
+    static Signal.GregEnum getHeapBaseRegister() {
+        VMError.guarantee(AMD64.r14.equals(SubstrateAMD64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
+        return Signal.GregEnum.REG_R14;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
+    public PointerBase getThreadPointer(ucontext_t uContext) {
+        GregsPointer gregs = uContext.uc_mcontext_gregs();
+        return WordFactory.pointer(gregs.read(getThreadPointerRegister().getCValue()));
+    }
+
+    @Fold
+    static Signal.GregEnum getThreadPointerRegister() {
+        VMError.guarantee(AMD64.r15.equals(SubstrateAMD64RegisterConfig.THREAD_REGISTER_CANDIDATE));
+        return Signal.GregEnum.REG_R15;
     }
 }

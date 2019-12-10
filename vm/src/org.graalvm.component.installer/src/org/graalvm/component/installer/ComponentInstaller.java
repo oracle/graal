@@ -27,6 +27,7 @@ package org.graalvm.component.installer;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.AccessDeniedException;
@@ -71,21 +72,19 @@ import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 /**
  * The launcher.
  */
-public final class ComponentInstaller {
+public class ComponentInstaller {
     private static final Logger LOG = Logger.getLogger(ComponentInstaller.class.getName());
 
     public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../.."; // NOI18N
 
     private static final Environment SIMPLE_ENV = new Environment("help", Collections.emptyList(), Collections.emptyMap()).enableStacktraces(); // NOI18N
 
-    private String[] mainArguments;
     private String command;
     private InstallerCommand cmdHandler;
     private LinkedList<String> cmdlineParams;
     private List<String> parameters = Collections.emptyList();
     private Path graalHomePath;
     private Path storagePath;
-    private String catalogURL;
 
     static final Map<String, InstallerCommand> commands = new HashMap<>();
     public static final Map<String, String> globalOptions = new HashMap<>();
@@ -168,12 +167,12 @@ public final class ComponentInstaller {
         });
     }
 
-    private ComponentInstaller(String[] args) {
-        this.mainArguments = args;
+    ComponentInstaller(String[] args) {
+        cmdlineParams = new LinkedList<>(Arrays.asList(args));
     }
 
-    private static void printUsage(Feedback output) {
-        SIMPLE_ENV.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
+    protected void printUsage(Feedback output) {
+        output.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
         printHelp(output);
     }
 
@@ -209,151 +208,222 @@ public final class ComponentInstaller {
         throw new RuntimeException("should not reach here");
     }
 
-    private Environment env;
+    protected RuntimeException error(String messageKey, Object... args) {
+        return err(messageKey, args);
+    }
 
-    private int processCommand() {
-        SimpleGetopt go = new SimpleGetopt(globalOptions);
-        go.setParameters(cmdlineParams);
+    private Environment env;
+    private CommandInput input;
+    private Feedback feedback;
+
+    CommandInput getInput() {
+        return input;
+    }
+
+    void setInput(CommandInput input) {
+        this.input = input;
+    }
+
+    Feedback getFeedback() {
+        return feedback;
+    }
+
+    void setFeedback(Feedback feedback) {
+        this.feedback = feedback;
+    }
+
+    Environment setupEnvironment(SimpleGetopt go) {
+        Environment e = new Environment(command, parameters, go.getOptValues());
+        setInput(e);
+        setFeedback(e);
+
+        finddGraalHome();
+        e.setGraalHome(graalHomePath);
+        DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
+        storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
+        e.setLocalRegistry(new ComponentRegistry(e, storage));
+        FileOperations fops = FileOperations.createPlatformInstance(e, e.getGraalHomePath());
+        e.setFileOperations(fops);
+
+        return e;
+    }
+
+    protected SimpleGetopt createOptionsObject(Map<String, String> opts) {
+        return new SimpleGetopt(opts);
+    }
+
+    SimpleGetopt createOptions(LinkedList<String> cmdline) {
+        SimpleGetopt go = createOptionsObject(globalOptions);
+        go.setParameters(cmdline);
         for (String s : commands.keySet()) {
             go.addCommandOptions(s, commands.get(s).supportedOptions());
         }
         go.process();
-        cmdHandler = commands.get(go.getCommand());
+        command = go.getCommand();
+        cmdHandler = commands.get(command);
         Map<String, String> optValues = go.getOptValues();
         if (cmdHandler == null) {
             if (optValues.containsKey(Commands.OPTION_HELP)) {
                 // regular Environment cannot be initialized.
                 printUsage(SIMPLE_ENV);
-                return 0;
+                return null;
             }
-            err("ERROR_MissingCommand"); // NOI18N
+            error("ERROR_MissingCommand"); // NOI18N
         }
         parameters = go.getPositionalParameters();
-        int retcode = 0;
-        FileOperations fops = null;
-        try {
-            env = new Environment(command, parameters, optValues);
-            finddGraalHome();
-            env.setGraalHome(graalHomePath);
-            env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
-                            env, storagePath, graalHomePath)));
-            fops = FileOperations.createPlatformInstance(env, env.getGraalHomePath());
-            env.setFileOperations(fops);
+        return go;
+    }
 
-            forSoftwareChannels(true, (ch) -> {
-                ch.init(env, env);
-            });
+    public String getCommand() {
+        return command;
+    }
 
-            int srcCount = 0;
-            if (optValues.containsKey(Commands.OPTION_FILES)) {
-                srcCount++;
-            }
-            if (optValues.containsKey(Commands.OPTION_CATALOG)) {
-                srcCount++;
-            }
-            if (optValues.containsKey(Commands.OPTION_FOREIGN_CATALOG)) {
-                srcCount++;
-            }
-            if (optValues.containsKey(Commands.OPTION_URLS)) {
-                srcCount++;
-            }
-            if (srcCount > 1) {
-                err("ERROR_MultipleSourcesUnsupported");
-            }
+    public List<String> getParameters() {
+        return parameters;
+    }
 
-            if (env.hasOption(Commands.OPTION_AUTO_YES)) {
-                env.setAutoYesEnabled(true);
-            }
-            if (env.hasOption(Commands.OPTION_NON_INTERACTIVE)) {
-                env.setNonInteractive(true);
-            }
+    int processOptions(LinkedList<String> cmdline) {
+        if (cmdline.size() < 1) {
+            printUsage(SIMPLE_ENV);
+            return 1;
+        }
+        SimpleGetopt go = createOptions(cmdline);
+        if (go == null) {
+            return 0;
+        }
+        // also sets up input and feedback.
+        env = setupEnvironment(go);
+        forSoftwareChannels(true, (ch) -> {
+            ch.init(input, feedback);
+        });
 
-            catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
-            RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
-                            env,
-                            env,
-                            getCatalogURL());
-            downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
-            CatalogFactory cFactory = (CommandInput input, ComponentRegistry lreg) -> {
-                RemoteCatalogDownloader nDownloader;
-                if (lreg == input.getLocalRegistry()) {
-                    nDownloader = downloader;
-                } else {
-                    nDownloader = new RemoteCatalogDownloader(input, env,
-                                    downloader.getOverrideCatalogSpec());
-                }
-                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
-                return col;
-            };
-            env.setCatalogFactory(cFactory);
+        int srcCount = 0;
+        if (input.hasOption(Commands.OPTION_FILES)) {
+            srcCount++;
+        }
+        if (input.hasOption(Commands.OPTION_URLS)) {
+            srcCount++;
+        }
+        if (srcCount > 1) {
+            error("ERROR_MultipleSourcesUnsupported");
+        }
 
-            boolean setIterable = true;
-            if (optValues.containsKey(Commands.OPTION_FILES)) {
-                FileIterable fi = new FileIterable(env, env);
-                fi.setCatalogFactory(cFactory);
-                env.setFileIterable(fi);
+        if (input.hasOption(Commands.OPTION_AUTO_YES)) {
+            env.setAutoYesEnabled(true);
+        }
+        if (input.hasOption(Commands.OPTION_NON_INTERACTIVE)) {
+            env.setNonInteractive(true);
+        }
+
+        // explicit location
+        String catalogURL = getExplicitCatalogURL();
+        String builtinCatLocation = getReleaseCatalogURL();
+        RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
+                        input,
+                        feedback,
+                        catalogURL);
+        if (builtinCatLocation == null) {
+            builtinCatLocation = feedback.l10n("Installer_BuiltingCatalogURL");
+        }
+        downloader.setDefaultCatalog(builtinCatLocation); // NOI18N
+        CatalogFactory cFactory = (CommandInput in, ComponentRegistry lreg) -> {
+            RemoteCatalogDownloader nDownloader;
+            if (lreg == in.getLocalRegistry()) {
+                nDownloader = downloader;
+            } else {
+                nDownloader = new RemoteCatalogDownloader(in, env,
+                                downloader.getOverrideCatalogSpec());
+            }
+            CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
+            col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
+            return col;
+        };
+        env.setCatalogFactory(cFactory);
+        boolean builtinsImplied = true;
+        boolean setIterable = true;
+        if (input.hasOption(Commands.OPTION_FILES)) {
+            FileIterable fi = new FileIterable(env, env);
+            fi.setCatalogFactory(cFactory);
+            env.setFileIterable(fi);
+
+            // optionally resolve local dependencies against parent directories
+            // of specified files.
+            builtinsImplied = false;
+            if (input.hasOption(Commands.OPTION_LOCAL_DEPENDENCIES)) {
                 while (env.hasParameter()) {
                     String s = env.nextParameter();
                     Path p = SystemUtils.fromUserString(s);
                     if (p != null) {
                         Path parent = p.getParent();
                         if (parent != null && Files.isDirectory(parent)) {
-                            downloader.addLocalChannelSource(
-                                            new SoftwareChannelSource(parent.toUri().toString(), null));
+                            SoftwareChannelSource localSource = new SoftwareChannelSource(parent.toUri().toString(), null);
+                            downloader.addLocalChannelSource(localSource);
                         }
                     }
                 }
                 env.resetParameters();
-                setIterable = false;
-            } else if (optValues.containsKey(Commands.OPTION_URLS)) {
-                DownloadURLIterable dit = new DownloadURLIterable(env, env);
-                dit.setCatalogFactory(cFactory);
-                env.setFileIterable(dit);
-                setIterable = false;
             }
+            setIterable = false;
+        } else if (input.hasOption(Commands.OPTION_URLS)) {
+            DownloadURLIterable dit = new DownloadURLIterable(env, env);
+            dit.setCatalogFactory(cFactory);
+            env.setFileIterable(dit);
+            setIterable = false;
+            builtinsImplied = false;
+        }
 
-            if (setIterable) {
-                env.setFileIterable(new CatalogIterable(env, env));
+        if (setIterable) {
+            env.setFileIterable(new CatalogIterable(env, env));
+        }
+        downloader.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
+                        env.hasOption(Commands.OPTION_FOREIGN_CATALOG));
+        return -1;
+    }
+
+    int doProcessCommand() throws IOException {
+        cmdHandler.init(input, feedback.withBundle(cmdHandler.getClass()));
+        return cmdHandler.execute();
+    }
+
+    private int processCommand(LinkedList<String> cmds) {
+        int retcode = 0;
+        try {
+            retcode = processOptions(cmds);
+            if (retcode >= 0) {
+                return retcode;
             }
-
-            cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
-            retcode = cmdHandler.execute();
+            retcode = doProcessCommand();
         } catch (FileAlreadyExistsException ex) {
-            env.error("INSTALLER_FileExists", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_FileExists", ex, ex.getLocalizedMessage()); // NOI18N
             return 2;
         } catch (NoSuchFileException ex) {
-            env.error("INSTALLER_FileDoesNotExist", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_FileDoesNotExist", ex, ex.getLocalizedMessage()); // NOI18N
             return 2;
         } catch (AccessDeniedException ex) {
-            env.error("INSTALLER_AccessDenied", ex, ex.getLocalizedMessage());
+            feedback.error("INSTALLER_AccessDenied", ex, ex.getLocalizedMessage());
             return 2;
         } catch (DirectoryNotEmptyException ex) {
-            env.error("INSTALLER_DirectoryNotEmpty", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_DirectoryNotEmpty", ex, ex.getLocalizedMessage()); // NOI18N
             return 2;
         } catch (IOError | IOException ex) {
-            env.error("INSTALLER_IOException", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_IOException", ex, ex.getLocalizedMessage()); // NOI18N
             return 2;
         } catch (MetadataException ex) {
-            env.error("INSTALLER_InvalidMetadata", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_InvalidMetadata", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
         } catch (UserAbortException ex) {
-            env.error("ERROR_Aborted", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("ERROR_Aborted", ex, ex.getLocalizedMessage()); // NOI18N
             return 4;
         } catch (InstallerStopException ex) {
-            env.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
         } catch (RuntimeException ex) {
-            env.error("INSTALLER_InternalError", ex, ex.getLocalizedMessage()); // NOI18N
+            feedback.error("INSTALLER_InternalError", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
         } finally {
             if (env != null) {
-                env.close();
-            }
-            if (fops != null) {
                 try {
-                    if (fops.flush()) {
-                        retcode = 11;
-                    }
+                    env.close();
                 } catch (IOException ex) {
                 }
             }
@@ -371,7 +441,9 @@ public final class ComponentInstaller {
      * @return existing Graal home
      */
     Path finddGraalHome() {
-        String graalHome = System.getProperty("GRAAL_HOME", System.getenv("GRAAL_HOME")); // NOI18N
+        String graalHome = input.getParameter("GRAAL_HOME", // NOI18N
+                        input.getParameter("GRAAL_HOME", false), // NOI18N
+                        true);
         Path graalPath = null;
         if (graalHome != null) {
             graalPath = SystemUtils.fromUserString(graalHome);
@@ -424,14 +496,8 @@ public final class ComponentInstaller {
     }
 
     public void run() {
-        if (mainArguments.length < 1) {
-            printUsage(SIMPLE_ENV);
-            System.exit(1);
-        }
         try {
-            cmdlineParams = new LinkedList<>(Arrays.asList(mainArguments));
-
-            System.exit(processCommand());
+            System.exit(processCommand(cmdlineParams));
         } catch (UserAbortException ex) {
             SIMPLE_ENV.message("ERROR_Aborted", ex.getMessage()); // NOI18N
         } catch (Exception ex) {
@@ -440,22 +506,37 @@ public final class ComponentInstaller {
         }
     }
 
-    private String getCatalogURL() {
+    String getExplicitCatalogURL() {
         String def = null;
-        if (catalogURL != null) {
-            def = catalogURL;
-        } else {
-            String envVar = System.getenv(CommonConstants.ENV_CATALOG_URL);
-            if (envVar != null) {
-                def = envVar;
-            } else {
-                String releaseCatalog = env.getLocalRegistry().getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
-                if (releaseCatalog != null) {
-                    def = releaseCatalog;
+        String cmdLine = input.optValue(Commands.OPTION_FOREIGN_CATALOG);
+        if (cmdLine != null) {
+            def = cmdLine;
+        }
+        String envVar = input.getParameter(CommonConstants.ENV_CATALOG_URL, false);
+        if (envVar != null) {
+            def = envVar;
+        }
+        String s = input.getParameter(CommonConstants.SYSPROP_CATALOG_URL, def, true);
+        if (s == null) {
+            return null;
+        }
+        try {
+            URI check = URI.create(s);
+            if (check.getScheme() == null || check.getScheme().length() < 2) {
+                Path p = SystemUtils.fromUserString(s);
+                // convert plain filename to file:// URL.
+                if (Files.isReadable(p)) {
+                    return p.toFile().toURI().toString();
                 }
             }
+        } catch (IllegalArgumentException ex) {
+            // expected, use the argument as it is.
         }
-        String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);
+        return s;
+    }
+
+    private String getReleaseCatalogURL() {
+        String s = env.getLocalRegistry().getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
         return s;
     }
 
