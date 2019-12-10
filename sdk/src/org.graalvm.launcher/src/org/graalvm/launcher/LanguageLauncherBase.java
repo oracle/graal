@@ -67,6 +67,7 @@ public abstract class LanguageLauncherBase extends Launcher {
     private boolean seenPolyglot;
     private boolean helpTools;
     private boolean helpLanguages;
+    private VersionAction versionAction = VersionAction.None;
 
     final boolean isPolyglot() {
         return seenPolyglot;
@@ -92,7 +93,7 @@ public abstract class LanguageLauncherBase extends Launcher {
             builder.out(getOutput());
         }
     }
-    
+
     static Engine getTempEngine() {
         if (tempEngine == null) {
             tempEngine = Engine.create();
@@ -108,6 +109,21 @@ public abstract class LanguageLauncherBase extends Launcher {
     }
 
     @Override
+    protected boolean runLauncherAction() {
+        switch (versionAction) {
+            case PrintAndExit:
+                printPolyglotVersions();
+                return true;
+            case PrintAndContinue:
+                printPolyglotVersions();
+                break;
+            case None:
+                break;
+        }
+        return super.runLauncherAction();
+    }
+
+    @Override
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
         switch (arg) {
             case "--help:tools":
@@ -119,8 +135,16 @@ public abstract class LanguageLauncherBase extends Launcher {
             case "--polyglot":
                 seenPolyglot = true;
                 break;
+            case "--version:graalvm":
+                versionAction = VersionAction.PrintAndExit;
+                break;
+            case "--show-version:graalvm":
+                versionAction = VersionAction.PrintAndContinue;
+                break;
+            default:
+                return super.parseCommonOption(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg);
         }
-        return super.parseCommonOption(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg);
+        return true;
     }
 
     void handlePolyglotException(PolyglotException e) {
@@ -140,6 +164,8 @@ public abstract class LanguageLauncherBase extends Launcher {
     @Override
     protected void printDefaultHelp(OptionCategory helpCategory) {
         super.printDefaultHelp(helpCategory);
+        launcherOption("--version:graalvm", "Print GraalVM version information and exit.");
+        launcherOption("--show-version:graalvm", "Print GraalVM version information and continue execution.");
         launcherOption("--help:languages", "Print options for all installed languages.");
         launcherOption("--help:tools", "Print options for all installed tools.");
         launcherOption("--help:expert", "Print additional options for experts.");
@@ -163,8 +189,7 @@ public abstract class LanguageLauncherBase extends Launcher {
      * Prints version information about all known {@linkplain Language languages} and
      * {@linkplain Instrument instruments} on {@linkplain System#out stdout}.
      */
-    @Override
-    protected void printVersion() {
+    protected void printPolyglotVersions() {
         Engine engine = getTempEngine();
         println("GraalVM Polyglot Engine Version " + engine.getVersion());
         Path graalVMHome = Engine.findHome();
@@ -336,6 +361,8 @@ public abstract class LanguageLauncherBase extends Launcher {
     protected void collectArguments(Set<String> options) {
         options.add("--help:languages");
         options.add("--help:tools");
+        options.add("--version:graalvm");
+        options.add("--show-version:graalvm");
 
         Engine engine = getTempEngine();
         addOptions(engine.getOptions(), options);

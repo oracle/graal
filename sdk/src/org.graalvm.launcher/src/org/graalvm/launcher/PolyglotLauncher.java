@@ -115,7 +115,7 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     @Override
     protected void printVersion() {
         printVersion(getTempEngine());
-        super.printVersion();
+        printPolyglotVersions();
     }
 
     protected void printVersion(Engine engine) {
