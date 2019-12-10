@@ -606,6 +606,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return providers;
     }
 
+    /**
+     * Override the {@link OptimisticOptimizations} settings used for the test. This is called for
+     * all the paths where the value is set so it is the proper place for a test override. Setting
+     * it in other places can result in inconsistent values being used in other parts of the
+     * compiler.
+     */
     protected OptimisticOptimizations getOptimisticOptimizations() {
         return OptimisticOptimizations.ALL;
     }
