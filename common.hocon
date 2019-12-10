@@ -36,6 +36,9 @@ labsjdk-ee-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
 
 common : ${mx} {
   timelimit : "30:00"
+  environment : {
+    MX_PYTHON: "python3"
+  }
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
