@@ -188,7 +188,7 @@ public class ComponentInstaller extends Launcher {
     }
 
     protected void printUsage(Feedback output) {
-        output.error("INFO_InstallerVersion", null, CommonConstants.INSTALLER_VERSION); // NOI18N
+        output.output("INFO_InstallerVersion", CommonConstants.INSTALLER_VERSION); // NOI18N
         printHelp(output);
     }
 
@@ -210,7 +210,7 @@ public class ComponentInstaller extends Launcher {
             extraS = ""; // NOI18N
         }
 
-        output.message("INFO_Usage", extraS); // NOI18N
+        output.output("INFO_Usage", extraS); // NOI18N
     }
 
     static void printErr(String messageKey, Object... args) {
