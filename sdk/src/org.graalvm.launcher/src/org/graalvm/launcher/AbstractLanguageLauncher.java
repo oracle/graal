@@ -116,7 +116,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         builder.allowAllAccess(true);
-        setupLogHandler(builder);
+        setupContextBuilder(builder);
 
         launch(builder);
     }

@@ -76,7 +76,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         seenPolyglot = polyglot;
     }
 
-    final void setupLogHandler(Context.Builder builder) {
+    final void setupContextBuilder(Context.Builder builder) {
         Path logFile = getLogFile();
         if (logFile != null) {
             try {
@@ -85,8 +85,14 @@ public abstract class LanguageLauncherBase extends Launcher {
                 throw abort(ioe);
             }
         }
+        if (System.err != getError()) {
+            builder.err(getError());
+        }
+        if (System.out != getOutput()) {
+            builder.out(getOutput());
+        }
     }
-
+    
     static Engine getTempEngine() {
         if (tempEngine == null) {
             tempEngine = Engine.create();
