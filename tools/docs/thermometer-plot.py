@@ -11,21 +11,25 @@ for file in sys.argv[1:]:
 
 times = [s['elapsedTime'] / 1e9 for s in samples]
 
-max_iterations = max([s['iterationsPerSecond'] for s in samples])
-
-if max_iterations > 1000000:
-    iterations_scale = 1000000
-    iterations_label = 'MIPS'
-elif max_iterations > 1000:
-    iterations_scale = 1000
-    iterations_label = 'KIPS'
-else:
-    iterations_scale = 1
-    iterations_label = 'IPS'
-
 traces = [
-    ('Temp', 'sampleReading', 0.01),
-    (iterations_label, 'iterationsPerSecond', iterations_scale),
+    ('Temp', 'sampleReading', 0.01)
+]
+
+if 'iterationsPerSecond' in samples[0].keys():
+    max_iterations = max([s['iterationsPerSecond'] for s in samples])
+    if max_iterations > 1000000:
+        iterations_scale = 1000000
+        iterations_label = 'MIPS'
+    elif max_iterations > 1000:
+        iterations_scale = 1000
+        iterations_label = 'KIPS'
+    else:
+        iterations_scale = 1
+        iterations_label = 'IPS'
+
+    traces.append((iterations_label, 'iterationsPerSecond', iterations_scale))
+
+traces.extend([
     ('Code (MB)', 'loadedSource', 1024 * 1024),
     ('Queued', 'queued', 1),
     ('Running', 'running', 1),
@@ -33,7 +37,7 @@ traces = [
     ('Failed', 'failed', 1),
     ('Dequeued', 'dequeued', 1),
     ('Deopts', 'deoptimizations', 1)
-]
+])
 
 f, plots = plt.subplots(len(traces), 1, sharex=True)
 
