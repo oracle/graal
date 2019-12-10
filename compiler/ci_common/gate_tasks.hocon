@@ -9,7 +9,8 @@ builds += [
 
   # Windows AMD64
   ${gateTest}          ${oraclejdk8}       ${gateWindowsAMD64} {name: "gate-compiler-test-8-windows-amd64", timelimit: "50:00", packages: {msvc: "==10.0" }}
-  ${gateTest}          ${labsjdk-ee-11}    ${gateWindowsAMD64} {name: "gate-compiler-test-labsjdk-ee-11-windows-amd64", timelimit: "50:00"} ${windows-devkit-jdk11}
+# GR-20001
+# ${gateTest}          ${labsjdk-ee-11}    ${gateWindowsAMD64} {name: "gate-compiler-test-labsjdk-ee-11-windows-amd64", timelimit: "50:00"} ${windows-devkit-jdk11}
 
   # Linux AMD64
   ${gateTest}          ${oraclejdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
