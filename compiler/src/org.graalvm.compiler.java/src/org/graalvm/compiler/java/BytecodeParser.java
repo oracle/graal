@@ -1148,8 +1148,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     /**
-     * Creates the frame state after the start node of a graph for an {@link IntrinsicContext
-     * intrinsic} that is the parse root (either for root compiling or for post-parse inlining).
+     * Creates the frame state after the start node of a graph for an {@link IntrinsicContext}
+     * intrinsic that is the parse root (either for root compiling or for post-parse inlining).
      */
     private FrameState createStateAfterStartOfReplacementGraph() {
         assert parent == null;
