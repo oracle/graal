@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,33 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import java.security.SecureClassLoader;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
+public class DelegatorClassLoader extends SecureClassLoader {
 
-@AutomaticFeature
-public class ClassLoaderFeature implements Feature {
+    private ClassLoader delegate = null;
+
+    public DelegatorClassLoader(ClassLoader parent) {
+        super(parent);
+    }
+
+    public void setDelegate(ClassLoader delegateClassLoader) {
+        this.delegate = delegateClassLoader;
+    }
+
+    public ClassLoader getDelegate() {
+        return delegate;
+    }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(object -> {
-            if (object instanceof NativeImageClassLoader || object instanceof DelegatorClassLoader) {
-                /*
-                 * Unwrap the original AppClassLoader from the NativeImageClassLoader and
-                 * DelegatorClassLoader
-                 */
-                ClassLoader parent = ((ClassLoader) object).getParent();
-                VMError.guarantee(parent != null);
-                return parent;
-            }
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+        ClassLoader cl = delegate != null ? delegate : getParent();
+        // System.out.println("loading class" + name + " with " + cl);
+        return cl.loadClass(name);
+    }
 
-            return object;
-        });
+    @SuppressWarnings("all")
+    public void appendToClassPathForInstrumentation(String filePath) {
+        // TODO this needs to be implemented to make the agent happy
     }
 }
