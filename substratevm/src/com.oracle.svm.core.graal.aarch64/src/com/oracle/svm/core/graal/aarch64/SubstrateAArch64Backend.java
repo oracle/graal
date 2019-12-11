@@ -736,8 +736,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 crb.recordInlineDataInCode(inputConstant);
                 masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
             } else {
-                AArch64Address address = (AArch64Address) crb.recordDataReferenceInCode(inputConstant, referenceSize);
-                address = AArch64Address.createScaledImmediateAddress(resultReg, 0x0);
+                crb.recordDataReferenceInCode(inputConstant, referenceSize);
+                AArch64Address address = AArch64Address.createScaledImmediateAddress(resultReg, 0x0);
                 masm.adrpLdr(referenceSize * 8, resultReg, address);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
