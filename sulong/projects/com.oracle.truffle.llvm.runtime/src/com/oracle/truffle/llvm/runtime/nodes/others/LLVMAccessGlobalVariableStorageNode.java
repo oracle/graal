@@ -63,8 +63,8 @@ public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpression
     Object doAccess(
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
-        int index = descriptor.getIndex();
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
+        int index = descriptor.getIndex(false);
         return globals[index].get();
     }
 }

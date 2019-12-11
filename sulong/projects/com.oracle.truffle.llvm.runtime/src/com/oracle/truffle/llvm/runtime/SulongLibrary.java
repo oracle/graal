@@ -67,9 +67,9 @@ public final class SulongLibrary implements TruffleObject {
     }
 
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
-        LLVMSymbol symbol = scope.get(symbolName);
-        if (symbol != null && symbol.isFunction()) {
-            return symbol.asFunction();
+        LLVMFunctionDescriptor function = scope.getFunctionDescriptor(symbolName);
+        if (function != null) {
+            return function;
         }
         return null;
     }

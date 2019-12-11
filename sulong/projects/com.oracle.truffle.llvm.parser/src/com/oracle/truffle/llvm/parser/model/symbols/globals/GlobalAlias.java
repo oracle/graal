@@ -37,8 +37,8 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class GlobalAlias extends GlobalValueSymbol {
 
-    private GlobalAlias(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, linkage, visibility, symbolTable, value);
+    private GlobalAlias(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+        super(type, linkage, visibility, symbolTable, value, index);
     }
 
     @Override
@@ -46,9 +46,9 @@ public final class GlobalAlias extends GlobalValueSymbol {
         visitor.visit(this);
     }
 
-    public static GlobalAlias create(PointerType type, long linkage, long visibility, SymbolTable symbolTable, int value) {
+    public static GlobalAlias create(PointerType type, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
         // aliases always have a value so compensate for zero test in super class
         final int aliasedValue = value + 1;
-        return new GlobalAlias(type, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, aliasedValue);
+        return new GlobalAlias(type, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, aliasedValue, index);
     }
 }

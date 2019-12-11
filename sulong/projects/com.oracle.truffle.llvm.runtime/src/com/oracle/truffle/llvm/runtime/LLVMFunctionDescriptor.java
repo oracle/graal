@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,7 +60,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptorFactory.ResolveFunc
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -74,21 +75,18 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
+public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
     static {
         assert LLVMNativeMemory.isCommonHandleMemory(SULONG_FUNCTION_POINTER_TAG);
         assert !LLVMNativeMemory.isDerefHandleMemory(SULONG_FUNCTION_POINTER_TAG);
     }
 
-    private final FunctionType type;
     private final LLVMContext context;
-    private final int functionId;
+    private final Pair<Integer, Integer> functionId;
 
-    private ExternalLibrary library;
-
-    @CompilationFinal private String name;
     private final AssumedValue<Function> function;
+    private final LLVMFunction functionDetail;
 
     @CompilationFinal private TruffleObject nativeWrapper;
     @CompilationFinal private long nativePointer;
@@ -226,7 +224,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             }
 
             if (wrapper == null) {
-                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.functionId));
+                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.functionId.getRight()));
                 wrapper = pointer;
             }
 
@@ -286,16 +284,16 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
                 NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-                assert !intrinsicProvider.isIntrinsified(descriptor.getName());
+                assert !intrinsicProvider.isIntrinsified(descriptor.getFunctionDetail().getName());
                 if (nfiContextExtension != null) {
-                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
+                    NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getFunctionDetail().getName());
                     if (nativeFunction != null) {
                         descriptor.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
                         return;
                     }
                 }
             }
-            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
+            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getFunctionDetail().getName()));
         }
 
         @Override
@@ -335,14 +333,16 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return function.get();
     }
 
-    public LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId, Function function, ExternalLibrary library) {
+    public LLVMFunction getFunctionDetail() {
+        return functionDetail;
+    }
+
+    public LLVMFunctionDescriptor(LLVMContext context, LLVMFunction functionDetail) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
-        this.name = name;
-        this.type = type;
-        this.functionId = functionId;
-        this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", function);
-        this.library = library;
+        this.functionId = Pair.create(functionDetail.getID(true), functionDetail.getIndex(true));
+        this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", functionDetail.getFunction());
+        this.functionDetail = functionDetail;
     }
 
     public interface LazyToTruffleConverter {
@@ -389,13 +389,12 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return resolve.execute(getFunction(), this) instanceof NativeFunction;
     }
 
-    @Override
     public boolean isDefined() {
         return !(getFunction() instanceof UnresolvedFunction);
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
-        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name, nodeFactory);
+        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, functionDetail.getName(), nodeFactory);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }
 
@@ -406,11 +405,11 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     private void define(ExternalLibrary lib, Function newFunction, boolean allowReplace) {
         assert lib != null && newFunction != null;
         if (!isDefined() || allowReplace) {
-            this.library = lib;
+            functionDetail.setLibrary(lib);
             setFunction(newFunction);
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Found multiple definitions of function " + getName() + ".");
+            throw new AssertionError("Found multiple definitions of function " + functionDetail.getName() + ".");
         }
     }
 
@@ -444,42 +443,24 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         TruffleObject nativeFunction = ((NativeFunction) fn).nativeFunction;
         if (nativeFunction == null) {
             CompilerDirectives.transferToInterpreter();
-            throw new LLVMLinkerException("Native function " + getName() + " not found");
+            throw new LLVMLinkerException("Native function " + functionDetail.getName() + " not found");
         }
         return nativeFunction;
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void setName(String value) {
-        this.name = value;
-    }
-
-    @Override
-    public ExternalLibrary getLibrary() {
-        return library;
-    }
-
-    public FunctionType getType() {
-        return type;
-    }
-
-    @Override
     public String toString() {
+        String name = functionDetail.getName();
         if (name != null) {
-            return String.format("function@%d '%s'", functionId, name);
+            return String.format("function@%d '%s'", functionId.getRight(), name);
         } else {
-            return String.format("function@%d (anonymous)", functionId);
+            return String.format("function@%d (anonymous)", functionId.getRight());
         }
     }
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        return Long.compare(functionId, o.functionId);
+        return Long.compare(functionId.getLeft() + functionId.getRight(), o.functionId.getLeft() + o.functionId.getLeft());
     }
 
     public LLVMContext getContext() {
@@ -511,7 +492,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             try {
                 nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
             } catch (UnsupportedMessageException ex) {
-                nativePointer = tagSulongFunctionPointer(functionId);
+                nativePointer = tagSulongFunctionPointer(functionId.getRight());
             }
         }
         return this;
@@ -591,25 +572,5 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         } else {
             throw UnknownIdentifierException.create(member);
         }
-    }
-
-    @Override
-    public boolean isFunction() {
-        return true;
-    }
-
-    @Override
-    public boolean isGlobalVariable() {
-        return false;
-    }
-
-    @Override
-    public LLVMFunctionDescriptor asFunction() {
-        return this;
-    }
-
-    @Override
-    public LLVMGlobal asGlobalVariable() {
-        throw new IllegalStateException("Function " + name + " is not a global variable.");
     }
 }

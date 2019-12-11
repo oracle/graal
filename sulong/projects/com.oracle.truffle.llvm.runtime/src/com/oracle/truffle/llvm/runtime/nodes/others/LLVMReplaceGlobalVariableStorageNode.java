@@ -48,11 +48,11 @@ public abstract class LLVMReplaceGlobalVariableStorageNode extends LLVMNode {
     @Specialization
     void doReplacee(LLVMPointer value, LLVMGlobal descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
         synchronized (globals) {
             CompilerAsserts.partialEvaluationConstant(descriptor);
             try {
-                int index = descriptor.getIndex();
+                int index = descriptor.getIndex(false);
                 globals[index].set(value);
             } catch (Exception e) {
                 CompilerDirectives.transferToInterpreter();

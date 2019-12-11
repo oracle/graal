@@ -27,37 +27,60 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.others;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public abstract class LLVMWriteGlobalVariableStorageNode extends LLVMNode {
+public final class LLVMFunction extends LLVMSymbol {
 
-    public abstract void execute(LLVMPointer pointer, LLVMGlobal descriptor);
+    private final FunctionType type;
+    private final Function function;
 
-    @SuppressWarnings("unused")
-    @Specialization
-    void doWrite(LLVMPointer pointer, LLVMGlobal descriptor,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
-        synchronized (globals) {
-            CompilerAsserts.partialEvaluationConstant(descriptor);
-            try {
-                int index = descriptor.getIndex(false);
-                globals[index] = new AssumedValue<>("LLVMGlobal." + descriptor.getName(), pointer);
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("Global write is inconsistent.");
-            }
-        }
+    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int id, int index) {
+        return new LLVMFunction(name, library, function, type, index, id);
     }
+
+    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int id, int index) {
+        super(name, library, id, index);
+        this.type = type;
+        this.function = function;
+    }
+
+    public FunctionType getType() {
+        return type;
+    }
+
+    public Function getFunction() {
+        return function;
+    }
+
+    @Override
+    public boolean isDefined() {
+        return !(getFunction() instanceof UnresolvedFunction);
+    }
+
+    @Override
+    public boolean isFunction() {
+        return true;
+    }
+
+    @Override
+    public boolean isGlobalVariable() {
+        return false;
+    }
+
+    @Override
+    public LLVMFunction asFunction() {
+        return this;
+    }
+
+    @Override
+    public LLVMGlobal asGlobalVariable() {
+        throw new IllegalStateException("Function " + getName() + " is not a global variable.");
+    }
+
 }

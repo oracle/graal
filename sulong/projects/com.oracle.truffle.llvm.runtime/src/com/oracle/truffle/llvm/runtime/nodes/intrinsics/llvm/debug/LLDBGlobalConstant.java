@@ -58,8 +58,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID(false));
         return globals[index].get() != null && currentValue != null && currentValue.canRead(bitOffset, bits);
     }
 
@@ -168,8 +168,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private LLVMDebugValue getCurrentValue() {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID(false));
         if (isInNative()) {
             return new LLDBMemoryValue(LLVMNativePointer.cast(globals[index].get()));
         } else {
@@ -178,8 +178,8 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private boolean isInNative() {
-        int index = global.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID());
+        int index = global.getIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(global.getID(false));
         return LLVMNativePointer.isInstance(globals[index].get());
     }
 }

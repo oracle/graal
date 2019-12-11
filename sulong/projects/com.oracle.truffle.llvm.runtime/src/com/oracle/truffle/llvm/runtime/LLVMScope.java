@@ -51,10 +51,12 @@ public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
+    private final HashMap<String, LLVMFunctionDescriptor> functions;
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
+        this.functions = new HashMap<>();
     }
 
     @TruffleBoundary
@@ -63,12 +65,17 @@ public final class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
+    public LLVMFunctionDescriptor getFromFunctions(String name) {
+        return functions.get(name);
+    }
+
+    @TruffleBoundary
     public String getKey(int idx) {
         return functionKeys.get(idx);
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor getFunction(String name) {
+    public LLVMFunction getFunction(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
@@ -76,7 +83,15 @@ public final class LLVMScope implements TruffleObject {
         throw new IllegalStateException("Unknown function: " + name);
     }
 
-    // TODO: AST sharing
+    @TruffleBoundary
+    public LLVMFunctionDescriptor getFunctionDescriptor(String name) {
+        LLVMFunctionDescriptor symbol = functions.get(name);
+        if (symbol != null) {
+            return symbol;
+        }
+        throw new IllegalStateException("Unknown function descriptor: " + name);
+    }
+
     @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
@@ -86,7 +101,20 @@ public final class LLVMScope implements TruffleObject {
         throw new IllegalStateException("Unknown global: " + name);
     }
 
-    // TODO: AST sharing
+    @TruffleBoundary
+    public void registerFD(LLVMFunctionDescriptor function) {
+        LLVMFunctionDescriptor existing = functions.get(function.getFunctionDetail().getName());
+        if (existing == null) {
+            assert !functions.containsKey(function.getFunctionDetail().getName());
+            functions.put(function.getFunctionDetail().getName(), function);
+        } else {
+            if (existing != function) {
+                throw new IllegalStateException("Trying to add function " + function + " to scope, while existing function " + existing + " with name " + function.getFunctionDetail().getName() +
+                                " is already present.");
+            }
+        }
+    }
+
     @TruffleBoundary
     public void register(LLVMSymbol symbol) {
         LLVMSymbol existing = symbols.get(symbol.getName());
@@ -100,6 +128,11 @@ public final class LLVMScope implements TruffleObject {
     @TruffleBoundary
     public boolean contains(String name) {
         return symbols.containsKey(name);
+    }
+
+    @TruffleBoundary
+    public boolean containsFD(String name) {
+        return functions.containsKey(name);
     }
 
     @TruffleBoundary
@@ -117,6 +150,9 @@ public final class LLVMScope implements TruffleObject {
     public void addMissingEntries(LLVMScope other) {
         for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
             symbols.putIfAbsent(entry.getKey(), entry.getValue());
+            if (entry.getValue().isFunction()) {
+                functions.putIfAbsent(entry.getKey(), other.functions.get(entry.getKey()));
+            }
         }
     }
 
@@ -126,9 +162,20 @@ public final class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
+    public Collection<LLVMFunctionDescriptor> functionDescriptorsValue() {
+        return functions.values();
+    }
+
+    @TruffleBoundary
     public void rename(String oldName, LLVMSymbol symbol) {
         remove(oldName);
         register(symbol);
+    }
+
+    @TruffleBoundary
+    public void renameFD(String oldName, LLVMFunctionDescriptor functionDescriptor) {
+        functions.remove(oldName);
+        registerFD(functionDescriptor);
     }
 
     public TruffleObject getKeys() {
@@ -175,7 +222,11 @@ public final class LLVMScope implements TruffleObject {
     Object readMember(String globalName,
                     @Cached BranchProfile exception) throws UnknownIdentifierException {
         if (contains(globalName)) {
-            return get(globalName);
+            LLVMSymbol symbol = get(globalName);
+            if (symbol.isFunction()) {
+                return getFromFunctions(globalName);
+            }
+            return symbol;
         }
         exception.enter();
         throw UnknownIdentifierException.create(globalName);

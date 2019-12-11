@@ -182,7 +182,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected Object bindSymbol(LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.neverPartOfCompilation();
-        assert descriptor.getNativeFunctionSlowPath() != null : descriptor.getName();
+        assert descriptor.getNativeFunctionSlowPath() != null : descriptor.getFunctionDetail().getName();
         return LLVMNativeCallUtils.bindNativeSymbol(InteropLibrary.getFactory().getUncached(), descriptor.getNativeFunctionSlowPath(), getSignature());
     }
 

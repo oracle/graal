@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,61 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-public interface LLVMSymbol {
-    String getName();
+public abstract class LLVMSymbol {
 
-    void setName(String name);
+    @CompilationFinal private String name;
+    @CompilationFinal private ExternalLibrary library;
+    private final int id;
+    private final int index;
 
-    ExternalLibrary getLibrary();
+    public LLVMSymbol(String name, ExternalLibrary library, int id, int index) {
+        this.name = name;
+        this.library = library;
+        this.id = id;
+        this.index = index;
+    }
 
-    boolean isDefined();
+    public String getName() {
+        return name;
+    }
 
-    boolean isGlobalVariable();
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    boolean isFunction();
+    public ExternalLibrary getLibrary() {
+        return library;
+    }
 
-    LLVMFunctionDescriptor asFunction();
+    public void setLibrary(ExternalLibrary library) {
+        this.library = library;
+    }
 
-    LLVMGlobal asGlobalVariable();
+    public int getIndex(boolean illegalOK) {
+        if (index >= 0 || illegalOK) {
+            return index;
+        }
+        throw new IllegalStateException("Invalid function index: " + index);
+    }
+
+    public int getID(boolean illegalOK) {
+        if (id >= 0 || illegalOK) {
+            return id;
+        }
+        throw new IllegalStateException("Invalid function ID: " + id);
+    }
+
+    public abstract boolean isDefined();
+
+    public abstract boolean isGlobalVariable();
+
+    public abstract boolean isFunction();
+
+    public abstract LLVMFunction asFunction();
+
+    public abstract LLVMGlobal asGlobalVariable();
 }

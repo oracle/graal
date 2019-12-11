@@ -48,8 +48,8 @@ public abstract class LLVMCheckGlobalVariableStorageNode extends LLVMNode {
     boolean doCheck(LLVMGlobal descriptor,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
-        int index = descriptor.getIndex();
-        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID());
+        int index = descriptor.getIndex(false);
+        AssumedValue<LLVMPointer>[] globals = context.findGlobalTable(descriptor.getID(false));
 
         if (globals[index] == null) {
             return false;

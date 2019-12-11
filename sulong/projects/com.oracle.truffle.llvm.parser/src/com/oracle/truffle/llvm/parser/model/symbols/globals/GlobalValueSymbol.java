@@ -56,8 +56,8 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSym
 
     private LLVMSourceSymbol sourceSymbol;
 
-    GlobalValueSymbol(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(LLVMIdentifier.UNKNOWN, linkage);
+    GlobalValueSymbol(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+        super(LLVMIdentifier.UNKNOWN, linkage, index);
         this.type = type;
         this.visibility = visibility;
         this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;

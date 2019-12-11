@@ -98,8 +98,8 @@ public final class LLVMNativeWrapper implements TruffleObject {
                         @Cached LLVMGetStackNode getStack,
                         @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("createCallNode(cachedFunction)") DirectCallNode call,
-                        @Cached("createFromNativeNodes(cachedFunction.getType())") LLVMNativeConvertNode[] convertArgs,
-                        @Cached("createToNative(cachedFunction.getType().getReturnType())") LLVMNativeConvertNode convertRet) {
+                        @Cached("createFromNativeNodes(cachedFunction.getFunctionDetail().getType())") LLVMNativeConvertNode[] convertArgs,
+                        @Cached("createToNative(cachedFunction.getFunctionDetail().getType().getReturnType())") LLVMNativeConvertNode convertRet) {
             try (StackPointer stackPointer = newStackFrame(getStack, ctxRef)) {
                 Object[] preparedArgs = prepareCallbackArguments(stackPointer, args, convertArgs);
                 Object ret = call.call(preparedArgs);
@@ -123,7 +123,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
             if (function.isLLVMIRFunction()) {
                 callTarget = function.getLLVMIRFunctionSlowPath();
             } else if (function.isIntrinsicFunctionSlowPath()) {
-                callTarget = function.getIntrinsicSlowPath().cachedCallTarget(function.getType());
+                callTarget = function.getIntrinsicSlowPath().cachedCallTarget(function.getFunctionDetail().getType());
             } else {
                 throw new IllegalStateException("unexpected function: " + function.toString());
             }

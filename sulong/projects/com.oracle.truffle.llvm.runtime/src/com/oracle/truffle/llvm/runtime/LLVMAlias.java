@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,31 +37,13 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-public class LLVMAlias implements LLVMSymbol {
-    private final ExternalLibrary library;
+public class LLVMAlias extends LLVMSymbol {
 
     @CompilationFinal private LLVMSymbol target;
-    @CompilationFinal private String name;
 
     public LLVMAlias(ExternalLibrary library, String name, LLVMSymbol target) {
-        this.library = library;
-        this.name = name;
+        super(name, library, -1, -1);
         setTarget(target);
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void setName(String value) {
-        this.name = value;
-    }
-
-    @Override
-    public ExternalLibrary getLibrary() {
-        return library;
     }
 
     public LLVMSymbol getTarget() {
@@ -92,7 +74,7 @@ public class LLVMAlias implements LLVMSymbol {
     }
 
     @Override
-    public LLVMFunctionDescriptor asFunction() {
+    public LLVMFunction asFunction() {
         return target.asFunction();
     }
 
@@ -103,7 +85,7 @@ public class LLVMAlias implements LLVMSymbol {
 
     @Override
     public String toString() {
-        return name + " -> " + target.getName();
+        return super.getName() + " -> " + target.getName();
     }
 
     private void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {

@@ -65,6 +65,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -153,7 +155,6 @@ public final class LLVMContext {
     private LLVMTracerInstrument tracer;    // effectively final after initialization
 
     private final class LLVMFunctionPointerRegistry {
-        private int currentFunctionIndex = 1;
         private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
         synchronized LLVMFunctionDescriptor getDescriptor(LLVMNativePointer pointer) {
@@ -164,9 +165,8 @@ public final class LLVMContext {
             functionDescriptors.put(pointer, desc);
         }
 
-        synchronized LLVMFunctionDescriptor create(String name, FunctionType type, LLVMFunctionDescriptor.Function function, ExternalLibrary library) {
-            int functionId = currentFunctionIndex++;
-            return new LLVMFunctionDescriptor(LLVMContext.this, name, type, functionId, function, library);
+        synchronized LLVMFunctionDescriptor create(LLVMFunction functionDetail) {
+            return new LLVMFunctionDescriptor(LLVMContext.this, functionDetail);
         }
     }
 
@@ -231,7 +231,7 @@ public final class LLVMContext {
         InitializeContextNode(LLVMContext ctx, FrameDescriptor rootFrame) {
             this.stackPointer = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
 
-            LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunction("__sulong_init_context");
+            LLVMFunctionDescriptor initContextDescriptor = ctx.globalScope.getFunctionDescriptor("__sulong_init_context");
             RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunctionSlowPath();
             this.initContext = DirectCallNode.create(initContextFunction);
         }
@@ -281,10 +281,12 @@ public final class LLVMContext {
         Loader loader = getLanguage().getCapability(Loader.class);
         loader.loadDefaults(this, internalLibraryPath);
         if (env.getOptions().get(SulongEngineOption.PRINT_TOOLCHAIN_PATH)) {
-            LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(LLVMPrintToolchainPath.NAME, new FunctionType(VoidType.INSTANCE, new Type[0], false),
-                            new LLVMFunctionDescriptor.UnresolvedFunction(), null);
+            Function function = new UnresolvedFunction();
+            LLVMFunction functionDetail = LLVMFunction.create(LLVMPrintToolchainPath.NAME, null, function, new FunctionType(VoidType.INSTANCE, new Type[0], false), -1, -1);
+            LLVMFunctionDescriptor functionDescriptor = createFunctionDescriptor(functionDetail);
             functionDescriptor.define(getLanguage().getCapability(LLVMIntrinsicProvider.class), null);
-            globalScope.register(functionDescriptor);
+            globalScope.register(functionDetail);
+            globalScope.registerFD(functionDescriptor);
         }
     }
 
@@ -404,7 +406,7 @@ public final class LLVMContext {
         // - _exit(), _Exit(), or abort(): no cleanup necessary
         if (cleanupNecessary) {
             try {
-                RootCallTarget disposeContext = globalScope.getFunction("__sulong_dispose_context").getLLVMIRFunctionSlowPath();
+                RootCallTarget disposeContext = globalScope.getFunctionDescriptor("__sulong_dispose_context").getLLVMIRFunctionSlowPath();
                 try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
                     disposeContext.call(stackPointer);
                 }
@@ -662,8 +664,8 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor createFunctionDescriptor(String name, FunctionType type, LLVMFunctionDescriptor.Function function, ExternalLibrary library) {
-        return functionPointerRegistry.create(name, type, function, library);
+    public LLVMFunctionDescriptor createFunctionDescriptor(LLVMFunction functionDetail) {
+        return functionPointerRegistry.create(functionDetail);
     }
 
     @TruffleBoundary
@@ -694,7 +696,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
         if (nativeCallStatistics != null) {
-            String name = descriptor.getName() + " " + descriptor.getType();
+            String name = descriptor.getFunctionDetail().getName() + " " + descriptor.getFunctionDetail().getType();
             if (nativeCallStatistics.containsKey(name)) {
                 int count = nativeCallStatistics.get(name) + 1;
                 nativeCallStatistics.put(name, count);

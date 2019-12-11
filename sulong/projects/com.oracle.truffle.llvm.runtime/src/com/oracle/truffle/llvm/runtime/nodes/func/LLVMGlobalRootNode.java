@@ -106,8 +106,8 @@ public class LLVMGlobalRootNode extends RootNode {
      */
     private static int getMainFunctionType(LLVMFunctionDescriptor mainFunctionDescriptor) {
         CompilerAsserts.neverPartOfCompilation();
-        Type returnType = mainFunctionDescriptor.getType().getReturnType();
-        Type[] argumentTypes = mainFunctionDescriptor.getType().getArgumentTypes();
+        Type returnType = mainFunctionDescriptor.getFunctionDetail().getType().getReturnType();
+        Type[] argumentTypes = mainFunctionDescriptor.getFunctionDetail().getType().getArgumentTypes();
         if (argumentTypes.length > 0 && argumentTypes[0] instanceof PrimitiveType) {
             if (((PrimitiveType) argumentTypes[0]).getPrimitiveKind() == PrimitiveKind.I64) {
                 return 1;

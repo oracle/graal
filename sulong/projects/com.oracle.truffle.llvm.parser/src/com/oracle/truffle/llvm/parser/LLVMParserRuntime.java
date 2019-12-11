@@ -79,7 +79,7 @@ public final class LLVMParserRuntime {
     public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {
         LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
         if (symbol != null && symbol.isFunction()) {
-            return symbol.asFunction();
+            return lookupFunctionImpl(symbol.asFunction().getName(), preferGlobalScope);
         }
         throw new IllegalStateException("Unknown function: " + name);
     }
@@ -109,5 +109,16 @@ public final class LLVMParserRuntime {
             symbol = fileScope.get(name);
         }
         return symbol;
+    }
+
+    private LLVMFunctionDescriptor lookupFunctionImpl(String name, boolean preferGlobalScope) {
+        LLVMFunctionDescriptor function = null;
+        if (preferGlobalScope) {
+            function = getGlobalScope().getFunctionDescriptor(name);
+        }
+        if (function == null) {
+            function = fileScope.getFunctionDescriptor(name);
+        }
+        return function;
     }
 }

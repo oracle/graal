@@ -40,12 +40,12 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class FunctionDeclaration extends FunctionSymbol implements Constant {
 
-    public FunctionDeclaration(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
-        super(type, name, linkage, paramAttr);
+    public FunctionDeclaration(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr, int index) {
+        super(type, name, linkage, paramAttr, index);
     }
 
-    public FunctionDeclaration(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
+    public FunctionDeclaration(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr, int index) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr, index);
     }
 
     @Override

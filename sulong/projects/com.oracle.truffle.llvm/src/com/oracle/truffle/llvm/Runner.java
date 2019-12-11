@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -438,6 +439,7 @@ final class Runner {
             ctx.registerGlobalTable(id, new AssumedValue[globalLength]);
 
             allocGlobals(ctx, roBase, rwBase);
+
             if (allocRoSection != null) {
                 ctx.registerReadOnlyGlobals(roBase, nodeFactory);
             }
@@ -476,9 +478,12 @@ final class Runner {
                         if (symbol instanceof LLVMGlobal) {
                             LLVMGlobal global = (LLVMGlobal) symbol;
                             bindGlobal(ctx, global, nfiContextExtension);
-                        } else if (symbol instanceof LLVMFunctionDescriptor) {
-                            LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                            bindUnresolvedFunction(ctx, function, nfiContextExtension, intrinsicProvider, nodeFactory);
+                        } else if (symbol instanceof LLVMFunction) {
+                            LLVMFunction function = (LLVMFunction) symbol;
+                            LLVMFunctionDescriptor functionDescriptor = fileScope.getFunctionDescriptor(function.getName());
+                            if (!functionDescriptor.isDefined()) {
+                                bindUnresolvedFunction(ctx, functionDescriptor, nfiContextExtension, intrinsicProvider, nodeFactory);
+                            }
                         } else if (symbol instanceof LLVMAlias) {
                             // nothing to do
                         } else {
@@ -608,7 +613,7 @@ final class Runner {
                         LLVMScope scope = scopes.get(lib);
                         if (scope != null) {
                             String originalName = name.substring(idx + 1);
-                            LLVMFunctionDescriptor originalSymbol = scope.getFunction(originalName);
+                            LLVMFunction originalSymbol = scope.getFunction(originalName);
                             LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol);
                             parserResult.getRuntime().getFileScope().register(alias);
                             it.remove();
@@ -674,6 +679,10 @@ final class Runner {
                     // if the weaker symbol is exported, export the stronger symbol instead
                     if (globalScope.get(name) == weakerSymbol) {
                         globalScope.rename(name, strongerSymbol);
+                        if (strongerSymbol.isFunction()) {
+                            LLVMFunctionDescriptor strongerFunctionDescriptor = strongerScope.getFunctionDescriptor(strongerSymbol.getName());
+                            globalScope.renameFD(name, strongerFunctionDescriptor);
+                        }
                     }
 
                     // modify all aliases that point to the weaker symbol
@@ -695,10 +704,8 @@ final class Runner {
         LLVMParserResult polyglotMockResult = parse(parserResults, dependencyQueue, polyglotMock);
         // We use the global scope here to avoid trying to intrinsify functions in the file scope.
         // However, this is based on the assumption that polyglot-mock is the first loaded library!
-        for (LLVMSymbol symbol : polyglotMockResult.getRuntime().getGlobalScope().values()) {
-            if (symbol.isFunction()) {
-                symbol.asFunction().define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
-            }
+        for (LLVMFunctionDescriptor function : polyglotMockResult.getRuntime().getGlobalScope().functionDescriptorsValue()) {
+            function.define(language.getCapability(LLVMIntrinsicProvider.class), polyglotMockResult.getRuntime().getNodeFactory());
         }
     }
 
@@ -767,9 +774,15 @@ final class Runner {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
             for (FunctionSymbol function : parserResult.getExternalFunctions()) {
                 LLVMSymbol globalSymbol = globalScope.get(function.getName());
+                LLVMFunctionDescriptor functionDescriptor = globalScope.getFromFunctions(function.getName());
                 if (globalSymbol == null) {
-                    globalSymbol = context.createFunctionDescriptor(function.getName(), function.getType(), new LLVMFunctionDescriptor.UnresolvedFunction(), null);
+                    globalSymbol = LLVMFunction.create(function.getName(), null, new LLVMFunctionDescriptor.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getID(),
+                                    function.getIndex());
                     globalScope.register(globalSymbol);
+                    if (functionDescriptor == null) {
+                        functionDescriptor = context.createFunctionDescriptor(globalSymbol.asFunction());
+                        globalScope.registerFD(functionDescriptor);
+                    }
                 } else if (!globalSymbol.isFunction()) {
                     assert globalSymbol.isGlobalVariable();
                     throw new LLVMLinkerException(
@@ -779,6 +792,9 @@ final class Runner {
                 // there can already be a different local entry in the file scope
                 if (!fileScope.contains(function.getName())) {
                     fileScope.register(globalSymbol);
+                    if (functionDescriptor != null && !fileScope.containsFD(globalSymbol.asFunction().getName())) {
+                        fileScope.registerFD(functionDescriptor);
+                    }
                 }
             }
 
@@ -805,8 +821,8 @@ final class Runner {
             NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(ctx, global.getName());
             if (pointerIntoLibrary != null) {
                 global.define(pointerIntoLibrary.getLibrary());
-                AssumedValue<LLVMPointer>[] globals = ctx.findGlobalTable(global.getID());
-                int index = global.getIndex();
+                AssumedValue<LLVMPointer>[] globals = ctx.findGlobalTable(global.getID(false));
+                int index = global.getIndex(false);
                 globals[index] = new AssumedValue<>("LLVMGlobal." + global.getName() + "(unresolved/external)", LLVMNativePointer.create(pointerIntoLibrary.getAddress()));
             }
         }
@@ -818,12 +834,12 @@ final class Runner {
 
     private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider,
                     NodeFactory nodeFactory) {
-        if (function.getName().startsWith("llvm.")) {
+        if (function.getFunctionDetail().getName().startsWith("llvm.")) {
             // llvm intrinsic
-        } else if (intrinsicProvider.isIntrinsified(function.getName())) {
+        } else if (intrinsicProvider.isIntrinsified(function.getFunctionDetail().getName())) {
             function.define(intrinsicProvider, nodeFactory);
         } else if (nfiContextExtension != null) {
-            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getName());
+            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getFunctionDetail().getName());
             if (nativeFunction != null) {
                 function.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
             }
@@ -1104,7 +1120,7 @@ final class Runner {
         LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod();
         if (mainFunctionDescriptor != null && startFunctionDescriptor != null) {
             RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunctionSlowPath();
-            Path applicationPath = mainFunctionDescriptor.getLibrary().getPath();
+            Path applicationPath = mainFunctionDescriptor.getFunctionDetail().getLibrary().getPath();
             RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
         }
@@ -1125,14 +1141,14 @@ final class Runner {
         // check if the freshly parsed code exports a main method
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
-            LLVMSymbol mainMethod = fileScope.get(MAIN_METHOD_NAME);
-            if (mainMethod != null && mainMethod.isFunction() && mainMethod.isDefined() && mainMethod.asFunction().isLLVMIRFunction()) {
+            LLVMFunctionDescriptor mainMethod = fileScope.getFromFunctions(MAIN_METHOD_NAME);
+            if (mainMethod != null && mainMethod.isDefined() && mainMethod.isLLVMIRFunction()) {
                 /*
                  * The `isLLVMIRFunction` check makes sure the `main` function is really defined in
                  * bitcode. This prevents us from finding a native `main` function (e.g. the `main`
                  * of the VM we're running in).
                  */
-                return mainMethod.asFunction();
+                return mainMethod;
             }
         }
         return null;
@@ -1141,9 +1157,9 @@ final class Runner {
     private LLVMFunctionDescriptor findStartMethod() {
         // the start method just needs to be present in the global scope, we don't care when it was
         // parsed.
-        LLVMSymbol startMethod = context.getGlobalScope().get(START_METHOD_NAME);
-        if (startMethod != null && startMethod.isFunction() && startMethod.isDefined()) {
-            return startMethod.asFunction();
+        LLVMFunctionDescriptor startMethod = context.getGlobalScope().getFromFunctions(START_METHOD_NAME);
+        if (startMethod != null && startMethod.isDefined()) {
+            return startMethod;
         }
         return null;
     }
@@ -1161,13 +1177,12 @@ final class Runner {
         synchronized (context) {
             LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
             for (LLVMParserResult parserResult : sulongLibraries) {
-                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
-                    if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
+                for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functionDescriptorsValue()) {
+                    if (intrinsicProvider.isIntrinsified(function.getFunctionDetail().getName())) {
                         /*
                          * If `symbol` is an alias, `symbol.asFunction()` will follow the alias to
                          * the real function. We intrinsify that function instead.
                          */
-                        LLVMFunctionDescriptor function = symbol.asFunction();
                         function.define(intrinsicProvider, parserResult.getRuntime().getNodeFactory());
                     }
                 }
@@ -1178,15 +1193,8 @@ final class Runner {
     private void parseFunctionsEagerly(List<LLVMParserResult> parserResults) {
         if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
             for (LLVMParserResult parserResult : parserResults) {
-                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
-                    if (symbol instanceof LLVMFunctionDescriptor) {
-                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                        function.resolveIfLazyLLVMIRFunction();
-                    } else if (symbol instanceof LLVMGlobal || symbol instanceof LLVMAlias) {
-                        // nothing to do
-                    } else {
-                        throw new RuntimeException("Unknown symbol: " + symbol.getClass());
-                    }
+                for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functionDescriptorsValue()) {
+                    function.resolveIfLazyLLVMIRFunction();
                 }
             }
         }

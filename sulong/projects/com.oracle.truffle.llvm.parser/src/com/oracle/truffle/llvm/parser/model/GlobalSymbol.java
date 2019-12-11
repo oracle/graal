@@ -35,10 +35,12 @@ public abstract class GlobalSymbol implements ValueSymbol {
 
     private String name;
     private final Linkage linkage;
+    private final int index;
 
-    public GlobalSymbol(String name, Linkage linkage) {
+    public GlobalSymbol(String name, Linkage linkage, int index) {
         this.name = name;
         this.linkage = linkage;
+        this.index = index;
     }
 
     public final Linkage getLinkage() {
@@ -54,6 +56,11 @@ public abstract class GlobalSymbol implements ValueSymbol {
     @Override
     public final void setName(String name) {
         this.name = name;
+    }
+
+    public final int getIndex() {
+        assert index > -2;
+        return index;
     }
 
     public abstract boolean isExported();

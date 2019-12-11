@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -210,22 +211,24 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     @TruffleBoundary
     private Object decorate(LLVMFunctionDescriptor function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
-        FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), function.getType().getArgumentTypes(), function.getType().isVarargs());
+        FunctionType type = wrapperFunction.getFunctionDetail().getType();
+        FunctionType newFunctionType = new FunctionType(type.getReturnType(), type.getArgumentTypes(), type.isVarargs());
         NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), function, wrapperFunction);
-        return registerRoot(function.getLibrary(), newFunctionType, decoratedRoot);
+        return registerRoot(function.getFunctionDetail().getLibrary(), newFunctionType, decoratedRoot);
     }
 
     @TruffleBoundary
     private Object decorateForeign(Object function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
-        FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), Type.EMPTY_ARRAY, true);
+        FunctionType newFunctionType = new FunctionType(wrapperFunction.getFunctionDetail().getType().getReturnType(), Type.EMPTY_ARRAY, true);
         DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
-        return registerRoot(wrapperFunction.getLibrary(), newFunctionType, decoratedRoot);
+        return registerRoot(wrapperFunction.getFunctionDetail().getLibrary(), newFunctionType, decoratedRoot);
     }
 
     private Object registerRoot(ExternalLibrary lib, FunctionType newFunctionType, DecoratedRoot decoratedRoot) {
         LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(decoratedRoot), null);
-        LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(getContext(), "<wrapper>", newFunctionType, -1, function, lib);
+        LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", lib, function, newFunctionType, -1, -1);
+        LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(getContext(), functionDetail);
         return LLVMManagedPointer.create(wrappedFunction);
     }
 

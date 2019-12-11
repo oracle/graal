@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 public final class LLVMParserResult {
 
     private final LLVMParserRuntime runtime;
+    private final List<FunctionSymbol> definedFunctions;
     private final List<FunctionSymbol> externalFunctions;
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
@@ -45,12 +46,14 @@ public final class LLVMParserResult {
     private final DataLayout dataLayout;
 
     LLVMParserResult(LLVMParserRuntime runtime,
+                    List<FunctionSymbol> definedFunctions,
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
                     List<String> importedSymbols,
                     DataLayout dataLayout) {
         this.runtime = runtime;
+        this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
@@ -60,6 +63,10 @@ public final class LLVMParserResult {
 
     public LLVMParserRuntime getRuntime() {
         return runtime;
+    }
+
+    public List<FunctionSymbol> getDefinedFunctions() {
+        return definedFunctions;
     }
 
     public List<FunctionSymbol> getExternalFunctions() {
