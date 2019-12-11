@@ -5264,8 +5264,10 @@ public class BytecodeParser implements GraphBuilderContext {
             case IF_ICMPLE      : genIfSame(JavaKind.Int, Condition.LE); break;
             case IF_ACMPEQ      : genIfSame(JavaKind.Object, Condition.EQ); break;
             case IF_ACMPNE      : genIfSame(JavaKind.Object, Condition.NE); break;
-            case GOTO           : genGoto(); break;
-            case JSR            : genJsr(stream.readBranchDest()); break;
+            case GOTO           : // fall through
+            case GOTO_W         : genGoto(); break;
+            case JSR            : // fall through
+            case JSR_W          : genJsr(stream.readBranchDest()); break;
             case RET            : genRet(stream.readLocalIndex()); break;
             case TABLESWITCH    : genSwitch(new BytecodeTableSwitch(getStream(), bci())); break;
             case LOOKUPSWITCH   : genSwitch(new BytecodeLookupSwitch(getStream(), bci())); break;
@@ -5296,8 +5298,6 @@ public class BytecodeParser implements GraphBuilderContext {
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
-            case GOTO_W         : genGoto(); break;
-            case JSR_W          : genJsr(stream.readBranchDest()); break;
             case BREAKPOINT     : throw new PermanentBailoutException("concurrent setting of breakpoint");
             default             : throw new PermanentBailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
         }
