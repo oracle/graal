@@ -88,7 +88,7 @@ char **getEnviron() {
     return 0;
 }
 
-#if MSC_VER <= 1400
+#if _MSC_VER <= 1400
 /*
  * __report_rangecheckfailure is not available in the VS 2010 MSVCRT library
  * so we declare it here, if we are building with VS 2010, to allow us to
