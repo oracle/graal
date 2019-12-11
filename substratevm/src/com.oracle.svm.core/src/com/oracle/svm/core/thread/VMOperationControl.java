@@ -91,14 +91,14 @@ import com.oracle.svm.core.util.VMError;
  * </ul>
  */
 public final class VMOperationControl {
-    private static final VMOperationThread dedicatedVMOperationThread = new VMOperationThread();
-
+    private final VMOperationThread dedicatedVMOperationThread;
     private final WorkQueues mainQueues;
     private final WorkQueues immediateQueues;
     private final OpInProgress inProgress;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     VMOperationControl() {
+        this.dedicatedVMOperationThread = new VMOperationThread();
         this.mainQueues = new WorkQueues("main", true);
         this.immediateQueues = new WorkQueues("immediate", false);
         this.inProgress = new OpInProgress();
@@ -111,28 +111,32 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static VMOperationThread getDedicatedVMOperationThread() {
-        assert dedicatedVMOperationThread != null;
-        return dedicatedVMOperationThread;
+        VMOperationControl control = get();
+        assert control.dedicatedVMOperationThread != null;
+        return control.dedicatedVMOperationThread;
     }
 
     public static void startVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
-        assert get().mainQueues.isEmpty();
 
-        Thread thread = new Thread(dedicatedVMOperationThread, "VMOperationThread");
+        VMOperationControl control = get();
+        assert control.mainQueues.isEmpty();
+
+        Thread thread = new Thread(control.dedicatedVMOperationThread, "VMOperationThread");
         thread.setDaemon(true);
         thread.start();
-        dedicatedVMOperationThread.waitUntilStarted();
+        control.dedicatedVMOperationThread.waitUntilStarted();
     }
 
     public static void shutdownAndDetachVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
+        VMOperationControl control = get();
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
-            dedicatedVMOperationThread.shutdown();
+            control.dedicatedVMOperationThread.shutdown();
         });
 
         waitUntilVMOperationThreadDetached();
-        assert get().mainQueues.isEmpty();
+        assert control.mainQueues.isEmpty();
     }
 
     @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called during teardown")
@@ -169,7 +173,7 @@ public final class VMOperationControl {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread(IsolateThread thread) {
         if (UseDedicatedVMOperationThread.getValue()) {
-            return thread == dedicatedVMOperationThread.getIsolateThread();
+            return thread == get().dedicatedVMOperationThread.getIsolateThread();
         }
         return false;
     }

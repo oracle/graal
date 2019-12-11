@@ -856,7 +856,7 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = TrueIfUseCardRememberedSetHeap.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseCardRememberedSetHeap.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

@@ -382,7 +382,12 @@ public final class Safepoint {
         }
     }
 
-    public static void transitionNativeToVM() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean fastTransitionNativeToVM() {
+        return StatusSupport.compareAndSetNativeToNewStatus(StatusSupport.STATUS_IN_VM);
+    }
+
+    public static void slowTransitionNativeToVM() {
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {

@@ -29,9 +29,9 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-class TrueIfUseCardRememberedSetHeap implements BooleanSupplier {
-    @Platforms(Platform.HOSTED_ONLY.class)
-    TrueIfUseCardRememberedSetHeap() {
+@Platforms(Platform.HOSTED_ONLY.class)
+class UseCardRememberedSetHeap implements BooleanSupplier {
+    UseCardRememberedSetHeap() {
     }
 
     @Override

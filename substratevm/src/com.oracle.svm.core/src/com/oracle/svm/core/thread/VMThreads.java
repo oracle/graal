@@ -37,6 +37,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -282,19 +283,7 @@ public abstract class VMThreads {
 
         cleanupBeforeDetach(thread);
 
-        /*
-         * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
-         * functions that are not marked as @Uninterruptible during the detach process. We hold the
-         * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
-         * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
-         * possible that we enter the safepoint slow path.
-         *
-         * Between setting the status and acquiring the TREAD_MUTEX, we must not access the heap.
-         * Otherwise, we risk a race with the GC as this thread will continue executing even though
-         * the VM is at a safepoint.
-         */
-        StatusSupport.setStatusIgnoreSafepoints();
-        THREAD_MUTEX.lockNoTransition();
+        setStatusIgnoreSafepointsAndLock();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -318,6 +307,24 @@ public abstract class VMThreads {
         }
 
         cleanupExitedOsThread(threadToCleanup);
+    }
+
+    /*
+     * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling functions
+     * that are not marked as @Uninterruptible during the detach process. We hold the THREAD_MUTEX,
+     * so we know that we are not going to be interrupted by a safepoint. But a safepoint can
+     * already be requested, or our safepoint counter can reach 0 - so it is still possible that we
+     * enter the safepoint slow path.
+     *
+     * Between setting the status and acquiring the TREAD_MUTEX, we must not access the heap.
+     * Otherwise, we risk a race with the GC as this thread will continue executing even though the
+     * VM is at a safepoint.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @NeverInline("Prevent that anything floats between setting the status and acquiring the mutex.")
+    private static void setStatusIgnoreSafepointsAndLock() {
+        StatusSupport.setStatusIgnoreSafepoints();
+        THREAD_MUTEX.lockNoTransition();
     }
 
     @Uninterruptible(reason = "Isolate thread will be freed.", calleeMustBe = false)
@@ -505,7 +512,7 @@ public abstract class VMThreads {
          * {@link IsolateThread} memory has been allocated for the thread, but the thread is not on
          * the VMThreads list yet.
          */
-        public static final int STATUS_CREATED = STATUS_ILLEGAL + 1;
+        public static final int STATUS_CREATED = 0;
         /** The thread is running in Java code. */
         public static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
         /** The thread has been requested to stop at a safepoint. */
