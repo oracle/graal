@@ -1873,12 +1873,6 @@ final class JDWP {
                         }
 
                         byte sigbyte = input.readByte();
-                        byte realTag = context.getTag(value);
-
-                        if (sigbyte != realTag) {
-                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
-                            return new CommandResult(reply);
-                        }
 
                         writeValue(sigbyte, value, reply, true, context);
                     }
@@ -1887,7 +1881,6 @@ final class JDWP {
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);
                 }
-
                 return new CommandResult(reply);
             }
         }
