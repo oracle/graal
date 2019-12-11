@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test.nodes;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -36,7 +37,7 @@ public class IsLoggableNode extends AbstractTestNode {
 
     public IsLoggableNode(final Level level, final int result) {
         Objects.requireNonNull(level, "Level must be non null.");
-        this.log = TruffleLogger.getLogger("test", "testLogger");
+        this.log = TruffleLogger.getLogger(ProxyLanguage.ID, "testLogger");
         this.level = level;
         this.result = result;
     }
