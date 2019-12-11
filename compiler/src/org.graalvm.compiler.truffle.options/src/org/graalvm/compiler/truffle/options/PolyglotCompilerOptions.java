@@ -239,16 +239,16 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
 
-    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.USER)
+    @Option(help = "Method filter for host methods in which to add instrumentation.", category = OptionCategory.EXPERT)
     public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
 
-    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.USER)
+    @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.USER)
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
 
-    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.USER)
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
 
     // Language agnostic inlining

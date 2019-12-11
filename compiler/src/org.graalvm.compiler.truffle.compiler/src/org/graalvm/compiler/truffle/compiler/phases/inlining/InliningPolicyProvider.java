@@ -37,7 +37,7 @@ public abstract class InliningPolicyProvider implements Comparable<InliningPolic
         this.name = name;
     }
 
-    public abstract InliningPolicy get(CoreProviders providers, OptionValues optionValues);
+    public abstract InliningPolicy get(OptionValues options, CoreProviders providers);
 
     @Override
     public int compareTo(InliningPolicyProvider o) {

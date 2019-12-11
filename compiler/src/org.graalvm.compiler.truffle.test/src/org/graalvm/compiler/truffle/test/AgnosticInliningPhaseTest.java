@@ -135,7 +135,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                         },
                         getSpeculationLog(),
                         null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, callNodeProvider, callTarget, callTarget.getOptionValues());
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(callTarget.getOptionValues(), partialEvaluator, callNodeProvider, callTarget);
         agnosticInliningPhase.apply(graph, truffleCompiler.getPartialEvaluator().getProviders());
         return graph;
     }

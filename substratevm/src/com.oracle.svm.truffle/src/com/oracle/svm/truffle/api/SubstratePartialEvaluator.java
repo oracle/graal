@@ -60,9 +60,10 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected PEGraphDecoder createGraphDecoder(StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
+    protected PEGraphDecoder createGraphDecoder(OptionValues options, StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin,
+                    InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues polyglotCompilerOptionValues) {
+                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         TruffleConstantFieldProvider compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
         return new SubstratePEGraphDecoder(architecture, graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin,
                         nodePlugins, callInlinedMethod, callInlinedAgnosticMethod, sourceLanguagePositionProvider);
@@ -79,9 +80,10 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected void doGraphPE(CompilableTruffleAST callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision, InlineInvokePlugin inlineInvokePlugin,
-                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues polyglotCompilerOptionValues) {
-        super.doGraphPE(callTarget, graph, tierContext, inliningDecision, inlineInvokePlugin, graphCache, polyglotCompilerOptionValues);
+    protected void doGraphPE(OptionValues options, CompilableTruffleAST callTarget, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision,
+                    InlineInvokePlugin inlineInvokePlugin,
+                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+        super.doGraphPE(options, callTarget, graph, tierContext, inliningDecision, inlineInvokePlugin, graphCache);
 
         new DeadStoreRemovalPhase().apply(graph);
         new TruffleBoundaryPhase().apply(graph);

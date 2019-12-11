@@ -58,7 +58,7 @@ public final class CallNode extends Node {
     private final CompilableTruffleAST truffleAST;
     private final TruffleCallNode[] truffleCallees;
     private final double rootRelativeFrequency;
-    private final OptionValues polyglotCompilerOptionValues;
+    private final OptionValues options;
     private Object data;
     private State state;
     @Successor private NodeSuccessorList<CallNode> children;
@@ -72,8 +72,9 @@ public final class CallNode extends Node {
     private EconomicMap<CallNode, Invoke> childInvokes;
 
     // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, int depth, OptionValues polyglotCompilerOptionValues) {
+    protected CallNode(OptionValues options, TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, int depth) {
         super(TYPE);
+        this.options = options;
         this.state = State.Cutoff;
         this.recursionDepth = -1;
         this.rootRelativeFrequency = rootRelativeFrequency;
@@ -84,17 +85,16 @@ public final class CallNode extends Node {
         this.childInvokes = EconomicMap.create();
         this.children = new NodeSuccessorList<>(this, 0);
         this.depth = depth;
-        this.polyglotCompilerOptionValues = polyglotCompilerOptionValues;
     }
 
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, OptionValues polyglotCompilerOptionValues) {
+    static CallNode makeRoot(OptionValues options, CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir) {
         Objects.requireNonNull(callTree);
         Objects.requireNonNull(truffleAST);
         Objects.requireNonNull(ir);
-        final CallNode root = new CallNode(null, truffleAST, ir, 1, 0, polyglotCompilerOptionValues);
+        final CallNode root = new CallNode(options, null, truffleAST, ir, 1, 0);
         callTree.add(root);
         root.data = callTree.getPolicy().newCallNodeData(root);
         assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
@@ -156,7 +156,7 @@ public final class CallNode extends Node {
         for (TruffleCallNode childCallNode : truffleCallees) {
             final double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
             final double childFrequency = relativeFrequency * this.rootRelativeFrequency;
-            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency, this.depth + 1, polyglotCompilerOptionValues);
+            CallNode callNode = new CallNode(options, childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency, this.depth + 1);
             getCallTree().add(callNode);
             this.children.add(callNode);
             callNode.data = getPolicy().newCallNodeData(callNode);
@@ -174,7 +174,7 @@ public final class CallNode extends Node {
 
     private void partiallyEvaluateRoot() {
         assert getParent() == null;
-        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().getGraphManager().peRoot(truffleAST, polyglotCompilerOptionValues);
+        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().getGraphManager().peRoot(options, truffleAST);
         state = State.Inlined;
         for (CallNode child : children) {
             final Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
@@ -216,7 +216,7 @@ public final class CallNode extends Node {
     private EconomicMap<TruffleCallNode, Invoke> partiallyEvaluate() {
         assert state == State.Expanded;
         assert ir == null;
-        GraphManager.Entry entry = getCallTree().getGraphManager().get(truffleAST, polyglotCompilerOptionValues);
+        GraphManager.Entry entry = getCallTree().getGraphManager().get(options, truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
         return entry.truffleCallNodeToInvoke;
     }

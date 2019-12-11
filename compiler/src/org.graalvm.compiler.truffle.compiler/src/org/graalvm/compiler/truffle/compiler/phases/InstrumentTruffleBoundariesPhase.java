@@ -65,8 +65,8 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, OptionValues polyglotCompilerOptionValues) {
-        super(snippetReflection, instrumentation, polyglotCompilerOptionValues);
+    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(options, snippetReflection, instrumentation);
     }
 
     @Override

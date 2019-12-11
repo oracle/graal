@@ -41,18 +41,17 @@ public final class CallTree extends Graph {
     private final InliningPolicy policy;
     private final GraphManager graphManager;
     private final CallNode root;
-    private final OptionValues polyglotCompilerOptionValues;
+    private final OptionValues options;
     int expanded = 1;
     int inlined = 1;
 
-    CallTree(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy,
-                    OptionValues polyglotCompilerOptionValues) {
+    CallTree(OptionValues options, PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         super(ir.getOptions(), ir.getDebug());
+        this.options = options;
         this.policy = policy;
         this.graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(this, truffleAST, ir, polyglotCompilerOptionValues);
-        this.polyglotCompilerOptionValues = polyglotCompilerOptionValues;
+        this.root = CallNode.makeRoot(options, this, truffleAST, ir);
     }
 
     InliningPolicy getPolicy() {
@@ -76,8 +75,8 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.TraceInliningDetails);
-        if (getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.TraceInlining) || details) {
+        final Boolean details = getPolyglotOptionValue(options, PolyglotCompilerOptions.TraceInliningDetails);
+        if (getPolyglotOptionValue(options, PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
             traceRecursive(runtime, root, details, 0);

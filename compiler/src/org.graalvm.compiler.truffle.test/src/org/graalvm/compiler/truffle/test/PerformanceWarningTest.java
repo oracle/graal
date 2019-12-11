@@ -139,7 +139,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
                 TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-                compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null, compilable.getOptionValues());
+                compiler.compileAST(compilable.getOptionValues(), debug, compilable, inliningPlan, compilationId, null, null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {

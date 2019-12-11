@@ -39,7 +39,7 @@ public class DefaultPolicyProvider extends InliningPolicyProvider {
     }
 
     @Override
-    public InliningPolicy get(CoreProviders providers, OptionValues optionValues) {
-        return new DefaultPolicy(optionValues);
+    public InliningPolicy get(OptionValues options, CoreProviders providers) {
+        return new DefaultPolicy(options);
     }
 }

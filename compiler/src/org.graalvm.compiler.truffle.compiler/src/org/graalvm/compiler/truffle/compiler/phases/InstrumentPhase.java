@@ -91,8 +91,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     protected final MethodFilter[] methodFilter;
     protected final SnippetReflectionProvider snippetReflection;
 
-    public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, OptionValues polyglotCompilerOptionValues) {
-        String filterValue = instrumentationFilter(polyglotCompilerOptionValues);
+    public InstrumentPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        String filterValue = instrumentationFilter(options);
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
@@ -106,8 +106,8 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
         return instrumentation;
     }
 
-    protected String instrumentationFilter(OptionValues polyglotCompilerOptionValues) {
-        return getPolyglotOptionValue(polyglotCompilerOptionValues, PolyglotCompilerOptions.InstrumentFilter);
+    protected String instrumentationFilter(OptionValues options) {
+        return getPolyglotOptionValue(options, PolyglotCompilerOptions.InstrumentFilter);
     }
 
     protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,
@@ -221,7 +221,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static String prettify(String key, Point p, org.graalvm.compiler.options.OptionValues options) {
+        private static String prettify(org.graalvm.compiler.options.OptionValues options, String key, Point p) {
             if (p.isPrettified(options)) {
                 StringBuilder sb = new StringBuilder();
                 NodeSourcePosition pos = p.getPosition();
@@ -298,7 +298,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
             ArrayList<String> list = new ArrayList<>();
             for (Map.Entry<String, Point> entry : sortedEntries) {
-                list.add(prettify(entry.getKey(), entry.getValue(), options) + CodeUtil.NEW_LINE + entry.getValue());
+                list.add(prettify(options, entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue());
             }
             return list;
         }

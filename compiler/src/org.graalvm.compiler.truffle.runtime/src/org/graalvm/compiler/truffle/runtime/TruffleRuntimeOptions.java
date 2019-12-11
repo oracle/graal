@@ -164,22 +164,22 @@ public final class TruffleRuntimeOptions {
      * Uses the --engine option if set, otherwise falls back on the -Dgraal option.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T getPolyglotOptionValue(OptionValues polyglotValues, OptionKey<T> polyglotOptionKey) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(polyglotOptionKey)) {
-            return polyglotValues.get(polyglotOptionKey);
+    public static <T> T getPolyglotOptionValue(OptionValues options, OptionKey<T> optionKey) {
+        if (options != null && options.hasBeenSet(optionKey)) {
+            return options.get(optionKey);
         }
-        OptionKey<T> runtimeOptionKey = (OptionKey<T>) POLYGLOT_TO_RUNTIME.get(polyglotOptionKey);
+        OptionKey<T> runtimeOptionKey = (OptionKey<T>) POLYGLOT_TO_RUNTIME.get(optionKey);
         if (runtimeOptionKey != null) {
             return getValue(runtimeOptionKey);
         }
-        return polyglotOptionKey.getDefaultValue();
+        return optionKey.getDefaultValue();
     }
 
-    private static boolean hasBeenSet(OptionValues polyglotValues, OptionKey<?> polyglotOptionKey) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(polyglotOptionKey)) {
+    private static boolean hasBeenSet(OptionValues options, OptionKey<?> optionKey) {
+        if (options != null && options.hasBeenSet(optionKey)) {
             return true;
         }
-        OptionKey<?> runtimeOptionKey = POLYGLOT_TO_RUNTIME.get(polyglotOptionKey);
+        OptionKey<?> runtimeOptionKey = POLYGLOT_TO_RUNTIME.get(optionKey);
         return runtimeOptionKey == null ? false : getOptions().hasBeenSet(runtimeOptionKey);
     }
 

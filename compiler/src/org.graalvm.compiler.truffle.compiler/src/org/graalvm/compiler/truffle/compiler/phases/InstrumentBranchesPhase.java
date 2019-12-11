@@ -57,8 +57,8 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
-    public InstrumentBranchesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, OptionValues polyglotCompilerOptionValues) {
-        super(snippetReflection, instrumentation, polyglotCompilerOptionValues);
+    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(options, snippetReflection, instrumentation);
     }
 
     @Override

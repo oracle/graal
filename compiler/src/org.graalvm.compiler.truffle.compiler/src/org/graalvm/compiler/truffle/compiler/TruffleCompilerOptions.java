@@ -155,27 +155,27 @@ public final class TruffleCompilerOptions {
      * Uses the --engine option if set, otherwise falls back on the -Dgraal option.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T getPolyglotOptionValue(org.graalvm.options.OptionValues polyglotValues, org.graalvm.options.OptionKey<T> polyglotOptionKey) {
-        if (polyglotValues != null && polyglotValues.hasBeenSet(polyglotOptionKey)) {
-            return polyglotValues.get(polyglotOptionKey);
+    public static <T> T getPolyglotOptionValue(org.graalvm.options.OptionValues options, org.graalvm.options.OptionKey<T> optionKey) {
+        if (options != null && options.hasBeenSet(optionKey)) {
+            return options.get(optionKey);
         }
-        OptionKey<T> compilerOptionKey = (OptionKey<T>) POLYGLOT_TO_COMPILER.get(polyglotOptionKey);
+        OptionKey<T> compilerOptionKey = (OptionKey<T>) POLYGLOT_TO_COMPILER.get(optionKey);
         if (compilerOptionKey != null) {
             return getValue(compilerOptionKey);
         }
-        return polyglotOptionKey.getDefaultValue();
+        return optionKey.getDefaultValue();
     }
 
     /**
      * Determines whether an exception during a Truffle compilation should result in calling
      * {@link System#exit(int)}.
      */
-    public static boolean areTruffleCompilationExceptionsFatal(org.graalvm.options.OptionValues polyglotCompilerOptionValues) {
+    public static boolean areTruffleCompilationExceptionsFatal(org.graalvm.options.OptionValues options) {
         /*
          * This is duplicated in TruffleRuntimeOptions#areTruffleCompilationExceptionsFatal.
          */
-        boolean compilationExceptionsAreFatal = getPolyglotOptionValue(polyglotCompilerOptionValues, CompilationExceptionsAreFatal);
-        boolean performanceWarningsAreFatal = getPolyglotOptionValue(polyglotCompilerOptionValues, PerformanceWarningsAreFatal);
+        boolean compilationExceptionsAreFatal = getPolyglotOptionValue(options, CompilationExceptionsAreFatal);
+        boolean performanceWarningsAreFatal = getPolyglotOptionValue(options, PerformanceWarningsAreFatal);
         return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 

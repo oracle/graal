@@ -169,7 +169,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null, compilable.getOptionValues());
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable.getOptionValues(), debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
