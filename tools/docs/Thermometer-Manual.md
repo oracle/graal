@@ -30,17 +30,6 @@ Thread.new do
   end
 end
 
-Thread.new do
-  loop do
-    sleep 3 + rand(3)
-    loop do
-      Truffle::Graal.bailout 'demo compilation failure'
-    end
-  rescue Exception
-    next
-  end
-end
-
 dev_null = File.open('/dev/null', 'w')
 
 loop do
@@ -49,13 +38,10 @@ loop do
 end
 ```
 
-Run with the `--thermometer` flag (we use `--jvm` and have disabled `libgraal`
-for more extreme warmup and use
-`--vm.Dgraal.TruffleCompilationExceptionsAreThrown=true` to allow the
-compilation to be retried.
+Run with the `--thermometer` flag (we use `--jvm` for more extreme warmup.)
 
 ```
-% ruby --jvm --vm.Dgraal.TruffleCompilationExceptionsAreThrown=true --thermometer demo.rb
+% ruby --jvm --thermometer demo.rb
 ```
 
 You'll see log lines like this:
@@ -101,7 +87,7 @@ The indicator is set as follows, in priority order
 
 ## Monitoring performance
 
-`--thermometer.IterationPoint=demo.rb:26` will install an iterations-per-second
+`--thermometer.IterationPoint=demo.rb:15` will install an iterations-per-second
 counter on any statements at this location. You should ensure there is just one
 statement at this location as each statement run will count as an iteration.
 
