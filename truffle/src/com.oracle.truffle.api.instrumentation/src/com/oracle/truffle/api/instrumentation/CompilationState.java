@@ -24,13 +24,7 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.util.function.Supplier;
-
 public interface CompilationState {
-
-    class Backdoor {
-        public static Supplier<CompilationState> BACKDOOR;
-    }
 
     int getQueued();
 

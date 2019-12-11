@@ -26,6 +26,10 @@ package com.oracle.truffle.api.instrumentation;
 
 import java.util.function.Supplier;
 
+/*
+ * Sorry - I'm not sure how to feed this accessor properly through the encapsulation that the Truffle instrumentation
+ * APIs have, so I've added it as an unsafe backdoor for now.
+ */
 public class CompilationStateBackdoor {
 
     public static Supplier<CompilationState> ACCESSOR;
