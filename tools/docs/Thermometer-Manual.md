@@ -31,9 +31,13 @@ Thread.new do
 end
 
 Thread.new do
-  sleep 3 + rand(3)
   loop do
-    Truffle::Graal.bailout 'demo compilation failure'
+    sleep 3 + rand(3)
+    loop do
+      Truffle::Graal.bailout 'demo compilation failure'
+    end
+  rescue Exception
+    next
   end
 end
 
@@ -45,12 +49,12 @@ loop do
 end
 ```
 
-Run with the `--thermometer` flag (we use
-`--vm.Dgraal.TruffleCompilationExceptionsAreThrown=true` to stop the
-compilation failure being re-tried).
+Run with the `--thermometer` flag (we use `--jvm` for more extreme warmup and
+`--vm.Dgraal.TruffleCompilationExceptionsAreThrown=true` to allow the
+compilation to be retried.
 
 ```
-% ruby --vm.Dgraal.TruffleCompilationExceptionsAreThrown=true --thermometer demo.rb
+% ruby --jvm --vm.Dgraal.TruffleCompilationExceptionsAreThrown=true --thermometer demo.rb
 ```
 
 You'll see log lines like this:
@@ -69,9 +73,9 @@ You'll see log lines like this:
 
 ```
 8.33s  🤔   67°    0.81 MB    0 ▶  1 ▶  28  (  0, 64 )   2 ▼
-  ┃     ┃    ┃       ┃        ┃     ┃     ┃     ┃   ┃    ┗━ deoptimizations and invalidations
-  ┃     ┃    ┃       ┃        ┃     ┃     ┃     ┃   ┗━━━━━━ dequeued
-  ┃     ┃    ┃       ┃        ┃     ┃     ┃     ┗━━━━━━━━━━ failed
+  ┃     ┃    ┃       ┃        ┃     ┃     ┃    ┃   ┃     ┗━ deoptimizations and invalidations
+  ┃     ┃    ┃       ┃        ┃     ┃     ┃    ┃   ┗━━━━━━━ dequeued
+  ┃     ┃    ┃       ┃        ┃     ┃     ┃    ┗━━━━━━━━━━━ failed
   ┃     ┃    ┃       ┃        ┃     ┃     ┗━━━━━━━━━━━━━━━━ finished
   ┃     ┃    ┃       ┃        ┃     ┗━━━━━━━━━━━━━━━━━━━━━━ running
   ┃     ┃    ┃       ┃        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━ queued
@@ -96,7 +100,7 @@ The indicator is set as follows, in priority order
 
 ## Monitoring performance
 
-`--thermometer.IterationPoint=demo.rb:22` will install an iterations-per-second
+`--thermometer.IterationPoint=demo.rb:26` will install an iterations-per-second
 counter on any statements at this location. You should ensure there is just one
 statement at this location as each statement run will count as an iteration.
 
