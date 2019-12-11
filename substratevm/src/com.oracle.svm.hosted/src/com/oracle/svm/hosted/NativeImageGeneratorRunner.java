@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
@@ -126,6 +127,16 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         nativeImageClassLoader = new NativeImageClassLoader(verifyClassPathAndConvertToURLs(classpath), applicationClassLoader);
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
+        // Replace the SystemClassLoader as well
+        Field scl;
+        try {
+            scl = ClassLoader.class.getDeclaredField("scl");
+            scl.setAccessible(true);
+            scl.set(null, nativeImageClassLoader);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            warn("SystemClassLoader could not be replaced. This might create problems when using reflective " +
+                            "class during class initialization");
+        }
         return nativeImageClassLoader;
     }
 
