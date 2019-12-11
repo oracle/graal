@@ -253,9 +253,9 @@ public final class DebuggerTester implements AutoCloseable {
     /**
      * Starts a new script evaluation on the background thread. Only one evaluation can be active at
      * a time. Please ensure that {@link #expectDone()} completed successfully before starting a new
-     * evaluation. If a Source is available please refer to
-     * {@link DebuggerTester#startEval(Source)}. Throws an {@link IllegalStateException} if another
-     * evaluation is still executing or the tester is already closed.
+     * evaluation. If a Source is available please refer to {@link DebuggerTester#startEval(Source)}
+     * . Throws an {@link IllegalStateException} if another evaluation is still executing or the
+     * tester is already closed.
      *
      * @since 20.0
      */
