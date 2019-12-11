@@ -49,7 +49,8 @@ loop do
 end
 ```
 
-Run with the `--thermometer` flag (we use `--jvm` for more extreme warmup and
+Run with the `--thermometer` flag (we use `--jvm` and have disabled `libgraal`
+for more extreme warmup and use
 `--vm.Dgraal.TruffleCompilationExceptionsAreThrown=true` to allow the
 compilation to be retried.
 
@@ -121,6 +122,8 @@ The log can be visualised with a script:
 ```
 
 ![Example graph](thermometer-graph.svg)
+
+You can pass multiple logs to see them on the same graph.
 
 ## Advanced usage
 

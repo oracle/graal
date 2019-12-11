@@ -2,21 +2,23 @@ import sys
 import json
 import matplotlib.pyplot as plt
 
-samples = []
+logs = []
 
 for file in sys.argv[1:]:
+    samples = []
     with open(file) as stream:
         for line in stream:
             samples.append(json.loads(line))
-
-times = [s['elapsedTime'] / 1e9 for s in samples]
+    logs.append(samples)
 
 traces = [
     ('Temp', 'sampleReading', 0.01)
 ]
 
-if 'iterationsPerSecond' in samples[0].keys():
-    max_iterations = max([s['iterationsPerSecond'] for s in samples])
+all_samples = [sample for sample in logs for log in logs]
+
+if 'iterationsPerSecond' in all_samples[0]:
+    max_iterations = max([s['iterationsPerSecond'] for s in all_samples])
     if max_iterations > 1000000:
         iterations_scale = 1000000
         iterations_label = 'MIPS'
@@ -42,10 +44,11 @@ traces.extend([
 f, plots = plt.subplots(len(traces), 1, sharex=True)
 
 for n, (plot, (title, key, scale)) in enumerate(zip(plots, traces)):
-    values = [s[key] / float(scale) for s in samples]
-    plot.plot(times, values, '-')
-    min_value = min(values)
-    max_value = max(values)
+    for log in logs:
+        plot.plot([sample['elapsedTime'] / 1e9 for sample in log], [sample[key] / float(scale) for sample in log], '-')
+    all_values = [sample[key] / float(scale) for sample in log for log in logs]
+    min_value = min(all_values)
+    max_value = max(all_values)
     if min_value == 0 and max_value == 0:
         plot.set_ylim([-1.0, +1.0])
     else:
