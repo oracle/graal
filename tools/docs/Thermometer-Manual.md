@@ -15,8 +15,7 @@ virtual machine warmup.
 ## Basic usage
 
 Take this example Ruby program. It renders an ERB template. Every now and again
-another thread swaps the template. After a few seconds a compilation will be
-attempted which will fail.
+another thread swaps the template.
 
 ```ruby
 require 'erb'
