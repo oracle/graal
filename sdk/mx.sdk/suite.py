@@ -117,6 +117,10 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/compiler-rt-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334-linux-amd64.tar.gz"],
       "sha1" : "85aa08cfe1b28280d8267dc9ae2ef80463541d46",
     },
+    "LLVM_ORG_LIBCXX_SRC" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/llvm-org/libcxx-src-llvmorg-8.0.0-4-ge74b3bb77d-bg85b0cfd334.tar.gz"],
+      "sha1" : "5e291cefe0beb2e2e3784b5aaac621c5081de5ef",
+    },
   },
   "projects" : {
     "org.graalvm.options" : {
