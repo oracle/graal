@@ -39,6 +39,6 @@ public final class JDWPSetup {
     }
 
     public void finalizeSession() {
-        controller.disposeDebugger();
+        controller.disposeDebugger(false);
     }
 }

@@ -123,7 +123,7 @@ final class JDWP {
                 return new CommandResult(reply, Collections.singletonList(new Callable<Void>() {
                     @Override
                     public Void call() throws Exception {
-                        controller.disposeDebugger();
+                        controller.disposeDebugger(true);
                         return null;
                     }
                 }));
