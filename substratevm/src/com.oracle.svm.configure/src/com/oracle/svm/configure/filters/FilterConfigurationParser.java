@@ -34,9 +34,9 @@ import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class FilterConfigurationParser extends ConfigurationParser {
-    private final PackageNode rootNode;
+    private final RuleNode rootNode;
 
-    public FilterConfigurationParser(PackageNode rootNode) {
+    public FilterConfigurationParser(RuleNode rootNode) {
         assert rootNode != null;
         this.rootNode = rootNode;
     }
@@ -66,25 +66,25 @@ public class FilterConfigurationParser extends ConfigurationParser {
 
     private void parseEntry(Object entryObject) {
         Map<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
-        Object qualifiedPkg = null;
-        PackageNode.Inclusion inclusion = null;
+        Object qualified = null;
+        RuleNode.Inclusion inclusion = null;
         String exactlyOneMessage = "Exactly one of attributes 'includeClasses' and 'excludeClasses' must be specified for a filter entry";
         for (Map.Entry<String, Object> pair : entry.entrySet()) {
-            if (qualifiedPkg != null) {
+            if (qualified != null) {
                 throw new JSONParserException(exactlyOneMessage);
             }
-            qualifiedPkg = pair.getValue();
+            qualified = pair.getValue();
             if ("includeClasses".equals(pair.getKey())) {
-                inclusion = PackageNode.Inclusion.Include;
+                inclusion = RuleNode.Inclusion.Include;
             } else if ("excludeClasses".equals(pair.getKey())) {
-                inclusion = PackageNode.Inclusion.Exclude;
+                inclusion = RuleNode.Inclusion.Exclude;
             } else {
                 throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
             }
         }
-        if (qualifiedPkg == null) {
+        if (qualified == null) {
             throw new JSONParserException(exactlyOneMessage);
         }
-        rootNode.addOrGetChild(qualifiedPkg.toString(), inclusion, true, null);
+        rootNode.addOrGetChildren(qualified.toString(), inclusion);
     }
 }

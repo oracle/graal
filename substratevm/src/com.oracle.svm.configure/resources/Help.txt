@@ -69,7 +69,8 @@ generate-filters          builds a class filter according to the parameters.
                           can be used with the caller-filter-file option of
                           native-image-agent.
     --include-classes=<class-pattern>
-                          adds a single rule to include classes matching the
+                          adds a single rule to include a specific class, such
+                          as "com.oracle.graal.Compiler", or classes matching a
                           specified pattern, for example "com.oracle.graal.*"
                           for classes directly in package "com.oracle.graal",
                           or "com.oracle.graal.** (double asterisks) for all

@@ -82,7 +82,7 @@ import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
-import com.oracle.svm.configure.filters.PackageNode;
+import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
@@ -187,9 +187,9 @@ public final class Agent {
             System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
         }
 
-        PackageNode callersFilter = null;
+        RuleNode callersFilter = null;
         if (!builtinFilter) {
-            callersFilter = PackageNode.createRoot();
+            callersFilter = RuleNode.createRoot();
         }
         if (!callerFilterFiles.isEmpty()) {
             if (callersFilter == null) {

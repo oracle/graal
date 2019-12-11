@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.ModuleFilterTools;
-import com.oracle.svm.configure.filters.PackageNode;
+import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
@@ -238,7 +238,7 @@ public class ConfigurationTool {
                 args.add(arg);
             }
         }
-        PackageNode rootNode = null;
+        RuleNode rootNode = null;
         for (String arg : args) {
             String[] parts = arg.split("=", 2);
             String current = parts[0];
@@ -269,11 +269,11 @@ public class ConfigurationTool {
                     break;
 
                 case "--include-classes":
-                    rootNode = addSingleRule(rootNode, current, value, PackageNode.Inclusion.Include);
+                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Include);
                     break;
 
                 case "--exclude-classes":
-                    rootNode = addSingleRule(rootNode, current, value, PackageNode.Inclusion.Exclude);
+                    rootNode = addSingleRule(rootNode, current, value, RuleNode.Inclusion.Exclude);
                     break;
 
                 default:
@@ -291,30 +291,21 @@ public class ConfigurationTool {
         }
     }
 
-    private static PackageNode maybeCreateRootNode(PackageNode rootNode) {
-        return (rootNode != null) ? rootNode : PackageNode.createRoot();
+    private static RuleNode maybeCreateRootNode(RuleNode rootNode) {
+        return (rootNode != null) ? rootNode : RuleNode.createRoot();
     }
 
-    private static PackageNode addSingleRule(PackageNode rootNode, String argName, String value, PackageNode.Inclusion inclusion) {
-        rootNode = maybeCreateRootNode(rootNode);
-        if (value == null || value.isEmpty()) {
+    private static RuleNode addSingleRule(RuleNode rootNode, String argName, String qualifiedPkg, RuleNode.Inclusion inclusion) {
+        RuleNode root = maybeCreateRootNode(rootNode);
+        if (qualifiedPkg == null || qualifiedPkg.isEmpty()) {
             throw new UsageException("Argument must be provided for: " + argName);
         }
-        String qualifiedPkg;
-        boolean recursive = value.endsWith(".**");
-        if (recursive) {
-            qualifiedPkg = value.substring(0, value.length() - ".**".length());
-        } else if (value.endsWith(".*")) {
-            qualifiedPkg = value.substring(0, value.length() - ".*".length());
-        } else {
-            throw new UsageException("Rule must end with either .* to include all classes in the package, " +
-                            "or .** to include all classes in the package and all of its subpackages");
+        if (qualifiedPkg.indexOf('*') != -1 && !qualifiedPkg.endsWith(".**") && !qualifiedPkg.endsWith(".*")) {
+            throw new UsageException("Rule may only contain '*' at the end, either as .* to include all classes in the package, " +
+                            "or as .** to include all classes in the package and all of its subpackages");
         }
-        if (qualifiedPkg.contains("*")) {
-            throw new UsageException("Rule can only contain * wildcard at the end");
-        }
-        rootNode.addOrGetChild(qualifiedPkg, inclusion, true, null);
-        return rootNode;
+        root.addOrGetChildren(qualifiedPkg, inclusion);
+        return root;
     }
 
     private static String getResource(String resourceName) {

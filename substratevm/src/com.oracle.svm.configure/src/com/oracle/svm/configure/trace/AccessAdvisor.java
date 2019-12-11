@@ -26,26 +26,26 @@ package com.oracle.svm.configure.trace;
 
 import org.graalvm.compiler.phases.common.LazyValue;
 
-import com.oracle.svm.configure.filters.PackageNode;
+import com.oracle.svm.configure.filters.RuleNode;
 
 public class AccessAdvisor {
-    private static final PackageNode internalsFilter;
+    private static final RuleNode internalsFilter;
     static {
-        internalsFilter = PackageNode.createRoot();
-        internalsFilter.addOrGetChild("java", PackageNode.Inclusion.Include, true, null);
-        internalsFilter.addOrGetChild("javax", PackageNode.Inclusion.Include, true, null);
-        internalsFilter.addOrGetChild("sun", PackageNode.Inclusion.Include, true, null);
-        internalsFilter.addOrGetChild("com.sun", PackageNode.Inclusion.Include, true, null);
-        internalsFilter.addOrGetChild("jdk.", PackageNode.Inclusion.Include, true, null);
-        internalsFilter.addOrGetChild("org.graalvm.compiler", PackageNode.Inclusion.Include, true, null);
+        internalsFilter = RuleNode.createRoot();
+        internalsFilter.addOrGetChildren("java.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("javax.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("sun.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Include);
+        internalsFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Include);
         internalsFilter.removeRedundantNodes();
     }
 
-    public static PackageNode copyBuiltinFilterTree() {
+    public static RuleNode copyBuiltinFilterTree() {
         return internalsFilter.copy();
     }
 
-    private PackageNode callerFilter = internalsFilter;
+    private RuleNode callerFilter = internalsFilter;
     private boolean heuristicsEnabled = true;
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
@@ -53,9 +53,7 @@ public class AccessAdvisor {
     private boolean callerFilterIncludes(String qualifiedClass) {
         if (callerFilter != null && qualifiedClass != null) {
             assert qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-            int lastDot = qualifiedClass.lastIndexOf('.');
-            String qualifiedPkg = (lastDot > 0) ? qualifiedClass.substring(0, lastDot) : "";
-            return callerFilter.treeIncludes(qualifiedPkg);
+            return callerFilter.treeIncludes(qualifiedClass);
         }
         return false;
     }
@@ -64,7 +62,7 @@ public class AccessAdvisor {
         heuristicsEnabled = enable;
     }
 
-    public void setCallerFilterTree(PackageNode rootNode) {
+    public void setCallerFilterTree(RuleNode rootNode) {
         callerFilter = rootNode;
     }
 

@@ -29,11 +29,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.configure.filters.PackageNode.Inclusion;
+import com.oracle.svm.configure.filters.RuleNode.Inclusion;
 
 public class ModuleFilterTools {
 
-    public static PackageNode generateFromModules(String[] includedModuleNames, boolean reduce) {
+    public static RuleNode generateFromModules(String[] includedModuleNames, boolean reduce) {
         Set<String> includedModuleNameSet = new HashSet<>();
         Collections.addAll(includedModuleNameSet, includedModuleNames);
         for (Module module : ModuleLayer.boot().modules()) {
@@ -41,12 +41,12 @@ public class ModuleFilterTools {
                 checkDependencies(module, includedModuleNameSet);
             }
         }
-        PackageNode rootNode = PackageNode.createRoot();
+        RuleNode rootNode = RuleNode.createRoot();
         for (Module module : ModuleLayer.boot().modules()) {
             String moduleName = module.getName();
             Inclusion inclusion = includedModuleNameSet.contains(moduleName) ? Inclusion.Include : Inclusion.Exclude;
             for (String qualifiedPkg : module.getPackages()) {
-                rootNode.addOrGetChild(qualifiedPkg, inclusion, false, moduleName);
+                rootNode.addOrGetChildren(qualifiedPkg + ".*", inclusion);
             }
         }
         if (reduce) {
