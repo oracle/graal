@@ -48,7 +48,6 @@ import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -496,8 +495,6 @@ public class GraphDecoder {
         return loopScope;
     }
 
-    public static final boolean PRINT_DEBUG_STDOUT = false;
-
     protected final void decode(LoopScope initialLoopScope) {
         LoopScope loopScope = initialLoopScope;
         /* Process (inlined) methods. */
@@ -506,9 +503,6 @@ public class GraphDecoder {
 
             /* Process loops of method. */
             while (loopScope != null) {
-                if (PRINT_DEBUG_STDOUT) {
-                    TTY.printf("Processing scope %s\n", loopScope);
-                }
                 /* Process nodes of loop. */
                 while (!loopScope.nodesToProcess.isEmpty()) {
                     loopScope = processNextNode(methodScope, loopScope);
