@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Sulong intrinsics.
+extern void *truffle_deref_handle_for_managed(void *managed);
+extern void *truffle_release_handle(void *handle);
+
 #define EXPAND(...) __VA_ARGS__
 
 #define JNI_FUNCTION_LIST(V) \
@@ -555,7 +559,7 @@ static void unset_function_error() {
   exit(-1);
 }
 
-void* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
+JNIEnv* initializeNativeContext(void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
@@ -592,13 +596,21 @@ void* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
   return env;
 }
 
-void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
+static void releaseClosure(TruffleEnv *truffle_env, void* closure) {
+    if (truffle_env != NULL) {
+        (*truffle_env)->releaseClosureRef(truffle_env, closure);
+    } else {
+        truffle_release_handle(closure);
+    }
+}
+
+void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {  
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
   // Dispose methods implemented in Java.
   #define DISPOSE__(fn_name) \
-     (*truffle_env)->releaseClosureRef(truffle_env, jni_impl->fn_name); \
+     releaseClosure(truffle_env, jni_impl->fn_name); \
      jni_impl->fn_name = NULL;
 
   JNI_FUNCTION_LIST(DISPOSE__)
@@ -613,7 +625,7 @@ void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
 
   // Dispose Nespresso-specific methods implemented in Java (e.g. Java varargs).
   #define DISPOSE_VARARGS_METHOD__(fn_name) \
-    (*truffle_env)->releaseClosureRef(truffle_env, nespresso_env->fn_name); \
+    releaseClosure(truffle_env, nespresso_env->fn_name); \
     *(void**)(&nespresso_env->fn_name) = NULL;
 
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
@@ -629,6 +641,10 @@ void disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
 }
 
 void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
-    (*truffle_env)->newClosureRef(truffle_env, closure);
+    if (truffle_env != NULL) {
+        (*truffle_env)->newClosureRef(truffle_env, closure);
+    } else {
+        closure = truffle_deref_handle_for_managed(closure);
+    }
     return closure;
 }

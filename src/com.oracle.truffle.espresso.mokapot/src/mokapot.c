@@ -36,7 +36,7 @@
 // Global
 MokapotEnv *mokaEnv = NULL;
 
-void* getJavaVM(TruffleEnv *truffle_env) {
+JavaVM* getJavaVM() {
   return (*mokaEnv)->vm;
 }
 
@@ -56,10 +56,10 @@ void* getJavaVM(TruffleEnv *truffle_env) {
   V(AttachCurrentThreadAsDaemon)
 
 
-jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (*fetch_by_name)(const char *)) {
+MokapotEnv* initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
-
+ 
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(*functions));
   struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_*) malloc(sizeof(*java_vm_functions));
 
@@ -67,36 +67,31 @@ jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (
 
   *java_vm = java_vm_functions;
   functions->vm = java_vm;
+  fprintf(stderr, "JavaVM* = %p\n", functions->vm);
   *moka_env = functions;
 
-  void *fn_ptr = NULL;
   #define INIT__(name) \
-      fn_ptr = fetch_by_name(#name); \
-      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-      functions->name = fn_ptr;
+      functions->name = fetch_by_name(#name);
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
+  // Persist env globally.
   mokaEnv = moka_env;
-  // jniEnv = (JNIEnv*) jniEnvPtr;
 
   #define INIT_VM__(name) \
-      fn_ptr = fetch_by_name(#name); \
-      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-      java_vm_functions->name = fn_ptr;
+      java_vm_functions->name = fetch_by_name(#name);
 
   JNI_INVOKE_INTERFACE_METHODS(INIT_VM__)
   #undef INIT_VM__
 
-  return (jlong) moka_env;
+  return moka_env;
 }
 
 MokapotEnv* getEnv() {
   return mokaEnv;
 }
 
-void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
-  MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
+void disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env) {
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) *moka_env;
 
   #define DISPOSE__(name) \
