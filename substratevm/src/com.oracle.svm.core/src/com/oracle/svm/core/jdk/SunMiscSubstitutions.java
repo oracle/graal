@@ -38,8 +38,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -49,6 +47,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -56,7 +55,6 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.MemoryBarriers;
-import sun.misc.Unsafe;
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method", "unused"})
@@ -175,7 +173,7 @@ final class Target_Unsafe_Core {
          * JDK 14 now injects Unsafe contants via the Hotspot VM, so we just determine the size of
          * pointers ourself.
          */
-        return SizeOf.get(WordPointer.class);
+        return ConfigurationValues.getTarget().wordSize;
     }
 
     @Substitute
