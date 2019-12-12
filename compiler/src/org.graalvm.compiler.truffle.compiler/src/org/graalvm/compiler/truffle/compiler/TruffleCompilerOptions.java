@@ -27,8 +27,14 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningCutoffCountPenalty;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityBonus;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityFactor;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionBudget;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionCounterPressure;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningBudget;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningCounterPressure;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeCountPenalty;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningPolicy;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentFilter;
@@ -53,6 +59,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.OptionValuesImpl;
@@ -130,6 +137,24 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(50_000);
+
+    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Double> TruffleInliningCutoffCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Double> TruffleInliningNodeCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Double> TruffleInliningExpandAllProximityFactor = new OptionKey<>(0.5);
+
+    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Integer> TruffleInliningExpandAllProximityBonus = new OptionKey<>(10);
+
+    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Integer> TruffleInliningExpansionCounterPressure = new OptionKey<>(2000);
+
+    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
+    public static final OptionKey<Integer> TruffleInliningInliningCounterPressure = new OptionKey<>(2000);
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -293,6 +318,12 @@ public final class TruffleCompilerOptions {
         result.put(InliningPolicy, TruffleInliningPolicy);
         result.put(InliningExpansionBudget, TruffleInliningExpansionBudget);
         result.put(InliningInliningBudget, TruffleInliningInliningBudget);
+        result.put(InliningCutoffCountPenalty, TruffleInliningCutoffCountPenalty);
+        result.put(InliningNodeCountPenalty, TruffleInliningNodeCountPenalty);
+        result.put(InliningExpandAllProximityFactor, TruffleInliningExpandAllProximityFactor);
+        result.put(InliningExpandAllProximityBonus, TruffleInliningExpandAllProximityBonus);
+        result.put(InliningExpansionCounterPressure, TruffleInliningExpansionCounterPressure);
+        result.put(InliningInliningCounterPressure, TruffleInliningInliningCounterPressure);
         result.put(CompilationExceptionsAreFatal, SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal);
         result.put(PerformanceWarningsAreFatal, SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal);
         result.put(TraceInlining, SharedTruffleCompilerOptions.TraceTruffleInlining);

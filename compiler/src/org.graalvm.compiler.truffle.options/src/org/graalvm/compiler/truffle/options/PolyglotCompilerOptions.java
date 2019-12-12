@@ -174,6 +174,24 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
 
+    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningCutoffCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningNodeCountPenalty = new OptionKey<>(0.1);
+
+    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Double> InliningExpandAllProximityFactor = new OptionKey<>(0.5);
+
+    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpandAllProximityBonus = new OptionKey<>(10);
+
+    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningExpansionCounterPressure = new OptionKey<>(2000);
+
+    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> InliningInliningCounterPressure = new OptionKey<>(2000);
+
     // Splitting
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
