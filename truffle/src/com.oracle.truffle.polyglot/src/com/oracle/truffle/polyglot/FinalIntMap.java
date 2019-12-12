@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 /*
  * An internal map designed for partial evaluation.
@@ -53,7 +52,7 @@ final class FinalIntMap {
 
     @CompilationFinal Entry first;
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     int get(Object key) {
         Entry current = first;
         while (current != null) {

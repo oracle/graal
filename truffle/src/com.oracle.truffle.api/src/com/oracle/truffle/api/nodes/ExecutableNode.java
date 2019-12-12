@@ -51,7 +51,6 @@ import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 /**
  * Represents an executable node in a Truffle AST. The executable node represents an AST fragment
@@ -176,7 +175,7 @@ public abstract class ExecutableNode extends Node {
 
     }
 
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     @SuppressWarnings("rawtypes")
     final ReferenceCache lookupReferenceCache(Class<? extends TruffleLanguage> languageClass) {
         do {
