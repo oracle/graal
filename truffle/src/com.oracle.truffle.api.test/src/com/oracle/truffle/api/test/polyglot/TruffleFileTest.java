@@ -49,8 +49,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.test.OSUtils;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -189,6 +193,27 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             Assert.fail("Expected IOException");
         } catch (IOException ioe) {
             // expected
+        }
+    }
+
+    @Test
+    public void testSetCurrentWorkingDirectory() throws IOException {
+        Path newCwd = Files.createTempDirectory("testSetCWD");
+        Path absoluteFolder = Files.createTempDirectory("testSetCWDAbs");
+        try (Context ctx = Context.newBuilder().allowAllAccess(true).currentWorkingDirectory(newCwd).build()) {
+            setupEnv(ctx);
+            TruffleFile relative = languageEnv.getPublicTruffleFile("test");
+            TruffleFile absolute = relative.getAbsoluteFile();
+            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
+            absolute = languageEnv.getPublicTruffleFile(absoluteFolder.toString());
+            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
+            relative = languageEnv.getInternalTruffleFile("test");
+            absolute = relative.getAbsoluteFile();
+            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
+            absolute = languageEnv.getInternalTruffleFile(absoluteFolder.toString());
+            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
+        } finally {
+            Files.delete(newCwd);
         }
     }
 

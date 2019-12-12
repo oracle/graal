@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -778,6 +779,7 @@ public final class Context implements AutoCloseable {
         private ResourceLimits resourceLimits;
         private Map<String, String> environment;
         private ZoneId zone;
+        private Path currentWorkingDirectory;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1357,6 +1359,27 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets the current working directory used by the guest application to resolve relative
+         * paths. When the Context is built, the given directory is set as the current working
+         * directory on the Context's file system using the
+         * {@link FileSystem#setCurrentWorkingDirectory(java.nio.file.Path)
+         * FileSystem.setCurrentWorkingDirectory} method.
+         *
+         * @param workingDirectory the new current working directory
+         * @throws NullPointerException when {@code workingDirectory} is {@code null}
+         * @throws IllegalArgumentException when {@code workingDirectory} is a relative path
+         * @since 20.0.0
+         */
+        public Builder currentWorkingDirectory(Path workingDirectory) {
+            Objects.requireNonNull(workingDirectory, "WorkingDirectory must be non null.");
+            if (!workingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("WorkingDirectory must be an absolute path.");
+            }
+            this.currentWorkingDirectory = workingDirectory;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -1419,6 +1442,7 @@ public final class Context implements AutoCloseable {
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
+            String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
@@ -1445,7 +1469,8 @@ public final class Context implements AutoCloseable {
                 Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                                localCurrentWorkingDirectory);
                 return ctx;
             } else {
                 if (messageTransport != null) {
@@ -1454,7 +1479,8 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                                localCurrentWorkingDirectory);
             }
         }
 
