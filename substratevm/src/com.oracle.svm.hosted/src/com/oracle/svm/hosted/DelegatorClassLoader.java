@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Method;
 import java.security.SecureClassLoader;
+
+import com.oracle.svm.util.ReflectionUtil;
 
 public class DelegatorClassLoader extends SecureClassLoader {
 
@@ -45,12 +48,17 @@ public class DelegatorClassLoader extends SecureClassLoader {
     @Override
     public Class<?> loadClass(String name) throws ClassNotFoundException {
         ClassLoader cl = delegate != null ? delegate : getParent();
-        // System.out.println("loading class" + name + " with " + cl);
         return cl.loadClass(name);
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("unused")
     public void appendToClassPathForInstrumentation(String filePath) {
-        // TODO this needs to be implemented to make the agent happy
+        try {
+            Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
+            method.invoke(getParent(), filePath);
+        } catch (ReflectiveOperationException e) {
+            String message = String.format("Warning: Can not add jar: %s to class path. Due to %s", filePath, e);
+            System.err.println(message);
+        }
     }
 }
