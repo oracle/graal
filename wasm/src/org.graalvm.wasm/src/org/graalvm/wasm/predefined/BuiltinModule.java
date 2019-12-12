@@ -81,12 +81,12 @@ public abstract class BuiltinModule {
 
     protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmFunction defineFunction(WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+    protected WasmFunction defineFunction(WasmContext context, WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
-        final WasmFunction function = module.symbolTable().declareExportedFunction(typeIdx, name);
+        final WasmFunction function = module.symbolTable().declareExportedFunction(context, typeIdx, name);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         return function;

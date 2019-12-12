@@ -145,6 +145,10 @@ public class WasmFunction implements TruffleObject {
         return importDescriptor != null;
     }
 
+    public ImportDescriptor importDescriptor() {
+        return importDescriptor;
+    }
+
     public String importedModuleName() {
         return isImported() ? importDescriptor.moduleName : null;
     }

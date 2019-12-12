@@ -42,10 +42,10 @@ package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import org.graalvm.wasm.Linker.ResolutionDag.DataDecl;
-import org.graalvm.wasm.Linker.ResolutionDag.Decl;
-import org.graalvm.wasm.Linker.ResolutionDag.ExportMemoryDecl;
-import org.graalvm.wasm.Linker.ResolutionDag.ImportMemoryDecl;
+import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
+import org.graalvm.wasm.Linker.ResolutionDag.Sym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.GlobalResolution;
@@ -57,6 +57,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import static org.graalvm.wasm.Linker.ResolutionDag.*;
 
 public class Linker {
     private enum LinkState {
@@ -100,13 +102,12 @@ public class Linker {
         if (linkState == LinkState.notLinked) {
             linkState = LinkState.inProgress;
             Map<String, WasmModule> modules = WasmContext.getCurrent().modules();
-            for (WasmModule module : modules.values()) {
-                linkFunctions(module);
-                module.setLinked();
-            }
             // TODO: Once topological linking starts handling all the import kinds,
             // remove the previous loop.
             linkTopologically();
+            for (WasmModule module : modules.values()) {
+                module.setLinked();
+            }
             for (WasmModule module : modules.values()) {
                 final WasmFunction start = module.symbolTable().startFunction();
                 if (start != null) {
@@ -248,6 +249,37 @@ public class Linker {
         }
     }
 
+    void resolveFunctionImport(WasmContext context, WasmModule module, WasmFunction function) {
+        final Runnable resolveAction = () -> {
+            final WasmModule importedModule = context.modules().get(function.importedModuleName());
+            if (importedModule == null) {
+                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() +
+                                "', does not exist.");
+            }
+            WasmFunction importedFunction;
+            try {
+                importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
+            } catch (UnknownIdentifierException e) {
+                importedFunction = null;
+            }
+            if (importedFunction == null) {
+                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + module.name() +
+                                "', does not exist in the imported module '" + function.importedModuleName() + "'.");
+            }
+            function.setCallTarget(importedFunction.resolveCallTarget());
+        };
+        Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
+        resolutionDag.resolveLater(new ImportFunctionSym(module.name(), function.importDescriptor()), dependencies, resolveAction);
+    }
+
+    void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
+        final Runnable resolveAction = () -> {
+        };
+        final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
+        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor)} : new Sym[0];
+        resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, resolveAction);
+    }
+
     void resolveMemoryImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize, Consumer<WasmMemory> setMemory) {
         String importedModuleName = importDescriptor.moduleName;
         String importedMemoryName = importDescriptor.memberName;
@@ -277,15 +309,15 @@ public class Linker {
             }
             setMemory.accept(memory);
         };
-        resolutionDag.resolveLater(new ImportMemoryDecl(module.name(), importDescriptor), new Decl[]{new ExportMemoryDecl(importedModuleName, importedMemoryName)}, resolveAction);
+        resolutionDag.resolveLater(new ImportMemorySym(module.name(), importDescriptor), new Sym[]{new ExportMemorySym(importedModuleName, importedMemoryName)}, resolveAction);
     }
 
     void resolveMemoryExport(WasmModule module, String exportedMemoryName) {
         final Runnable resolveAction = () -> {
         };
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
-        final Decl[] dependencies = importDescriptor != null ? new Decl[]{new ImportMemoryDecl(module.name(), importDescriptor)} : new Decl[0];
-        resolutionDag.resolveLater(new ExportMemoryDecl(module.name(), exportedMemoryName), dependencies, resolveAction);
+        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : new Sym[0];
+        resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
     void resolveDataSection(WasmModule module, int dataSectionId, long baseAddress, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
@@ -299,20 +331,20 @@ public class Linker {
                 memory.store_i32_8(baseAddress + writeOffset, b);
             }
         };
-        final ImportMemoryDecl importMemoryDecl = new ImportMemoryDecl(module.name(), module.symbolTable().importedMemory());
-        final Decl[] dependencies = priorDataSectionsResolved ? new Decl[]{importMemoryDecl} : new Decl[]{importMemoryDecl, new DataDecl(module.name(), dataSectionId - 1)};
-        resolutionDag.resolveLater(new DataDecl(module.name(), dataSectionId), dependencies, resolveAction);
+        final ImportMemorySym importMemoryDecl = new ImportMemorySym(module.name(), module.symbolTable().importedMemory());
+        final Sym[] dependencies = priorDataSectionsResolved ? new Sym[]{importMemoryDecl} : new Sym[]{importMemoryDecl, new DataSym(module.name(), dataSectionId - 1)};
+        resolutionDag.resolveLater(new DataSym(module.name(), dataSectionId), dependencies, resolveAction);
     }
 
     static class ResolutionDag {
-        abstract static class Decl {
+        abstract static class Sym {
         }
 
-        static class ImportMemoryDecl extends Decl {
+        static class ImportFunctionSym extends Sym {
             final String moduleName;
             final ImportDescriptor importDescriptor;
 
-            ImportMemoryDecl(String moduleName, ImportDescriptor importDescriptor) {
+            ImportFunctionSym(String moduleName, ImportDescriptor importDescriptor) {
                 this.moduleName = moduleName;
                 this.importDescriptor = importDescriptor;
             }
@@ -329,19 +361,19 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ImportMemoryDecl)) {
+                if (!(object instanceof ImportFunctionSym)) {
                     return false;
                 }
-                final ImportMemoryDecl that = (ImportMemoryDecl) object;
+                final ImportFunctionSym that = (ImportFunctionSym) object;
                 return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
             }
         }
 
-        static class ExportMemoryDecl extends Decl {
+        static class ExportFunctionSym extends Sym {
             final String moduleName;
             final String memoryName;
 
-            ExportMemoryDecl(String moduleName, String memoryName) {
+            ExportFunctionSym(String moduleName, String memoryName) {
                 this.moduleName = moduleName;
                 this.memoryName = memoryName;
             }
@@ -358,19 +390,77 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof ExportMemoryDecl)) {
+                if (!(object instanceof ExportFunctionSym)) {
                     return false;
                 }
-                final ExportMemoryDecl that = (ExportMemoryDecl) object;
+                final ExportFunctionSym that = (ExportFunctionSym) object;
                 return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
             }
         }
 
-        static class DataDecl extends Decl {
+        static class ImportMemorySym extends Sym {
+            final String moduleName;
+            final ImportDescriptor importDescriptor;
+
+            ImportMemorySym(String moduleName, ImportDescriptor importDescriptor) {
+                this.moduleName = moduleName;
+                this.importDescriptor = importDescriptor;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(import %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ importDescriptor.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ImportMemorySym)) {
+                    return false;
+                }
+                final ImportMemorySym that = (ImportMemorySym) object;
+                return this.moduleName.equals(that.moduleName) && this.importDescriptor.equals(that.importDescriptor);
+            }
+        }
+
+        static class ExportMemorySym extends Sym {
+            final String moduleName;
+            final String memoryName;
+
+            ExportMemorySym(String moduleName, String memoryName) {
+                this.moduleName = moduleName;
+                this.memoryName = memoryName;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(export %s from %s)", memoryName, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ memoryName.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof ExportMemorySym)) {
+                    return false;
+                }
+                final ExportMemorySym that = (ExportMemorySym) object;
+                return this.moduleName.equals(that.moduleName) && this.memoryName.equals(that.memoryName);
+            }
+        }
+
+        static class DataSym extends Sym {
             final String moduleName;
             final int dataSectionId;
 
-            DataDecl(String moduleName, int dataSectionId) {
+            DataSym(String moduleName, int dataSectionId) {
                 this.moduleName = moduleName;
                 this.dataSectionId = dataSectionId;
             }
@@ -387,20 +477,20 @@ public class Linker {
 
             @Override
             public boolean equals(Object object) {
-                if (!(object instanceof DataDecl)) {
+                if (!(object instanceof DataSym)) {
                     return false;
                 }
-                final DataDecl that = (DataDecl) object;
+                final DataSym that = (DataSym) object;
                 return this.dataSectionId == that.dataSectionId && this.moduleName.equals(that.moduleName);
             }
         }
 
         static class Resolver {
-            final Decl element;
-            final Decl[] dependencies;
+            final Sym element;
+            final Sym[] dependencies;
             final Runnable action;
 
-            Resolver(Decl element, Decl[] dependencies, Runnable action) {
+            Resolver(Sym element, Sym[] dependencies, Runnable action) {
                 this.element = element;
                 this.dependencies = dependencies;
                 this.action = action;
@@ -412,13 +502,13 @@ public class Linker {
             }
         }
 
-        private final Map<Decl, Resolver> resolutions;
+        private final Map<Sym, Resolver> resolutions;
 
         ResolutionDag() {
             this.resolutions = new HashMap<>();
         }
 
-        void resolveLater(Decl element, Decl[] dependencies, Runnable action) {
+        void resolveLater(Sym element, Sym[] dependencies, Runnable action) {
             resolutions.put(element, new Resolver(element, dependencies, action));
         }
 
@@ -426,20 +516,20 @@ public class Linker {
             resolutions.clear();
         }
 
-        private static String renderCycle(List<Decl> stack) {
+        private static String renderCycle(List<Sym> stack) {
             StringBuilder result = new StringBuilder();
             String arrow = "";
-            for (Decl decl : stack) {
-                result.append(arrow).append(decl.toString());
+            for (Sym sym : stack) {
+                result.append(arrow).append(sym.toString());
                 arrow = " -> ";
             }
             return result.toString();
         }
 
-        private void toposort(Decl decl, Map<Decl, Boolean> marks, ArrayList<Resolver> sorted, List<Decl> stack) {
-            final Resolver resolver = resolutions.get(decl);
+        private void toposort(Sym sym, Map<Sym, Boolean> marks, ArrayList<Resolver> sorted, List<Sym> stack) {
+            final Resolver resolver = resolutions.get(sym);
             if (resolver != null) {
-                final Boolean mark = marks.get(decl);
+                final Boolean mark = marks.get(sym);
                 if (Boolean.TRUE.equals(mark)) {
                     // This node was already sorted.
                     return;
@@ -449,22 +539,22 @@ public class Linker {
                     throw new WasmLinkerException(String.format("Detected a cycle in the import dependencies: %s",
                                     renderCycle(stack)));
                 }
-                marks.put(decl, Boolean.FALSE);
-                stack.add(decl);
-                for (Decl dependency : resolver.dependencies) {
+                marks.put(sym, Boolean.FALSE);
+                stack.add(sym);
+                for (Sym dependency : resolver.dependencies) {
                     toposort(dependency, marks, sorted, stack);
                 }
-                marks.put(decl, Boolean.TRUE);
+                marks.put(sym, Boolean.TRUE);
                 stack.remove(stack.size() - 1);
                 sorted.add(resolver);
             }
         }
 
         Resolver[] toposort() {
-            Map<Decl, Boolean> marks = new HashMap<>();
+            Map<Sym, Boolean> marks = new HashMap<>();
             ArrayList<Resolver> sorted = new ArrayList<>();
-            for (Decl decl : resolutions.keySet()) {
-                toposort(decl, marks, sorted, new ArrayList<>());
+            for (Sym sym : resolutions.keySet()) {
+                toposort(sym, marks, sorted, new ArrayList<>());
             }
             return sorted.toArray(new Resolver[sorted.size()]);
         }

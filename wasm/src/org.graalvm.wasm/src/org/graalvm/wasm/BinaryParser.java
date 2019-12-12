@@ -189,7 +189,7 @@ public class BinaryParser extends BinaryStreamParser {
             switch (importType) {
                 case ImportIdentifier.FUNCTION: {
                     int typeIndex = readTypeIndex();
-                    module.symbolTable().importFunction(moduleName, memberName, typeIndex);
+                    module.symbolTable().importFunction(context, moduleName, memberName, typeIndex);
                     moduleFunctionIndex++;
                     break;
                 }
@@ -1065,7 +1065,7 @@ public class BinaryParser extends BinaryStreamParser {
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
                     int functionIndex = readFunctionIndex();
-                    module.symbolTable().exportFunction(exportName, functionIndex);
+                    module.symbolTable().exportFunction(context, functionIndex, exportName);
                     break;
                 }
                 case ExportIdentifier.TABLE: {

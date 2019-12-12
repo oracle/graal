@@ -342,10 +342,10 @@ public class SymbolTable {
         return function;
     }
 
-    public WasmFunction declareExportedFunction(int typeIndex, String exportedName) {
+    public WasmFunction declareExportedFunction(WasmContext context, int typeIndex, String exportedName) {
         checkNotLinked();
         final WasmFunction function = declareFunction(typeIndex);
-        exportFunction(exportedName, function.index());
+        exportFunction(context, function.index(), exportedName);
         return function;
     }
 
@@ -421,20 +421,23 @@ public class SymbolTable {
         return types;
     }
 
-    void exportFunction(String exportName, int functionIndex) {
+    void exportFunction(WasmContext context, int functionIndex, String exportName) {
         checkNotLinked();
         exportedFunctions.put(exportName, functions[functionIndex]);
         exportedFunctionsByIndex.put(functionIndex, exportName);
+        context.linker().resolveFunctionExport(module, functionIndex, exportName);
     }
 
     Map<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
-    WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
+    WasmFunction importFunction(WasmContext context, String moduleName, String functionName, int typeIndex) {
         checkNotLinked();
-        WasmFunction function = allocateFunction(typeIndex, new ImportDescriptor(moduleName, functionName));
+        final ImportDescriptor importDescriptor = new ImportDescriptor(moduleName, functionName);
+        WasmFunction function = allocateFunction(typeIndex, importDescriptor);
         importedFunctions.add(function);
+        context.linker().resolveFunctionImport(context, module, function);
         return function;
     }
 
@@ -681,8 +684,8 @@ public class SymbolTable {
         if (!memoryExists()) {
             throw new WasmException("No memory has been declared or imported, so memory cannot be exported.");
         }
-        context.linker().resolveMemoryExport(module, name);
         exportedMemory = name;
+        context.linker().resolveMemoryExport(module, name);
     }
 
     public WasmMemory memory() {
