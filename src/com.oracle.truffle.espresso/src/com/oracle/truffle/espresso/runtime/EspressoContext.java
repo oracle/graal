@@ -354,10 +354,9 @@ public final class EspressoContext {
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
     public synchronized void createThread(Thread hostThread) {
-        if (!initialized && "main".equals(hostThread.getName())) {
-            // guest thread for the main thread will be created
-            // be createMainThread method, and thus we should not
-            // attempt this here.
+        if (meta == null) {
+            // initial thread used to initialize the context and spawn the VM.
+            // Don't attempt guest thread creation
             return;
         }
         StaticObject guestThread = meta.Thread.allocateInstance();
