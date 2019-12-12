@@ -92,7 +92,7 @@ public final class SourceUtils {
             return source.getLineLength(oneBasedLine) + 1;
         }
         int lc = source.getLineLength(oneBasedLine);
-        if (lc <= zeroBasedColumn && zeroBasedColumn > 0) {
+        if (lc < zeroBasedColumn && zeroBasedColumn > 0) {
             LOG.log(Level.WARNING, "Column is out of range: {0}", zeroBasedColumn);
             return Math.max(1, lc);
         }

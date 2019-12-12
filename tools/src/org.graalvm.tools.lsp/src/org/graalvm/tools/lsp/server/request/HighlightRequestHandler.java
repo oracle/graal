@@ -81,7 +81,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
                                     String name = InteropUtils.getNodeObjectName(instrumentableNode);
-                                    assert name != null: instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
+                                    assert name != null : instrumentableNode.getClass().getCanonicalName() + ": " + instrumentableNode.toString();
                                     if (variableName.equals(name)) {
                                         SourceSection sourceSection = node.getSourceSection();
                                         if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {

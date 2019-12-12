@@ -337,8 +337,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 // Inner scopes should be displayed first, so sort by priority and scopeCounter
                 // (the innermost scope has the lowest counter)
                 completion.setSortText(String.format("%s%d.%04d.%s", "+", displayPriority, scopeCounter, key));
-                CompletionItemKind completionItemKind = findCompletionItemKind(object);
-                completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
+                if (completionItemKindDefault != null) {
+                    completion.setKind(completionItemKindDefault);
+                } else {
+                    completion.setKind(findCompletionItemKind(object));
+                }
                 completion.setDetail(createCompletionDetail(object, langInfo));
                 completion.setDocumentation(createDocumentation(object, surrogate.getLanguageInfo(), "in " + scope.getName()));
 
@@ -400,7 +403,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             Object value;
             try {
                 key = INTEROP.readArrayElement(keys, i).toString();
-                value = INTEROP.readMember(boxedObject, key);
+                if (INTEROP.isMemberReadable(boxedObject, key)) {
+                    value = INTEROP.readMember(boxedObject, key);
+                } else {
+                    value = null;
+                }
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
@@ -410,11 +417,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             CompletionItem completion = CompletionItem.create(key);
             ++counter;
             // Keep the order in which the keys were provided
-            completion.setSortText(String.format("$s%06d.%s", "+", counter, key));
-            CompletionItemKind kind = findCompletionItemKind(value);
-            completion.setKind(kind != null ? kind : CompletionItemKind.Property);
+            completion.setSortText(String.format("%s%06d.%s", "+", counter, key));
+            completion.setKind(CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(value, langInfo));
-            completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject + "`"));
+            completion.setDocumentation(createDocumentation(value, langInfo, "of " + metaObject));
 
             completions.add(completion);
         }
@@ -439,26 +445,23 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return documentation;
     }
 
-    public static String escapeMarkdown(String original) {
+    static String escapeMarkdown(String original) {
         return original.replaceAll("__", "\\\\_\\\\_");
     }
 
     @SuppressWarnings("all") // The parameter langInfo should not be assigned
-    public String createCompletionDetail(Object obj, LanguageInfo langInfo) {
+    String createCompletionDetail(Object obj, LanguageInfo langInfo) {
         String detailText = "";
+        if (obj == null) {
+            return detailText;
+        }
 
-        TruffleObject truffleObj = null;
-        if (obj instanceof TruffleObject) {
-            truffleObj = (TruffleObject) obj;
-            if (INTEROP.isNull(truffleObj)) {
-                return "";
-            }
-            langInfo = getObjectLanguageInfo(langInfo, obj);
+        Object truffleObj = null;
+        if (InteropUtils.isPrimitive(obj)) {
+            truffleObj = env.boxPrimitive(langInfo, obj);
         } else {
-            Object boxedObject = env.boxPrimitive(langInfo, obj);
-            if (boxedObject instanceof TruffleObject) {
-                truffleObj = (TruffleObject) boxedObject;
-            }
+            truffleObj = (TruffleObject) obj;
+            langInfo = getObjectLanguageInfo(langInfo, obj);
         }
 
         if (truffleObj != null) {
@@ -466,12 +469,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             detailText = formattedSignature != null ? formattedSignature : "";
         }
 
-        if (!detailText.isEmpty()) {
-            detailText += " ";
-        }
-
         Object metaObject = env.findMetaObject(langInfo, obj);
         if (metaObject != null) {
+            if (!detailText.isEmpty()) {
+                detailText += " ";
+            }
             detailText += env.toString(langInfo, metaObject);
         }
         return detailText;
@@ -507,7 +509,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    public String getFormattedSignature(TruffleObject truffleObj, LanguageInfo langInfo) {
+    public String getFormattedSignature(Object truffleObj, LanguageInfo langInfo) {
         try {
             Object signature = LSP_INTEROP.getSignature(truffleObj);
             return env.toString(langInfo, signature);
