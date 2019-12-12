@@ -299,6 +299,13 @@ public class JNIAccessFeature implements Feature {
         field.registerAsRead(null);
         if (writable) {
             field.registerAsWritten(null);
+            AnalysisType fieldType = field.getType();
+            if (fieldType.isArray() && !access.isReachable(fieldType)) {
+                // For convenience, make the array type reachable if its elemental type becomes
+                // such, allowing the array creation via JNI without an explicit reflection config.
+                access.registerReachabilityHandler(a -> fieldType.registerAsAllocated(null),
+                                ((AnalysisType) fieldType.getElementalType()).getJavaClass());
+            }
         } else if (field.isStatic() && field.isFinal()) {
             MaterializedConstantFields.singleton().register(field);
         }
