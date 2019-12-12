@@ -51,6 +51,7 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.GlobalResolution;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.nodes.WasmBlockNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,7 +72,7 @@ public class Linker {
     private final ResolutionDag resolutionDag;
     private @CompilerDirectives.CompilationFinal LinkState linkState;
 
-    public Linker(WasmLanguage language) {
+    Linker(WasmLanguage language) {
         this.language = language;
         this.resolutionDag = new ResolutionDag();
         this.linkState = LinkState.notLinked;
@@ -116,28 +117,6 @@ public class Linker {
             }
             resolutionDag.clear();
             linkState = LinkState.linked;
-        }
-    }
-
-    private static void linkFunctions(WasmModule module) {
-        final WasmContext context = WasmLanguage.getCurrentContext();
-        for (WasmFunction function : module.symbolTable().importedFunctions()) {
-            final WasmModule importedModule = context.modules().get(function.importedModuleName());
-            if (importedModule == null) {
-                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() +
-                                "', does not exist.");
-            }
-            WasmFunction importedFunction;
-            try {
-                importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
-            } catch (UnknownIdentifierException e) {
-                importedFunction = null;
-            }
-            if (importedFunction == null) {
-                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + module.name() +
-                                "', does not exist in the imported module '" + function.importedModuleName() + "'.");
-            }
-            function.setCallTarget(importedFunction.resolveCallTarget());
         }
     }
 
@@ -276,8 +255,22 @@ public class Linker {
         final Runnable resolveAction = () -> {
         };
         final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
-        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor)} : new Sym[0];
+        final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, resolveAction);
+    }
+
+    void resolveCallsite(WasmModule module, WasmBlockNode block, int controlTableOffset, WasmFunction function) {
+        final Runnable resolveAction = () -> {
+            block.resolveCallNode(controlTableOffset);
+        };
+        Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(module.name(), function.importDescriptor()) : new CodeEntrySym(module.name(), function.index())};
+        resolutionDag.resolveLater(new CallsiteSym(module.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
+    }
+
+    void resolveCodeEntry(WasmModule module, int functionIndex) {
+        final Runnable resolveAction = () -> {
+        };
+        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, resolveAction);
     }
 
     void resolveMemoryImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize, Consumer<WasmMemory> setMemory) {
@@ -316,7 +309,7 @@ public class Linker {
         final Runnable resolveAction = () -> {
         };
         final ImportDescriptor importDescriptor = module.symbolTable().importedMemory();
-        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : new Sym[0];
+        final Sym[] dependencies = importDescriptor != null ? new Sym[]{new ImportMemorySym(module.name(), importDescriptor)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, resolveAction);
     }
 
@@ -337,6 +330,8 @@ public class Linker {
     }
 
     static class ResolutionDag {
+        private static final Sym[] NO_DEPENDENCIES = new Sym[0];
+
         abstract static class Sym {
         }
 
@@ -351,7 +346,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+                return String.format("(import func %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
             }
 
             @Override
@@ -380,7 +375,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(export %s from %s)", memoryName, moduleName);
+                return String.format("(export func %s from %s)", memoryName, moduleName);
             }
 
             @Override
@@ -398,6 +393,66 @@ public class Linker {
             }
         }
 
+        static class CallsiteSym extends Sym {
+            final String moduleName;
+            final int instructionOffset;
+            final int controlTableOffset;
+
+            CallsiteSym(String moduleName, int instructionOffset, int controlTableOffset) {
+                this.moduleName = moduleName;
+                this.instructionOffset = instructionOffset;
+                this.controlTableOffset = controlTableOffset;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(callsite at %d in %s)", instructionOffset, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ instructionOffset ^ (controlTableOffset << 16);
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof CallsiteSym)) {
+                    return false;
+                }
+                final CallsiteSym that = (CallsiteSym) object;
+                return this.instructionOffset == that.instructionOffset && this.controlTableOffset == that.controlTableOffset && this.moduleName.equals(that.moduleName);
+            }
+        }
+
+        static class CodeEntrySym extends Sym {
+            final String moduleName;
+            final int functionIndex;
+
+            CodeEntrySym(String moduleName, int functionIndex) {
+                this.moduleName = moduleName;
+                this.functionIndex = functionIndex;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("(code entry at %d in %s)", functionIndex, moduleName);
+            }
+
+            @Override
+            public int hashCode() {
+                return moduleName.hashCode() ^ functionIndex;
+            }
+
+            @Override
+            public boolean equals(Object object) {
+                if (!(object instanceof CodeEntrySym)) {
+                    return false;
+                }
+                final CodeEntrySym that = (CodeEntrySym) object;
+                return this.functionIndex == that.functionIndex && this.moduleName.equals(that.moduleName);
+            }
+        }
+
         static class ImportMemorySym extends Sym {
             final String moduleName;
             final ImportDescriptor importDescriptor;
@@ -409,7 +464,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
+                return String.format("(import memory %s from %s into %s)", importDescriptor.memberName, importDescriptor.moduleName, moduleName);
             }
 
             @Override
@@ -438,7 +493,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(export %s from %s)", memoryName, moduleName);
+                return String.format("(export memory %s from %s)", memoryName, moduleName);
             }
 
             @Override

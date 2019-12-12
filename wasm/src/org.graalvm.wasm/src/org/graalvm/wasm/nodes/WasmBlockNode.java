@@ -333,6 +333,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return branchTableLength;
     }
 
+    public int startOfset() {
+        return startOffset;
+    }
+
+    public Node[] callNodeTable() {
+        return callNodeTable;
+    }
+
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public TargetOffset execute(WasmContext context, VirtualFrame frame) {
@@ -522,12 +530,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
-                    if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
-                        // Lazily create the direct call node at this code position, and recompile
-                        // to eliminate this check.
-                        resolveCallNode(callNodeOffset);
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                    }
                     DirectCallNode callNode = (DirectCallNode) callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
@@ -599,8 +601,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // TODO: This check may be too rigorous, as the WebAssembly specification
                         // seems to allow multiple definitions of the same type.
                         // We should refine the check.
-                        // Alternatively, we should maybe refine our modules to avoid function type
-                        // redefinition -- the predefined modules may currently redefine a type.
                         throw new WasmTrap(this, Assert.format("Actual (%d) and expected (%d) function types differ in the indirect call.",
                                         function.typeIndex(), expectedFunctionTypeIndex));
                     }
@@ -2386,7 +2386,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @TruffleBoundary
-    private void resolveCallNode(int callNodeOffset) {
+    public void resolveCallNode(int callNodeOffset) {
         final CallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
     }
@@ -2471,5 +2471,4 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     public int continuationTypeLength() {
         return typeLength(continuationTypeId);
     }
-
 }
