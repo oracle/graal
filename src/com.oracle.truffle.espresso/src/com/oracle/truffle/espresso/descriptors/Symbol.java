@@ -373,6 +373,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
+        public static final Symbol<Type> Runnable = StaticSymbols.putType(Runnable.class);
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType(VM.class);
         public static final Symbol<Type> ThreadStateEnum = StaticSymbols.putType(Thread.State.class);
@@ -508,6 +509,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);
         public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.Thread);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.ThreadGroup, Type.String);
+        public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.ThreadGroup, Type.Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.Thread);
 
         public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
