@@ -450,12 +450,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public static int AttachCurrentThread(long penvPtr, long argsPtr) {
         System.err.println("AttachCurrentThread!!! " + penvPtr + " " + Thread.currentThread());
+        EspressoLanguage.getCurrentContext().createThread(Thread.currentThread());
         return JniEnv.JNI_OK;
     }
 
     @VmImpl
     public static int DetachCurrentThread() {
         System.err.println("DetachCurrentThread!!!" + Thread.currentThread());
+        EspressoLanguage.getCurrentContext().disposeThread(Thread.currentThread());
         return JniEnv.JNI_OK;
     }
 

@@ -210,6 +210,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> capacity = StaticSymbols.putName("capacity");
         public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
         public static final Symbol<Name> register = StaticSymbols.putName("register");
+        public static final Symbol<Name> addThread = StaticSymbols.putName("add");
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
@@ -507,6 +508,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);
         public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.Thread);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.ThreadGroup, Type.String);
+        public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.Thread);
+
 
         public static final Symbol<Signature> CodeSource_PermissionCollection = StaticSymbols.putSignature(Type._void, Type.CodeSource, Type.PermissionCollection);
 
