@@ -324,7 +324,7 @@ public class NativeImageGenerator {
             try {
                 result = ReflectionUtil.newInstance(platformClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Could not instantiate platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.", ex.getCause());
+                throw UserError.abort(ex.getCause(), "Could not instantiate platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
             }
 
             if (!(result instanceof Platform)) {

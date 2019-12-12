@@ -150,7 +150,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                 }
                 if (writable && (unregistered || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
                     UserError.guarantee(!analyzedFinalFields.contains(field),
-                                    "A field that was already processed by the analysis cannot be re-registered as writable: " + field);
+                                    "A field that was already processed by the analysis cannot be re-registered as writable: %s", field);
                 }
                 return flags;
             });
