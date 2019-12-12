@@ -358,6 +358,15 @@ public final class EspressoContext {
             // Don't attempt guest thread creation
             return;
         }
+        try {
+            if (getGuestThreadFromHost(hostThread) != null) {
+                // already a live guest thread for this host thread
+                return;
+            }
+        } catch (Exception e) {
+            // this will always happen if there are no live guest thread.
+            // Simply continue the creation of the new guest thread then.
+        }
         StaticObject guestThread = meta.Thread.allocateInstance();
         // Allow guest Thread.currentThread() to work.
         guestThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
@@ -376,19 +385,13 @@ public final class EspressoContext {
 
         // now add to the main thread group
         meta.ThreadGroup // public void add(Thread t)
-                        .lookupDeclaredMethod(Name.addThread, Signature._void_Thread).invokeDirect(mainThreadGroup,
+                        .lookupDeclaredMethod(Name.add, Signature._void_Thread).invokeDirect(mainThreadGroup,
                                         /* thread */ guestThread);
     }
 
     public void disposeThread(Thread hostThread) {
         // simply calling Thread.exit() will do most of what's needed
-        StaticObject guestThread = getGuestThreadFromHost(hostThread);
-        if (guestThread != null) {
-            meta.Thread_exit.invokeDirect(guestThread);
-            threadManager.unregisterThread(guestThread);
-        } else {
-            throw new IllegalStateException("Cannot dispose an unknown host thread");
-        }
+        // TODO(Gregersen) - /browse/GR-20077
     }
 
     public void interruptActiveThreads() {

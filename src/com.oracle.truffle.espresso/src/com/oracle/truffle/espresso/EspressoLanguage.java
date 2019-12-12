@@ -229,7 +229,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeThread(EspressoContext context, Thread thread) {
-        // perform initialization actions for threads
         context.createThread(thread);
     }
 
