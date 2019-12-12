@@ -22,29 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.configure.filters;
 
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
-
-import org.graalvm.compiler.phases.common.LazyValue;
-
-import com.oracle.svm.configure.trace.AccessAdvisor;
-import com.oracle.svm.configure.trace.LazyValueUtils;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-
-class AbstractAccessVerifier {
-    protected final AccessAdvisor accessAdvisor;
-
-    AbstractAccessVerifier(AccessAdvisor advisor) {
-        this.accessAdvisor = advisor;
-    }
-
-    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnoreCaller(lazyClassNameOrNull(env, callerClass));
-    }
-
-    protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
-        return LazyValueUtils.lazyGet(() -> getClassNameOrNull(env, clazz));
+@SuppressWarnings("unused")
+public class ModuleFilterTools {
+    /** This method is replaced via an overlay. */
+    public static RuleNode generateFromModules(String[] includedModuleNames, boolean reduce) {
+        throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
     }
 }

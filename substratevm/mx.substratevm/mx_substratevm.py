@@ -1329,7 +1329,7 @@ def native_image_configure_on_jvm(args, **kwargs):
         executable = join(vm_link, 'bin', 'native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
-    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
+    mx.run([executable] + args, **kwargs)
 
 
 @mx.command(suite.name, 'native-unittest')

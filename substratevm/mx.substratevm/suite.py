@@ -766,6 +766,24 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
+        "com.oracle.svm.configure.jdk11": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "dependencies": [
+                "com.oracle.svm.configure",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+            ],
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
+            "overlayTarget" : "com.oracle.svm.configure",
+            "spotbugs": "false",
+        },
+
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -969,6 +987,7 @@ suite = {
             "description" : "SubstrateVM native-image-agent library",
             "dependencies": [
                 "com.oracle.svm.agent",
+                "com.oracle.svm.configure",
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
