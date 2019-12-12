@@ -13,6 +13,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `DebuggerTester.startExecute()` that allows to execute an arbitrary sequence of commands on the background thread.
 * Time specification in `InteropLibrary` relaxed to allow a fixed timezone when no date is present.
 * `TruffleLogger.getLogger` throws an `IllegalArgumentException` when given `id` is not a valid language or instrument id.
+* [Node#getEncapsulatingSourceSection()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getEncapsulatingSourceSection--) is no longer a fast-path method, because `getSourceSection()` is not fast-path.
+
 
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.
