@@ -239,6 +239,11 @@ public class ComponentInstaller {
 
         finddGraalHome();
         e.setGraalHome(graalHomePath);
+        // Use our own GraalVM's trust store contents; also bypasses embedded trust store
+        // when running AOT.
+        Path trustStorePath = SystemUtils.resolveRelative(SystemUtils.getRuntimeBaseDir(e.getGraalHomePath()),
+                        "lib/security/cacerts"); // NOI18N
+        System.setProperty("javax.net.ssl.trustStore", trustStorePath.normalize().toString()); // NOI18N
         DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
         storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
         e.setLocalRegistry(new ComponentRegistry(e, storage));
