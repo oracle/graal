@@ -389,7 +389,7 @@ public final class EspressoContext {
                                         /* thread */ guestThread);
     }
 
-    public void disposeThread(Thread hostThread) {
+    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
         // simply calling Thread.exit() will do most of what's needed
         // TODO(Gregersen) - /browse/GR-20077
     }
