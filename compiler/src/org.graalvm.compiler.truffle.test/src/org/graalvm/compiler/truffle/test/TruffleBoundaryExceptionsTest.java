@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Context;
 
 public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling {
 
@@ -86,43 +85,37 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
             }
         };
 
-        try (Context ctx = defaultContextBuilder().option("engine.InvalidationReprofileCount", "0").build()) {
-            ctx.enter();
-            try {
-                DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
-                final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        setupContext("engine.InvalidationReprofileCount", "0");
+        DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
+        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
 
-                final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
-                for (int i = 0; i < compilationThreshold; i++) {
-                    outerTarget.call();
-                }
-                // deoptimizes immediately due to the exception
-                assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
-                assertNotCompiled(outerTarget);
-                // recompile with exception branch
+        final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+        for (int i = 0; i < compilationThreshold; i++) {
+            outerTarget.call();
+        }
+        // deoptimizes immediately due to the exception
+        assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
+        assertNotCompiled(outerTarget);
+        // recompile with exception branch
+        outerTarget.call();
+        assertCompiled(outerTarget);
+
+        runtime.addListener(listener);
+        try {
+            final int execCount = 10;
+            for (int i = 0; i < execCount; i++) {
                 outerTarget.call();
-                assertCompiled(outerTarget);
-
-                runtime.addListener(listener);
-                try {
-                    final int execCount = 10;
-                    for (int i = 0; i < execCount; i++) {
-                        outerTarget.call();
-                    }
-
-                    final int totalExecutions = compilationThreshold + 1 + execCount;
-                    assertEquals("Incorrect number of catch block executions", totalExecutions, rootNode.catchCounter);
-
-                    assertEquals("Incorrect number of interpreted executions", compilationThreshold - 1, rootNode.interpretCount);
-                    assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
-
-                    assertEquals("Compilation happened!", 0, compilationCount[0]);
-                } finally {
-                    runtime.removeListener(listener);
-                }
-            } finally {
-                ctx.leave();
             }
+
+            final int totalExecutions = compilationThreshold + 1 + execCount;
+            assertEquals("Incorrect number of catch block executions", totalExecutions, rootNode.catchCounter);
+
+            assertEquals("Incorrect number of interpreted executions", compilationThreshold - 1, rootNode.interpretCount);
+            assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
+
+            assertEquals("Compilation happened!", 0, compilationCount[0]);
+        } finally {
+            runtime.removeListener(listener);
         }
     }
 

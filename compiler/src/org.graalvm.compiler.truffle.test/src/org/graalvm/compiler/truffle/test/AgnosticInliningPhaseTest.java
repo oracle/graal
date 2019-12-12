@@ -47,7 +47,6 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,22 +63,12 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
-    private Context context;
     protected final TruffleRuntime runtime = Truffle.getRuntime();
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.LanguageAgnosticInlining", Boolean.TRUE.toString()).option("engine.InliningInliningBudget",
-                        "1").build();
-        context.enter();
-    }
-
-    @After
-    public void tearDown() {
-        if (context != null) {
-            context.leave();
-            context.close();
-        }
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.LanguageAgnosticInlining", Boolean.TRUE.toString()).option("engine.InliningInliningBudget",
+                        "1").build());
     }
 
     @Test

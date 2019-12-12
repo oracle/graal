@@ -115,15 +115,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build()) {
-            ctx.enter();
-            try {
-                StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerNoException));
-                Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
-            } finally {
-                ctx.leave();
-            }
-        }
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build());
+        StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerNoException));
+        Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
     }
 
     @Test
@@ -144,15 +138,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build()) {
-            ctx.enter();
-            try {
-                StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerWithException));
-                Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
-            } finally {
-                ctx.leave();
-            }
-        }
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build());
+        StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES, truffleCompiler.createCompilationIdentifier(callerWithException));
+        Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
     }
 
 }

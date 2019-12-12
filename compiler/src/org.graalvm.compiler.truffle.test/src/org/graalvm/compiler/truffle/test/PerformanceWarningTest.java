@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
-import org.junit.After;
 import org.junit.Before;
 
 public class PerformanceWarningTest extends TruffleCompilerImplTest {
@@ -63,21 +62,10 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
     @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
 
-    private Context context;
-
     @Before
     public void setUp() {
-        context = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", Boolean.TRUE.toString()).option(
-                        "engine.PerformanceWarningsAreFatal", Boolean.TRUE.toString()).build();
-        context.enter();
-    }
-
-    @After
-    public void tearDown() {
-        if (context != null) {
-            context.leave();
-            context.close();
-        }
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", Boolean.TRUE.toString()).option(
+                        "engine.PerformanceWarningsAreFatal", Boolean.TRUE.toString()).build());
     }
 
     @Test

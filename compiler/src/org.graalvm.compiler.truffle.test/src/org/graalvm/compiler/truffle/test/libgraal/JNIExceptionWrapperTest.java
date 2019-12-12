@@ -46,10 +46,10 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.polyglot.Context;
+import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
-public class JNIExceptionWrapperTest {
+public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     @Test
     public void testMergedStackTrace() throws Exception {
@@ -77,34 +77,27 @@ public class JNIExceptionWrapperTest {
         return newVmArgs;
     }
 
-    private static void testMergedStackTraceImpl() throws Exception {
-        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString()).option("engine.CompilationExceptionsAreFatal",
-                        Boolean.FALSE.toString()).build()) {
-            ctx.enter();
-            try {
-                GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-                OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
-                TruffleCompiler compiler = runtime.getTruffleCompiler();
-                try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-                    try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
-                        TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
-                        TestListener listener = new TestListener();
-                        compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
-                    }
-                } catch (Throwable t) {
-                    String message = t.getMessage();
-                    int runtimeIndex = findFrame(message, JNIExceptionWrapperTest.class, "testMergedStackTrace");
-                    assertNotEquals(message, -1, runtimeIndex);
-                    int listenerIndex = findFrame(message, TestListener.class, "onTruffleTierFinished");
-                    assertNotEquals(message, -1, listenerIndex);
-                    int compilerIndex = findFrame(message, TruffleCompilerImpl.class, "compileAST");
-                    assertNotEquals(message, -1, compilerIndex);
-                    assertTrue(listenerIndex < compilerIndex);
-                    assertTrue(compilerIndex < runtimeIndex);
-                }
-            } finally {
-                ctx.leave();
+    private void testMergedStackTraceImpl() throws Exception {
+        setupContext("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreFatal", Boolean.FALSE.toString());
+        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
+        TruffleCompiler compiler = runtime.getTruffleCompiler();
+        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
+            try (TruffleDebugContext debug = compiler.openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(compilable), compilation)) {
+                TruffleInliningPlan inliningPlan = runtime.createInliningPlan(compilable, null);
+                TestListener listener = new TestListener();
+                compiler.doCompile(debug, compilation, TruffleRuntimeOptions.getOptionsForCompiler(compilable), inliningPlan, null, listener);
             }
+        } catch (Throwable t) {
+            String message = t.getMessage();
+            int runtimeIndex = findFrame(message, JNIExceptionWrapperTest.class, "testMergedStackTrace");
+            assertNotEquals(message, -1, runtimeIndex);
+            int listenerIndex = findFrame(message, TestListener.class, "onTruffleTierFinished");
+            assertNotEquals(message, -1, listenerIndex);
+            int compilerIndex = findFrame(message, TruffleCompilerImpl.class, "compileAST");
+            assertNotEquals(message, -1, compilerIndex);
+            assertTrue(listenerIndex < compilerIndex);
+            assertTrue(compilerIndex < runtimeIndex);
         }
     }
 

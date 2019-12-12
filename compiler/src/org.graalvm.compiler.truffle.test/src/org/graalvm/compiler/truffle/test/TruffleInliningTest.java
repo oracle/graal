@@ -50,7 +50,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class TruffleInliningTest {
+public abstract class TruffleInliningTest extends TestWithPolyglotOptions {
 
     class InlineTestRootNode extends RootNode {
 

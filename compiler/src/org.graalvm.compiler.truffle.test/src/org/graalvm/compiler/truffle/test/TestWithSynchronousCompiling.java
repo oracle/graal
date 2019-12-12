@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.Arrays;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.Before;
 
 /**
  * Base class for Truffle unit tests that require that there be no background compilation.
@@ -43,30 +43,29 @@ import org.junit.BeforeClass;
  *
  * These tests will be run by the {@code mx unittest} command.
  */
-public abstract class TestWithSynchronousCompiling {
+public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptions {
 
-    private static Context context;
+    private static final String[] DEFAULT_OTIONS = {
+                    "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
+                    "engine.CompilationThreshold", "10", //
+                    "engine.CompileImmediately", Boolean.FALSE.toString()
+    };
 
-    @BeforeClass
-    public static void before() {
-        context = defaultContextBuilder().build();
-        context.enter();
+    @Before
+    public void before() {
+        setupContext();
     }
 
-    @AfterClass
-    public static void after() {
-        if (context != null) {
-            try {
-                context.leave();
-            } finally {
-                context.close();
-            }
+    @Override
+    protected final Context setupContext(String... keyValuePairs) {
+        String[] newOptions;
+        if (keyValuePairs.length == 0) {
+            newOptions = DEFAULT_OTIONS;
+        } else {
+            newOptions = Arrays.copyOf(DEFAULT_OTIONS, DEFAULT_OTIONS.length + keyValuePairs.length);
+            System.arraycopy(keyValuePairs, 0, newOptions, DEFAULT_OTIONS.length, keyValuePairs.length);
         }
-    }
-
-    public static Context.Builder defaultContextBuilder(String... permittedLanguages) {
-        return Context.newBuilder(permittedLanguages).allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option(
-                        "engine.CompilationThreshold", "10").option("engine.CompileImmediately", Boolean.FALSE.toString());
+        return super.setupContext(newOptions);
     }
 
     protected static void assertCompiled(OptimizedCallTarget target) {

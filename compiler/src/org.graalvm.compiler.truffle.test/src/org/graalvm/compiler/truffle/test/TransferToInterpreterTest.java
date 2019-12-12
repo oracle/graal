@@ -29,9 +29,8 @@ import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -41,27 +40,12 @@ import java.util.Map;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.polyglot.Context;
 
-public class TransferToInterpreterTest {
+public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 
-    private static Context context;
-
-    @BeforeClass
-    public static void setup() {
-        context = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
-        context.enter();
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        if (context != null) {
-            try {
-                context.leave();
-            } finally {
-                context.close();
-            }
-        }
+    @Before
+    public void setup() {
+        setupContext("engine.CompileImmediately", Boolean.FALSE.toString());
     }
 
     private final class TestRootNode extends RootNode {

@@ -55,31 +55,29 @@ public class NodeLimitTest extends PartialEvaluationTest {
     }
 
     @Test
-    public void oneRootNodeTest() {
+    public void oneRootNodeTestSmallGraalNodeCount() {
         expectBailout(NodeLimitTest::createRootNode);
+    }
+
+    @Test
+    public void oneRootNodeTestEnoughGraalNodeCount() {
         expectAllOK(NodeLimitTest::createRootNode);
     }
 
     @Test
     @SuppressWarnings("try")
     public void testWithTruffleInlining() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumInlineNodeCount", "10").build()) {
-            ctx.enter();
-            try {
-                RootNode rootNode = createRootNodeWithCall(new RootNode(null) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        CompilerAsserts.neverPartOfCompilation();
-                        return null;
-                    }
-                });
-                RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
-                final Object[] arguments = {1};
-                partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
-            } finally {
-                ctx.leave();
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumInlineNodeCount", "10").build());
+        RootNode rootNode = createRootNodeWithCall(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                CompilerAsserts.neverPartOfCompilation();
+                return null;
             }
-        }
+        });
+        RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
+        final Object[] arguments = {1};
+        partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     @Test(expected = PermanentBailoutException.class)
@@ -164,16 +162,10 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, Supplier<RootNode> rootNodeFactory) {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build()) {
-            ctx.enter();
-            try {
-                RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
-                final Object[] arguments = {1};
-                partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
-            } finally {
-                ctx.leave();
-            }
-        }
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
+        RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
+        final Object[] arguments = {1};
+        partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
     }
 
     private static RootNode createRootNodeWithCall(final RootNode rootNode) {
