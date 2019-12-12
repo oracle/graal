@@ -49,6 +49,7 @@ public final class AMD64CGlobalDataLoadAddressOp extends AMD64LIRInstruction {
 
     AMD64CGlobalDataLoadAddressOp(CGlobalDataInfo dataInfo, AllocatableValue result) {
         super(TYPE);
+        assert dataInfo != null;
         this.dataInfo = dataInfo;
         this.result = result;
     }
