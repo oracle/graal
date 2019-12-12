@@ -232,7 +232,7 @@ public class UnrollingTestNode {
         @Override
         public int execute(VirtualFrame frame) {
             /*
-             * Special case full unroll until return with a conitnue statement to the outer loop.
+             * Special case full unroll until return with a continue statement to the outer loop.
              * UNTIL_RETURN implies the duplication of code paths along loop exits. Continue
              * statements to outer loops create loop exits of the inner loop and continues of the
              * outer loop.
