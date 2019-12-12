@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.jdk;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
@@ -155,17 +154,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         }
     }
 
-    @Override
-    public void cleanup() {
-        /* Reset the static state. */
-        initInetAddressIDs.set(false);
-        networkInterfaceInit.set(false);
-    }
-
-    private static AtomicBoolean initInetAddressIDs = new AtomicBoolean();
-
     static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
-        if (!initInetAddressIDs.compareAndSet(false, true)) {
+        if (isRunOnce(JNIRegistrationJavaNet::registerInitInetAddressIDs)) {
             return; /* Already registered. */
         }
 
@@ -192,10 +182,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         RuntimeReflection.register(constructor(a, "java.net.Inet6AddressImpl"));
     }
 
-    private static AtomicBoolean networkInterfaceInit = new AtomicBoolean();
-
     private static void registerNetworkInterfaceInit(DuringAnalysisAccess a) {
-        if (!networkInterfaceInit.compareAndSet(false, true)) {
+        if (isRunOnce(JNIRegistrationJavaNet::registerNetworkInterfaceInit)) {
             return; /* Already registered. */
         }
 
