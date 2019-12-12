@@ -699,6 +699,10 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
+        /*
+         * The presence of CDS and custom system class loaders disables the use of archived
+         * non-system class and and triggers a warning.
+         */
         addImageBuilderJavaArgs("-Xshare:off");
 
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);

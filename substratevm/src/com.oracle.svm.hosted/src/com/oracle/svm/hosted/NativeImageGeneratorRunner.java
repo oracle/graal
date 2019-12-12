@@ -114,6 +114,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
             exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), classpath, nativeImageClassLoader);
         } finally {
+            unhookDelegatorClassLoader();
             if (timerTask != null) {
                 timerTask.cancel();
             }
@@ -121,22 +122,52 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         System.exit(exitStatus);
     }
 
+    private static void unhookDelegatorClassLoader() {
+        if (ClassLoader.getSystemClassLoader() instanceof DelegatorClassLoader) {
+            DelegatorClassLoader rcl = (DelegatorClassLoader) ClassLoader.getSystemClassLoader();
+            rcl.setDelegate(null);
+        }
+    }
+
+    /**
+     * Installs a class loader hierarchy that resolves classes and resources available in
+     * {@code classpath}. The parent for the installed {@link NativeImageClassLoader} is the default
+     * system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
+     * sun.misc.Launcher.AppClassLoader for JDK8,11 respectively)
+     *
+     * In the presence of the custom system class loader {@link DelegatorClassLoader} the delegate
+     * is to {@link NativeImageClassLoader} allowing the resolution of classes in {@code classpath}
+     * via the system class loader. Note that any custom system class loader has the default system
+     * class loader as its parent
+     *
+     * @param classpath
+     * @return
+     */
     public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
         NativeImageClassLoader nativeImageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
+        // Acquire the default system class loader
         ClassLoader parent = applicationClassLoader instanceof DelegatorClassLoader
                         ? applicationClassLoader.getParent()
                         : applicationClassLoader;
 
+        // To avoid class loading cycles we make the parent of NativeImageClass the default class
+        // loader
         nativeImageClassLoader = new NativeImageClassLoader(verifyClassPathAndConvertToURLs(classpath), parent);
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
 
         if (ClassLoader.getSystemClassLoader() instanceof DelegatorClassLoader) {
+            /*
+             * Finally the system class loader will delegate to NativeImageClassLoader, enabling
+             * resolution of classes and resources during image build-time present in the image
+             * classpath
+             */
             DelegatorClassLoader rcl = (DelegatorClassLoader) ClassLoader.getSystemClassLoader();
             rcl.setDelegate(nativeImageClassLoader);
         } else {
             warn("SystemClassLoader is the default system class loader. This might create problems when using reflection " +
-                            "during class initialization");
+                            "during class initialization at build-time. " +
+                            "To fix this warning add -Djava.system.class.loader=" + DelegatorClassLoader.class.getCanonicalName());
         }
         return nativeImageClassLoader;
     }
