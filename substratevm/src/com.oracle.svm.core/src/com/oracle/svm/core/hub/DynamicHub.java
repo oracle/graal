@@ -152,7 +152,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     private boolean isInstantiated;
 
-    private boolean isAnonymousClass;
+    /**
+     * Boolean value or exception that happend at image-build time.
+     */
+    private Object isAnonymousClass;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -314,7 +317,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, boolean isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
+    public DynamicHub(String name, boolean isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader) {
         this.name = name;
         this.isLocalClass = isLocalClass;
@@ -729,7 +732,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private boolean isAnonymousClass() {
-        return isAnonymousClass;
+        if (isAnonymousClass instanceof Boolean) {
+            return (Boolean) isAnonymousClass;
+        } else if (isAnonymousClass instanceof NoClassDefFoundError) {
+            throw (NoClassDefFoundError) isAnonymousClass;
+        } else if (isAnonymousClass instanceof InternalError) {
+            throw (InternalError) isAnonymousClass;
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
     }
 
     @Substitute
@@ -1298,7 +1309,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     private String getSimpleBinaryName0() {
-        if (isAnonymousClass || enclosingClass == null) {
+        if (isAnonymousClass() || enclosingClass == null) {
             return null;
         }
         try {

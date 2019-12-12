@@ -277,19 +277,25 @@ public final class SVMHost implements HostVM {
         return dynamicHub;
     }
 
-    private boolean isAnonymousClass(Class<?> javaClass) {
-        /*
-         * Meta programs and languages often get the naming of their anonymous classes wrong. This
-         * makes, getSimpleName in isAnonymousClass to fail and prevents us from compiling those
-         * bytecodes. Since, isAnonymousClass is not very important for anonymous classes we can
-         * ignore this failure.
-         */
+    /**
+     * @return boolean if class is available or NoClassDefFoundError if class' parents are not on
+     *         the classpath or InternalError if the class is invalid.
+     */
+    private static Object isAnonymousClass(Class<?> javaClass) {
         try {
             return javaClass.isAnonymousClass();
         } catch (InternalError e) {
-            warn("unknown anonymous info of class " + javaClass.getName() + ", assuming class is not anonymous. To remove the warning report an issue " +
-                            "to the library or language author. The issue is caused by " + javaClass.getName() + " which is not following the naming convention.");
-            return false;
+            return e;
+        } catch (NoClassDefFoundError e) {
+            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                return e;
+            } else {
+                String message = "Discovered a type for which isAnonymousClass can't be called: " + javaClass.getTypeName() +
+                                ". To avoid this issue at build time use the " +
+                                SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
+                                " option. The NoClassDefFoundError will then be reported at run time when this method is called for the first time.";
+                throw new UnsupportedFeatureException(message);
+            }
         }
     }
 
