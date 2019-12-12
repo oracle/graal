@@ -44,11 +44,15 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
@@ -92,6 +96,8 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
@@ -477,11 +483,22 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
      */
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
+        Set<AnalysisMethod> seen = new HashSet<>();
+        universe.getMethods().stream().filter(AnalysisMethod::isRootMethod).forEach(seen::add);
+        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);
         SortedSet<String> disallowedTypes = new TreeSet<>();
-        for (AnalysisType type : universe.getTypes()) {
-            String className = type.toClassName();
+        while (!todo.isEmpty()) {
+            AnalysisMethod m = todo.removeFirst();
+            String className = m.getDeclaringClass().toClassName();
             if (!isAllowedType(className)) {
                 disallowedTypes.add(className);
+            }
+            for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
+                for (AnalysisMethod callee : invoke.getCallees()) {
+                    if (seen.add(callee)) {
+                        todo.add(callee);
+                    }
+                }
             }
         }
         if (!disallowedTypes.isEmpty()) {
@@ -490,9 +507,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     }
 
     private static boolean isAllowedType(String className) {
-        if (className.startsWith("com.oracle.truffle.") && !className.startsWith("com.oracle.truffle.api.nodes.")) {
-            return className.equals("com.oracle.truffle.api.TruffleRuntimeAccess") ||
-                            className.equals("com.oracle.truffle.api.dsl.GeneratedBy");
+        if (className.startsWith("com.oracle.truffle.")) {
+            return className.startsWith("com.oracle.truffle.api.nodes.") || className.startsWith("com.oracle.truffle.compiler.enterprise.");
         }
         return true;
     }
