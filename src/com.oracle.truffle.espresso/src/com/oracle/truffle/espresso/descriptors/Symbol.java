@@ -228,6 +228,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> packages = StaticSymbols.putName("packages");
         public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
         public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
+        public static final Symbol<Name> Null = StaticSymbols.putName("null");
 
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -254,6 +255,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> Exceptions = StaticSymbols.putName("Exceptions");
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
         public static final Symbol<Name> LineNumberTable = StaticSymbols.putName("LineNumberTable");
+        public static final Symbol<Name> LocalVariableTable = StaticSymbols.putName("LocalVariableTable");
 
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
         public static final Symbol<Name> StackMapTable = StaticSymbols.putName("StackMapTable");
@@ -268,7 +270,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
         public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
         public static final Symbol<Name> Deprecated = StaticSymbols.putName("Deprecated");
-        public static final Symbol<Name> LocalVariableTable = StaticSymbols.putName("LocalVariableTable");
         public static final Symbol<Name> LocalVariableTypeTable = StaticSymbols.putName("LocalVariableTypeTable");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
@@ -320,6 +321,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> ClassLoader = StaticSymbols.putType(java.lang.ClassLoader.class);
         public static final Symbol<Type> sun_misc_Launcher_ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
+        public static final Symbol<Type> Null = StaticSymbols.putType("LNull;");
 
         // Primitive types. Use JavaKind.getType()?
         public static final Symbol<Type> _boolean = StaticSymbols.putType(boolean.class);

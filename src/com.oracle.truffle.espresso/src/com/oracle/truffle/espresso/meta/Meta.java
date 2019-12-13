@@ -906,6 +906,14 @@ public final class Meta implements ContextAccess {
         return toGuestString(hostString.toString());
     }
 
+    public static boolean isString(Object string) {
+        if (string instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) string;
+            return staticObject.isString();
+        }
+        return false;
+    }
+
     public Object toGuestBoxed(Object hostObject) {
         if (hostObject == null) {
             return StaticObject.NULL;
@@ -915,6 +923,9 @@ public final class Meta implements ContextAccess {
         }
         if (hostObject instanceof StaticObject) {
             return hostObject;
+        }
+        if (hostObject instanceof StaticObject[]) {
+            return StaticObject.wrap((StaticObject[]) hostObject);
         }
 
         if (hostObject instanceof Boolean ||

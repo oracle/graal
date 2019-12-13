@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -144,30 +145,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
 
-    public static class JDWPOptions {
-        public final String transport;
-        public final String address;
-        public final boolean server;
-        public final boolean suspend;
-
-        JDWPOptions(String transport, String address, boolean server, boolean suspend) {
-            this.transport = transport;
-            this.address = address;
-            this.server = server;
-            this.suspend = suspend;
-        }
-
-        @Override
-        public String toString() {
-            return "JDWPOptions{" +
-                            "transport=" + transport + "," +
-                            "address=" + address + "," +
-                            "server=" + server + "," +
-                            "suspend=" + suspend + "}";
-        }
-    }
-
-    private static final OptionType<JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
+    private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 
                         private boolean yesOrNo(String key, String value) {
@@ -182,6 +160,7 @@ public final class EspressoOptions {
                             final String[] options = s.split(",");
                             String transport = null;
                             String address = null;
+                            String logLevel = null;
                             boolean server = false;
                             boolean suspend = true;
 
@@ -194,6 +173,15 @@ public final class EspressoOptions {
                                 String value = parts[1];
                                 switch (key) {
                                     case "address":
+                                        long realValue;
+                                        try {
+                                            realValue = Long.valueOf(value);
+                                            if (realValue < 0 || realValue > 65535) {
+                                                throw new IllegalArgumentException("Invalid option for -Xrunjdwp, address: " + value + ". Must be in the 0 - 65535 range.");
+                                            }
+                                        } catch (NumberFormatException ex) {
+                                            throw new IllegalArgumentException("Invalid option for -Xrunjdwp, address is not a number. Must be a number in the 0 - 65535 range.");
+                                        }
                                         address = value;
                                         break;
                                     case "transport":
@@ -205,11 +193,14 @@ public final class EspressoOptions {
                                     case "suspend":
                                         suspend = yesOrNo(key, value);
                                         break;
+                                    case "logLevel":
+                                        logLevel = value;
+                                        break;
                                     default:
                                         throw new IllegalArgumentException("Invalid option -Xrunjdwp:" + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
                                 }
                             }
-                            return new JDWPOptions(transport, address, server, suspend);
+                            return new JDWPOptions(transport, address, server, suspend, logLevel);
                         }
                     });
 

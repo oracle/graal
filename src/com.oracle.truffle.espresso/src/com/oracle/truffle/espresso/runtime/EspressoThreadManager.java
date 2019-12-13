@@ -23,15 +23,15 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 class EspressoThreadManager implements ContextAccess {
 
@@ -168,6 +168,10 @@ class EspressoThreadManager implements ContextAccess {
             return null;
         }
         return (StaticObject) threads[index];
+    }
+
+    public StaticObject getMainThread() {
+        return guestMainThread;
     }
 
     private void pushThread(int id, StaticObject self) {

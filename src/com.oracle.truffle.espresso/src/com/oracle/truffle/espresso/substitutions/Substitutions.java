@@ -183,7 +183,7 @@ public final class Substitutions implements ContextAccess {
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {
-                return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
+                return EspressoRootNode.create(null, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
             }
         };
         registerStaticSubstitution(classType, methodName, signature, factory, true);

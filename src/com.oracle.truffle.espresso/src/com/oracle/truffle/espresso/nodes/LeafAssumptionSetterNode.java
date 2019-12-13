@@ -30,15 +30,15 @@ public class LeafAssumptionSetterNode extends InlinedSetterNode {
     private final int curBCI;
     private final int opcode;
 
-    protected LeafAssumptionSetterNode(Method inlinedMethod, int opCode, int curBCI) {
-        super(inlinedMethod, opCode);
+    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
+        super(inlinedMethod, top, opCode, curBCI);
         this.curBCI = curBCI;
         this.opcode = opCode;
     }
 
     @Override
-    public int invoke(VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int invoke(VirtualFrame frame) {
+        BytecodeNode root = getBytecodesNode();
         if (inlinedMethod.leafAssumption()) {
             setFieldNode.setField(frame, root, top);
             return -slotCount + stackEffect;

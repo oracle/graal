@@ -33,20 +33,23 @@ public final class InvokeStaticNode extends QuickNode {
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeStaticNode(Method method) {
+    public InvokeStaticNode(Method method, int top, int curBCI) {
+        super(top, curBCI);
         assert method.isStatic();
         this.method = method;
     }
 
     @Override
-    public int invoke(final VirtualFrame frame, int top) {
+    public int invoke(final VirtualFrame frame) {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // Obtaining call target initializes the declaring klass
-            directCallNode = DirectCallNode.create(method.getCallTarget());
+            // insert call node though insertion method so that
+            // stack frame iteration will see this node as parent
+            directCallNode = insert(DirectCallNode.create(method.getCallTarget()));
         }
-        BytecodeNode root = (BytecodeNode) getParent();
+        BytecodeNode root = getBytecodesNode();
         Object[] args = root.peekAndReleaseArguments(frame, top, false, method.getParsedSignature());
 
         Object result = directCallNode.call(args);

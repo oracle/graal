@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
-public final class NativeRootNode extends EspressoBaseNode {
+public final class NativeRootNode extends EspressoMethodNode {
 
     private final TruffleObject boundNative;
     private final boolean isJni;
@@ -88,7 +88,7 @@ public final class NativeRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public final Object invokeNaked(VirtualFrame frame) {
+    public final Object execute(VirtualFrame frame) {
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.

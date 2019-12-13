@@ -44,7 +44,8 @@ public class InlinedSetterNode extends QuickNode {
 
     @Child AbstractSetFieldNode setFieldNode;
 
-    InlinedSetterNode(Method inlinedMethod, int opcode) {
+    InlinedSetterNode(Method inlinedMethod, int top, int opcode, int callerBCI) {
+        super(top, callerBCI);
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
@@ -53,19 +54,19 @@ public class InlinedSetterNode extends QuickNode {
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
-    public static InlinedSetterNode create(Method inlinedMethod, int opCode, int curBCI) {
+    public static InlinedSetterNode create(Method inlinedMethod, int top, int opCode, int curBCI) {
         setterNodes.inc();
         if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedSetterNode(inlinedMethod, opCode);
+            return new InlinedSetterNode(inlinedMethod, top, opCode, curBCI);
         } else {
             leafSetterNodes.inc();
-            return new LeafAssumptionSetterNode(inlinedMethod, opCode, curBCI);
+            return new LeafAssumptionSetterNode(inlinedMethod, top, opCode, curBCI);
         }
     }
 
     @Override
-    public int invoke(VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int invoke(VirtualFrame frame) {
+        BytecodeNode root = getBytecodesNode();
         setFieldNode.setField(frame, root, top);
         return -slotCount + stackEffect;
     }

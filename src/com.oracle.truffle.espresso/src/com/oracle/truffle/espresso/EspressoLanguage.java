@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.meta.Local;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoStatementNode;
+import com.oracle.truffle.espresso.nodes.QuickNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -50,7 +57,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
-@ProvidedTags(StandardTags.RootTag.class)
+import java.util.Collections;
+
+@ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
 @Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
@@ -71,6 +80,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
+    private static final String SCOPE_NAME = "block";
 
     private final Symbols symbols;
     private final Utf8ConstantTable utf8Constants;
@@ -121,8 +131,53 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (sourceFile != null) {
             context.setMainSourceFile((Source) sourceFile);
         }
-
         return context;
+    }
+
+    @Override
+    protected Iterable<Scope> findLocalScopes(EspressoContext context, Node node, Frame frame) {
+        int currentBci = 0;
+
+        Node espressoNode = findKnownEspressoNode(node);
+
+        Method method;
+        Node scopeNode;
+        if (espressoNode instanceof QuickNode) {
+            QuickNode quick = (QuickNode) espressoNode;
+            currentBci = quick.getBCI();
+            method = quick.getBytecodesNode().getMethod();
+            scopeNode = quick.getBytecodesNode();
+        } else if (espressoNode instanceof EspressoStatementNode) {
+            EspressoStatementNode statementNode = (EspressoStatementNode) espressoNode;
+            currentBci = statementNode.getBci();
+            method = statementNode.getBytecodesNode().getMethod();
+            scopeNode = statementNode.getBytecodesNode();
+        } else if (espressoNode instanceof BytecodeNode) {
+            BytecodeNode bytecodeNode = (BytecodeNode) espressoNode;
+            currentBci = 0; // start of the method
+            method = bytecodeNode.getMethod();
+            scopeNode = bytecodeNode;
+        } else {
+            return super.findLocalScopes(context, espressoNode, frame);
+        }
+        // construct the current scope with valid local variables information
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(currentBci);
+
+        Scope scope = Scope.newBuilder(SCOPE_NAME, EspressoScope.createVariables(liveLocals, frame)).node(scopeNode).build();
+        return Collections.singletonList(scope);
+    }
+
+    private static Node findKnownEspressoNode(Node input) {
+        Node currentNode = input;
+        boolean known = false;
+        while (currentNode != null && !known) {
+            if (currentNode instanceof QuickNode || currentNode instanceof BytecodeNode || currentNode instanceof EspressoStatementNode) {
+                known = true;
+            } else {
+                currentNode = currentNode.getParent();
+            }
+        }
+        return currentNode;
     }
 
     @Override
@@ -139,6 +194,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             System.out.println("Time spent in Espresso: " + (totalTime) + "ms");
         }
+
+        context.prepareDispose();
+
         // Shutdown.shutdown creates a Cleaner thread. At this point, Polyglot doesn't allow new
         // threads. We must perform shutdown before then, after main has finished.
         context.interruptActiveThreads();
@@ -155,6 +213,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         final EspressoContext context = getCurrentContext();
 
         assert context.isInitialized();
+        context.begin();
 
         String className = source.getName();
 

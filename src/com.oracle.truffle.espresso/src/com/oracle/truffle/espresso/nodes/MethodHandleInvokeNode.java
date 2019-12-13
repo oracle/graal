@@ -44,7 +44,8 @@ public class MethodHandleInvokeNode extends QuickNode {
     private final int parameterCount;
     private final JavaKind rKind;
 
-    public MethodHandleInvokeNode(Method method) {
+    public MethodHandleInvokeNode(Method method, int top, int curBCI) {
+        super(top, curBCI);
         this.method = method;
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();
@@ -55,8 +56,8 @@ public class MethodHandleInvokeNode extends QuickNode {
     }
 
     @Override
-    public int invoke(VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int invoke(VirtualFrame frame) {
+        BytecodeNode root = getBytecodesNode();
         Object[] args = new Object[argCount];
         if (hasReceiver) {
             args[0] = nullCheck(root.peekReceiver(frame, top, method));

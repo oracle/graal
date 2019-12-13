@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.meta.LocalVariableTable;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class CodeAttribute extends Attribute {
@@ -90,18 +91,27 @@ public final class CodeAttribute extends Attribute {
         return null;
     }
 
-    private LineNumberTable getLineNumberTableAttribute() {
+    public LineNumberTable getLineNumberTableAttribute() {
         for (Attribute attr : attributes) {
             if (attr.getName() == Name.LineNumberTable) {
                 return (LineNumberTable) attr;
             }
         }
-        return null;
+        return LineNumberTable.EMPTY;
+    }
+
+    public LocalVariableTable getLocalvariableTable() {
+        for (Attribute attr : attributes) {
+            if (attr.getName() == Name.LocalVariableTable) {
+                return (LocalVariableTable) attr;
+            }
+        }
+        return LocalVariableTable.EMPTY;
     }
 
     public final int BCItoLineNumber(int BCI) {
         LineNumberTable lnt = getLineNumberTableAttribute();
-        if (lnt == null) {
+        if (lnt == LineNumberTable.EMPTY) {
             return -1;
         }
         return lnt.getLineNumber(BCI);
@@ -126,4 +136,5 @@ public final class CodeAttribute extends Attribute {
             System.err.println("Throw during printing. Aborting...");
         }
     }
+
 }

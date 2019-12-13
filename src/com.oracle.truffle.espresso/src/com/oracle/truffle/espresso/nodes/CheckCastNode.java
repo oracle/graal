@@ -51,7 +51,8 @@ public abstract class CheckCastNode extends QuickNode {
         return checkCast(typeToCheck, instanceKlass);
     }
 
-    CheckCastNode(Klass typeToCheck) {
+    CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
+        super(top, callerBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
     }
@@ -62,8 +63,8 @@ public abstract class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public final int invoke(final VirtualFrame frame) {
+        BytecodeNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);
         if (StaticObject.isNull(receiver) || executeCheckCast(receiver.getKlass())) {
             return 0;

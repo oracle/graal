@@ -167,6 +167,10 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
+    public Klass[] getLoadedKlasses() {
+        return classes.values().toArray(new Klass[classes.size()]);
+    }
+
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Symbol<Type> elemental = context.getTypes().getElementalType(type);

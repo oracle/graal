@@ -24,33 +24,35 @@ package com.oracle.truffle.espresso.meta;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
 /**
- * Describes the {@link Entry}s for a Java method.
+ * Describes the {@link Local}s for a Java method.
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.13"
  */
-public final class LocalVariableTable {
+public final class LocalVariableTable extends Attribute implements LocalVariableTableRef {
 
-    public static final LocalVariableTable EMPTY = new LocalVariableTable(Entry.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY = new LocalVariableTable(Local.EMPTY_ARRAY);
 
     @CompilationFinal(dimensions = 1) //
-    private final Entry[] entries;
+    private final Local[] locals;
 
     /**
-     * Creates an object describing the {@link Entry}s for a Java method.
+     * Creates an object describing the {@link Local}s for a Java method.
      *
-     * @param entries array of objects describing local variables. This array is now owned by this
+     * @param locals array of objects describing local variables. This array is now owned by this
      *            object and must not be mutated by the caller.
      */
-    public LocalVariableTable(Entry[] entries) {
-        this.entries = entries;
+    // @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "caller transfers ownership of
+    // `locals`")
+    public LocalVariableTable(Local[] locals) {
+        super(Name.LocalVariableTable, null);
+        this.locals = locals;
     }
 
     /**
@@ -60,12 +62,12 @@ public final class LocalVariableTable {
      * @return a description of the requested local variable or null if no such variable matches
      *         {@code slot} and {@code bci}
      */
-    public Entry getLocal(int slot, int bci) {
-        Entry result = null;
-        for (Entry entry : entries) {
-            if (entry.getSlot() == slot && entry.getStartBCI() <= bci && entry.getEndBCI() >= bci) {
+    public Local getLocal(int slot, int bci) {
+        Local result = null;
+        for (Local local : locals) {
+            if (local.getSlot() == slot && local.getStartBCI() <= bci && local.getEndBCI() >= bci) {
                 if (result == null) {
-                    result = entry;
+                    result = local;
                 } else {
                     throw new IllegalStateException("Locals overlap!");
                 }
@@ -75,83 +77,22 @@ public final class LocalVariableTable {
     }
 
     /**
-     * Gets a copy of the array of {@link Entry}s that was passed to this object's constructor.
+     * Gets a copy of the array of {@link Local}s that was passed to this object's constructor.
      */
-    public Entry[] getEntries() {
-        return entries.clone();
+    public Local[] getLocals() {
+        return locals.clone();
     }
 
     /**
      * Gets a description of all the local variables live at the bytecode index {@code bci}.
      */
-    public Entry[] getLocalsAt(int bci) {
-        List<Entry> result = new ArrayList<>();
-        for (Entry l : entries) {
+    public Local[] getLocalsAt(int bci) {
+        List<Local> result = new ArrayList<>();
+        for (Local l : locals) {
             if (l.getStartBCI() <= bci && bci <= l.getEndBCI()) {
                 result.add(l);
             }
         }
-        return result.toArray(Entry.EMPTY_ARRAY);
-    }
-
-    /**
-     * Describes the type and bytecode index range in which a local variable is live.
-     */
-    public static final class Entry {
-
-        public static final Entry[] EMPTY_ARRAY = new Entry[0];
-
-        private final Symbol<Name> name;
-        private final Symbol<Type> type;
-        private final int startBci;
-        private final int endBci;
-        private final int slot;
-
-        public Entry(Symbol<Name> name, Symbol<Type> type, int startBci, int endBci, int slot) {
-            this.name = name;
-            this.startBci = startBci;
-            this.endBci = endBci;
-            this.slot = slot;
-            this.type = type;
-        }
-
-        public int getStartBCI() {
-            return startBci;
-        }
-
-        public int getEndBCI() {
-            return endBci;
-        }
-
-        public Symbol<Name> getName() {
-            return name;
-        }
-
-        public Symbol<Type> getType() {
-            return type;
-        }
-
-        public int getSlot() {
-            return slot;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof Entry)) {
-                return false;
-            }
-            Entry that = (Entry) obj;
-            return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.type.equals(that.type);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, type, startBci, endBci, slot);
-        }
-
-        @Override
-        public String toString() {
-            return "LocalVariableTable.Entry<name=" + name + ", type=" + type + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
-        }
+        return result.toArray(Local.EMPTY_ARRAY);
     }
 }

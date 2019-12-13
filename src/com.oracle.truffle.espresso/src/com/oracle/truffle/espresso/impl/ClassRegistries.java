@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -70,6 +71,42 @@ public final class ClassRegistries {
         }
 
         return registry.findLoadedKlass(type);
+    }
+
+    @TruffleBoundary
+    public Klass[] getLoadedClassesByLoader(StaticObject classLoader) {
+        if (classLoader == StaticObject.NULL) {
+            return bootClassRegistry.classes.values().toArray(new Klass[0]);
+        }
+        return registries.get(classLoader).getLoadedKlasses();
+    }
+
+    @TruffleBoundary
+    public Klass[] findLoadedClassAny(Symbol<Type> type) {
+        ArrayList<Klass> klasses = new ArrayList<>();
+        // look in boot class registry
+        if (bootClassRegistry.classes.containsKey(type)) {
+            klasses.add(bootClassRegistry.classes.get(type));
+        }
+        // continue search in all other registries
+        for (ClassRegistry registry : registries.values()) {
+            if (registry != null && registry.classes != null && registry.classes.containsKey(type)) {
+                klasses.add(registry.classes.get(type));
+            }
+        }
+        return klasses.toArray(new Klass[0]);
+    }
+
+    @TruffleBoundary
+    public Klass[] getAllLoadedClasses() {
+        ArrayList<Klass> list = new ArrayList<>();
+        // add classes from boot registry
+        list.addAll(bootClassRegistry.classes.values());
+        // add classes from all other registries
+        for (ClassRegistry registry : registries.values()) {
+            list.addAll(registry.classes.values());
+        }
+        return list.toArray(new Klass[list.size()]);
     }
 
     @TruffleBoundary
@@ -133,5 +170,9 @@ public final class ClassRegistries {
         if (!Types.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader);
         }
+    }
+
+    public boolean isClassLoader(StaticObject object) {
+        return registries.keySet().contains(object);
     }
 }

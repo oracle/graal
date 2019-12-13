@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class MHLinkToNode extends EspressoBaseNode {
+public abstract class MHLinkToNode extends EspressoMethodNode {
     final int argCount;
     final MethodHandleIntrinsics.PolySigIntrinsics id;
     @Child IndirectCallNode callNode;
@@ -44,15 +44,15 @@ public abstract class MHLinkToNode extends EspressoBaseNode {
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.id = id;
-        this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
+        this.argCount = Signatures.parameterCount(method.getParsedSignature(), false);
         this.callNode = IndirectCallNode.create();
-        this.hidden_vmtarget = getMeta().HIDDEN_VMTARGET.getFieldIndex();
+        this.hidden_vmtarget = method.getMeta().HIDDEN_VMTARGET.getFieldIndex();
         this.hasReceiver = id != MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+        assert method.isStatic();
     }
 
     @Override
-    public Object invokeNaked(VirtualFrame frame) {
-        assert (getMethod().isStatic());
+    public Object execute(VirtualFrame frame) {
         Method target = getTarget(frame.getArguments());
         Object[] args = unbasic(frame.getArguments(), target.getParsedSignature(), 0, argCount - 1, hasReceiver);
         return rebasic(linkTo(target, args), target.getReturnKind());
