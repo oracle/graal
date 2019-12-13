@@ -545,13 +545,7 @@ public final class EspressoContext {
     // Thread management
 
     public StaticObject getGuestThreadFromHost(Thread host) {
-        try {
-            return threadManager.getGuestThreadFromHost(host);
-        } catch (Exception e) {
-            // return the main guest thread for any unknown
-            // host threads.
-            return getMainThread();
-        }
+        return threadManager.getGuestThreadFromHost(host);
     }
 
     public StaticObject getCurrentThread() {

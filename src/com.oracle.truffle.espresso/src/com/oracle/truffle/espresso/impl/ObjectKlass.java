@@ -269,13 +269,7 @@ public final class ObjectKlass extends Klass {
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().getJDWPListener() != null) {
-                            try {
-                                prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                            } catch (Exception e) {
-                                // happens when running tests, because we don't always create a
-                                // guest thread
-                                prepareThread = getContext().getMainThread();
-                            }
+                            prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
                             getContext().getJDWPListener().classPrepared(this, prepareThread);
                         }
                     }
