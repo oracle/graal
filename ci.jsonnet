@@ -2,11 +2,17 @@
   local base = {
 
       local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b05', platformspecific: true},
-      local oraclejdk11 = {name : 'oraclejdk', version : "11+20", platformspecific: true},
+      local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.5+10-jvmci-19.3-b05', platformspecific: true},
 
       jdk8: {
         downloads+: {
           JAVA_HOME: labsjdk8,
+        },
+      },
+
+      extra_jdk11: {
+         downloads+: {
+          EXTRA_JAVA_HOMES: labsjdk_ce_11,
         },
       },
 
@@ -138,21 +144,21 @@
   local jdk8_weekly_linux           = base.jdk8 + base.weekly + base.linux,
 
   builds: [
-    jdk8_weekly_linux           + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-coverage-linux-amd64'},
+    jdk8_weekly_linux             + gate_coverage        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-coverage-linux-amd64'},
 
-    jdk8_gate_linux             + gate_espresso        + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-jackpot-linux-amd64'},
-    jdk8_gate_linux_eclipse_jdt + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
+    jdk8_gate_linux + base.extra_jdk11 + gate_espresso   + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-jackpot-linux-amd64'},
+    jdk8_gate_linux_eclipse_jdt   + gate_espresso        + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
 
-    jdk8_gate_linux             + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-unittest-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-unittest-linux-amd64'},
 
     // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
-    jdk8_gate_linux             + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
-                                                                                                        + {name: 'espresso-meta-hello-world-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso        + {environment+: {GATE_TAGS: 'build,meta', LD_DEBUG: 'unused'}}
+                                                                                                          + {name: 'espresso-meta-hello-world-linux-amd64'},
 
-    jdk8_gate_linux             + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-linux-amd64'},
-    jdk8_gate_linux             + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-linux-amd64'},
+    jdk8_gate_linux               + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-linux-amd64'},
 
-    jdk8_gate_darwin            + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-darwin-amd64'},
-    jdk8_gate_darwin            + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-darwin-amd64'},
+    jdk8_gate_darwin              + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-darwin-amd64'},
+    jdk8_gate_darwin              + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-darwin-amd64'},
   ],
 }
