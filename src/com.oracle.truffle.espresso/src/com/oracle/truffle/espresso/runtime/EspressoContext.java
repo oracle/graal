@@ -79,6 +79,8 @@ public final class EspressoContext {
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
 
+    private StaticObject mainThreadGroup;
+
     public int getNewId() {
         return klassIdProvider.getAndIncrement();
     }
@@ -329,7 +331,7 @@ public final class EspressoContext {
         mainThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
         mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         mainThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
-        StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
+        mainThreadGroup = meta.ThreadGroup.allocateInstance();
         threadManager.registerMainThread(Thread.currentThread(), mainThread);
 
         // Guest Thread.currentThread() must work as this point.
@@ -345,6 +347,46 @@ public final class EspressoContext {
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
         mainThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+    }
+
+    /**
+     * Creates a new guest thread from the host thread, and adds it to the main thread group.
+     */
+    public synchronized void createThread(Thread hostThread) {
+        if (meta == null) {
+            // initial thread used to initialize the context and spawn the VM.
+            // Don't attempt guest thread creation
+            return;
+        }
+        if (getGuestThreadFromHost(hostThread) != null) {
+            // already a live guest thread for this host thread
+            return;
+        }
+        StaticObject guestThread = meta.Thread.allocateInstance();
+        // Allow guest Thread.currentThread() to work.
+        guestThread.setIntField(meta.Thread_priority, Thread.NORM_PRIORITY);
+        guestThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+        guestThread.setHiddenField(meta.HIDDEN_DEATH, Target_java_lang_Thread.KillStatus.NORMAL);
+
+        // register the new guest thread
+        threadManager.registerThread(hostThread, guestThread);
+
+        meta.Thread // public Thread(ThreadGroup group, String name)
+                        .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_Runnable) //
+                        .invokeDirect(guestThread,
+                                        /* group */ mainThreadGroup,
+                                        /* runnable */ StaticObject.NULL);
+        guestThread.setIntField(meta.Thread_threadStatus, Target_java_lang_Thread.State.RUNNABLE.value);
+
+        // now add to the main thread group
+        meta.ThreadGroup // public void add(Thread t)
+                        .lookupDeclaredMethod(Name.add, Signature._void_Thread).invokeDirect(mainThreadGroup,
+                                        /* thread */ guestThread);
+    }
+
+    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
+        // simply calling Thread.exit() will do most of what's needed
+        // TODO(Gregersen) - /browse/GR-20077
     }
 
     public void interruptActiveThreads() {
